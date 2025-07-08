@@ -34,9 +34,6 @@ streamlit run main.py
 - Eksport danych do CSV lub PDF.
 - Rejestracja i logowanie użytkowników.
 
-## Struktura projektu (docelowa)
-├── database.py            # Połączenie i operacje na MSSQL
-├── models.py              # Klasy reprezentujące dane (Ćwiczenie, Trening, Seria)
-├── views/                 # Widoki Streamlit (formularze, historia, statystyki)
-├── main.py                # Główne uruchomienie aplikacji
-└── README.md
+## Zrzuty ekrenu
+### Formularz dodawnia treningu
+![Formularz treningu](images/)
