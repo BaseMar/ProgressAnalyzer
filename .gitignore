@@ -2,6 +2,7 @@
 *.pyc
 __pycache__/
 .env
+images/
 
 # Pliki edytora
 .vscode/

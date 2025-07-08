@@ -2,17 +2,17 @@ from dataclasses import dataclass
 from datetime import date
 from typing import List
 
+@dataclass
 class Cwiczenie:
-    def __init__(self, id, nazwa, jednostka, partie_glowne, partie_szczeg):
-        self.id = id
-        self.nazwa = nazwa
-        self.jednostka = jednostka
-        self.partie_glowne = partie_glowne
-        self.partie_szczeg = partie_szczeg
+    id: int
+    nazwa: str
+    jednostka: str
+    partie_glowne: str
+    partie_szczeg: str
 
     def __str__(self):
         return f"{self.nazwa} ({self.partie_glowne})"
-    
+
 @dataclass
 class Series:
     powtorzenia: int
