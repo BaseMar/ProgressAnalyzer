@@ -36,4 +36,4 @@ streamlit run main.py
 
 ## Zrzuty ekrenu
 ### Formularz dodawnia treningu
-![Formularz treningu](images/)
+![Formularz treningu](images/formularz_treningu.png)
