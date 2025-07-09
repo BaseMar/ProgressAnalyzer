@@ -21,10 +21,12 @@ streamlit run main.py
 
 ## Aktualnie zaimplementowane funkcjonalności:
 1. Baza ćwiczeń
-   - Lista ćwiczeń z podstawowymi i szczegółowymi partiami mięśniowymi.
+    - Lista ćwiczeń z podstawowymi i szczegółowymi partiami mięśniowymi.
 2. Dodawanie treningu
-   - Wybór ćwiczeń, rejestrowanie serii (powtórzenia, ciężar).
-   - Automatyczny zapis do bazy danych MSSQL.
+    - Wybór ćwiczeń, rejestrowanie serii (powtórzenia, ciężar).
+    - Automatyczny zapis do bazy danych MSSQL.
+3. Wyświetlenie historii treningów
+    - lista ćwiczeń wraz z liczbą serii, powtórzeń i ciężarem
 
 ## Planowane rozbudowy:
 - Podsumowania tygodniowe/miesięczne (ilość serii na partie ciała).
@@ -32,8 +34,11 @@ streamlit run main.py
 - Formularz pomiarów ciała (obwody, waga, skład ciała) z analizą zmian.
 - Tworzenie i zapisywanie planów treningowych (Push/Pull/Legs, Full Body itd.).
 - Eksport danych do CSV lub PDF.
-- Rejestracja i logowanie użytkowników.
+- filtrowanie histori treningu po dacie
 
 ## Zrzuty ekrenu
 ### Formularz dodawnia treningu
 ![Formularz treningu](images/formularz_treningu.png)
+
+### Historia treningu
+![Historia treningu](images/historia_treningu.png)

@@ -39,3 +39,19 @@ class Database:
     def close(self):
         self.cursor.close()
         self.conn.close()
+
+    def fetch_training_history(self):
+        self.cursor.execute("""
+        SELECT 
+            t.Id AS TreningId,
+            t.Data,
+            c.Nazwa AS Cwiczenie,
+            ts.Powtorzenia,
+            ts.Ciezar
+        FROM dbo.Trening t
+        JOIN dbo.TreningCwiczenie tc ON t.Id = tc.TreningId
+        JOIN dbo.Cwiczenie c ON tc.CwiczenieId = c.Id
+        JOIN dbo.TreningSeria ts ON tc.Id = ts.TreningCwiczenieId
+        ORDER BY t.Data DESC, t.Id DESC
+    """)
+        return self.cursor.fetchall()
