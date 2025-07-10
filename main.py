@@ -1,5 +1,5 @@
 from database import Database
-from view import input_training, display_training_history
+from view import input_training, display_training_history, input_body_measurements, display_body_measurements_history
 from models import Training
 import streamlit as st
 
@@ -17,9 +17,10 @@ def main():
     exercises_dict = {row.Nazwa: row.Id for row in exercises_raw}
 
     menu_items = [
-    {"label": "🏋️ Dodaj trening", "value": "add"},
-    {"label": "📅 Historia treningów", "value": "history"},
-    {"label": "⚙️ Ustawienia", "value": "settings"},
+    {"label": "Dodaj trening", "value": "add"},
+    {"label": "Historia treningów", "value": "history"},
+    {"label": "Pomiary ciała ", "value": "body_measure"},
+    {"label": "Historia pomiarów ciała ", "value": "body_history"},
         ]
     page = None
 
@@ -47,9 +48,15 @@ def main():
             history = db.fetch_training_history()
             display_training_history(history)
         
-        case "settings":
-            st.header("Ustawienia")
+        case "body_measure":
+            pomiary = input_body_measurements()
+            if st.button("Zapisz pomiary"):
+                db.insert_body_measurements(*pomiary)
+                st.success("Pomiary zapisane!")
 
+        case "body_history":
+            measurements = db.fetch_body_measurements()
+            display_body_measurements_history(measurements)
         case _:
             st.header("Witaj w aplikacji")
             

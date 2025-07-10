@@ -55,3 +55,20 @@ class Database:
         ORDER BY t.Data DESC, t.Id DESC
     """)
         return self.cursor.fetchall()
+    
+    def insert_body_measurements(self, data, waga, klatka, talia, brzuch, biodra, udo, lydka, ramie,
+                             masa_miesniowa, masa_tluszczowa, tkanka_tluszczowa, woda, notatka):
+        self.cursor.execute("""
+            INSERT INTO dbo.PomiaryCiala
+            (DataPomiaru, Waga, KlatkaPiersiowa, Talia, Brzuch, Biodra, Udo, Lydka, Ramie,
+            MasaMiesniowa, MasaTluszczowa, TkankaTluszczowa, WodaCiala, Notatka)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, data, waga, klatka, talia, brzuch, biodra, udo, lydka, ramie,
+            masa_miesniowa, masa_tluszczowa, tkanka_tluszczowa, woda, notatka)
+        self.conn.commit()
+
+    def fetch_body_measurements(self):
+        self.cursor.execute("""
+            SELECT * FROM dbo.PomiaryCiala ORDER BY DataPomiaru DESC
+        """)
+        return self.cursor.fetchall()

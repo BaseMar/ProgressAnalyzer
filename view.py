@@ -57,3 +57,39 @@ def display_training_history(history_data):
         for nazwa, serie in exercise.items():
             serie_str = " | ".join([f"{i+1} Seria: {powt} powt., {kg} kg" for i, (powt, kg) in enumerate(serie)])
             st.markdown(f"**{nazwa}** ➔ {serie_str}")
+
+def input_body_measurements():
+    st.header("Dodaj pomiary ciała")
+
+    data = st.date_input("Data pomiaru:", datetime.date.today())
+    waga = st.number_input("Waga (kg)", min_value=0.0, step=0.1)
+    klatka = st.number_input("Klatka piersiowa (cm)", min_value=0.0, step=0.1)
+    talia = st.number_input("Talia (cm)", min_value=0.0, step=0.1)
+    brzuch = st.number_input("Brzuch (cm)", min_value=0.0, step=0.1)
+    biodra = st.number_input("Biodra (cm)", min_value=0.0, step=0.1)
+    udo = st.number_input("Udo (cm)", min_value=0.0, step=0.1)
+    lydka = st.number_input("Łydka (cm)", min_value=0.0, step=0.1)
+    ramie = st.number_input("Ramię/Biceps (cm)", min_value=0.0, step=0.1)
+
+    st.subheader("Skład ciała (opcjonalnie)")
+    masa_miesniowa = st.number_input("Masa mięśniowa (%)", min_value=0.0, step=0.1)
+    masa_tluszczowa = st.number_input("Masa tłuszczowa (kg)", min_value=0.0, step=0.1)
+    tkanka_tluszczowa = st.number_input("Tkanka tłuszczowa (%)", min_value=0.0, step=0.1)
+    woda = st.number_input("Woda w ciele (%)", min_value=0.0, step=0.1)
+
+    notatka = st.text_input("Notatka (opcjonalnie)")
+
+    return (data, waga, klatka, talia, brzuch, biodra, udo, lydka, ramie,
+            masa_miesniowa, masa_tluszczowa, tkanka_tluszczowa, woda, notatka)
+
+def display_body_measurements_history(measurements):
+    st.header("Historia pomiarów ciała")
+
+    for row in measurements:
+        st.subheader(f"{row.DataPomiaru.strftime('%Y-%m-%d')}")
+        st.write(f"💪 Waga: {row.Waga} kg | Klatka: {row.KlatkaPiersiowa} cm | Talia: {row.Talia} cm | Brzuch: {row.Brzuch} cm")
+        st.write(f"Biodra: {row.Biodra} cm | Udo: {row.Udo} cm | Łydka: {row.Lydka} cm | Ramię: {row.Ramie} cm")
+        st.write(f"Masa mięśniowa: {row.MasaMiesniowa}% | Masa tłuszczowa: {row.MasaTluszczowa} kg | Tkanka tłuszczowa: {row.TkankaTluszczowa}% | Woda: {row.WodaCiala}%")
+        if row.Notatka:
+            st.write(f"📝 {row.Notatka}")
+        st.markdown("---")
