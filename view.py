@@ -62,25 +62,25 @@ def input_body_measurements():
     st.header("Dodaj pomiary ciała")
 
     data = st.date_input("Data pomiaru:", datetime.date.today())
-    waga = st.number_input("Waga (kg)", min_value=0.0, step=0.1)
-    klatka = st.number_input("Klatka piersiowa (cm)", min_value=0.0, step=0.1)
-    talia = st.number_input("Talia (cm)", min_value=0.0, step=0.1)
-    brzuch = st.number_input("Brzuch (cm)", min_value=0.0, step=0.1)
-    biodra = st.number_input("Biodra (cm)", min_value=0.0, step=0.1)
-    udo = st.number_input("Udo (cm)", min_value=0.0, step=0.1)
-    lydka = st.number_input("Łydka (cm)", min_value=0.0, step=0.1)
-    ramie = st.number_input("Ramię/Biceps (cm)", min_value=0.0, step=0.1)
+    measurements = {
+        "Waga (kg)": 0.0,
+        "Klatka piersiowa (cm)": 0.0,
+        "Talia (cm)": 0.0,
+        "Brzuch (cm)": 0.0,
+        "Biodra (cm)": 0.0,
+        "Udo (cm)": 0.0,
+        "Łydka (cm)": 0.0,
+        "Ramię/Biceps (cm)": 0.0,}
+    values = {k: st.number_input(k, min_value=0.0, step=0.1) for k in measurements}
 
     st.subheader("Skład ciała (opcjonalnie)")
     masa_miesniowa = st.number_input("Masa mięśniowa (%)", min_value=0.0, step=0.1)
     masa_tluszczowa = st.number_input("Masa tłuszczowa (kg)", min_value=0.0, step=0.1)
     tkanka_tluszczowa = st.number_input("Tkanka tłuszczowa (%)", min_value=0.0, step=0.1)
     woda = st.number_input("Woda w ciele (%)", min_value=0.0, step=0.1)
-
     notatka = st.text_input("Notatka (opcjonalnie)")
 
-    return (data, waga, klatka, talia, brzuch, biodra, udo, lydka, ramie,
-            masa_miesniowa, masa_tluszczowa, tkanka_tluszczowa, woda, notatka)
+    return (data, values, masa_miesniowa, masa_tluszczowa, tkanka_tluszczowa, woda, notatka)
 
 def display_body_measurements_history(measurements):
     st.header("Historia pomiarów ciała")
