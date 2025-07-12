@@ -1,5 +1,6 @@
 from database import Database
-from view import input_training, display_training_history, input_body_measurements, display_body_measurements_history
+from TrainingView import TrainingView
+from BodyMeasurementsView import BodyMeasurementsView
 import streamlit as st
 
 CONNECTION_STRING = (
@@ -15,12 +16,13 @@ def main():
     try:
         exercises_raw = db.fetch_exercises()
         exercises_dict = {row.Nazwa: row.Id for row in exercises_raw}
-
+        training_view = TrainingView(exercises_dict)
+        body_view = BodyMeasurementsView()
         menu = st.sidebar.radio("Menu",("Dodaj trening", "Historia treningów", "Pomiary ciała", "Historia pomiarów ciała")
     )
         match menu:
             case "Dodaj trening":
-                training = input_training(exercises_dict)
+                training = training_view.input_training()
                 if st.button("Zapisz trening"):
                     try:
                         trening_id = db.insert_training(training.data)
@@ -31,22 +33,20 @@ def main():
                         st.success("Trening został zapisany!")
                     except Exception as e:
                         st.error(f"Wystąpił błąd: {e}")
-                    finally:
-                        db.close()
             
             case "Historia treningów":
                 history = db.fetch_training_history()
-                display_training_history(history)
+                training_view.display_training_history(history)
             
             case "Pomiary ciała":
-                pomiary = input_body_measurements()
+                pomiary = body_view.input_body_measurements()
                 if st.button("Zapisz pomiary"):
                     db.insert_body_measurements(*pomiary)
                     st.success("Pomiary zapisane!")
 
             case "Historia pomiarów ciała":
                 measurements = db.fetch_body_measurements()
-                display_body_measurements_history(measurements)
+                body_view.display_history(measurements)
             case _:
                 st.header("Witaj w aplikacji")
     finally:
