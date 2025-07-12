@@ -1,9 +1,11 @@
 # Analizator Progresu na Siłowni
-Aplikacja okienkowa do śledzenia i analizy postępów na siłowni, stworzona w Pythonie z użyciem Streamlit, MSSQL, Pandas i Plotly.
+Aplikacja okienkowa do śledzenia i analizy postępów treningowych. Umożliwia rejestrowanie treningów siłowych, zapisywanie pomiarów ciała oraz przeglądanie historii w przejrzysty sposób.
+
+Zbudowana z użyciem **Python + Streamlit + MSSQL + Pandas + Plotly**.
 
 ## Technologie
     - Python 3.x
-    - Streamlit
+    - [Streamlit](https://streamlit.io)
     - MS SQL Server
     - pyodbc
     - pandas
@@ -23,18 +25,23 @@ streamlit run main.py
 1. Baza ćwiczeń
     - Lista ćwiczeń z podstawowymi i szczegółowymi partiami mięśniowymi.
 2. Dodawanie treningu
-    - Wybór ćwiczeń, rejestrowanie serii (powtórzenia, ciężar).
+    - Wybór ćwiczeń, 
+    - Rejestrowanie serii (ilość powtórzeń, ciężar).
     - Automatyczny zapis do bazy danych MSSQL.
-3. Wyświetlenie historii treningów
-    - lista ćwiczeń wraz z liczbą serii, powtórzeń i ciężarem
+3. Historia treningów
+    - Przegląd zapisanych treningów z możliwością filtrowania po dacie i ćwiczeniu
+    - Szczegóły każdego ćwiczenia (ilość powtórzeń, ciężar)
+4. Pomiary ciała
+    - Formularz do wprowadzania pomiarów ciała (np. obwód ramienia, klatki, pasa)
+5. Historia pomiarów
+    - Przegląd pomiarów w czasie
+    - Możliwość wyboru konkretnej partii ciała
 
 ## Planowane rozbudowy:
-- Podsumowania tygodniowe/miesięczne (ilość serii na partie ciała).
+- Tygodniowe/miesięczne podsumowania (objętość treningowa, liczba serii na grupy mięśniowe)
 - Analiza progresu konkretnego ćwiczenia na wykresach (ciężar, powtórzenia, objętość).
-- Formularz pomiarów ciała (obwody, waga, skład ciała) z analizą zmian.
 - Tworzenie i zapisywanie planów treningowych (Push/Pull/Legs, Full Body itd.).
 - Eksport danych do CSV lub PDF.
-- filtrowanie histori treningu po dacie
 
 ## Zrzuty ekrenu
 ### Formularz dodawnia treningu
@@ -42,3 +49,9 @@ streamlit run main.py
 
 ### Historia treningu
 ![Historia treningu](images/historia_treningu.png)
+
+### Formularz pomiaru ciała
+![Pomiary ciała](images/pomiary_ciała.png)
+
+### Historia treningu
+![Historia pomiarów](images/historia_pomiarów.png)
