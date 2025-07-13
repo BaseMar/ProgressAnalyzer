@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 from models import Series, TrainingExercise, Training
 import pandas as pd
+from analytics import filter_training_data
 
 class TrainingView:
     def __init__(self, exercises_dict):
@@ -62,9 +63,7 @@ class TrainingView:
         exercises = sorted(df['Cwiczenie'].unique())
         selected_exercise = st.selectbox("Ćwiczenie (opcjonalnie):", ["Wszystkie"] + exercises)
 
-        filtered_df = df[(df['Data'] >= date_start) & (df['Data'] <= date_end)]
-        if selected_exercise != "Wszystkie":
-            filtered_df = filtered_df[filtered_df['Cwiczenie'] == selected_exercise]
+        filtered_df = filter_training_data(df, date_start, date_end, selected_exercise)
 
         if filtered_df.empty:
             st.warning("Brak treningów dla wybranych filtrów.")

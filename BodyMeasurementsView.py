@@ -2,6 +2,7 @@ import datetime
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from analytics import summarize_measurements
 
 class BodyMeasurementsView:
     def __init__(self):
@@ -63,34 +64,36 @@ class BodyMeasurementsView:
         metrics = [col for col in df.columns if col != "Data"]
         selected_metric = st.radio("Wybierz parametr:", metrics, horizontal=True)
 
-        values = df[selected_metric].dropna()
-        first, last = values.iloc[0], values.iloc[-1]
-        min_val, max_val, avg_val = values.min(), values.max(), values.mean()
+        summary = summarize_measurements(df, selected_metric)
+        if not summary:
+            st.warning("Brak danych do analizy.")
+            return
 
-        percent_change = ((last - first) / abs(first) * 100) if first != 0 else 0
-        trend_icon = "⬆️" if last > first else "⬇️" if last < first else "➡️"
+        min_val = summary["min"]
+        max_val = summary["max"]
+        avg_val = summary["avg"]
+        percent_change = summary["percent_change"]
+        trend_icon = summary["trend_icon"]
         full_metric_label = self.metric_units[selected_metric]
-        subtitle = (
-            f"Średnia: {avg_val:.2f}, Min: {min_val:.2f}, Max: {max_val:.2f}  "
-            f"| Zmiana: {percent_change:+.2f}% {trend_icon}"
-        )
+
+        subtitle = (f"Średnia: {avg_val:.2f}, Min: {min_val:.2f}, Max: {max_val:.2f}"
+                    f"| Zmiana: {percent_change:+.2f}% {trend_icon}")
 
         fig = px.line(
-            df,
-            x="Data",
-            y=selected_metric,
-            markers=True,
-            title=f"{full_metric_label}<br><sup>{subtitle}</sup>",
-            labels={"Data": "Data", selected_metric: selected_metric})
+                        df,
+                        x="Data",
+                        y=selected_metric,
+                        markers=True,
+                        title=f"{full_metric_label}<br><sup>{subtitle}</sup>",
+                        labels={"Data": "Data", selected_metric: selected_metric})
 
-        fig.update_layout(
-            title={"text": f"{full_metric_label}<br><sup>{subtitle}</sup>", "x": 0.5, "xanchor": "center", "yanchor": "top",
-                   "font": {"size": 30}},
-            xaxis_title="Data",
-            yaxis_title=selected_metric,
-            template="plotly_white",
-            hovermode="x unified",
-            margin=dict(t=100),
-            xaxis_tickformat="%d-%m")
+        fig.update_layout(title={"text": f"{full_metric_label}<br><sup>{subtitle}</sup>", "x": 0.5, "xanchor": "center", "yanchor": "top",
+                                 "font": {"size": 30}},
+                        xaxis_title="Data",
+                        yaxis_title=selected_metric,
+                        template="plotly_white",
+                        hovermode="x unified",
+                        margin=dict(t=100),
+                        xaxis_tickformat="%d-%m")
         
         st.plotly_chart(fig, use_container_width=True)
