@@ -73,3 +73,8 @@ class Database:
         rows = self.cursor.fetchall()
         columns = [column[0] for column in self.cursor.description]
         return [dict(zip(columns, row)) for row in rows]
+
+    def fetch_exercise_groups(self):
+        query = "SELECT Id, Nazwa, PartieGlowne, PartieSzczeg FROM dbo.Cwiczenie"
+        self.cursor.execute(query)
+        return self.cursor.fetchall()

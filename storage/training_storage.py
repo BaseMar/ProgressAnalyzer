@@ -25,3 +25,10 @@ def fetch_all_exercises():
         return db.fetch_exercises()
     finally:
         db.close()
+
+def fetch_exercise_groups():
+    db = Database(CONNECTION_STRING)
+    try:
+        return db.fetch_exercise_groups()
+    finally:
+        db.close()
