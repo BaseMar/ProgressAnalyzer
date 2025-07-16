@@ -56,7 +56,8 @@ class TrainingHistoryView:
             all_dates = pd.date_range(start=date_range[0], end=date_range[1], freq='D')
             series = series.reindex(all_dates, fill_value=0)
 
-            status = analyze_training_volume(series)
+            weekly_series = series.resample("W-MON").sum()
+            status = analyze_training_volume(weekly_series)
 
             color = {
                 "Objętość stabilna": "green",
@@ -70,7 +71,7 @@ class TrainingHistoryView:
             fig.add_trace(go.Bar(
                 x=series.index,
                 y=series.values,
-                name=muscle_group
+                name=muscle_group,
             ))
 
             fig.update_layout(
@@ -92,13 +93,3 @@ class TrainingHistoryView:
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
                 st.markdown(f"<h4>Status:</h4><p style='color:{color}; font-weight:bold;'>{status}</p>", unsafe_allow_html=True)
-
-    def convert_volume_to_weekly(self, volume_dict):
-        weekly_volume_dict = {}
-
-        for muscle_group, series in volume_dict.items():
-            series.index = pd.to_datetime(series.index)
-            series_weekly = series.resample('W-MON').sum()
-            weekly_volume_dict[muscle_group] = series_weekly
-
-        return weekly_volume_dict

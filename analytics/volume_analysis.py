@@ -17,14 +17,14 @@ def calculate_volume_per_muscle(df, exercise_to_groups):
 
     return {group: pd.Series(data).sort_index() for group, data in group_volume.items()}
 
-def analyze_training_volume(series):
+def analyze_training_volume(series, weeks_window=4):
     series = series.astype(float)
     nonzero_series = series[series > 0]
 
-    if len(nonzero_series) < 5:
+    if len(nonzero_series) < weeks_window + 1:
         return "Za mało danych do analizy"
 
-    recent_mean = nonzero_series.iloc[-5:-1].mean()
+    recent_mean = nonzero_series.iloc[-(weeks_window + 1):-1].mean()
     current = nonzero_series.iloc[-1]
 
     if recent_mean == 0:

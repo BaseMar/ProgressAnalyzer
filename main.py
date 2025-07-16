@@ -47,9 +47,9 @@ match menu:
             training_history.display_training_history()
         
         with tab2:
-            weekly_volume_dict = training_history.convert_volume_to_weekly(volume_main)
             date_range = (df['Data'].min(), df['Data'].max())
             training_history.display_volume_charts(volume_main, "Partie główne", date_range)
+
 
     case "Dodaj pomiary":
         data = body_form.input_body_measurements()
