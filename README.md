@@ -1,21 +1,21 @@
 # Analizator Progresu na Siłowni
-Aplikacja okienkowa do śledzenia i analizy postępów treningowych. Umożliwia rejestrowanie treningów siłowych, zapisywanie pomiarów ciała oraz przeglądanie historii w przejrzysty sposób.
+Aplikacja webowa do monitorowania postępów treningowych i analizy objętości siłowej. Pozwala na rejestrację treningów, śledzenie pomiarów ciała oraz graficzne przedstawienie danych wraz z analizą przetrenowania/niedotrenowania.
 
-Zbudowana z użyciem **Python + Streamlit + MSSQL + Pandas + Plotly**.
+Zbudowana w oparciu o Python + Streamlit + MS SQL Server + Pandas + Plotly.
 
 ## Technologie
-    - Python 3.x
-    - [Streamlit](https://streamlit.io)
-    - MS SQL Server
-    - pyodbc
-    - pandas
-    - plotly
-    - datetime
+    * Python 3.x
+    * Streamlit
+    * MS SQL Server
+    * pyodbc
+    * pandas
+    * plotly
+    * datetime
 
 ## Wymagania
-    - Python 3.x
-    - MS SQL Server
-    - Biblioteki:
+    * Python 3.x
+    * MS SQL Server
+    * Biblioteki:
         pip install streamlit pyodbc pandas plotly
 
 ## Uruchomienie aplikacji
@@ -23,32 +23,49 @@ streamlit run main.py
 
 ## Aktualnie zaimplementowane funkcjonalności:
 1. Baza ćwiczeń
-    - Lista ćwiczeń z podstawowymi i szczegółowymi partiami mięśniowymi.
+    * Lista ćwiczeń skategoryzowana według:
+        - partii głównych (np. plecy, nogi)
+        - partii szczegółowych (np. biceps, czworogłowe)
+    * Każde ćwiczenie powiązane z grupami mięśniowymi
+
 2. Dodawanie treningu
-    - Wybór ćwiczeń, 
-    - Rejestrowanie serii (ilość powtórzeń, ciężar).
-    - Automatyczny zapis do bazy danych MSSQL.
+    * Wybór ćwiczeń
+    * Dane automatycznie zapisywane do MSSQL
+    * Obsługa wielu serii i ćwiczeń w jednej sesji
+
 3. Historia treningów
-    - Przegląd zapisanych treningów z możliwością filtrowania po dacie i ćwiczeniu
-    - Szczegóły każdego ćwiczenia (ilość powtórzeń, ciężar)
+    * Filtrowanie po zakresie dat i ćwiczeniach
+    * Szczegóły wykonanych serii: powtórzenia, ciężar
+    * Automatyczne wyliczanie objętości siłowej (powtórzenia × ciężar) dla partii głównych.
+    * Wykres słupkowy objętości dziennej dla każdej grupy mięśniowej.
+    * Tygodniowa analiza trendu objętości:
+        - Przetrenowanie: wzrost >30% vs poprzednie tygodnie
+        - Niedotrenowanie: spadek >20%
+        - Status "objętość stabilna" lub "brak danych"
+
 4. Pomiary ciała
-    - Formularz do wprowadzania pomiarów ciała (np. obwód ramienia, klatki, pasa)
+    * Formularz zapisu pomiarów (ramiona, pas, klatka itp.).
+    * Dane zapisywane do MSSQL.
+
 5. Historia pomiarów
-    - Przegląd pomiarów w czasie
-    - Możliwość wyboru konkretnej partii ciała
+    * Przegląd pomiarów w czasie na wykresach.
+    * Możliwość wyboru konkretnej partii ciała.
+    * Wizualizacja zmian sylwetki.
 
 ## Planowane rozbudowy:
-- Tygodniowe/miesięczne podsumowania (objętość treningowa, liczba serii na grupy mięśniowe)
-- Analiza progresu konkretnego ćwiczenia na wykresach (ciężar, powtórzenia, objętość).
-- Tworzenie i zapisywanie planów treningowych (Push/Pull/Legs, Full Body itd.).
-- Eksport danych do CSV lub PDF.
-
+    * Progresja siłowa:
+        - Śledzenie zmian ciężaru/powtórzeń dla danego ćwiczenia.
+        - Wykresy liniowe i analiza trendów.
+    * Tygodniowe/miesięczne raporty (objętość, częstotliwość, liczba serii).
+    * Dodawanie planów treningowych
+    
 ## Zrzuty ekrenu
 ### Formularz dodawnia treningu
 ![Formularz treningu](images/formularz_treningu.png)
 
 ### Historia treningu
 ![Historia treningu](images/historia_treningu.png)
+![Objętość treningowa](images/objetosc_treningowa.png)
 
 ### Formularz pomiaru ciała
 ![Pomiary ciała](images/pomiary_ciała.png)
