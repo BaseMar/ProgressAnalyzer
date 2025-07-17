@@ -93,3 +93,68 @@ class TrainingHistoryView:
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
                 st.markdown(f"<h4>Status:</h4><p style='color:{color}; font-weight:bold;'>{status}</p>", unsafe_allow_html=True)
+
+    def display_strength_progression(self, df):
+        st.subheader("Progresja siłowa")
+
+        df["Data"] = pd.to_datetime(df["Data"])
+        df["Tydzien"] = df["Data"].dt.to_period("W").apply(lambda r: r.start_time)
+        df["Volume"] = df["Powtorzenia"] * df["Ciezar"]
+
+        exercises = sorted(df['Cwiczenie'].unique())
+        selected = st.multiselect("Wybierz ćwiczenia:", exercises, default=exercises[:1])
+
+        for ex in selected:
+            df_ex = df[df["Cwiczenie"] == ex]
+
+            if df_ex.empty:
+                st.warning(f"Brak danych dla {ex}")
+                continue
+
+            grouped = df_ex.groupby("Tydzien").agg({
+                "Ciezar": ["mean", "max"],
+                "Volume": "sum",
+                "Powtorzenia": "sum"
+            }).reset_index()
+
+            grouped.columns = ["Tydzien", "Sredni_ciezar", "Max_ciezar", "Objętość", "Powtórzenia"]
+
+            grouped["% zmiana (średni ciężar)"] = grouped["Sredni_ciezar"].pct_change().fillna(0) * 100
+
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=grouped["Tydzien"],
+                y=grouped["Sredni_ciezar"],
+                name="Średni ciężar",
+                mode="lines+markers",
+                line=dict(color="royalblue")
+            ))
+            fig.add_trace(go.Scatter(
+                x=grouped["Tydzien"],
+                y=grouped["Max_ciezar"],
+                name="Maksymalny ciężar",
+                mode="lines+markers",
+                line=dict(color="firebrick")
+            ))
+
+            fig.update_layout(
+                title=f"{ex} – progres siłowy",
+                xaxis=dict(
+                    title="Tydzień",
+                    tickformat="%d-%m",
+                    tickmode="auto"
+                ),
+                yaxis_title="Ciężar (kg)",
+                height=400,
+                template="plotly_white"
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.dataframe(grouped.style.format({
+                "Sredni_ciezar": "{:.1f}",
+                "Max_ciezar": "{:.1f}",
+                "Objętość": "{:.0f}",
+                "Powtórzenia": "{:.0f}",
+                "% zmiana (średni ciężar)": "{:+.1f}%"
+            }))

@@ -50,7 +50,9 @@ match menu:
             date_range = (df['Data'].min(), df['Data'].max())
             training_history.display_volume_charts(volume_main, "Partie główne", date_range)
 
-
+        with tab3:
+            training_history.display_strength_progression(df)
+    
     case "Dodaj pomiary":
         data = body_form.input_body_measurements()
         if st.button("Zapisz pomiary"):
