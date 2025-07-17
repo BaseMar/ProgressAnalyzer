@@ -29,8 +29,8 @@ Zapisuje pomiary ciała użytkownika w czasie.
 | Udo               | decimal        | Obwód uda (cm)                        |
 | Lydka             | decimal        | Obwód łydki (cm)                      |
 | Ramie             | decimal        | Obwód ramienia (cm)                  |
-| MasaMiesniowa     | decimal        | Masa mięśniowa (kg / % zależnie od pomiaru) |
-| MasaTluszczowa    | decimal        | Masa tłuszczowa (kg / %)             |
+| MasaMiesniowa     | decimal        | Masa mięśniowa (kg)                  |
+| MasaTluszczowa    | decimal        | Masa tłuszczowa (kg)                 |
 | TkankaTluszczowa  | decimal        | % tkanki tłuszczowej                 |
 | WodaCiala         | decimal        | % wody w organizmie                  |
 | Notatka           | nvarchar(255)  | Dowolna notatka do pomiaru          |
