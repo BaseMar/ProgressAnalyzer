@@ -55,6 +55,7 @@ class TrainingHistoryView:
             series = series.sort_index()
             all_dates = pd.date_range(start=date_range[0], end=date_range[1], freq='D')
             series = series.reindex(all_dates, fill_value=0)
+            series = series.infer_objects(copy=False)
 
             weekly_series = series.resample("W-MON").sum()
             status = analyze_training_volume(weekly_series)
@@ -100,6 +101,7 @@ class TrainingHistoryView:
         df = df.copy()
         df["Data"] = pd.to_datetime(df["Data"])
         df["Tydzien"] = df["Data"].dt.to_period("W").apply(lambda p: p.start_time)
+        df["Tydzien"] = df["Tydzien"].dt.date
         df["Volume"] = df["Powtorzenia"] * df["Ciezar"]
 
         exercise_list = df["Cwiczenie"].unique()
@@ -127,49 +129,48 @@ class TrainingHistoryView:
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        grouped = ex_df.groupby("Tydzien").agg({
-            "Ciezar": ["mean", "max"],
-            "Volume": "sum",
-            "Powtorzenia": "sum"
-        }).reset_index()
-        grouped.columns = ["Tydzien", "Sredni_ciezar", "Max_ciezar", "Objętość", "Powtórzenia"]
-        grouped["% zmiana (średni ciężar)"] = grouped["Sredni_ciezar"].pct_change().fillna(0) * 100
-        st.dataframe(grouped.style.format({
-            "Sredni_ciezar": "{:.1f}",
-            "Max_ciezar": "{:.1f}",
-            "Objętość": "{:.0f}",
-            "Powtórzenia": "{:.0f}",
-            "% zmiana (średni ciężar)": "{:+.1f}%"
-        }))
-
     def display_weekly_series_report(self, df, exercise_groups):
-        st.subheader("Raport: Liczba serii tygodniowo – ćwiczenia i grupy mięśniowe")
+        st.subheader("Raport tygodniowy – serie, ciężary, progresja")
 
         df = df.copy()
         df["Data"] = pd.to_datetime(df["Data"])
-        df["Tydzień"] = df["Data"].dt.to_period("W").apply(lambda r: r.start_time)
+        df["Tydzień"] = df["Data"] - pd.to_timedelta(df["Data"].dt.weekday, unit="d")
+        df["Tydzień"] = df["Tydzień"].dt.normalize()
 
-        exercise_series = df.groupby(["Tydzień", "Cwiczenie"]).size().unstack(fill_value=0)
+        df["Volume"] = df["Ciezar"] * df["Powtorzenia"]
 
-        df["PartieGlowne"] = df["Cwiczenie"].map(exercise_groups)
+        exercise_stats = df.groupby(["Tydzień", "Cwiczenie"]).agg({
+            "Ciezar": ["mean", "max"],
+            "Powtorzenia": "sum",
+            "Volume": "sum"
+        }).reset_index()
 
-        df["PartieGlowne"] = df["PartieGlowne"].fillna("")
+        exercise_stats.columns = ["Tydzień", "Cwiczenie", "Średni ciężar", "Maks. ciężar", "Suma powtórzeń", "Objętość"]
+        exercise_stats["% zm. śr. ciężaru"] = exercise_stats.groupby("Cwiczenie")["Średni ciężar"].pct_change().fillna(0) * 100
+        serie_counts = df.groupby(["Tydzień", "Cwiczenie"]).size().reset_index(name="Liczba serii")
+        full_df = pd.merge(exercise_stats, serie_counts, on=["Tydzień", "Cwiczenie"])
+        tygodnie = full_df["Tydzień"].drop_duplicates().sort_values(ascending=False).dt.strftime("%Y-%m-%d")
+        selected_week = st.selectbox("Wybierz tydzień:", tygodnie)
+        selected_df = full_df[full_df["Tydzień"].dt.strftime("%Y-%m-%d") == selected_week]
+        selected_df = selected_df.sort_values("Objętość", ascending=False)
+        selected_df = selected_df.copy()
+        selected_df["Tydzień"] = selected_df["Tydzień"].dt.strftime("%Y-%m-%d")
+
+        st.markdown("### Ćwiczenia – metryki tygodniowe")
+        st.dataframe(selected_df.style.format({
+            "Średni ciężar": "{:.1f}",
+            "Maks. ciężar": "{:.1f}",
+            "Objętość": "{:.0f}",
+            "Suma powtórzeń": "{:.0f}",
+            "Liczba serii": "{:.0f}",
+            "% zm. śr. ciężaru": "{:+.1f}%"
+        }), use_container_width=True)
+
+        df["PartieGlowne"] = df["Cwiczenie"].map(exercise_groups).fillna("")
         df["PartieGlowne"] = df["PartieGlowne"].str.split(r",\s*")
         df = df.explode("PartieGlowne")
-
         group_series = df.groupby(["Tydzień", "PartieGlowne"]).size().unstack(fill_value=0)
-
-        exercise_series.index = exercise_series.index.strftime("%Y-%m-%d")
         group_series.index = group_series.index.strftime("%Y-%m-%d")
-
-        selected_week = st.selectbox("Wybierz tydzień:", exercise_series.index.sort_values(ascending=False))
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.markdown("### Serii na ćwiczenie")
-            st.dataframe(exercise_series.loc[selected_week].sort_values(ascending=False), use_container_width=True)
-
-        with col2:
-            st.markdown("### Serii na grupę mięśniową")
-            st.dataframe(group_series.loc[selected_week].sort_values(ascending=False), use_container_width=True)
+        
+        st.markdown("### Grupy mięśniowe – liczba serii")
+        st.dataframe(group_series.loc[selected_week].sort_values(ascending=False), use_container_width=True)
