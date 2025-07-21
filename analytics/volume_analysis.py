@@ -38,20 +38,3 @@ def analyze_training_volume(series, weeks_window=4):
         return "Ryzyko przetrenowania – gwałtowny wzrost objętości >30%"
     else:
         return "Objętość stabilna"
-
-def calculate_strength_progression(df):
-    df = df.copy()
-    df["Data"] = pd.to_datetime(df["Data"])
-    df["Tydzien"] = df["Data"].dt.to_period("W").apply(lambda r: r.start_time)
-    df["Volume"] = df["Powtorzenia"] * df["Ciezar"]
-
-    grouped = df.groupby(["Cwiczenie", "Tydzien"]).agg(
-        sredni_ciezar=("Ciezar", "mean"),
-        max_ciezar=("Ciezar", "max"),
-        srednia_objetosc=("Volume", "mean"),
-        liczba_serii=("Ciezar", "count")
-    ).reset_index()
-
-    grouped["progres_proc"] = grouped.groupby("Cwiczenie")["sredni_ciezar"].pct_change() * 100
-
-    return grouped

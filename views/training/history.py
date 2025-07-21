@@ -49,7 +49,7 @@ class TrainingHistoryView:
             st.markdown("---")
     
     def display_volume_charts(self, volume_dict, title, date_range=None):
-        st.subheader(f"Objętość treningowa – {title}")
+        st.subheader(f"Objętość treningowa - {title}")
 
         for muscle_group, series in volume_dict.items():
             series = series.sort_index()
@@ -97,64 +97,79 @@ class TrainingHistoryView:
     def display_strength_progression(self, df):
         st.subheader("Progresja siłowa")
 
+        df = df.copy()
         df["Data"] = pd.to_datetime(df["Data"])
-        df["Tydzien"] = df["Data"].dt.to_period("W").apply(lambda r: r.start_time)
+        df["Tydzien"] = df["Data"].dt.to_period("W").apply(lambda p: p.start_time)
         df["Volume"] = df["Powtorzenia"] * df["Ciezar"]
 
-        exercises = sorted(df['Cwiczenie'].unique())
-        selected = st.multiselect("Wybierz ćwiczenia:", exercises, default=exercises[:1])
+        exercise_list = df["Cwiczenie"].unique()
+        selected_exercise = st.selectbox("Wybierz ćwiczenie:", exercise_list, index=0)
+        ex_df = df[df["Cwiczenie"] == selected_exercise]
 
-        for ex in selected:
-            df_ex = df[df["Cwiczenie"] == ex]
+        if ex_df.empty:
+            st.warning(f"Brak danych dla {selected_exercise}")
+            return
 
-            if df_ex.empty:
-                st.warning(f"Brak danych dla {ex}")
-                continue
+        weekly_avg = ex_df.groupby("Tydzien")["Ciezar"].mean().reset_index()
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=weekly_avg["Tydzien"],
+            y=weekly_avg["Ciezar"],
+            mode='lines+markers',
+            name="Średni ciężar"
+        ))
+        fig.update_layout(
+            title=selected_exercise,
+            xaxis=dict(title="Tydzień", tickformat="%d-%m", tickmode="auto"),
+            yaxis_title="Średni ciężar (kg)",
+            template="plotly_white",
+            height=350
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-            grouped = df_ex.groupby("Tydzien").agg({
-                "Ciezar": ["mean", "max"],
-                "Volume": "sum",
-                "Powtorzenia": "sum"
-            }).reset_index()
+        grouped = ex_df.groupby("Tydzien").agg({
+            "Ciezar": ["mean", "max"],
+            "Volume": "sum",
+            "Powtorzenia": "sum"
+        }).reset_index()
+        grouped.columns = ["Tydzien", "Sredni_ciezar", "Max_ciezar", "Objętość", "Powtórzenia"]
+        grouped["% zmiana (średni ciężar)"] = grouped["Sredni_ciezar"].pct_change().fillna(0) * 100
+        st.dataframe(grouped.style.format({
+            "Sredni_ciezar": "{:.1f}",
+            "Max_ciezar": "{:.1f}",
+            "Objętość": "{:.0f}",
+            "Powtórzenia": "{:.0f}",
+            "% zmiana (średni ciężar)": "{:+.1f}%"
+        }))
 
-            grouped.columns = ["Tydzien", "Sredni_ciezar", "Max_ciezar", "Objętość", "Powtórzenia"]
+    def display_weekly_series_report(self, df, exercise_groups):
+        st.subheader("Raport: Liczba serii tygodniowo – ćwiczenia i grupy mięśniowe")
 
-            grouped["% zmiana (średni ciężar)"] = grouped["Sredni_ciezar"].pct_change().fillna(0) * 100
+        df = df.copy()
+        df["Data"] = pd.to_datetime(df["Data"])
+        df["Tydzień"] = df["Data"].dt.to_period("W").apply(lambda r: r.start_time)
 
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=grouped["Tydzien"],
-                y=grouped["Sredni_ciezar"],
-                name="Średni ciężar",
-                mode="lines+markers",
-                line=dict(color="royalblue")
-            ))
-            fig.add_trace(go.Scatter(
-                x=grouped["Tydzien"],
-                y=grouped["Max_ciezar"],
-                name="Maksymalny ciężar",
-                mode="lines+markers",
-                line=dict(color="firebrick")
-            ))
+        exercise_series = df.groupby(["Tydzień", "Cwiczenie"]).size().unstack(fill_value=0)
 
-            fig.update_layout(
-                title=f"{ex} – progres siłowy",
-                xaxis=dict(
-                    title="Tydzień",
-                    tickformat="%d-%m",
-                    tickmode="auto"
-                ),
-                yaxis_title="Ciężar (kg)",
-                height=400,
-                template="plotly_white"
-            )
+        df["PartieGlowne"] = df["Cwiczenie"].map(exercise_groups)
 
-            st.plotly_chart(fig, use_container_width=True)
+        df["PartieGlowne"] = df["PartieGlowne"].fillna("")
+        df["PartieGlowne"] = df["PartieGlowne"].str.split(r",\s*")
+        df = df.explode("PartieGlowne")
 
-            st.dataframe(grouped.style.format({
-                "Sredni_ciezar": "{:.1f}",
-                "Max_ciezar": "{:.1f}",
-                "Objętość": "{:.0f}",
-                "Powtórzenia": "{:.0f}",
-                "% zmiana (średni ciężar)": "{:+.1f}%"
-            }))
+        group_series = df.groupby(["Tydzień", "PartieGlowne"]).size().unstack(fill_value=0)
+
+        exercise_series.index = exercise_series.index.strftime("%Y-%m-%d")
+        group_series.index = group_series.index.strftime("%Y-%m-%d")
+
+        selected_week = st.selectbox("Wybierz tydzień:", exercise_series.index.sort_values(ascending=False))
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("### Serii na ćwiczenie")
+            st.dataframe(exercise_series.loc[selected_week].sort_values(ascending=False), use_container_width=True)
+
+        with col2:
+            st.markdown("### Serii na grupę mięśniową")
+            st.dataframe(group_series.loc[selected_week].sort_values(ascending=False), use_container_width=True)

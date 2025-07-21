@@ -41,7 +41,7 @@ match menu:
             "Ciezar": row.Ciezar} for row in history])
         volume_main = calculate_volume_per_muscle(df, exercise_main_groups)
 
-        tab1, tab2, tab3 = st.tabs(["Historia treningów", "Objętość treningowa", "Progresja siłowa"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Historia treningów", "Objętość treningowa", "Progresja siłowa", "Raport tygodniowy"])
 
         with tab1:
             training_history.display_training_history()
@@ -52,6 +52,11 @@ match menu:
 
         with tab3:
             training_history.display_strength_progression(df)
+        
+        with tab4:
+            exercise_groups_dict = {row.Nazwa: row.PartieGlowne for row in exercises_group}
+            training_history.display_weekly_series_report(df, exercise_groups_dict)
+
     
     case "Dodaj pomiary":
         data = body_form.input_body_measurements()
