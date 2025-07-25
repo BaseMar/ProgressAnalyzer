@@ -78,3 +78,57 @@ class Database:
         query = "SELECT Id, Nazwa, PartieGlowne, PartieSzczeg FROM dbo.Cwiczenie"
         self.cursor.execute(query)
         return self.cursor.fetchall()
+    
+    def insert_body_composition(self,
+                             data,
+                             waga,
+                             masa_miesniowa,
+                             masa_tluszczowa,
+                             tkanka_tluszczowa,
+                             procent_wody,
+                             masa_wody,
+                             miesnie_tulow,
+                             miesnie_l_rece,
+                             miesnie_p_rece,
+                             miesnie_l_noga,
+                             miesnie_p_noga,
+                             tluszcz_tulow,
+                             tluszcz_l_rece,
+                             tluszcz_p_rece,
+                             tluszcz_l_noga,
+                             tluszcz_p_noga,
+                             niechciany_tluszcz,
+                             notatka):
+
+        query = """
+        INSERT INTO AnalizaSkladuCiala (
+            DataPomiaru, Waga, MasaMiesniowa, MasaTluszczowa, TkankaTluszczowa,
+            ProcentWody, MasaWody,
+            MiesnieTulow, MiesnieLRece, MiesniePRece, MiesnieLNoga, MiesniePNoga,
+            TluszczTulow, TluszczLRece, TluszczPRece, TluszczLNoga, TluszczPNoga,
+            NiechcianyTluszcz, Notatka
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        self.cursor.execute(
+            query,
+            (data, waga, masa_miesniowa, masa_tluszczowa, tkanka_tluszczowa,
+            procent_wody, masa_wody,
+            miesnie_tulow, miesnie_l_rece, miesnie_p_rece, miesnie_l_noga, miesnie_p_noga,
+            tluszcz_tulow, tluszcz_l_rece, tluszcz_p_rece, tluszcz_l_noga, tluszcz_p_noga,
+            niechciany_tluszcz, notatka)
+        )
+        self.conn.commit()
+
+    def fetch_body_composition_history(self):
+        query = """
+        SELECT 
+            DataPomiaru, Waga, MasaMiesniowa, MasaTluszczowa, TkankaTluszczowa,
+            ProcentWody, MasaWody,
+            MiesnieTulow, MiesnieLRece, MiesniePRece, MiesnieLNoga, MiesniePNoga,
+            TluszczTulow, TluszczLRece, TluszczPRece, TluszczLNoga, TluszczPNoga,
+            NiechcianyTluszcz, Notatka
+        FROM AnalizaSkladuCiala
+        ORDER BY DataPomiaru ASC
+        """
+        self.cursor.execute(query)
+        return self.cursor.fetchall(query)

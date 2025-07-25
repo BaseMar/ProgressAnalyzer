@@ -35,6 +35,7 @@ match menu:
     case "Historia treningów":
         history = training_ctrl.get_training_history()
         df = pd.DataFrame([{
+            
             "Data": row.Data,
             "Cwiczenie": row.Cwiczenie,
             "Powtorzenia": row.Powtorzenia,
@@ -57,7 +58,6 @@ match menu:
             exercise_groups_dict = {row.Nazwa: row.PartieGlowne for row in exercises_group}
             training_history.display_weekly_series_report(df, exercise_groups_dict)
 
-    
     case "Dodaj pomiary":
         data = body_form.input_body_measurements()
         if st.button("Zapisz pomiary"):

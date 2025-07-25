@@ -146,7 +146,7 @@ class TrainingHistoryView:
         }).reset_index()
 
         exercise_stats.columns = ["Tydzień", "Cwiczenie", "Średni ciężar", "Maks. ciężar", "Suma powtórzeń", "Objętość"]
-        exercise_stats["% zm. śr. ciężaru"] = exercise_stats.groupby("Cwiczenie")["Średni ciężar"].pct_change().fillna(0) * 100
+        exercise_stats["Wskaźnik progresji"] = exercise_stats.groupby("Cwiczenie")["Średni ciężar"].pct_change().fillna(0) * 100
         serie_counts = df.groupby(["Tydzień", "Cwiczenie"]).size().reset_index(name="Liczba serii")
         full_df = pd.merge(exercise_stats, serie_counts, on=["Tydzień", "Cwiczenie"])
         tygodnie = full_df["Tydzień"].drop_duplicates().sort_values(ascending=False).dt.strftime("%Y-%m-%d")
@@ -163,7 +163,7 @@ class TrainingHistoryView:
             "Objętość": "{:.0f}",
             "Suma powtórzeń": "{:.0f}",
             "Liczba serii": "{:.0f}",
-            "% zm. śr. ciężaru": "{:+.1f}%"
+            "Wskaźnik progresji": "{:+.1f}%"
         }), use_container_width=True)
 
         df["PartieGlowne"] = df["Cwiczenie"].map(exercise_groups).fillna("")

@@ -70,6 +70,32 @@ Zawiera dane każdej serii wykonanej w danym ćwiczeniu.
 
 ---
 
+## Tabela: `AnalizaSkladuCiala`
+| Kolumna           | Typ danych    | Opis                                           |
+| ----------------- | ------------- | ---------------------------------------------- |
+| Id                | int           | Klucz główny (autoinkrementacja)               |
+| DataPomiaru       | date          | Data wykonania pomiaru                         |
+| Waga              | decimal(5,2)  | Masa ciała w kg                                |
+| MasaMiesniowa     | decimal(5,2)  | Masa mięśniowa w kg                            |
+| MasaTluszczowa    | decimal(5,2)  | Masa tłuszczowa w kg                           |
+| TkankaTluszczowa  | decimal(5,2)  | Procent tkanki tłuszczowej \[%]                |
+| ProcentWody       | decimal(5,2)  | Procent wody w organizmie \[%]                 |
+| MasaWody          | decimal(5,2)  | Masa wody w organizmie (kg)                    |
+| MiesnieTulow      | decimal(5,2)  | Masa mięśniowa w tułowiu (kg)                  |
+| MiesnieLRece      | decimal(5,2)  | Masa mięśniowa w lewej ręce (kg)               |
+| MiesniePRece      | decimal(5,2)  | Masa mięśniowa w prawej ręce (kg)              |
+| MiesnieLNoga      | decimal(5,2)  | Masa mięśniowa w lewej nodze (kg)              |
+| MiesniePNoga      | decimal(5,2)  | Masa mięśniowa w prawej nodze (kg)             |
+| TluszczTulow      | decimal(5,2)  | Procent tłuszczu w tułowiu \[%]                |
+| TluszczLRece      | decimal(5,2)  | Procent tłuszczu w lewej ręce \[%]             |
+| TluszczPRece      | decimal(5,2)  | Procent tłuszczu w prawej ręce \[%]            |
+| TluszczLNoga      | decimal(5,2)  | Procent tłuszczu w lewej nodze \[%]            |
+| TluszczPNoga      | decimal(5,2)  | Procent tłuszczu w prawej nodze \[%]           |
+| NiechcianyTluszcz | decimal(5,2)  | Inne typy tłuszczu (jeśli dostępne w pomiarze) |
+| Notatka           | nvarchar(255) | Dowolna notatka                                |
+
+---
+
 ## Relacje między tabelami
 
 - `Trening (1) ⟶ (∞) TreningCwiczenie`: Jeden trening zawiera wiele ćwiczeń.

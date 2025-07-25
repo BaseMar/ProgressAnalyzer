@@ -17,7 +17,7 @@ def calculate_volume_per_muscle(df, exercise_to_groups):
 
     return {group: pd.Series(data).sort_index() for group, data in group_volume.items()}
 
-def analyze_training_volume(series, weeks_window=4):
+def analyze_training_volume(series, weeks_window=2):
     series = series.astype(float)
     nonzero_series = series[series > 0]
 
