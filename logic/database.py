@@ -68,7 +68,7 @@ class Database:
         self.conn.commit()
 
     def fetch_body_measurements(self):
-        query = "SELECT DataPomiaru, Waga, KlatkaPiersiowa, Talia, Biodra, Udo, Lydka, Ramie, MasaMiesniowa, MasaTluszczowa, TkankaTluszczowa, WodaCiala FROM PomiaryCiala ORDER BY DataPomiaru"
+        query = "SELECT DataPomiaru, KlatkaPiersiowa, Talia, Biodra, Udo, Lydka, Ramie FROM PomiaryCiala ORDER BY DataPomiaru"
         self.cursor.execute(query)
         rows = self.cursor.fetchall()
         columns = [column[0] for column in self.cursor.description]
@@ -131,4 +131,6 @@ class Database:
         ORDER BY DataPomiaru ASC
         """
         self.cursor.execute(query)
-        return self.cursor.fetchall(query)
+        rows = self.cursor.fetchall()
+        columns = [column[0] for column in self.cursor.description]
+        return [dict(zip(columns, row)) for row in rows]

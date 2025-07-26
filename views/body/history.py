@@ -6,18 +6,12 @@ from analytics.body_analysis import summarize_measurements
 class BodyMeasurementsHistory:
     def __init__(self):
         self.metric_units = {
-            "Waga": "Waga [kg]",
             "Klatka piersiowa": "Klatka piersiowa [cm]",
             "Talia": "Talia [cm]",
             "Biodra": "Biodra [cm]",
             "Udo": "Udo [cm]",
             "Łydka": "Łydka [cm]",
-            "Ramie": "Ramię [cm]",
-            "Masa mięśniowa": "Masa mięśniowa [kg]",
-            "Masa tłuszczowa": "Masa tłuszczowa [kg]",
-            "Tkanka tłuszczowa": "Tkanka tłuszczowa [%]",
-            "Woda ciała": "Woda ciała [kg]"}
-
+            "Ramie": "Ramię [cm]",}
     def display_history(self, measurements):
         st.title("Historia pomiarów ciała")
 
@@ -60,17 +54,12 @@ class BodyMeasurementsHistory:
     def _prepare_dataframe(self, raw_measurements):
         df = pd.DataFrame([{
             "Data": m["DataPomiaru"],
-            "Waga": m["Waga"],
             "Klatka piersiowa": m["KlatkaPiersiowa"],
             "Talia": m["Talia"],
             "Biodra": m["Biodra"],
             "Udo": m["Udo"],
             "Łydka": m["Lydka"],
             "Ramie": m["Ramie"],
-            "Masa mięśniowa": m["MasaMiesniowa"],
-            "Masa tłuszczowa": m["MasaTluszczowa"],
-            "Tkanka tłuszczowa": m["TkankaTluszczowa"],
-            "Woda ciała": m["WodaCiala"],
         } for m in raw_measurements])
         df["Data"] = pd.to_datetime(df["Data"])
         return df
