@@ -3,6 +3,7 @@ import pandas as pd
 from views.training import TrainingInputForm, TrainingHistoryView
 from views.body import BodyMeasurementsForm, BodyMeasurementsHistory
 from views.body_comp.input_form import BodyCompositionForm
+from views.body_comp.compare import BodyCompositionCompareView
 from controllers.sklad_controller import BodyCompositionController
 from controllers.training_controller import TrainingController
 from views.body_comp.history import BodyCompositionHistory
@@ -22,6 +23,7 @@ body_form = BodyMeasurementsForm()
 body_history = BodyMeasurementsHistory()
 body_comp = BodyCompositionForm()
 composition_history_view = BodyCompositionHistory()
+body_comp_view = BodyCompositionCompareView()
 
 training_ctrl = TrainingController()
 body_ctrl = BodyController()
@@ -80,7 +82,7 @@ match menu:
             training_history.display_weekly_series_report(df, exercise_groups_dict)
 
     case "Historia pomiarów ciała":
-        tab1, tab2 = st.tabs(["Pomiar ciała", "Skład ciała"])
+        tab1, tab2, tab3 = st.tabs(["Pomiar ciała", "Skład ciała", "Analiza porównawcza"])
 
         with tab1:
             measurements = body_ctrl.get_measurements()
@@ -89,3 +91,7 @@ match menu:
         with tab2:
             data = body_comp_ctrl.get_composition_history()
             composition_history_view.display_history(data)
+        
+        with tab3:
+            data = body_comp_ctrl.get_composition_history()
+            body_comp_view.display_comparison(data)

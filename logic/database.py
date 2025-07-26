@@ -56,15 +56,11 @@ class Database:
     """)
         return self.cursor.fetchall()
     
-    def insert_body_measurements(self, data, waga, klatka, talia, brzuch, biodra, udo, lydka, ramie,
-                             masa_miesniowa, masa_tluszczowa, tkanka_tluszczowa, woda, notatka):
+    def insert_body_measurements(self, data, klatka, talia, brzuch, biodra, udo, lydka, ramie, notatka):
         self.cursor.execute("""
             INSERT INTO dbo.PomiaryCiala
-            (DataPomiaru, Waga, KlatkaPiersiowa, Talia, Brzuch, Biodra, Udo, Lydka, Ramie,
-            MasaMiesniowa, MasaTluszczowa, TkankaTluszczowa, WodaCiala, Notatka)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, data, waga, klatka, talia, brzuch, biodra, udo, lydka, ramie,
-            masa_miesniowa, masa_tluszczowa, tkanka_tluszczowa, woda, notatka)
+            (DataPomiaru, KlatkaPiersiowa, Talia, Brzuch, Biodra, Udo, Lydka, Ramie, Notatka)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""", data, klatka, talia, brzuch, biodra, udo, lydka, ramie, notatka)
         self.conn.commit()
 
     def fetch_body_measurements(self):
