@@ -3,7 +3,7 @@ import pandas as pd
 from views.training import TrainingInputForm, TrainingHistoryView
 from views.body import BodyMeasurementsForm, BodyMeasurementsHistory
 from views.body_comp.input_form import BodyCompositionForm
-from views.body_comp.compare import BodyCompositionCompareView
+from views.body_comp.combined_analysis_view import CombinedBodyAnalysisView
 from controllers.sklad_controller import BodyCompositionController
 from controllers.training_controller import TrainingController
 from views.body_comp.history import BodyCompositionHistory
@@ -23,12 +23,13 @@ body_form = BodyMeasurementsForm()
 body_history = BodyMeasurementsHistory()
 body_comp = BodyCompositionForm()
 composition_history_view = BodyCompositionHistory()
-body_comp_view = BodyCompositionCompareView()
 
 training_ctrl = TrainingController()
 body_ctrl = BodyController()
 body_comp_ctrl = BodyCompositionController()
 exercise_main_groups, exercise_detail_groups = training_ctrl.map_exercises_to_muscle_groups(exercises_group)
+body_measurements = body_ctrl.get_measurements()
+body_composition = body_comp_ctrl.get_composition_history()
 
 # Nawigacja
 menu = st.sidebar.radio("Menu", ["Formularze", "Historia treningów", "Historia pomiarów ciała"])
@@ -82,7 +83,7 @@ match menu:
             training_history.display_weekly_series_report(df, exercise_groups_dict)
 
     case "Historia pomiarów ciała":
-        tab1, tab2, tab3 = st.tabs(["Pomiar ciała", "Skład ciała", "Analiza porównawcza"])
+        tab1, tab2, tab3 = st.tabs(["Pomiar ciała w czasie", "Skład ciała w czasie", "Analiza obwodów+składu ciała"])
 
         with tab1:
             measurements = body_ctrl.get_measurements()
@@ -93,5 +94,6 @@ match menu:
             composition_history_view.display_history(data)
         
         with tab3:
-            data = body_comp_ctrl.get_composition_history()
-            body_comp_view.display_comparison(data)
+            combined_view = CombinedBodyAnalysisView(body_measurements, body_composition)
+            combined_view.display()
+            combined_view.display_interpretation()

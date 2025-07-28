@@ -28,9 +28,6 @@ class Training:
     data: date
     exercises: List[TrainingExercise]
 
-from dataclasses import dataclass
-from datetime import date
-
 @dataclass
 class AnalizaSkladuCiala:
     data: date
