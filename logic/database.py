@@ -1,4 +1,6 @@
 import pyodbc
+import pandas as pd
+from decimal import Decimal
 
 class Database:
     def __init__(self, connection_string):
@@ -54,7 +56,16 @@ class Database:
         JOIN dbo.TreningSeria ts ON tc.Id = ts.TreningCwiczenieId
         ORDER BY t.Data DESC, t.Id DESC
     """)
-        return self.cursor.fetchall()
+        rows = self.cursor.fetchall()
+        columns = [col[0] for col in self.cursor.description]
+        df = pd.DataFrame.from_records(rows, columns=columns)
+
+        for col in df.columns:
+            if df[col].apply(lambda x: isinstance(x, Decimal)).any():
+                df[col] = df[col].astype(float)
+                
+        df['Data'] = pd.to_datetime(df['Data'])
+        return df
     
     def insert_body_measurements(self, data, klatka, talia, brzuch, biodra, udo, lydka, ramie, notatka):
         self.cursor.execute("""

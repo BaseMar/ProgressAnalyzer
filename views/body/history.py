@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from analytics.body_analysis import summarize_measurements
+from analytics.body_analyzer import BodyAnalyzer
 
-class BodyMeasurementsHistory:
+class BodyMeasurementsHistory(BodyAnalyzer):
     def __init__(self):
         self.metric_units = {
             "Klatka piersiowa": "Klatka piersiowa [cm]",
@@ -12,6 +12,7 @@ class BodyMeasurementsHistory:
             "Udo": "Udo [cm]",
             "Łydka": "Łydka [cm]",
             "Ramie": "Ramię [cm]",}
+    
     def display_history(self, measurements):
         st.title("Historia pomiarów ciała")
 
@@ -24,7 +25,7 @@ class BodyMeasurementsHistory:
         metrics = [col for col in df.columns if col != "Data"]
         selected_metric = st.radio("Wybierz parametr:", metrics, horizontal=True)
 
-        summary = summarize_measurements(df, selected_metric)
+        summary = self.summarize_measurements(df, selected_metric)
         if not summary:
             st.warning("Brak danych do analizy.")
             return

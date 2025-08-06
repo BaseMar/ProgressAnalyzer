@@ -1,15 +1,13 @@
 import streamlit as st
-import pandas as pd
+from analytics.body_analyzer import BodyAnalyzer
+from analytics.data_manager import merge_body_data_with_tolerance
 from views.training import TrainingInputForm, TrainingHistoryView
 from views.body import BodyMeasurementsForm, BodyMeasurementsHistory
 from views.body_comp.input_form import BodyCompositionForm
-from views.body_comp.combined_analysis_view import CombinedBodyAnalysisView
-from controllers.sklad_controller import BodyCompositionController
 from controllers.training_controller import TrainingController
 from views.body_comp.history import BodyCompositionHistory
 from controllers.body_controller import BodyController
 from storage.training_storage import fetch_all_exercises, fetch_exercise_groups
-from analytics.volume_analysis import calculate_volume_per_muscle
 
 st.set_page_config(page_title="Fitness Tracker", layout="wide")
 
@@ -17,19 +15,22 @@ st.set_page_config(page_title="Fitness Tracker", layout="wide")
 exercises_raw = fetch_all_exercises()
 exercises_group = fetch_exercise_groups()
 exercises_dict = {row.Nazwa: row.Id for row in exercises_raw}
+training_ctrl = TrainingController()
+
 training_form = TrainingInputForm(exercises_dict)
-training_history = TrainingHistoryView()
+training_history_view = TrainingHistoryView()
 body_form = BodyMeasurementsForm()
 body_history = BodyMeasurementsHistory()
 body_comp = BodyCompositionForm()
 composition_history_view = BodyCompositionHistory()
-
-training_ctrl = TrainingController()
 body_ctrl = BodyController()
-body_comp_ctrl = BodyCompositionController()
+
 exercise_main_groups, exercise_detail_groups = training_ctrl.map_exercises_to_muscle_groups(exercises_group)
+training_df = training_ctrl.get_training_history()
+mapped_main_groups_df = training_ctrl.map_training_to_muscle_groups(training_df, exercise_main_groups)
 body_measurements = body_ctrl.get_measurements()
-body_composition = body_comp_ctrl.get_composition_history()
+body_composition = body_ctrl.get_composition_history()
+body_analyzer = BodyAnalyzer(merge_body_data_with_tolerance(body_measurements, body_composition))
 
 # Nawigacja
 menu = st.sidebar.radio("Menu", ["Formularze", "Historia treningów", "Historia pomiarów ciała"])
@@ -53,47 +54,25 @@ match menu:
         with tab3:
             data = body_comp.input_composition()
             if st.button("Zapisz skład ciała"):
-                body_comp_ctrl.save_composition(data)
+                body_ctrl.save_composition(data)
                 st.success("Zapisano analizę składu ciała.")
 
     case "Historia treningów":
-        history = training_ctrl.get_training_history()
-        df = pd.DataFrame([{
-            
-            "Data": row.Data,
-            "Cwiczenie": row.Cwiczenie,
-            "Powtorzenia": row.Powtorzenia,
-            "Ciezar": row.Ciezar} for row in history])
-        volume_main = calculate_volume_per_muscle(df, exercise_main_groups)
-
-        tab1, tab2, tab3, tab4 = st.tabs(["Historia treningów", "Objętość treningowa", "Progresja siłowa", "Raport tygodniowy"])
-
+        tab1, tab2 = st.tabs(["Historia treningów", "Analiza treningów"])
         with tab1:
-            training_history.display_training_history()
+            training_history_view.display_training_history()
         
         with tab2:
-            date_range = (df['Data'].min(), df['Data'].max())
-            training_history.display_volume_charts(volume_main, "Partie główne", date_range)
-
-        with tab3:
-            training_history.display_strength_progression(df)
-        
-        with tab4:
-            exercise_groups_dict = {row.Nazwa: row.PartieGlowne for row in exercises_group}
-            training_history.display_weekly_series_report(df, exercise_groups_dict)
+            with st.expander("📊 Analiza intensywności"):
+                training_history_view.show_intensity_analysis(mapped_main_groups_df)
 
     case "Historia pomiarów ciała":
-        tab1, tab2, tab3 = st.tabs(["Pomiar ciała w czasie", "Skład ciała w czasie", "Analiza obwodów+składu ciała"])
+        tab1, tab2 = st.tabs(["Pomiar ciała w czasie", "Skład ciała w czasie"])
 
         with tab1:
             measurements = body_ctrl.get_measurements()
             body_history.display_history(measurements)
         
         with tab2:
-            data = body_comp_ctrl.get_composition_history()
+            data = body_ctrl.get_composition_history()
             composition_history_view.display_history(data)
-        
-        with tab3:
-            combined_view = CombinedBodyAnalysisView(body_measurements, body_composition)
-            combined_view.display()
-            combined_view.display_interpretation()
