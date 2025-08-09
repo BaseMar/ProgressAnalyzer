@@ -1,6 +1,7 @@
 import streamlit as st
 from analytics.body_analyzer import BodyAnalyzer
 from analytics.data_manager import merge_body_data_with_tolerance
+from analytics.training_analyzer import calculate_sets_per_muscle_group
 from views.training import TrainingInputForm, TrainingHistoryView
 from views.body import BodyMeasurementsForm, BodyMeasurementsHistory
 from views.body_comp.input_form import BodyCompositionForm
@@ -65,6 +66,14 @@ match menu:
         with tab2:
             with st.expander("📊 Analiza intensywności"):
                 training_history_view.show_intensity_analysis(mapped_main_groups_df)
+            
+            sets_df = calculate_sets_per_muscle_group(mapped_main_groups_df)
+            with st.expander("📊 Liczba serii na grupę mięśniową"):
+                st.dataframe(sets_df)
+            
+            with st.expander("🏋️‍♂️ Progres siłowy (1RM) w czasie"):
+                training_history_view.show_strength_progress(mapped_main_groups_df)
+
 
     case "Historia pomiarów ciała":
         tab1, tab2 = st.tabs(["Pomiar ciała w czasie", "Skład ciała w czasie"])
