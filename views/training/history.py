@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from storage.training_storage import load_training_history
 from analytics.data_manager import filter_training_data
-from analytics.training_analyzer import calculate_intensity_per_muscle_group, calculate_1rm_per_muscle_group
+from analytics.training_analyzer import calculate_intensity_per_muscle_group, calculate_1rm_per_muscle_group, calculate_last_exercise_summary, color_change
 import plotly.express as px
 
 class TrainingHistoryView:
@@ -99,3 +99,37 @@ class TrainingHistoryView:
             title=f'Progres siłowy (szacowany 1RM) w czasie – {agg_option.lower()}'
         )
         st.plotly_chart(fig, use_container_width=True)
+
+    def show_weekly_summary_with_selection(self, training_df: pd.DataFrame):
+        st.subheader("📊 Ostatnie wykonanie ćwiczeń (z porównaniem do poprzedniego)")
+
+        if training_df.empty:
+            st.warning("Brak danych treningowych.")
+            return
+
+        all_exercises = sorted(training_df["Cwiczenie"].unique())
+        selected_exercises = st.multiselect(
+            "Wybierz ćwiczenie:",
+            options=all_exercises,
+            default=all_exercises[:3],
+            key="last_summary_exercises"
+        )
+
+        if not selected_exercises:
+            st.warning("Wybierz przynajmniej jedno ćwiczenie.")
+            return
+
+        filtered_df = training_df[training_df["Cwiczenie"].isin(selected_exercises)].copy()
+        summary_df = calculate_last_exercise_summary(filtered_df)
+
+        if summary_df.empty:
+            st.warning("Brak danych dla wybranych ćwiczeń.")
+            return
+
+        percent_cols = [c for c in summary_df.columns if "[%]" in c]
+        st.dataframe(
+            summary_df.style
+                .applymap(color_change, subset=percent_cols)
+                .format(precision=2),
+            use_container_width=True
+        )
