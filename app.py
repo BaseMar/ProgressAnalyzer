@@ -1,36 +1,18 @@
 import streamlit as st
-from db.connection import get_connection
-from db import queries
+import pandas as pd
+import plotly.express as px
+from db.queries import (get_workout_sessions, get_all_sets, get_volume_by_bodypart,)
 from components import parser
 
-from components import kpis, charts, tables
 
-# --- Konfiguracja strony ---
-st.set_page_config(
-    page_title="Gym Progress Dashboard",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+# --- CONFIG ---
+st.set_page_config(page_title="Gym Progress Dashboard", page_icon="💪", layout="wide")
 
-# --- Boczna nawigacja ---
-st.sidebar.title("Gym Progress Dashboard")
-
-page = st.sidebar.radio(
-    "Nawigacja",
-    ["Dashboard", "Exercise Analysis", "Muscle Group Analysis", "Body Metrics"],
-)
-
-# --- Globalne filtry ---
-st.sidebar.markdown("### Filtry globalne")
-date_from = st.sidebar.date_input("Od daty")
-date_to = st.sidebar.date_input("Do daty")
-exercise_filter = st.sidebar.text_input("Filtr ćwiczenia")
-muscle_filter = st.sidebar.text_input("Filtr partii mięśniowej")
+# --- SIDEBAR ---
+st.sidebar.title("Menu")
+menu = st.sidebar.radio( "Wybierz widok:", ["Dashboard ogólny", "Ćwiczenia", "Pomiary"])
 
 st.sidebar.divider()
-st.sidebar.markdown("### Akcje")
-
-# --- Wgranie pliku txt ---
 st.sidebar.header("Import danych treningowych")
 uploaded_file = st.sidebar.file_uploader("📤 Wgraj plik treningu (.txt)", type=["txt"])
 
@@ -44,8 +26,7 @@ if uploaded_file is not None:
             st.subheader("Podgląd rozpoznanych danych:")
             st.dataframe(df_preview)
 
-            # przycisk zapisu z obsługą trybu testowego
-            if st.button("Zapisz dane" if not test_mode else "🧪 Przetestuj parser"):
+            if st.button("Zapisz dane" if not test_mode else "Przetestuj parser"):
                 parser.save_training_to_db(df_preview, test_mode=test_mode)
         else:
             st.info("Nie znaleziono danych do wyświetlenia lub plik był niepoprawny.")
@@ -53,32 +34,40 @@ if uploaded_file is not None:
 if st.sidebar.button("Resetuj bazę (dev)"):
     st.warning("Ta funkcja będzie dodana później")
 
-# --- Logika strony ---
-if page == "Dashboard":
-    st.header("Dashboard – Podsumowanie treningów")
+st.sidebar.divider()
+st.sidebar.caption("Autor: Martino | 2025")
 
-    # Tymczasowe dane testowe
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        kpis.metric_card("Total Volume", "12500 kg", "↑ 8% vs last week")
-    with col2:
-        kpis.metric_card("Avg Intensity", "72%", "↔ steady")
-    with col3:
-        kpis.metric_card("Sessions", "14", "↑ 2")
+# --- DASHBOARD GŁÓWNY ---
+if menu == "Dashboard ogólny":
+    st.title("Dashboard ogólny - analiza treningów")
 
-    st.divider()
-    st.subheader("Trend objętości treningowej")
-    charts.placeholder_chart()
+    sessions_df = get_workout_sessions()
+    sets_df = get_all_sets()
+    volume_df = get_volume_by_bodypart()
 
-elif page == "Exercise Analysis":
-    st.header("Analiza ćwiczenia")
-    charts.placeholder_chart()
-    tables.placeholder_table()
+    if sessions_df.empty or sets_df.empty:
+        st.warning("Brak danych w bazie. Wgraj trening lub dodaj dane.")
+    else:
+        # --- KPI / Statystyki ---
+        total_volume = sets_df["Volume"].sum()
+        total_sessions = sessions_df["SessionID"].nunique()
+        total_exercises = sets_df["ExerciseName"].nunique()
+        avg_intensity = round(sets_df["Weight"].mean(), 1)
 
-elif page == "Muscle Group Analysis":
-    st.header("Analiza grup mięśniowych")
-    charts.placeholder_chart()
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Łączna objętość", f"{total_volume:.0f} kg")
+        col2.metric("Sesje treningowe", total_sessions)
+        col3.metric("Ćwiczeń wykonanych", total_exercises)
+        col4.metric("Średnia intensywność", f"{avg_intensity} kg")
 
-elif page == "Body Metrics":
-    st.header("Body Composition & Measurements")
-    charts.placeholder_chart()
+        st.markdown("---")
+
+# --- ĆWICZENIA ---
+elif menu == "Ćwiczenia":
+    st.title("Analiza progresu dla ćwiczeń")
+    st.info("Ta sekcja będzie gotowa w kolejnym kroku – tu zobaczysz progres siłowy, 1RM i objętość dla wybranego ćwiczenia.")
+
+# --- POMIARY ---
+elif menu == "Pomiary":
+    st.title("Analiza pomiarów ciała")
+    st.info("Sekcja w przygotowaniu – integracja z Body Measurements i Body Composition już wkrótce.")
