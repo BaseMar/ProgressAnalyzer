@@ -15,7 +15,7 @@ def preview_training_file(file_content):
         content = file_content.read().decode("utf-8").strip()
 
         if not content:
-            st.error("❌ Plik jest pusty lub nie został poprawnie odczytany.")
+            st.error("Plik jest pusty lub nie został poprawnie odczytany.")
             return pd.DataFrame()
 
         current_date = None
@@ -56,16 +56,16 @@ def preview_training_file(file_content):
                     })
 
         if not sessions:
-            st.warning("⚠️ Nie znaleziono żadnych poprawnych danych treningowych w pliku.")
+            st.warning("Nie znaleziono żadnych poprawnych danych treningowych w pliku.")
             return pd.DataFrame()
 
         return pd.DataFrame(sessions)
 
     except UnicodeDecodeError:
-        st.error("❌ Nie udało się odczytać pliku — upewnij się, że ma kodowanie UTF-8.")
+        st.error("Nie udało się odczytać pliku — upewnij się, że ma kodowanie UTF-8.")
         return pd.DataFrame()
     except Exception as e:
-        st.error(f"❌ Błąd podczas analizy pliku: {e}")
+        st.error(f"Błąd podczas analizy pliku: {e}")
         return pd.DataFrame()
 
 
@@ -73,11 +73,11 @@ def preview_training_file(file_content):
 def save_training_to_db(df, test_mode=False):
     """Zapisuje dane z DataFrame do bazy danych lub tylko symuluje zapis w trybie testowym."""
     if df.empty:
-        st.warning("⚠️ Brak danych do zapisania.")
+        st.warning("Brak danych do zapisania.")
         return
 
     if test_mode:
-        st.info("🧪 Tryb testowy aktywny — dane NIE zostaną zapisane do bazy.")
+        st.info("Tryb testowy aktywny — dane NIE zostaną zapisane do bazy.")
         st.dataframe(df)
         return
 
@@ -85,9 +85,7 @@ def save_training_to_db(df, test_mode=False):
         conn = get_connection()
         cursor = conn.cursor()
 
-        # iterujemy po DataFrame i wstawiamy dane
         for _, row in df.iterrows():
-            # 1️⃣ Sprawdź, czy ćwiczenie istnieje, jeśli nie — dodaj
             cursor.execute("""
                 IF NOT EXISTS (SELECT 1 FROM Exercises WHERE ExerciseName = ?)
                 BEGIN
@@ -95,11 +93,9 @@ def save_training_to_db(df, test_mode=False):
                 END
             """, row["Ćwiczenie"], row["Ćwiczenie"])
 
-            # 2️⃣ Pobierz ExerciseID
             cursor.execute("SELECT ExerciseID FROM Exercises WHERE ExerciseName = ?", row["Ćwiczenie"])
             exercise_id = cursor.fetchone()[0]
 
-            # 3️⃣ Znajdź lub utwórz sesję (jeśli nie istnieje)
             cursor.execute("""
                 DECLARE @session_id INT;
                 SELECT @session_id = SessionID FROM TrainingSessions WHERE SessionDate = ?;
@@ -112,17 +108,16 @@ def save_training_to_db(df, test_mode=False):
             """, row["Data sesji"], row["Data sesji"])
             session_id = cursor.fetchone()[0]
 
-            # 4️⃣ Wstaw serię
             cursor.execute("""
                 INSERT INTO TrainingSets (SessionID, ExerciseID, Reps, Weight)
                 VALUES (?, ?, ?, ?)
             """, session_id, exercise_id, row["Powtórzenia"], row["Ciężar (kg)"])
 
         conn.commit()
-        st.success("✅ Dane zostały pomyślnie zapisane do bazy!")
+        st.success("Dane zostały pomyślnie zapisane do bazy!")
 
     except Exception as e:
-        st.error(f"❌ Błąd podczas zapisu danych: {e}")
+        st.error(f"Błąd podczas zapisu danych: {e}")
         conn.rollback()
 
     finally:

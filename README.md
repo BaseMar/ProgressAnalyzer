@@ -7,12 +7,12 @@ Projekt ma na celu wizualizację danych z treningów, pomiarów ciała i składu
 
 ## Technologie
 
-- **Python 3.11+**
-- **Streamlit** – interaktywny dashboard
-- **MS SQL Server** – baza danych
-- **Plotly** – wizualizacje danych
-- **Pandas** – analiza danych
-- **pyodbc** – połączenie z bazą danych
+- 🐍 **Python 3.11+**
+- 🧠 **Streamlit** – interaktywny dashboard
+- 🗃️ **MS SQL Server** – baza danych
+- 📊 **Plotly** – wizualizacje danych
+- 📈 **Pandas** – analiza danych
+- 🔗 **pyodbc** – połączenie z bazą danych
 
 ---
 
@@ -20,23 +20,23 @@ Projekt ma na celu wizualizację danych z treningów, pomiarów ciała i składu
 
 ### Parser plików treningowych
 - Automatyczne rozpoznawanie formatu:
-27.10.2025
+    27.10.2025
     1. Incline Dumbbell Press
     8x22/8x22/8x22/8x22
-    
+
     2. Dipy
     7/7/7
 
-- Obsługa różnych wzorców serii (`reps x weight` lub tylko `reps`)
+- Obsługa wzorców serii (`reps x weight` lub tylko `reps`)
 - Tryb **testowy** (bez zapisu do bazy)
-- Automatyczne dodawanie nowych ćwiczeń do bazy
+- Automatyczne dodawanie nowych ćwiczeń do bazy danych
 
 ### Analiza treningu *(w przygotowaniu)*
-- Progres siłowy
-- Objętość treningowa
-- Szacowany 1RM
-- Heatmapa partii mięśniowych
-- Analiza intensywności i częstotliwości treningu
+- Progres siłowy w czasie  
+- Objętość treningowa (reps × ciężar)  
+- Szacowany 1RM  
+- Heatmapa partii mięśniowych  
+- Analiza intensywności i częstotliwości treningów  
 
 ### Pomiar ciała *(rozszerzalny)*
 - **Body Measurements**: klatka, talia, brzuch, biodra, udo, łydka, ramię/biceps  
@@ -45,65 +45,44 @@ Projekt ma na celu wizualizację danych z treningów, pomiarów ciała i składu
 ---
 
 ## Architektura projektu
-project/
-│
-├── app.py # Główny plik Streamlit
-├── db/
-│ ├── connection.py # Połączenie z MS SQL
-│ ├── schema.sql # Skrypt tworzący bazę
-│
-├── components/
-│ ├── parser.py # Parser plików .txt
-│ ├── charts.py # (Wkrótce) Wizualizacje Plotly
-│
-├── assets/ # Pliki pomocnicze (np. przykładowe treningi)
-│
-├── README.md
-└── schema.md
+    project/
+    │
+    ├── app.py # Główny plik Streamlit
+    │
+    ├── db/
+    │ ├── connection.py # Połączenie z MS SQL
+    │ ├── schema.sql # Skrypt tworzący bazę
+    │
+    ├── components/
+    │ ├── parser.py # Parser plików .txt
+    │ ├── charts.py # (Wkrótce) Wizualizacje Plotly
+    │
+    ├── assets/ # Pliki pomocnicze (np. przykładowe treningi)
+    │
+    ├── README.md
+    └── schema.md
 
 ---
 
 ## Struktura bazy danych
 
-Zaprojektowana w **3NF (Trzeciej Formie Normalnej)**:
+Baza danych została zaprojektowana w **3NF (Trzeciej Formie Normalnej)** i obejmuje następujące tabele:
 
 | Tabela | Opis |
 |--------|------|
 | **Exercises** | Lista ćwiczeń |
-| **TrainingSessions** | Sesje treningowe z datą |
+| **TrainingSessions** | Sesje treningowe (z datą) |
 | **TrainingSets** | Serie wykonane w ramach sesji |
 | **BodyMeasurements** | Pomiary obwodów ciała |
-| **BodyComposition** | Skład ciała (waga, tłuszcz, mięśnie, itp.) |
+| **BodyComposition** | Skład ciała (waga, tłuszcz, mięśnie, woda) |
 
 ---
 
-## Przykład działania parsera
-
-Wgranie pliku:
-28.10.2025
-1. Leg Press
-10x110/10x120/10x130/10x140
-
-2. Rumuński martwy ciąg
-8x100/8x100/8x100/8x100
-
-Zwróci DataFrame:
-| Data sesji | Ćwiczenie | Powtórzenia | Ciężar (kg) |
-|-------------|------------|--------------|--------------|
-| 28.10.2025 | Leg Press | 10 | 110 |
-| 28.10.2025 | Leg Press | 10 | 120 |
-| ... | ... | ... | ... |
+## Uruchomienie projektu
+    streamlit run app.py
 
 ---
 
-## Tryb testowy
-
-W aplikacji dostępny jest **checkbox „🧪 Tryb testowy (bez zapisu)”** –  
-umożliwia testowanie parsera bez modyfikowania danych w bazie SQL.
-
----
-
-Autor
+## Autor
 Martino Sebastiani / BaseMar
-
 Cel: projekt portfolio – aplikacja do analizy progresu treningowego.
