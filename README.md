@@ -51,7 +51,7 @@ Projekt ma na celu wizualizację danych z treningów, pomiarów ciała i składu
     │
     ├── db/
     │ ├── connection.py # Połączenie z MS SQL
-    │ ├── schema.sql # Skrypt tworzący bazę
+    │ ├── queries.py # zapytania do bazy SQL
     │
     ├── components/
     │ ├── parser.py # Parser plików .txt

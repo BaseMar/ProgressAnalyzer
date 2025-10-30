@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # --- Boczna nawigacja ---
-st.sidebar.title("🏋️ Gym Progress Dashboard")
+st.sidebar.title("Gym Progress Dashboard")
 
 page = st.sidebar.radio(
     "Nawigacja",
@@ -31,21 +31,21 @@ st.sidebar.divider()
 st.sidebar.markdown("### Akcje")
 
 # --- Wgranie pliku txt ---
-st.sidebar.header("📁 Import danych treningowych")
+st.sidebar.header("Import danych treningowych")
 uploaded_file = st.sidebar.file_uploader("📤 Wgraj plik treningu (.txt)", type=["txt"])
 
-test_mode = st.sidebar.checkbox("🧪 Tryb testowy (bez zapisu)", value=True)
+test_mode = st.sidebar.checkbox("Tryb testowy (bez zapisu)", value=True)
 
 if uploaded_file is not None:
-    if st.sidebar.button("🔍 Pokaż podgląd danych"):
+    if st.sidebar.button("Pokaż podgląd danych"):
         df_preview = parser.preview_training_file(uploaded_file)
 
         if not df_preview.empty:
-            st.subheader("📋 Podgląd rozpoznanych danych:")
+            st.subheader("Podgląd rozpoznanych danych:")
             st.dataframe(df_preview)
 
             # przycisk zapisu z obsługą trybu testowego
-            if st.button("💾 Zapisz dane" if not test_mode else "🧪 Przetestuj parser"):
+            if st.button("Zapisz dane" if not test_mode else "🧪 Przetestuj parser"):
                 parser.save_training_to_db(df_preview, test_mode=test_mode)
         else:
             st.info("Nie znaleziono danych do wyświetlenia lub plik był niepoprawny.")
@@ -55,7 +55,7 @@ if st.sidebar.button("Resetuj bazę (dev)"):
 
 # --- Logika strony ---
 if page == "Dashboard":
-    st.header("📊 Dashboard – Podsumowanie treningów")
+    st.header("Dashboard – Podsumowanie treningów")
 
     # Tymczasowe dane testowe
     col1, col2, col3 = st.columns(3)
@@ -67,18 +67,18 @@ if page == "Dashboard":
         kpis.metric_card("Sessions", "14", "↑ 2")
 
     st.divider()
-    st.subheader("📈 Trend objętości treningowej")
+    st.subheader("Trend objętości treningowej")
     charts.placeholder_chart()
 
 elif page == "Exercise Analysis":
-    st.header("💪 Analiza ćwiczenia")
+    st.header("Analiza ćwiczenia")
     charts.placeholder_chart()
     tables.placeholder_table()
 
 elif page == "Muscle Group Analysis":
-    st.header("🧬 Analiza grup mięśniowych")
+    st.header("Analiza grup mięśniowych")
     charts.placeholder_chart()
 
 elif page == "Body Metrics":
-    st.header("📏 Body Composition & Measurements")
+    st.header("Body Composition & Measurements")
     charts.placeholder_chart()
