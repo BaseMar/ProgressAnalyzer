@@ -59,7 +59,7 @@ class ThemeManager:
             transform: scale(1.05);
             filter: brightness(1.15);
         }}
-
+        
         /* --- KPI CARDS --- */
         .kpi-card {{
             position: relative;
@@ -114,6 +114,58 @@ class ThemeManager:
         .kpi-delta.positive {{ color: #4CAF50; }}
         .kpi-delta.negative {{ color: #F44336; }}
         .kpi-delta.neutral {{ color: #B0BEC5; }}
+
+
+        /* --- FOOTER --- */
+        .footer-wrapper {{
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            margin-top: 80px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }}
+
+        .footer-accent {{
+            height: 4px;
+            width: 100px;
+            background: linear-gradient(90deg, #00ADB5, #00E0C6);
+            border-radius: 3px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }}
+        .footer-accent:hover {{
+            filter: brightness(1.2);
+            transform: scaleX(1.05);
+        }}
+
+        .footer-text {{
+            font-size: 0.95rem;
+            color: #CCCCCC;
+            line-height: 1.6;
+            letter-spacing: 0.3px;
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: center;
+        }}
+
+        .footer-fade {{
+            animation: fadeInFooter 1s ease-in-out;
+        }}
+
+        @keyframes fadeInFooter {{
+            from {{
+                opacity: 0;
+                transform: translateY(10px);
+            }}
+            to {{
+                opacity: 1;
+                transform: translateY(0);
+            }}
+        }}
         </style>
         """
         st.markdown(css, unsafe_allow_html=True)
