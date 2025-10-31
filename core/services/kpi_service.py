@@ -8,14 +8,13 @@ class KPIService:
 
     def get_kpis(self) -> dict:
         """Zwraca słownik KPI do wyświetlenia na dashboardzie."""
-        base = self.analytics.kpi_summary()
-        weekly_volume = self.analytics.weekly_agg("Volume", agg_func="sum")
-        weekly_intensity = self.analytics.weekly_agg("Intensity", agg_func="mean")
-
+        
         return {
-            "avg_intensity": base["avg_intensity"],
-            "intensity_change": weekly_intensity["change"],
-            "total_volume": weekly_volume["current"],
-            "volume_change": weekly_volume["change"],
-            "sessions": base["sessions"],
+            "avg_intensity": self.analytics.weekly_agg("Intensity", "mean")["current"],
+            "intensity_change": self.analytics.weekly_agg("Intensity", "mean")["change"],
+            "total_volume": self.analytics.weekly_agg("Volume", "sum")["current"],
+            "volume_change": self.analytics.weekly_agg("Volume", "sum")["change"],
+            "avg_sets_per_session": self.analytics.weekly_agg(None, "sets_per_session")["current"],
+            "sets_change": self.analytics.weekly_agg(None, "sets_per_session")["change"],
+            "sessions": self.analytics.kpi_summary()["sessions"],
         }

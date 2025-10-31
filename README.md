@@ -57,7 +57,9 @@ Projekt ma na celu wizualizację danych z treningów, pomiarów ciała i składu
     │ ├── parser.py # Parser plików .txt
     │ ├── charts.py # (Wkrótce) Wizualizacje Plotly
     │
-    ├── assets/ # Pliki pomocnicze (np. przykładowe treningi)
+    ├── services/
+    │ ├── chart_services.py # Parser plików .txt
+    │ ├── kpi_services.py
     │
     ├── README.md
     └── schema.md
