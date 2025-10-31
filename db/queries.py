@@ -1,7 +1,5 @@
 import pandas as pd
-import pyodbc
 from .connection import get_connection
-
 
 def get_workout_sessions()-> pd.DataFrame:
     """Pobiera wszystkie sesje treningowe"""
