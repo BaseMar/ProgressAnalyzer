@@ -1,11 +1,12 @@
 import streamlit as st
 from typing import Optional
-from .sidebar_view import SidebarView
+from ..sidebar_view import SidebarView
 from .kpi_view import KPIView
 from .charts_view import ChartsView
 from .history_view import HistoryView
-from .footer_view import FooterView
-from ..styles.theme_manager import ThemeManager
+from ..footer_view import FooterView
+from ...styles.theme_manager import ThemeManager
+from ..forms.exercise_form import ExerciseFormView
 
 class DashboardView:
     """Main dashboard orchestrator"""
@@ -26,7 +27,7 @@ class DashboardView:
     def render(self):
         """Render the complete dashboard"""
         # Header
-        st.title("💪 Gym Progress Dashboard")
+        st.title("Gym Progress Dashboard")
         
         # Sidebar navigation
         selected_section = self.sidebar_view.render()
@@ -55,14 +56,22 @@ class DashboardView:
         # Charts
         self.charts_view.render(self.analytics)
         
-        # Recent history
+        # history
         st.divider()
-        self.history_view.render_recent(limit=5)
+        self.history_view.render()
     
     def _render_form_section(self):
         """Render form section"""
-        st.header("📝 Dodaj nowy trening")
-        st.info("Formularz do dodawania nowych treningów - w przygotowaniu")
+        tabs = st.tabs(["➕ Ćwiczenia", "🏋️‍♂️ Sesje treningowe", "📏 Pomiary ciała", "⚖️ Skład ciała"])
+
+        with tabs[0]:
+            ExerciseFormView().render()
+        with tabs[1]:
+            st.info("W przygotowaniu")
+        with tabs[2]:
+            st.info("W przygotowaniu")
+        with tabs[3]:
+            st.info("W przygotowaniu")
     
     def _render_exercise_analysis(self):
         """Render exercise analysis section"""

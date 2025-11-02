@@ -144,137 +144,76 @@ class ThemeManager:
         """
     
     def _generate_sidebar_styles(self) -> str:
-        """Generate sidebar styles"""
+        """Generates sidebar styles"""
         return f"""
-        /* Sidebar Styles */
         section[data-testid="stSidebar"] {{
             background-color: {self.colors.sidebar_bg} !important;
             border-right: 1px solid rgba(255, 255, 255, 0.1);
             width: 300px !important;
             min-width: 300px !important;
             max-width: 300px !important;
-            animation: slideInSidebar 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            animation: slideInSidebar 0.8s ease-out forwards;
             opacity: 0;
+            padding: 0 !important;
         }}
-        
         @keyframes slideInSidebar {{
-            from {{
-                transform: translateX(-40px);
-                opacity: 0;
-            }}
-            to {{
-                transform: translateX(0);
-                opacity: 1;
-            }}
+            from {{ transform: translateX(-40px); opacity: 0; }}
+            to {{ transform: translateX(0); opacity: 1; }}
         }}
-        
         [data-testid="stSidebarContent"] {{
             width: 100% !important;
             padding: 0 !important;
+            margin: 0 !important;
         }}
-        
-        /* Hide sidebar collapse control */
         div[data-testid="stSidebarCollapseControl"] {{
             display: none !important;
         }}
-        
-        /* Sidebar stats */
-        .sidebar-stats {{
-            background: rgba(57, 62, 70, 0.3);
-            border-radius: 12px;
-            padding: 1rem;
-            margin-top: 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }}
-        
-        .stat-item {{
-            padding: 0.5rem 0;
-            font-size: 0.9rem;
-            color: {self.colors.text_muted};
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }}
-        
-        .stat-item:last-child {{
-            border-bottom: none;
-        }}
-        
-        .sidebar-title {{
-            color: {self.colors.accent};
-            font-weight: 600;
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 0.9rem;
-        }}
         """
     
-    def _generate_radio_button_styles(self) -> str:
-        """Generate radio button styles for sidebar navigation"""
+    def _generate_sidebar_button_styles(self) -> str:
+        """Generates sidebar button style"""
         return f"""
-        /* Radio Button Navigation */
-        [data-testid="stSidebar"] .stRadio {{
-            width: 100% !important;
-            padding: 0 !important;
-        }}
-        
-        [data-testid="stSidebar"] label[data-testid="stWidgetLabel"] {{
-            display: none !important;
-        }}
-        
-        [data-testid="stSidebar"] .stRadio > div {{
-            display: flex !important;
-            flex-direction: column !important;
-            width: 100% !important;
-            gap: 2px !important;
-            padding: 0 !important;
-        }}
-        
-        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {{
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            width: 100% !important;
-            height: 48px !important;
-            background: rgba(57, 62, 70, 0.3);
+        /* --- SIDEBAR NAV BUTTONS --- */
+        [data-testid="stSidebar"] .stButton > button {{
+            background: rgba(57, 62, 70, 0.3) !important;
             color: {self.colors.text} !important;
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+            border-radius: 0 !important;
+            padding: 12px 16px !important;
             font-weight: 500 !important;
-            border: none !important;
-            cursor: pointer !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.95rem !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
             text-align: center !important;
-            font-size: 0.95rem;
-            opacity: 0;
-            animation: fadeInButtons 0.8s ease forwards;
+            width: 100% !important;
+            box-shadow: none !important;
+            margin: 0 !important;
         }}
-        
-        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover {{
+
+        [data-testid="stSidebar"] .stButton > button:hover {{
             background: {self.colors.panel} !important;
             color: {self.colors.accent} !important;
-            box-shadow: inset 3px 0 0 {self.colors.accent};
+            border-color: rgba(0, 173, 181, 0.3) !important;
+            box-shadow: inset -4px 0 0 {self.colors.accent} !important;
+            transform: translateX(4px) !important;
         }}
-        
-        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] [aria-checked="true"] label {{
+
+        [data-testid="stSidebar"] .stButton > button[kind="primary"] {{
             background: linear-gradient(90deg, {self.colors.accent}, {self.colors.accent_light}) !important;
             color: {self.colors.bg} !important;
             font-weight: 600 !important;
-            box-shadow: 0 0 15px rgba(0, 173, 181, 0.4);
+            border: none !important;
+            box-shadow: 0 4px 15px rgba(0, 173, 181, 0.3) !important;
         }}
-        
-        @keyframes fadeInButtons {{
-            from {{ 
-                opacity: 0; 
-                transform: translateX(-10px); 
-            }}
-            to {{ 
-                opacity: 1; 
-                transform: translateX(0); 
-            }}
+
+        [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {{
+            background: linear-gradient(90deg, {self.colors.accent_light}, {self.colors.accent}) !important;
+            transform: translateX(4px) scale(1.02) !important;
+            box-shadow: 0 6px 20px rgba(0, 173, 181, 0.4) !important;
         }}
-        
-        /* Hide radio button circles */
-        [data-testid="stSidebar"] .stRadio div[role="radio"] input,
-        [data-testid="stSidebar"] .stRadio div[role="radio"] svg {{
-            display: none !important;
+
+        [data-testid="stSidebar"] .stButton {{
+            margin: 0 !important;
+            padding: 0 !important;
         }}
         """
     
@@ -376,12 +315,11 @@ class ThemeManager:
                 self._generate_button_styles(),
                 self._generate_kpi_styles(),
                 self._generate_sidebar_styles(),
-                self._generate_radio_button_styles(),
+                self._generate_sidebar_button_styles(),
                 self._generate_footer_styles(),
                 self._generate_additional_styles()
             ]
             self._css_cache = "\n".join(styles)
-        
         return f"<style>{self._css_cache}</style>"
     
     def apply_theme(self) -> None:
@@ -393,7 +331,7 @@ class ThemeManager:
         for key, value in kwargs.items():
             if hasattr(self.colors, key):
                 setattr(self.colors, key, value)
-        self._css_cache = None  # Clear cache to regenerate CSS
+        self._css_cache = None
     
     def create_kpi_card(self, title: str, value: str, icon: str = "", delta: Optional[str] = None) -> str:
         """Create a KPI card HTML"""

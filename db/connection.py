@@ -1,30 +1,19 @@
-import pyodbc
-import pandas as pd
+from sqlalchemy import create_engine
 import streamlit as st
 
-import pyodbc
 
-def get_connection():
-    conn_str = (
-        "Driver={SQL Server};"
-        r"Server=DESKTOP-CGQ7P1E\MSSQLSERVER04;"
-        "Database=GymProgressDB;"
-        "Trusted_Connection=yes;"
-    )
+@st.cache_resource
+def get_engine():
+    """ Return SQLAlchemy Engine object."""
     try:
-        conn = pyodbc.connect(conn_str)
-        print("Połączono z bazą danych")
-        return conn
+        connection_string = (
+            "mssql+pyodbc://DESKTOP-CGQ7P1E\\MSSQLSERVER04/GymProgressDB"
+            "?driver=ODBC+Driver+17+for+SQL+Server"
+            "&trusted_connection=yes"
+        )
+        engine = create_engine(connection_string, fast_executemany=True)
+        print("Połączono z bazą danych (SQLAlchemy)")
+        return engine
     except Exception as e:
-        print("Błąd połączenia z bazą danych:")
-        print(e)
+        print("Błąd połączenia z bazą danych:", e)
         return None
-
-
-def run_query(query):
-    conn = get_connection()
-    if conn is None:
-        return pd.DataFrame()
-    df = pd.read_sql(query, conn)
-    conn.close()
-    return df

@@ -8,7 +8,7 @@ sys.path.append(str(Path(__file__).parent))
 from core.data_manager import DataManager
 from core.analytics import TrainingAnalytics
 from core.services.kpi_service import KPIService
-from core.ui.dashboard_view import DashboardView
+from core.ui.dashboard_mainpage.dashboard_view import DashboardView
 from core.styles.theme_manager import ThemeManager, ColorPalette
 from core.config import AppConfig
 

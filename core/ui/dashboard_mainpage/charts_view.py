@@ -2,7 +2,7 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from ..styles.theme_manager import ThemeManager
+from ...styles.theme_manager import ThemeManager
 
 class ChartsView:
     """Enhanced charts with Plotly integration"""
@@ -14,7 +14,6 @@ class ChartsView:
     def render(self, analytics):
         """Render main dashboard charts"""
         st.divider()
-        st.header("📊 Analiza treningowa")
         
         col1, col2 = st.columns(2)
         
@@ -26,7 +25,7 @@ class ChartsView:
     
     def _display_intensity_chart(self, analytics):
         """Enhanced intensity chart with Plotly"""
-        st.subheader("⚡ Średnia intensywność tygodniowa")
+        st.subheader("Średnia intensywność tygodniowa")
         
         df_intensity = analytics.weekly_agg("Intensity", agg_func="mean")
         
@@ -53,7 +52,7 @@ class ChartsView:
     
     def _display_volume_chart(self, analytics):
         """Enhanced volume chart with Plotly"""
-        st.subheader("📈 Łączna objętość tygodniowa")
+        st.subheader("Łączna objętość tygodniowa")
         
         df_volume = analytics.df_sets.copy()
         df_volume["Week"] = df_volume["SessionDate"].dt.isocalendar().week
