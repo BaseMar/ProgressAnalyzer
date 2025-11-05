@@ -6,9 +6,11 @@ from db.queries import (
     get_body_measurements,
     get_body_composition,
     insert_exercise,
+    insert_session,
+    insert_body_measurements,
+    insert_body_composition,
 )
 from db.connection import get_engine
-
 
 class DataManager:
     """
@@ -39,5 +41,33 @@ class DataManager:
         }
 
     def add_exercise(self, name: str, category: str, body_part: str) -> bool:
-        """Add new exercise to database."""
-        return insert_exercise(self.engine, name, category, body_part)
+        try:
+            insert_exercise(self.engine, name, category, body_part)
+            return True
+        except Exception as e:
+            print(f"[ERROR] add_exercise: {e}")
+            return False
+
+    def add_session(self, date, notes: str) -> bool:
+        try:
+            insert_session(self.engine, date, notes)
+            return True
+        except Exception as e:
+            print(f"[ERROR] add_session: {e}")
+            return False
+
+    def add_body_measurements(self, data: dict) -> bool:
+        try:
+            insert_body_measurements(self.engine, data)
+            return True
+        except Exception as e:
+            print(f"[ERROR] add_body_measurements: {e}")
+            return False
+
+    def add_body_composition(self, data: dict) -> bool:
+        try:
+            insert_body_composition(self.engine, data)
+            return True
+        except Exception as e:
+            print(f"[ERROR] add_body_composition: {e}")
+            return False

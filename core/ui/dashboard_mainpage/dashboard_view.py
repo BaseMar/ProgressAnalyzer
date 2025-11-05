@@ -7,6 +7,9 @@ from .history_view import HistoryView
 from ..footer_view import FooterView
 from ...styles.theme_manager import ThemeManager
 from ..forms.exercise_form import ExerciseFormView
+from ..forms.workout_session_form import SessionFormView
+from ..forms.body_measurement_form import BodyMeasurementsFormView
+from ..forms.body_composition_form import BodyCompositionFormView
 
 class DashboardView:
     """Main dashboard orchestrator"""
@@ -67,11 +70,11 @@ class DashboardView:
         with tabs[0]:
             ExerciseFormView().render()
         with tabs[1]:
-            st.info("W przygotowaniu")
+            SessionFormView().render()
         with tabs[2]:
-            st.info("W przygotowaniu")
+            BodyMeasurementsFormView().render()
         with tabs[3]:
-            st.info("W przygotowaniu")
+            BodyCompositionFormView().render()
     
     def _render_exercise_analysis(self):
         """Render exercise analysis section"""

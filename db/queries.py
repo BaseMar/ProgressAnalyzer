@@ -113,3 +113,29 @@ def insert_exercise(engine, name: str, category: str, body_part: str) -> bool:
     except Exception as e:
         print(f"Błąd SQL przy dodawaniu ćwiczenia: {e}")
         return False
+
+def insert_session(engine, date, notes):
+    query = text("""
+        INSERT INTO WorkoutSessions (SessionDate, Notes)
+        VALUES (:date, :notes)
+    """)
+    with engine.begin() as conn:
+        conn.execute(query, {"date": date, "notes": notes})
+
+def insert_body_measurements(engine, data):
+    query = text("""
+        INSERT INTO BodyMeasurements 
+        (MeasurementDate, Chest, Waist, Abdomen, Hips, Thigh, Calf, Biceps)
+        VALUES (:date, :chest, :waist, :abdomen, :hips, :thigh, :calf, :biceps)
+    """)
+    with engine.begin() as conn:
+        conn.execute(query, data)
+
+def insert_body_composition(engine, data):
+    query = text("""
+        INSERT INTO BodyComposition 
+        (MeasurementDate, Weight, MuscleMass, FatMass, WaterMass, BodyFatPercentage, Method)
+        VALUES (:date, :weight, :muscle_mass, :fat_mass, :water_mass, :bf_percent, :method)
+    """)
+    with engine.begin() as conn:
+        conn.execute(query, data)
