@@ -80,11 +80,13 @@ class DashboardView:
         """Render exercise analysis section"""
         st.header("🏋️ Analiza ćwiczeń")
         self.charts_view.render_exercise_analysis(self.analytics)
+        st.info("Sekcja analiza ćwiczeń - w przygotowaniu")
     
     def _render_muscle_group_analysis(self):
         """Render muscle group analysis section"""
         st.header("💪 Analiza grup mięśniowych")
         self.charts_view.render_muscle_group_analysis(self.analytics)
+        st.info("Sekcja Analiza grup mięśniowych - w przygotowaniu")
     
     def _render_body_measurements(self):
         """Render body measurements section"""
