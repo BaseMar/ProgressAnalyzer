@@ -114,13 +114,38 @@ def insert_exercise(engine, name: str, category: str, body_part: str) -> bool:
         print(f"Błąd SQL przy dodawaniu ćwiczenia: {e}")
         return False
 
-def insert_session(engine, date, notes):
+def insert_workout_exercise(engine, session_id: int, exercise_id: int):
+    """Dodaje powiązanie ćwiczenia z sesją i zwraca ID nowego wpisu."""
     query = text("""
-        INSERT INTO WorkoutSessions (SessionDate, Notes)
-        VALUES (:date, :notes)
+        INSERT INTO WorkoutExercises (SessionID, ExerciseID)
+        OUTPUT INSERTED.WorkoutExerciseID
+        VALUES (:session_id, :exercise_id)
     """)
     with engine.begin() as conn:
-        conn.execute(query, {"date": date, "notes": notes})
+        result = conn.execute(query, {"session_id": session_id, "exercise_id": exercise_id})
+        workout_exercise_id = result.scalar()
+    return workout_exercise_id
+
+def insert_workout_set(engine, workout_exercise_id: int, set_number: int, repetitions: int, weight: float):
+    """Dodaje pojedynczą serię ćwiczenia."""
+    query = text("""
+        INSERT INTO WorkoutSets (WorkoutExerciseID, SetNumber, Repetitions, Weight)
+        VALUES (:workout_exercise_id, :set_number, :reps, :weight)
+    """)
+    with engine.begin() as conn:
+        conn.execute(query, {
+            "workout_exercise_id": workout_exercise_id,
+            "set_number": set_number,
+            "reps": repetitions,
+            "weight": weight
+        })
+
+def get_exercise_id_by_name(engine, exercise_name: str) -> int:
+    """Zwraca ID ćwiczenia po nazwie."""
+    query = text("SELECT ExerciseID FROM Exercises WHERE ExerciseName = :name")
+    with engine.connect() as conn:
+        result = conn.execute(query, {"name": exercise_name}).fetchone()
+        return result[0] if result else None
 
 def insert_body_measurements(engine, data):
     query = text("""
@@ -139,3 +164,12 @@ def insert_body_composition(engine, data):
     """)
     with engine.begin() as conn:
         conn.execute(query, data)
+
+def insert_session(engine, date, notes):
+    """Dodaje nową sesję treningową do tabeli WorkoutSessions."""
+    query = text("""
+        INSERT INTO WorkoutSessions (SessionDate, Notes)
+        VALUES (:date, :notes)
+    """)
+    with engine.begin() as conn:
+        conn.execute(query, {"date": date, "notes": notes})

@@ -1,8 +1,7 @@
 import streamlit as st
 import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from ...styles.theme_manager import ThemeManager
+import pandas as pd
 
 class ChartsView:
     """Enhanced charts with Plotly integration"""
@@ -28,11 +27,21 @@ class ChartsView:
         st.subheader("Średnia intensywność tygodniowa")
         
         df_intensity = analytics.weekly_agg("Intensity", agg_func="mean")
+
+        if isinstance(df_intensity, dict):
+            if "current" in df_intensity and "previous" in df_intensity:
+                df_intensity = pd.DataFrame({
+                    "Week": ["Previous", "Current"],
+                    "Intensity": [df_intensity["previous"], df_intensity["current"]]
+                })
+            else:
+                st.info("Brak danych do wyświetlenia wykresu intensywności.")
+                return
         
-        if isinstance(df_intensity, dict) or df_intensity.empty:
+        if df_intensity.empty:
             st.info("Brak danych do wyświetlenia wykresu intensywności.")
             return
-        
+
         fig = px.line(
             df_intensity, 
             x="Week", 

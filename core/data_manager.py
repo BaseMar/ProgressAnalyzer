@@ -7,10 +7,14 @@ from db.queries import (
     get_body_composition,
     insert_exercise,
     insert_session,
+    get_exercise_id_by_name,
+    insert_workout_exercise,
+    insert_workout_set,
     insert_body_measurements,
     insert_body_composition,
 )
 from db.connection import get_engine
+from sqlalchemy import text
 
 class DataManager:
     """
@@ -48,12 +52,33 @@ class DataManager:
             print(f"[ERROR] add_exercise: {e}")
             return False
 
-    def add_session(self, date, notes: str) -> bool:
+    def add_full_session(self, date, notes, exercise_name, sets_data):
+        """Dodaje pełną sesję: WorkoutSession + WorkoutExercises + WorkoutSets."""
         try:
             insert_session(self.engine, date, notes)
+
+            query = text("SELECT TOP 1 SessionID FROM WorkoutSessions ORDER BY SessionID DESC")
+            with self.engine.connect() as conn:
+                session_id = conn.execute(query).scalar()
+
+            exercise_id = get_exercise_id_by_name(self.engine, exercise_name)
+            if not exercise_id:
+                raise ValueError(f"Nie znaleziono ćwiczenia '{exercise_name}' w bazie.")
+            workout_exercise_id = insert_workout_exercise(self.engine, session_id, exercise_id)
+
+            for idx, s in enumerate(sets_data, start=1):
+                insert_workout_set(
+                    self.engine,
+                    workout_exercise_id,
+                    set_number=idx,
+                    repetitions=s["reps"],
+                    weight=s["weight"]
+                )
+
             return True
+
         except Exception as e:
-            print(f"[ERROR] add_session: {e}")
+            print(f"[ERROR] add_full_session: {e}")
             return False
 
     def add_body_measurements(self, data: dict) -> bool:

@@ -4,8 +4,7 @@ from sqlalchemy import text
 from .base_form import BaseFormView
 
 EXERCISE_CATEGORIES = [
-    "Push", "Pull", "Legs", "Upper Body", "Lower Body",
-    "Core", "Cardio", "Mobility", "Accessory", "Rehab/Prehab"
+    "Push", "Pull", "Legs", "Core", "Cardio", "Mobility", "Accessory", "Rehab/Prehab"
 ]
 
 BODY_PARTS = [

@@ -9,7 +9,12 @@ class HistoryService:
 
     def get_weeks(self):
         """Zwraca posortowaną listę dostępnych tygodni (Year, Week)."""
-        return sorted(self.df[["Year", "Week"]].drop_duplicates().to_records(index=False))
+        self.df = self.df.dropna(subset=["Year", "Week"])
+        self.df["Year"] = self.df["Year"].astype(int)
+        self.df["Week"] = self.df["Week"].astype(int)
+        df_unique = self.df[["Year", "Week"]].drop_duplicates()
+        df_sorted = df_unique.sort_values(by=["Year", "Week"])
+        return df_sorted.to_records(index=False)
 
     def get_week_sessions(self, year: int, week: int):
         """Zwraca wszystkie treningi z danego tygodnia, z listą ćwiczeń."""

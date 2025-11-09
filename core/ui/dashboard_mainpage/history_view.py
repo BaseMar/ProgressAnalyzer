@@ -12,9 +12,9 @@ class HistoryView:
     def render(self):
         """Render full history view"""
         st.header("Historia treningów")
-        
+
         weeks = self.service.get_weeks()
-        if not weeks:
+        if weeks.size == 0:
             st.info("Brak danych o treningach.")
             return
         
