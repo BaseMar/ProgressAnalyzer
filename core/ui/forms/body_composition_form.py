@@ -23,7 +23,7 @@ class BodyCompositionFormView(BaseFormView):
                 water_mass = st.number_input("Masa wody (kg)", min_value=0.0, step=0.1)
             with col3:
                 bf_percent = st.number_input("Procent tłuszczu (%)", min_value=0.0, max_value=100.0, step=0.1)
-                method = st.selectbox("Metoda pomiaru", ["InBody", "Kaliper", "Inna"])
+                method = st.selectbox("Metoda pomiaru", ["SmartWatch", "Waga Analityczna", "Inna"])
 
             submitted = st.form_submit_button("Zapisz skład ciała")
 

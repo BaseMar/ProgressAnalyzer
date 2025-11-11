@@ -57,7 +57,7 @@ class ChartsView:
             title_font_size=16
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     
     def _display_volume_chart(self, analytics):
         """Enhanced volume chart with Plotly"""
@@ -93,7 +93,7 @@ class ChartsView:
             title_font_size=16
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     
     def render_exercise_analysis(self, analytics):
         """Render detailed exercise analysis"""

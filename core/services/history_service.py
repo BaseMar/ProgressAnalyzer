@@ -1,4 +1,5 @@
 import pandas as pd
+from ..data_manager import DataManager
 
 class HistoryService:
     def __init__(self, df_sets: pd.DataFrame):

@@ -14,7 +14,7 @@ from db.queries import (
     insert_body_composition,
 )
 from db.connection import get_engine
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 class DataManager:
     """
@@ -52,15 +52,21 @@ class DataManager:
             print(f"[ERROR] add_exercise: {e}")
             return False
 
-    def add_full_session(self, date, notes, exercise_name, sets_data):
-        """Dodaje pełną sesję: WorkoutSession + WorkoutExercises + WorkoutSets."""
+    def add_full_session(self, session_date, notes, exercise_name, sets_data):
+        """Dodaje pełną sesję: WorkoutSession + WorkoutExercises + WorkoutSets. Jeśli sesja na tę datę już istnieje, używa istniejącego SessionID."""
         try:
-            insert_session(self.engine, date, notes)
-
-            query = text("SELECT TOP 1 SessionID FROM WorkoutSessions ORDER BY SessionID DESC")
+            # --- Sprawdzenie czy sesja na tę datę już istnieje ---
+            query = text("SELECT SessionID FROM WorkoutSessions WHERE CAST(SessionDate AS DATE) = :session_date")
             with self.engine.connect() as conn:
-                session_id = conn.execute(query).scalar()
+                result = conn.execute(query, {"session_date": session_date}).fetchone()
+                if result:
+                    session_id = result[0]
+                else:
+                    insert_session(self.engine, session_date, notes)
+                    query_new = text("SELECT TOP 1 SessionID FROM WorkoutSessions ORDER BY SessionID DESC")
+                    session_id = conn.execute(query_new).scalar()
 
+            # --- Dodaj ćwiczenie ---
             exercise_id = get_exercise_id_by_name(self.engine, exercise_name)
             if not exercise_id:
                 raise ValueError(f"Nie znaleziono ćwiczenia '{exercise_name}' w bazie.")
@@ -96,3 +102,4 @@ class DataManager:
         except Exception as e:
             print(f"[ERROR] add_body_composition: {e}")
             return False
+        
