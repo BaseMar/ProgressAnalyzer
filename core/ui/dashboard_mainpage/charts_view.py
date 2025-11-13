@@ -26,27 +26,31 @@ class ChartsView:
         """Enhanced intensity chart with Plotly"""
         st.subheader("Średnia intensywność tygodniowa")
         
-        df_intensity = analytics.weekly_agg("Intensity", agg_func="mean")
-
-        if isinstance(df_intensity, dict):
-            if "current" in df_intensity and "previous" in df_intensity:
-                df_intensity = pd.DataFrame({
-                    "Week": ["Previous", "Current"],
-                    "Intensity": [df_intensity["previous"], df_intensity["current"]]
-                })
-            else:
-                st.info("Brak danych do wyświetlenia wykresu intensywności.")
-                return
+        df_intensity = analytics.df_sets.copy()
         
         if df_intensity.empty:
             st.info("Brak danych do wyświetlenia wykresu intensywności.")
             return
+        
+        df_intensity["Week"] = df_intensity["SessionDate"].dt.isocalendar().week
+        df_intensity["Year"] = df_intensity["SessionDate"].dt.isocalendar().year
+
+        weekly_intensity = (
+        df_intensity.groupby(["Year", "Week"])["Intensity"]
+        .mean()
+        .reset_index()
+        .sort_values(["Year", "Week"]))
+
+        if weekly_intensity.empty:
+            st.info("Brak danych do wyświetlenia wykresu intensywności.")
+            return
 
         fig = px.line(
-            df_intensity, 
+            weekly_intensity, 
             x="Week", 
             y="Intensity",
             title="Trend intensywności treningowej",
+            markers=True,
             color_discrete_sequence=[self.colors.accent]
         )
         
@@ -54,7 +58,10 @@ class ChartsView:
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             font_color=self.colors.text,
-            title_font_size=16
+            title_font_size=16,
+            xaxis_title="Tydzień roku",
+            yaxis_title="Średnia intensywność",
+            xaxis=dict(tickmode="linear", dtick=1),
         )
         
         st.plotly_chart(fig, width="stretch")
