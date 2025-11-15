@@ -1,6 +1,6 @@
 import streamlit as st
 import plotly.express as px
-from ...styles.theme_manager import ThemeManager
+from ..styles.theme_manager import ThemeManager
 import pandas as pd
 
 class ChartsView:
@@ -102,12 +102,49 @@ class ChartsView:
         
         st.plotly_chart(fig, width="stretch")
     
-    def render_exercise_analysis(self, analytics):
-        """Render detailed exercise analysis"""
-        st.subheader("🏋️ Top ćwiczenia według objętości")
-        # Implementation for exercise-specific analysis
+    def render_exercise_1rm_chart(self, session_summary: pd.DataFrame, exercise_name: str):
+        """Render 1RM trend chart for specific exercise"""
+        st.subheader("Trend 1RM w czasie")
         
-    def render_muscle_group_analysis(self, analytics):
-        """Render muscle group analysis"""
-        st.subheader("💪 Analiza grup mięśniowych")
-        # Implementation for muscle group analysis
+        fig = px.line(
+            session_summary,
+            x="SessionDate",
+            y="Est1RM",
+            markers=True,
+            title=f"Szacowany 1RM dla: {exercise_name}",
+            color_discrete_sequence=[self.colors.accent]
+        )
+        
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font_color=self.colors.text,
+            title_font_size=16,
+            xaxis_title="Data sesji",
+            yaxis_title="Szacowany 1RM (kg)"
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    def render_exercise_volume_chart(self, session_summary: pd.DataFrame, exercise_name: str):
+        """Render training volume chart for specific exercise"""
+        st.subheader("Objętość treningowa w czasie")
+        
+        fig = px.bar(
+            session_summary,
+            x="SessionDate",
+            y="TotalVolume",
+            title=f"Objętość treningowa dla: {exercise_name}",
+            color_discrete_sequence=[self.colors.accent_light]
+        )
+        
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font_color=self.colors.text,
+            title_font_size=16,
+            xaxis_title="Data sesji",
+            yaxis_title="Objętość (Powtórz. × Ciężar, kg)"
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)

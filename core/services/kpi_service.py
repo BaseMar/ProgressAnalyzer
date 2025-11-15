@@ -1,4 +1,4 @@
-from core.analytics import TrainingAnalytics
+from core.analytics.analytics_training import TrainingAnalytics
 
 class KPIService:
     """Łączy logikę z analytics i zwraca gotowe KPI do dashboardu."""

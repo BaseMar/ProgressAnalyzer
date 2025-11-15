@@ -2,7 +2,7 @@ import streamlit as st
 from typing import Optional
 from ..sidebar_view import SidebarView
 from .kpi_view import KPIView
-from .charts_view import ChartsView
+from ..charts_view import ChartsView
 from .history_view import HistoryView
 from ..footer_view import FooterView
 from ...styles.theme_manager import ThemeManager
@@ -10,6 +10,7 @@ from ..forms.exercise_form import ExerciseFormView
 from ..forms.workout_session_form import SessionFormView
 from ..forms.body_measurement_form import BodyMeasurementsFormView
 from ..forms.body_composition_form import BodyCompositionFormView
+from core.analytics.analytics_exercise import ExerciseAnalytics
 
 import plotly.express as px
 import numpy as np
@@ -23,6 +24,7 @@ class DashboardView:
         self.analytics = analytics
         self.kpi_service = kpi_service
         self.theme = theme
+        self.exercise_analytics = ExerciseAnalytics(self.analytics.df_sets)
         
         # Initialize views
         self.sidebar_view = SidebarView()
@@ -81,106 +83,55 @@ class DashboardView:
             BodyCompositionFormView().render()
     
     def _render_exercise_analysis(self):
-        """Render exercise analysis section"""
-        
-        # --- Pobierz dane ---
-        df = self.analytics.df_sets.copy()
-        if df.empty:
-            st.info("Brak danych do analizy ćwiczeń.")
-            return
-        exercises = sorted(df["ExerciseName"].unique().tolist())
+        st.header("Analiza ćwiczeń")
 
-        # --- Wybór ćwiczenia ---
-        selected_exercise = st.selectbox("Wybierz ćwiczenie", exercises)
-        df_exercise = df[df["ExerciseName"] == selected_exercise].copy()
-        if df_exercise.empty:
+        # --- Selectbox ---
+        exercises = self.exercise_analytics.list_exercises()
+        selected = st.selectbox("Wybierz ćwiczenie", exercises)
+
+        df_ex = self.exercise_analytics.filter_exercise(selected)
+        if df_ex.empty:
             st.warning("Brak danych dla wybranego ćwiczenia.")
             return
-        
-        # --- Agregacja ---
-        df_summary = (
-            df_exercise.groupby("SessionDate")
-            .agg(SeriesCount=("SetNumber", "count"), TotalReps=("Repetitions", "sum"), AvgWeight=("Weight", "mean"), Volume=("Volume", "sum"),).reset_index().sort_values("SessionDate"))
-        df_summary["SessionDate"] = pd.to_datetime(df_summary["SessionDate"]).dt.date
-        
-        # --- Przetwarzanie danych ---
-        ## Szacowany 1RM (Wzór Epleya)
-        
-        df_exercise["Est1RM"] = df_exercise["Weight"] * (1 + df_exercise["Repetitions"] / 30)
-        df_exercise["TotalVolume"] = df_exercise["Repetitions"] * df_exercise["Weight"]
 
+        session_summary = self.exercise_analytics.compute_session_summary(df_ex)
+        kpis = self.exercise_analytics.compute_kpis(session_summary)
+        df_history = self.exercise_analytics.compute_history_table(df_ex)
 
-        df_summary["AvgWeight"] = df_summary["AvgWeight"].round(1)
-        df_summary["Volume"] = df_summary["Volume"].round(1)
+        st.markdown("<hr>", unsafe_allow_html=True)
 
-        # Grupowanie po sesjach (uśrednianie)
-        session_summary = (
-            df_exercise.groupby("SessionDate")
-            .agg({
-                "Est1RM": "max",
-                "TotalVolume": "sum",
-                "Weight": "mean"
-            })
-            .reset_index()
-            .sort_values("SessionDate")
-        )
-        
-        # --- KPI sekcja ---
-        latest_1rm = session_summary["Est1RM"].iloc[-1]
-        start_1rm = session_summary["Est1RM"].iloc[0]
-        progress = ((latest_1rm - start_1rm) / start_1rm * 100) if start_1rm > 0 else 0
-        avg_weight = session_summary["Weight"].mean()
-
+        # --- KPI ---
         col1, col2, col3 = st.columns(3)
-        col1.metric("Szacowany 1RM (kg)", f"{latest_1rm:.1f}")
-        col2.metric("Progres od początku", f"{progress:+.1f}%")
-        col3.metric("Średni ciężar roboczy (kg)", f"{avg_weight:.1f}")
+        with col1:
+            st.html(self.theme.create_kpi_card(title="Szacowany 1RM", value=f"{kpis['latest_1rm']:.1f} kg").strip())
 
-        st.divider()
+        with col2:
+            st.html(self.theme.create_kpi_card(title="Progress od startu", value=f"{kpis['progress']:+.1f}%").strip())
 
-        # --- Wykres trendu 1RM ---
-        st.subheader("Trend 1RM w czasie")
-        fig_rm = px.line(
-            session_summary,
-            x="SessionDate",
-            y="Est1RM",
-            markers=True,
-            title=f"Szacowany 1RM dla: {selected_exercise}",
-            color_discrete_sequence=[self.theme.colors.accent]
-        )
-        fig_rm.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font_color=self.theme.colors.text,
-            title_font_size=16
-        )
-        st.plotly_chart(fig_rm, width="stretch")
+        with col3:
+            st.html(self.theme.create_kpi_card(title="Średni roboczy ciężar",value=f"{kpis['avg_weight']:.1f} kg").strip())
 
-        # --- Wykres objętości ---
-        st.subheader("Objętość treningowa w czasie")
-        fig_vol = px.bar(
-            session_summary,
-            x="SessionDate",
-            y="TotalVolume",
-            title="Objętość (Powtózenia × Ciężar)",
-            color_discrete_sequence=[self.theme.colors.accent_light]
-        )
-        fig_vol.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font_color=self.theme.colors.text,
-            title_font_size=16
-        )
-        st.plotly_chart(fig_vol, width="stretch")
+        st.markdown("<hr>", unsafe_allow_html=True)
 
-        # --- Historia sesji ---
-        st.subheader(f"Historia ćwiczenia: {selected_exercise}")
-        st.dataframe(
-            df_summary,
-            hide_index=True,
-            use_container_width=True
-        )
+        # ------ Charts side-by-side ------
+        col_left, col_right = st.columns(2)
 
+        with col_left:
+            chart_container = st.container()
+            with chart_container:
+                self.charts_view.render_exercise_1rm_chart(session_summary, selected)
+
+        with col_right:
+            chart_container = st.container()
+            with chart_container:
+                self.charts_view.render_exercise_volume_chart(session_summary, selected)
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+        # ------ TABLE ------
+        st.subheader(f"Historia ćwiczenia: {selected}")
+        st.dataframe(df_history, hide_index=True, use_container_width=True)
+    
     def _render_muscle_group_analysis(self):
         """Render muscle group analysis section"""
         st.header("💪 Analiza grup mięśniowych")
@@ -191,3 +142,18 @@ class DashboardView:
         """Render body measurements section"""
         st.header("📏 Pomiary ciała")
         st.info("Sekcja pomiarów ciała - w przygotowaniu")
+
+    def _render_exercise_kpis(self, session_summary):
+        latest_1rm = session_summary["Est1RM"].iloc[-1]
+        start_1rm = session_summary["Est1RM"].iloc[0]
+        progress = ((latest_1rm - start_1rm) / start_1rm * 100) if start_1rm > 0 else 0
+        avg_weight = session_summary["Weight"].mean()
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Szacowany 1RM", f"{latest_1rm:.1f} kg")
+        col2.metric("Progres", f"{progress:+.1f}%")
+        col3.metric("Średni ciężar roboczy", f"{avg_weight:.1f} kg")
+
+    def _render_exercise_history(self, df_history, exercise_name):
+        st.subheader(f"Historia ćwiczenia: {exercise_name}")
+        st.dataframe(df_history, hide_index=True, use_container_width=True)
