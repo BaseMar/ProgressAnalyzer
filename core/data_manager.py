@@ -15,6 +15,9 @@ from db.queries import (
 )
 from db.connection import get_engine
 from sqlalchemy import select, text
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DataManager:
     """
@@ -53,39 +56,38 @@ class DataManager:
             return False
 
     def add_full_session(self, session_date, notes, exercise_name, sets_data):
-        """Dodaje pełną sesję: WorkoutSession + WorkoutExercises + WorkoutSets. Jeśli sesja na tę datę już istnieje, używa istniejącego SessionID."""
         try:
-            # --- Sprawdzenie czy sesja na tę datę już istnieje ---
-            query = text("SELECT SessionID FROM WorkoutSessions WHERE CAST(SessionDate AS DATE) = :session_date")
-            with self.engine.connect() as conn:
-                result = conn.execute(query, {"session_date": session_date}).fetchone()
-                if result:
-                    session_id = result[0]
+            engine = self.engine
+            with engine.begin() as conn:
+                # check existing session
+                qry = text("SELECT SessionID FROM WorkoutSessions WHERE CAST(SessionDate AS DATE) = :session_date")
+                row = conn.execute(qry, {"session_date": session_date}).fetchone()
+                if row:
+                    session_id = row[0]
                 else:
-                    insert_session(self.engine, session_date, notes)
-                    query_new = text("SELECT TOP 1 SessionID FROM WorkoutSessions ORDER BY SessionID DESC")
-                    session_id = conn.execute(query_new).scalar()
+                    # insert_session should return inserted id (use OUTPUT or RETURNING)
+                    insert_q = text("INSERT INTO WorkoutSessions (SessionDate, Notes) OUTPUT INSERTED.SessionID VALUES (:date, :notes)")
+                    session_id = conn.execute(insert_q, {"date": session_date, "notes": notes}).scalar()
 
-            # --- Dodaj ćwiczenie ---
-            exercise_id = get_exercise_id_by_name(self.engine, exercise_name)
-            if not exercise_id:
-                raise ValueError(f"Nie znaleziono ćwiczenia '{exercise_name}' w bazie.")
-            workout_exercise_id = insert_workout_exercise(self.engine, session_id, exercise_id)
+                # get exercise id
+                ex_id_q = text("SELECT ExerciseID FROM Exercises WHERE ExerciseName = :name")
+                res = conn.execute(ex_id_q, {"name": exercise_name}).fetchone()
+                if not res:
+                    raise ValueError("Brak ćwiczenia")
+                exercise_id = res[0]
 
-            for idx, s in enumerate(sets_data, start=1):
-                insert_workout_set(
-                    self.engine,
-                    workout_exercise_id,
-                    set_number=idx,
-                    repetitions=s["reps"],
-                    weight=s["weight"]
-                )
+                # insert workout exercise and get id
+                insert_we = text("INSERT INTO WorkoutExercises (SessionID, ExerciseID) OUTPUT INSERTED.WorkoutExerciseID VALUES (:sid, :eid)")
+                workout_ex_id = conn.execute(insert_we, {"sid": session_id, "eid": exercise_id}).scalar()
 
+                # insert sets
+                for idx, s in enumerate(sets_data, start=1):
+                    ins_set = text("INSERT INTO WorkoutSets (WorkoutExerciseID, SetNumber, Repetitions, Weight) VALUES (:weid, :num, :reps, :weight)")
+                    conn.execute(ins_set, {"weid": workout_ex_id, "num": idx, "reps": s["reps"], "weight": s["weight"]})
             return True
-
-        except Exception as e:
-            print(f"[ERROR] add_full_session: {e}")
-            return False
+        except Exception:
+            logger.exception("add_full_session failed")
+            raise
 
     def add_body_measurements(self, data: dict) -> bool:
         try:

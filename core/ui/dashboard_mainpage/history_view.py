@@ -28,7 +28,7 @@ class HistoryView:
         col_prev, col_info, col_next = st.columns([1, 3, 1])
         
         with col_prev:
-            if st.button("⬅️ Poprzedni", use_container_width=True) and current_idx > 0:
+            if st.button("⬅️ Poprzedni", width='stretch') and current_idx > 0:
                 st.session_state.current_week_idx = current_idx - 1
                 st.rerun()
         
@@ -37,7 +37,7 @@ class HistoryView:
             st.markdown(f"<h3 style='text-align: center;'>Tydzień {week} / {year}</h3>", unsafe_allow_html=True)
         
         with col_next:
-            if st.button("➡️ Następny", use_container_width=True) and current_idx < len(weeks) - 1:
+            if st.button("➡️ Następny", width='stretch') and current_idx < len(weeks) - 1:
                 st.session_state.current_week_idx = current_idx + 1
                 st.rerun()
     

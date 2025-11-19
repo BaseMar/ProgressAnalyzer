@@ -1,4 +1,4 @@
-from core.analytics.analytics_training import TrainingAnalytics
+from core.analytics.training import TrainingAnalytics
 
 class KPIService:
     """Łączy logikę z analytics i zwraca gotowe KPI do dashboardu."""
@@ -16,5 +16,5 @@ class KPIService:
             "volume_change": self.analytics.weekly_agg("Volume", "sum")["change"],
             "avg_sets_per_session": self.analytics.weekly_agg(None, "sets_per_session")["current"],
             "sets_change": self.analytics.weekly_agg(None, "sets_per_session")["change"],
-            "sessions": self.analytics.kpi_summary()["sessions"],
+            "sessions": self.analytics.df_sets["SessionDate"].nunique()
         }

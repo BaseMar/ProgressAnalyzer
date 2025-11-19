@@ -1,5 +1,4 @@
 import streamlit as st
-from typing import Optional
 from ..sidebar_view import SidebarView
 from .kpi_view import KPIView
 from ..charts_view import ChartsView
@@ -10,11 +9,7 @@ from ..forms.exercise_form import ExerciseFormView
 from ..forms.workout_session_form import SessionFormView
 from ..forms.body_measurement_form import BodyMeasurementsFormView
 from ..forms.body_composition_form import BodyCompositionFormView
-from core.analytics.analytics_exercise import ExerciseAnalytics
-
-import plotly.express as px
-import numpy as np
-import pandas as pd
+from core.analytics.exercise import ExerciseAnalytics
 
 class DashboardView:
     """Main dashboard orchestrator"""
@@ -83,8 +78,6 @@ class DashboardView:
             BodyCompositionFormView().render()
     
     def _render_exercise_analysis(self):
-        st.header("Analiza ćwiczeń")
-
         # --- Selectbox ---
         exercises = self.exercise_analytics.list_exercises()
         selected = st.selectbox("Wybierz ćwiczenie", exercises)
@@ -130,14 +123,10 @@ class DashboardView:
 
         # ------ TABLE ------
         st.subheader(f"Historia ćwiczenia: {selected}")
-        st.dataframe(df_history, hide_index=True, use_container_width=True)
+        st.dataframe(df_history, hide_index=True, width='stretch')
     
     def _render_muscle_group_analysis(self):
-        """Render muscle group analysis section"""
-        st.header("💪 Analiza grup mięśniowych")
-        self.charts_view.render_muscle_group_analysis(self.analytics)
-        st.info("Sekcja Analiza grup mięśniowych - w przygotowaniu")
-    
+        st.info("Sekcja pomiarów analizy grup mięśniowych - w przygotowaniu")
     def _render_body_measurements(self):
         """Render body measurements section"""
         st.header("📏 Pomiary ciała")
@@ -156,4 +145,4 @@ class DashboardView:
 
     def _render_exercise_history(self, df_history, exercise_name):
         st.subheader(f"Historia ćwiczenia: {exercise_name}")
-        st.dataframe(df_history, hide_index=True, use_container_width=True)
+        st.dataframe(df_history, hide_index=True, width='stretch')

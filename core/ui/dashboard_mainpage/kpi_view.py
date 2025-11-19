@@ -16,7 +16,7 @@ class KPIView:
         kpi_configs = [
             {
                 "title": "Średnia intensywność",
-                "value": f"{kpis['avg_intensity']:.1f} kg",
+                "value": f"{kpis['avg_intensity']:.1f} %",
                 "delta": f"Δ {kpis['intensity_change']}%"
             },
             {
