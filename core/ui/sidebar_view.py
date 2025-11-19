@@ -31,7 +31,7 @@ class SidebarView:
                 if st.button(
                     section,
                     key=f"nav_{section}",
-                    use_container_width=True,
+                    width='stretch',
                     type="primary" if is_current else "secondary"
                 ):
                     st.session_state.current_section = section
