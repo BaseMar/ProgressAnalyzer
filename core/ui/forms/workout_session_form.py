@@ -14,7 +14,7 @@ class SessionFormView(BaseFormView):
 
     def __init__(self) -> None:
         """Initialize the workout session form view."""
-        super().__init__("### 🏋️ Dodaj nową sesję treningową")
+        super().__init__("Dodaj nową sesję treningową")
         self.data_manager: DataManager = DataManager()
 
     def render_form(self) -> None:
