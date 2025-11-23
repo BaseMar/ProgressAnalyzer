@@ -57,13 +57,13 @@ class DashboardView:
         # Main content based on selection
         if selected_section == "Dashboard":
             self._render_main_dashboard()
-        elif selected_section == "Formularz":
+        elif selected_section == "Forms":
             self._render_form_section()
-        elif selected_section == "Analiza ćwiczeń":
+        elif selected_section == "Exercise Analysis":
             self._render_exercise_analysis()
-        elif selected_section == "Analiza grup mięśniowych":
+        elif selected_section == "Muscle Groups":
             self._render_muscle_group_analysis()
-        elif selected_section == "Pomiary ciała":
+        elif selected_section == "Body Measurements":
             self._render_body_measurements()
 
         # Footer
@@ -75,18 +75,18 @@ class DashboardView:
         kpis = self.dashboard_service.get_dashboard_kpis()
         kpi_cards = [
             {
-                "title": "Średnia intensywność",
+                "title": "Average Intensity",
                 "value": f"{kpis['avg_intensity']:.1f} %",
                 "delta": f"Δ {kpis['intensity_change']}%",
             },
             {
-                "title": "Łączna objętość tygodniowa",
+                "title": "Total Weekly Volume",
                 "value": f"{kpis['total_volume']:,.0f}".replace(",", " ") + " kg",
                 "delta": f"Δ {kpis['volume_change']}%",
             },
-            {"title": "Liczba sesji", "value": str(kpis["sessions"]), "delta": None},
+            {"title": "Number of Sessions", "value": str(kpis["sessions"]), "delta": None},
             {
-                "title": "Śr. liczba serii / sesję",
+                "title": "Avg Sets per Session",
                 "value": f"{kpis['avg_sets_per_session']:.1f}",
                 "delta": f"Δ {kpis['sets_change']}%",
             },
@@ -104,10 +104,10 @@ class DashboardView:
         """Render form section"""
         tabs = st.tabs(
             [
-                "➕ Ćwiczenia",
-                "🏋️‍♂️ Sesje treningowe",
-                "📏 Pomiary ciała",
-                "⚖️ Skład ciała",
+                "➕ Exercises",
+                "🏋️‍♂️ Workout Sessions",
+                "📏 Body Measurements",
+                "⚖️ Body Composition",
             ]
         )
 
@@ -123,10 +123,10 @@ class DashboardView:
     def _render_exercise_analysis(self):
         # --- Selectbox ---
         exercises = self.dashboard_service.list_exercises()
-        selected: Optional[str] = st.selectbox("Wybierz ćwiczenie", exercises)
+        selected: Optional[str] = st.selectbox("Select Exercise", exercises)
 
         if not selected:
-            st.warning("Brak danych dla wybranego ćwiczenia.")
+            st.warning("No data for the selected exercise.")
             return
 
         session_summary, kpis, df_history = self.dashboard_service.get_exercise_analysis(selected)
@@ -138,21 +138,21 @@ class DashboardView:
         with col1:
             st.html(
                 self.theme.create_kpi_card(
-                    title="Szacowany 1RM", value=f"{kpis['latest_1rm']:.1f} kg"
+                    title="Estimated 1RM", value=f"{kpis['latest_1rm']:.1f} kg"
                 ).strip()
             )
 
         with col2:
             st.html(
                 self.theme.create_kpi_card(
-                    title="Progress od startu", value=f"{kpis['progress']:+.1f}%"
+                    title="Progress from Start", value=f"{kpis['progress']:+.1f}%"
                 ).strip()
             )
 
         with col3:
             st.html(
                 self.theme.create_kpi_card(
-                    title="Średni roboczy ciężar", value=f"{kpis['avg_weight']:.1f} kg"
+                    title="Average Working Weight", value=f"{kpis['avg_weight']:.1f} kg"
                 ).strip()
             )
 
@@ -174,12 +174,12 @@ class DashboardView:
         st.markdown("<hr>", unsafe_allow_html=True)
 
         # ------ TABLE ------
-        st.subheader(f"Historia ćwiczenia: {selected}")
+        st.subheader(f"Exercise History: {selected}")
         st.dataframe(df_history, hide_index=True, width="stretch")
 
     def _render_muscle_group_analysis(self):
         # Optional date filtering: only apply when user enables the filter
-        filter_enabled = st.checkbox("Filtruj po dacie", value=False)
+        filter_enabled = st.checkbox("Filter by Date", value=False)
         date_from = None
         date_to = None
         if filter_enabled:
@@ -199,9 +199,9 @@ class DashboardView:
                 max_date = None
 
             with col1:
-                date_from = st.date_input("Data od", value=min_date)
+                date_from = st.date_input("From Date", value=min_date)
             with col2:
-                date_to = st.date_input("Data do", value=max_date)
+                date_to = st.date_input("To Date", value=max_date)
 
         # Use the service layer to get muscle analytics (optionally filtered)
         muscles, kpis, summary = self.dashboard_service.get_muscle_data(
@@ -209,10 +209,10 @@ class DashboardView:
         )
 
         kpi_cards = [
-            {"title": "Najbardziej obciążona grupa", "value": kpis["most_loaded_bodypart"]},
-            {"title": "Najmniej obciążona grupa", "value": kpis["least_loaded_bodypart"]},
-            {"title": "Średnia liczba ćwiczeń / grupa", "value": f"{kpis['avg_exercises_per_bodypart']:.2f}"},
-            {"title": "Średnia intensywność", "value": f"{kpis['avg_intensity']:.1f} %"},
+            {"title": "Most Loaded Group", "value": kpis["most_loaded_bodypart"]},
+            {"title": "Least Loaded Group", "value": kpis["least_loaded_bodypart"]},
+            {"title": "Avg Exercises per Group", "value": f"{kpis['avg_exercises_per_bodypart']:.2f}"},
+            {"title": "Average Intensity", "value": f"{kpis['avg_intensity']:.1f} %"},
         ]
         self.kpi_view.display(kpi_cards)
 
@@ -223,14 +223,14 @@ class DashboardView:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        st.subheader("Podsumowanie")
+        st.subheader("Summary")
         # render_muscle_summary_table expects a muscles-like object
         self.charts_view.render_muscle_summary_table(muscles)
 
     def _render_body_measurements(self):
         """Render body measurements section"""
-        st.header("📏 Pomiary ciała")
-        st.info("Sekcja pomiarów ciała - w przygotowaniu")
+        st.header("📏 Body Measurements")
+        st.info("Body measurements section - coming soon")
 
     def _render_exercise_kpis(self, session_summary):
         latest_1rm = session_summary["Est1RM"].iloc[-1]
@@ -239,10 +239,10 @@ class DashboardView:
         avg_weight = session_summary["Weight"].mean()
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("Szacowany 1RM", f"{latest_1rm:.1f} kg")
-        col2.metric("Progres", f"{progress:+.1f}%")
-        col3.metric("Średni ciężar roboczy", f"{avg_weight:.1f} kg")
+        col1.metric("Estimated 1RM", f"{latest_1rm:.1f} kg")
+        col2.metric("Progress", f"{progress:+.1f}%")
+        col3.metric("Average Working Weight", f"{avg_weight:.1f} kg")
 
     def _render_exercise_history(self, df_history, exercise_name):
-        st.subheader(f"Historia ćwiczenia: {exercise_name}")
+        st.subheader(f"Exercise History: {exercise_name}")
         st.dataframe(df_history, hide_index=True, width="stretch")

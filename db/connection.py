@@ -21,13 +21,13 @@ def get_engine() -> Engine:
 
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
-        logger.error("Brak DATABASE_URL w środowisku")
+        logger.error("DATABASE_URL not set in environment")
         raise RuntimeError("DATABASE_URL is not set")
 
     try:
         engine = create_engine(database_url, fast_executemany=True)
-        logger.info("Połączono z bazą danych (SQLAlchemy)")
+        logger.info("Connected to database (SQLAlchemy)")
         return engine
     except Exception as ex:
-        logger.exception("Błąd przy tworzeniu silnika SQLAlchemy")
+        logger.exception("Error creating SQLAlchemy engine")
         raise

@@ -2,13 +2,13 @@ from core.analytics.training import TrainingAnalytics
 
 
 class KPIService:
-    """Łączy logikę z analytics i zwraca gotowe KPI do dashboardu."""
+    """Service layer that integrates analytics logic and returns ready-to-display KPIs."""
 
     def __init__(self, analytics: TrainingAnalytics):
         self.analytics = analytics
 
     def get_kpis(self) -> dict[str, object]:
-        """Zwraca słownik KPI do wyświetlenia na dashboardzie."""
+        """Return a dictionary of KPIs for display on the dashboard."""
 
         return {
             "avg_intensity": self.analytics.weekly_agg("Intensity", "mean")["current"],

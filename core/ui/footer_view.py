@@ -9,9 +9,9 @@ class FooterView:
     def __init__(self, theme: ThemeManager) -> None:
         self.theme: ThemeManager = theme
         self.text: str = (
-            "Ten projekt został stworzony, aby wizualizować mój osobisty progres na siłowni "
-            "przy użyciu Streamlit, MS SQL oraz Plotly. "
-            "Wszystkie dane są prawdziwe i pochodzą z moich własnych zapisów treningowych."
+            "This project was created to visualize my personal gym progress "
+            "using Streamlit, MS SQL, and Plotly. "
+            "All data is real and comes from my own training records."
         )
 
     def render(self) -> None:

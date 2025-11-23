@@ -14,7 +14,7 @@ class SessionFormView(BaseFormView):
 
     def __init__(self) -> None:
         """Initialize the workout session form view."""
-        super().__init__("Dodaj nową sesję treningową")
+        super().__init__("### 🏋️ Add New Workout Session")
         self.data_manager: DataManager = DataManager()
 
     def render_form(self) -> None:
@@ -23,40 +23,40 @@ class SessionFormView(BaseFormView):
         exercises_df: Any = self.data_manager.load_exercises()
         exercise_names: List[str] = exercises_df["ExerciseName"].tolist()
 
-        # --- Dane do sesji ---
-        session_date: date = st.date_input("Data sesji", date.today(), key="session_date")
-        notes: str = st.text_area("Notatki (opcjonalnie)", key="session_notes")
+        # --- Data for session ---
+        session_date: date = st.date_input("Session Date", date.today(), key="session_date")
+        notes: str = st.text_area("Notes (optional)", key="session_notes")
 
         st.markdown("---")
-        st.subheader("Wykonane ćwiczenia")
+        st.subheader("Exercises Performed")
 
-        selected_exercise: str = st.selectbox("Wybierz ćwiczenie", exercise_names)
+        selected_exercise: str = st.selectbox("Select Exercise", exercise_names)
 
-        # --- Liczba serii ---
+        # --- Number of sets ---
         num_sets: int = st.number_input(
-            "Liczba serii",
+            "Number of Sets",
             min_value=1,
             max_value=10,
             value=st.session_state.get("num_sets", 3),
             key="num_sets",
         )
 
-        # --- Dynamiczne pola dla każdej serii ---
-        st.markdown("#### Seria i obciążenie")
+        # --- Dynamic fields for each set ---
+        st.markdown("#### Set & Weight")
         sets_data: List[Dict[str, Any]] = []
         for i in range(num_sets):
-            st.markdown(f"**Seria {i+1}**")
+            st.markdown(f"**Set {i+1}**")
             col1, col2 = st.columns(2)
             with col1:
                 reps: int = st.number_input(
-                    f"Powtórzenia (Seria {i+1})",
+                    f"Reps (Set {i+1})",
                     min_value=1,
                     value=10,
                     key=f"reps_{i}",
                 )
             with col2:
                 weight: float = st.number_input(
-                    f"Ciężar [kg] (Seria {i+1})",
+                    f"Weight [kg] (Set {i+1})",
                     min_value=0.0,
                     value=20.0,
                     step=0.5,
@@ -64,9 +64,9 @@ class SessionFormView(BaseFormView):
                 )
             sets_data.append({"reps": reps, "weight": weight})
 
-        # --- Formularz---
+        # --- Form---
         with st.form("confirm_form"):
-            submitted: bool = st.form_submit_button("💾 Zapisz sesję")
+            submitted: bool = st.form_submit_button("💾 Save Session")
 
             if submitted:
                 success: bool = self.data_manager.add_full_session(
@@ -74,7 +74,7 @@ class SessionFormView(BaseFormView):
                 )
                 if success:
                     st.success(
-                        f"✅ Sesja z dnia {session_date} została dodana pomyślnie!"
+                        f"✅ Session from {session_date} has been added successfully!"
                     )
                 else:
-                    st.error("❌ Błąd podczas dodawania sesji.")
+                    st.error("❌ Error while adding session.")

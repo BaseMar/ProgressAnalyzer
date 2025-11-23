@@ -164,7 +164,7 @@ def insert_exercise(engine, name: str, category: str, body_part: str) -> bool:
         return True
     except Exception as e:
         logger = logging.getLogger(__name__)
-        logger.exception("Błąd SQL przy dodawaniu ćwiczenia: %s", e)
+        logger.exception("SQL error when adding exercise: %s", e)
         return False
 
 

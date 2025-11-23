@@ -42,7 +42,7 @@ class TrainingAnalytics:
             self.df_sets["BodyPart"] = None
 
     def weekly_agg_df(self, col: str, agg: str = "mean") -> pd.DataFrame:
-        """Zwraca DataFrame z agregacją wg (Year, Week) oraz kolumną Value.Jeśli kolumna nie istnieje, tworzymy ją jako 0.0 (bez łamania starzejącego się UI)."""
+        """Return DataFrame with aggregation by (Year, Week) and a Value column. If column doesn't exist, create it as 0.0 (without breaking the aging UI)."""
         df = self.df_sets
 
         if col not in df.columns:
@@ -68,7 +68,7 @@ class TrainingAnalytics:
         return weekly
 
     def weekly_agg(self, col: Optional[str] = None, agg_func: str = "mean") -> dict[str, float]:
-        """Wrapper: zwraca current/previous/change.Dla sets_per_session: col=None, agg_func='sets_per_session' - kompatybilność zachowana."""
+        """Wrapper: returns current/previous/change. For sets_per_session: col=None, agg_func='sets_per_session' - backward compatibility maintained."""
         if agg_func == "sets_per_session":
             df = self.df_sets
             weekly = df.groupby(["Year", "Week"], as_index=False).agg(

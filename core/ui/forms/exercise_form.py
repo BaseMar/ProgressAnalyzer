@@ -33,26 +33,26 @@ class ExerciseFormView(BaseFormView):
 
     def __init__(self) -> None:
         """Initialize the exercise form view."""
-        super().__init__("Dodaj nowe ćwiczenie")
+        super().__init__("Add New Exercise")
         self.data_manager: DataManager = DataManager()
 
     def render_form(self) -> None:
         """Render the exercise form with name, category and body part selection."""
         with st.form("exercise_form"):
-            name: str = st.text_input("Nazwa ćwiczenia")
-            category: str = st.selectbox("Kategoria", EXERCISE_CATEGORIES)
-            body_part: str = st.selectbox("Partia mięśniowa", BODY_PARTS)
+            name: str = st.text_input("Exercise Name")
+            category: str = st.selectbox("Category", EXERCISE_CATEGORIES)
+            body_part: str = st.selectbox("Body Part", BODY_PARTS)
 
-            submitted: bool = st.form_submit_button("Dodaj ćwiczenie")
+            submitted: bool = st.form_submit_button("Add Exercise")
 
             if submitted:
                 if not name or not body_part:
-                    st.error("Nazwa i partia mięśniowa są wymagane!")
+                    st.error("Exercise name and body part are required!")
                     return
 
                 success: bool = self.data_manager.add_exercise(name, category, body_part)
 
                 if success:
-                    st.success(f"✅ Ćwiczenie '{name}' dodane pomyślnie!")
+                    st.success(f"✅ Exercise '{name}' added successfully!")
                 else:
-                    st.error("❌ Wystąpił błąd przy dodawaniu ćwiczenia.")
+                    st.error("❌ Error while adding exercise.")
