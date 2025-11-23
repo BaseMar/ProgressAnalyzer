@@ -16,13 +16,13 @@ class HistoryView:
 
     def render(self) -> None:
         """Render full history view"""
-        st.header("Historia treningów")
+        st.header("Workout History")
 
         weeks_raw: Any = self.service.get_weeks()
         # Normalize to a list of (year:int, week:int) tuples so types are explicit
         weeks = [(int(r[0]), int(r[1])) for r in weeks_raw] if weeks_raw is not None else []
         if not weeks:
-            st.info("Brak danych o treningach.")
+            st.info("No workout data available.")
             return
 
         self._render_week_navigation(weeks)
@@ -35,7 +35,7 @@ class HistoryView:
         col_prev, col_info, col_next = st.columns([1, 3, 1])
 
         with col_prev:
-            if st.button("⬅️ Poprzedni", key="hist_prev") and current_idx > 0:
+            if st.button("⬅️ Previous", key="hist_prev") and current_idx > 0:
                 st.session_state.current_week_idx = current_idx - 1
                 st.rerun()
 
@@ -45,12 +45,12 @@ class HistoryView:
                 year = int(year_week[0])
                 week = int(year_week[1])
                 st.markdown(
-                    f"<h3 style='text-align: center;'>Tydzień {week} / {year}</h3>",
+                    f"<h3 style='text-align: center;'>Week {week} / {year}</h3>",
                     unsafe_allow_html=True,
                 )
 
         with col_next:
-            if st.button("➡️ Następny", key="hist_next") and current_idx < len(weeks) - 1:
+            if st.button("➡️ Next", key="hist_next") and current_idx < len(weeks) - 1:
                 st.session_state.current_week_idx = current_idx + 1
                 st.rerun()
 
@@ -68,27 +68,27 @@ class HistoryView:
         )  # type: ignore[arg-type]
 
         if not week_sessions:
-            st.warning("Brak treningów w tym tygodniu.")
+            st.warning("No workouts in this week.")
             return
 
         for i, session in enumerate(week_sessions):
             # `session['date']` is a pandas Timestamp; cast for type-checking
             session_date = cast(pd.Timestamp, session["date"])
-            st.markdown(f"#### Sesja {i+1} - {session_date.strftime('%Y-%m-%d')}")
+            st.markdown(f"#### Session {i+1} - {session_date.strftime('%Y-%m-%d')}")
 
             col1, col2 = st.columns(2)
             with col1:
                 total_sets = int(cast(int, session["total_sets"]))
-                st.metric("Liczba serii", total_sets)
+                st.metric("Number of Sets", total_sets)
             with col2:
                 total_vol = (
                     float(cast(float, session["total_volume"]))
                     if session.get("total_volume") is not None
                     else 0.0
                 )
-                st.metric("Objętość", f"{total_vol:.0f} kg")
+                st.metric("Volume", f"{total_vol:.0f} kg")
 
-            with st.expander("Pokaż szczegóły ćwiczeń"):
+            with st.expander("Show Exercise Details"):
                 exercises_df = cast(pd.DataFrame, session["exercises"])
                 for _, ex in exercises_df.iterrows():
                     ex_vol = (
@@ -97,6 +97,6 @@ class HistoryView:
                         else 0.0
                     )
                     st.markdown(
-                        f"• **{ex['ExerciseName']}** — {ex['sets']} serii, "
-                        f"{ex['total_reps']} powtórzeń, objętość: {ex_vol:.0f} kg"
+                        f"• **{ex['ExerciseName']}** — {ex['sets']} sets, "
+                        f"{ex['total_reps']} reps, volume: {ex_vol:.0f} kg"
                     )

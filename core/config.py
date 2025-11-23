@@ -13,8 +13,8 @@ class AppConfig:
         if self.SIDEBAR_SECTIONS is None:
             self.SIDEBAR_SECTIONS = [
                 "Dashboard",
-                "Formularz",
-                "Analiza ćwiczeń",
-                "Analiza grup mięśniowych",
-                "Pomiary ciała",
+                "Forms",
+                "Exercise Analysis",
+                "Muscle Groups",
+                "Body Measurements",
             ]

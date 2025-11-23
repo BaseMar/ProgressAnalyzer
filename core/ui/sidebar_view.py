@@ -25,7 +25,7 @@ class SidebarView:
             )
 
             st.markdown(
-                '<div class="sidebar-title">Nawigacja:</div>', unsafe_allow_html=True
+                '<div class="sidebar-title">Navigation:</div>', unsafe_allow_html=True
             )
 
             if "current_section" not in st.session_state:

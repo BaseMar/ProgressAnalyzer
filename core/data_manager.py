@@ -99,7 +99,7 @@ class DataManager:
                 )
                 res = conn.execute(ex_id_q, {"name": exercise_name}).fetchone()
                 if not res:
-                    raise ValueError("Brak ćwiczenia")
+                    raise ValueError("Exercise not found")
                 exercise_id = res[0]
 
                 # insert workout exercise and get id

@@ -6,18 +6,18 @@ from typing import List, Optional
 @dataclass
 class WorkoutSet:
     """
-    Reprezentuje pojedynczą serię w danym ćwiczeniu.
+    Represents a single set in a given exercise.
 
-    Atrybuty:
+    Attributes:
     ----------
     set_number : int
-        Numer serii (np. 1, 2, 3)
+        Set number (e.g., 1, 2, 3)
     reps : int
-        Liczba powtórzeń w serii
+        Number of repetitions in the set
     weight : float
-        Użyty ciężar (0 jeśli ciężar ciała)
+        Weight used (0 if bodyweight)
     rpe : Optional[int]
-        Subiektywna intensywność wysiłku (Rate of Perceived Exertion), 1–10
+        Subjective intensity of effort (Rate of Perceived Exertion), 1–10
     """
 
     set_number: int
@@ -29,16 +29,16 @@ class WorkoutSet:
 @dataclass
 class WorkoutExercise:
     """
-    Reprezentuje jedno ćwiczenie w ramach sesji treningowej.
+    Represents one exercise within a workout session.
 
-    Atrybuty:
+    Attributes:
     ----------
     name : str
-        Nazwa ćwiczenia (np. "Incline Dumbbell Press")
+        Exercise name (e.g., "Incline Dumbbell Press")
     body_part : str
-        Główna partia mięśniowa (np. "Chest", "Back")
+        Main muscle group (e.g., "Chest", "Back")
     sets : List[WorkoutSet]
-        Lista serii wykonanych dla tego ćwiczenia
+        List of sets performed for this exercise
     """
 
     name: str
@@ -49,18 +49,18 @@ class WorkoutExercise:
 @dataclass
 class WorkoutSession:
     """
-    Reprezentuje całą sesję treningową użytkownika.
+    Represents a complete user workout session.
 
-    Atrybuty:
+    Attributes:
     ----------
     session_id : int
-        Unikalny identyfikator sesji w bazie danych
+        Unique session identifier in the database
     session_date : date
-        Data wykonania treningu
+        Date the workout was performed
     exercises : List[WorkoutExercise]
-        Lista ćwiczeń wykonanych podczas sesji
+        List of exercises performed during the session
     notes : Optional[str]
-        Dodatkowe notatki do treningu (np. samopoczucie, uwagi)
+        Additional notes about the workout (e.g., how you felt, comments)
     """
 
     session_id: int

@@ -12,7 +12,7 @@ class HistoryService:
         self.df["Year"] = self.df["SessionDate"].dt.isocalendar().year
 
     def get_weeks(self) -> Any:
-        """Zwraca posortowaną listę dostępnych tygodni (Year, Week)."""
+        """Return a sorted list of available weeks (Year, Week)."""
         self.df = self.df.dropna(subset=["Year", "Week"])
         self.df["Year"] = self.df["Year"].astype(int)
         self.df["Week"] = self.df["Week"].astype(int)
@@ -21,7 +21,7 @@ class HistoryService:
         return df_sorted.to_records(index=False)
 
     def get_week_sessions(self, year: int, week: int) -> Optional[list[dict[str, object]]]:
-        """Zwraca wszystkie treningi z danego tygodnia, z listą ćwiczeń."""
+        """Return all workouts from a given week with their exercise list."""
         week_df = self.df[(self.df["Year"] == year) & (self.df["Week"] == week)]
         if week_df.empty:
             return None

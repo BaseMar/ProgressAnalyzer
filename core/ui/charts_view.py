@@ -46,12 +46,12 @@ class ChartsView:
 
     # --- Main Dashboard Charts ---
     def _display_intensity_chart(self, analytics: Any) -> None:
-        st.subheader("Średnia intensywność tygodniowa")
+        st.subheader("Average Weekly Intensity")
 
         weekly_intensity = analytics.weekly_agg_df("Intensity", "mean")
 
         if weekly_intensity.empty:
-            st.info("Brak danych do wyświetlenia wykresu intensywności.")
+            st.info("No data available to display intensity chart.")
             return
 
         weekly_intensity = weekly_intensity.assign(
@@ -64,25 +64,25 @@ class ChartsView:
             weekly_intensity,
             x="Label",
             y="Value",
-            title="Trend intensywności treningowej",
+            title="Training Intensity Trend",
             markers=True,
             color_discrete_sequence=[self.colors.accent],
         )
 
         self._apply_common_layout(
             fig,
-            xaxis_title="Tydzień (rok-tydzień)",
-            yaxis_title="Średnia intensywność (%1RM)",
+            xaxis_title="Week (year-week)",
+            yaxis_title="Average Intensity (%1RM)",
         )
         st.plotly_chart(fig, width="stretch")
 
     def _display_volume_chart(self, analytics: Any) -> None:
         """Enhanced volume chart with Plotly"""
-        st.subheader("Łączna objętość tygodniowa")
+        st.subheader("Total Weekly Volume")
 
         weekly_volume = analytics.weekly_agg_df("Volume", "sum")
         if weekly_volume.empty:
-            st.info("Brak danych do wyświetlenia wykresu objętości.")
+            st.info("No data available to display volume chart.")
             return
 
         weekly_volume = weekly_volume.assign(
@@ -95,12 +95,12 @@ class ChartsView:
             weekly_volume,
             x="Label",
             y="Value",
-            title="Objętość treningowa w czasie",
+            title="Training Volume Over Time",
             color_discrete_sequence=[self.colors.accent_light],
         )
 
         self._apply_common_layout(
-            fig, xaxis_title="Tydzień (rok-tydzień)", yaxis_title="Objętość (kg)"
+            fig, xaxis_title="Week (year-week)", yaxis_title="Volume (kg)"
         )
         st.plotly_chart(fig, width="stretch")
 
@@ -109,9 +109,9 @@ class ChartsView:
         self, session_summary: pd.DataFrame, exercise_name: str
     ) -> None:
         """Render 1RM trend chart for specific exercise"""
-        st.subheader("Trend 1RM w czasie")
+        st.subheader("1RM Trend Over Time")
         if session_summary.empty:
-            st.info("Brak danych do wykresu.")
+            st.info("No data available for chart.")
             return
 
         fig = px.line(
@@ -119,12 +119,12 @@ class ChartsView:
             x="SessionDate",
             y="Est1RM",
             markers=True,
-            title=f"Szacowany 1RM dla: {exercise_name}",
+            title=f"Estimated 1RM for: {exercise_name}",
             color_discrete_sequence=[self.colors.accent],
         )
 
         self._apply_common_layout(
-            fig, xaxis_title="Data sesji", yaxis_title="Szacowany 1RM (kg)"
+            fig, xaxis_title="Session Date", yaxis_title="Estimated 1RM (kg)"
         )
         st.plotly_chart(fig, width="stretch")
 
@@ -132,23 +132,23 @@ class ChartsView:
         self, session_summary: pd.DataFrame, exercise_name: str
     ) -> None:
         """Render training volume chart for specific exercise"""
-        st.subheader("Objętość treningowa w czasie")
+        st.subheader("Training Volume Over Time")
         if session_summary.empty:
-            st.info("Brak danych do wykresu.")
+            st.info("No data available for chart.")
             return
 
         fig = px.bar(
             session_summary,
             x="SessionDate",
             y="TotalVolume",
-            title=f"Objętość treningowa dla: {exercise_name}",
+            title=f"Training Volume for: {exercise_name}",
             color_discrete_sequence=[self.colors.accent_light],
         )
 
         self._apply_common_layout(
             fig,
-            xaxis_title="Data sesji",
-            yaxis_title="Objętość (Powtórz. × Ciężar, kg)",
+            xaxis_title="Session Date",
+            yaxis_title="Volume (Reps × Weight, kg)",
         )
         st.plotly_chart(fig, width="stretch")
 
@@ -156,7 +156,7 @@ class ChartsView:
     def render_muscle_volume_chart(self, muscles: Any) -> None:
         df = muscles.volume_chart_data()
         if df.empty:
-            st.info("Brak danych do wyświetlenia wykresu objętości.")
+            st.info("No data available for volume chart.")
             return
 
         fig = px.bar(
@@ -165,11 +165,11 @@ class ChartsView:
             y="total_volume",
             color="total_volume",
             color_continuous_scale="Viridis",
-            title="Objętość według grup mięśniowych",
+            title="Volume by Muscle Group",
         )
 
         self._apply_common_layout(
-            fig, xaxis_title="Partia mięśniowa", yaxis_title="Objętość (kg)"
+            fig, xaxis_title="Muscle Group", yaxis_title="Volume (kg)"
         )
 
         st.plotly_chart(fig, width="stretch", key=f"muscle_volume_{id(df)}")
@@ -178,19 +178,19 @@ class ChartsView:
         df = muscles.intensity_chart_data()
 
         if df.empty:
-            st.info("Brak danych do wyświetlenia intensywności.")
+            st.info("No data available for intensity chart.")
             return
 
         fig = px.bar(
             df,
             x="BodyPart",
             y="mean_intensity",
-            title="Średnia intensywność na grupę mięśniową",
+            title="Average Intensity by Muscle Group",
             color_discrete_sequence=[self.colors.accent_light],
         )
 
         self._apply_common_layout(
-            fig, xaxis_title="Grupa mięśniowa", yaxis_title="Intensywność (%1RM)"
+            fig, xaxis_title="Muscle Group", yaxis_title="Intensity (%1RM)"
         )
         st.plotly_chart(fig, width="stretch")
 
@@ -207,16 +207,16 @@ class ChartsView:
         summary = muscles.muscle_groups_summary()
 
         if summary.empty:
-            st.info("Brak danych do podsumowania grup mięśniowych.")
+            st.info("No data available for muscle group summary.")
             return
 
         # Prepare user-friendly columns: Load badge and trend text
         def _load_badge(level: str) -> str:
             mapping = {
-                "za mało": "🔻 za mało",
+                "too little": "🔻 too little",
                 "OK": "✅ OK",
-                "za dużo": "⚠️ za dużo",
-                "brak danych": "❓ brak danych",
+                "too much": "⚠️ too much",
+                "no data": "❓ no data",
             }
             return mapping.get(level, str(level))
 
@@ -296,10 +296,10 @@ class ChartsView:
 
             if load_raw == "OK":
                 badge = f'<span class="badge badge-ok">OK</span>'
-            elif load_raw == "za mało":
-                badge = f'<span class="badge badge-low">za mało</span>'
-            elif load_raw == "za dużo":
-                badge = f'<span class="badge badge-high">za dużo</span>'
+            elif load_raw == "too little":
+                badge = f'<span class="badge badge-low">too little</span>'
+            elif load_raw == "too much":
+                badge = f'<span class="badge badge-high">too much</span>'
             else:
                 badge = f'<span class="badge">{_html.escape(load_raw)}</span>'
 
@@ -338,7 +338,7 @@ class ChartsView:
         table_html = (
             css
             + "<table class='muscle-table'><thead><tr>"
-            + "<th>Partia mięśniowa</th><th>Sesje</th><th>Sesje / tydzień</th><th>Śr. objętość / sesję (kg)</th><th>Zalecane (sesje/tydz)</th><th>Obciążenie</th><th>Trend</th><th>Ocena</th>"
+            + "<th>Muscle Group</th><th>Sessions</th><th>Sessions / Week</th><th>Avg Volume / Session (kg)</th><th>Recommended (sessions/week)</th><th>Load</th><th>Trend</th><th>Assessment</th>"
             + "</tr></thead><tbody>"
             + "".join(rows_html)
             + "</tbody></table>"
