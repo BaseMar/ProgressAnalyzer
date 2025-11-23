@@ -1,5 +1,6 @@
 import streamlit as st
 from typing import Any, Optional
+import pandas as pd
 
 from core.analytics.exercise import ExerciseAnalytics
 from core.analytics.muscles import MuscleAnalytics
@@ -228,9 +229,97 @@ class DashboardView:
         self.charts_view.render_muscle_summary_table(muscles)
 
     def _render_body_measurements(self):
-        """Render body measurements section"""
-        st.header("📏 Body Measurements")
-        st.info("Body measurements section - coming soon")
+        """Render body measurements section: filters, KPIs and charts."""
+        st.header("📏 Body Metrics")
+
+        # Load body data via DataManager
+        from core.data_manager import DataManager
+
+        data_mgr = DataManager()
+        body_data = data_mgr.load_body_data()
+        measurements = body_data.get("measurements")
+        composition = body_data.get("composition")
+
+        # --- Source filter for composition method ---
+        method_options = ["All"]
+        if composition is not None and not composition.empty:
+            methods = composition["Method"].dropna().unique().tolist()
+            method_options += sorted([m for m in methods if m not in method_options])
+        method = st.selectbox("Data Source", method_options, index=0)
+
+        # Prepare filtered dataframes (no date range filtering — use full history)
+        def _filter_df(df):
+            if df is None or df.empty:
+                return None
+            df2 = df.copy()
+            df2["MeasurementDate"] = pd.to_datetime(df2["MeasurementDate"]) if "MeasurementDate" in df2.columns else pd.to_datetime(df2["SessionDate"]) if "SessionDate" in df2.columns else None
+            if "Method" in df2.columns and method and method != "All":
+                df2 = df2[df2["Method"] == method]
+            return df2
+
+        measurements_f = _filter_df(measurements)
+        composition_f = _filter_df(composition)
+
+        # --- KPIs ---
+        kpi_cards = []
+        if composition_f is None or composition_f.empty:
+            st.info("No body composition data available for selected filters.")
+            # still render empty KPI placeholders
+            kpi_cards = [
+                {"title": "Weight", "value": "—", "delta": None},
+                {"title": "Muscle Mass", "value": "—", "delta": None},
+                {"title": "Body Fat %", "value": "—", "delta": None},
+            ]
+        else:
+            comp = composition_f.sort_values(by=["MeasurementDate"]).reset_index(drop=True)
+            latest = comp.iloc[-1]
+            prev = comp.iloc[-2] if comp.shape[0] > 1 else None
+
+            def _delta(curr, prev):
+                try:
+                    if prev is None:
+                        return None
+                    d = float(curr) - float(prev)
+                    sign = f"{d:+.1f}"
+                    return sign
+                except Exception:
+                    return None
+
+            w_val = f"{latest.get('Weight', '—'):.1f} kg" if pd.notna(latest.get("Weight", None)) else "—"
+            m_val = f"{latest.get('MuscleMass', '—'):.1f} kg" if pd.notna(latest.get("MuscleMass", None)) else "—"
+            bf_val = f"{latest.get('BodyFatPercentage', '—'):.1f}%" if pd.notna(latest.get("BodyFatPercentage", None)) else "—"
+
+            kpi_cards = [
+                {"title": "Weight", "value": w_val, "delta": _delta(latest.get('Weight', None), prev.get('Weight', None) if prev is not None else None)},
+                {"title": "Muscle Mass", "value": m_val, "delta": _delta(latest.get('MuscleMass', None), prev.get('MuscleMass', None) if prev is not None else None)},
+                {"title": "Body Fat %", "value": bf_val, "delta": _delta(latest.get('BodyFatPercentage', None), prev.get('BodyFatPercentage', None) if prev is not None else None)},
+            ]
+
+        self.kpi_view.display(kpi_cards)
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+        # --- Metric selectors (separate for measurements and composition) ---
+        col_m, col_c = st.columns(2)
+        with col_m:
+            measurement_options = ["Chest", "Waist", "Abdomen", "Hips", "Thigh", "Calf", "Biceps"]
+            selected_measurement = st.selectbox("Measurement Metric", measurement_options, index=0)
+
+        with col_c:
+            composition_options = ["Weight", "Muscle Mass", "Fat Mass", "Body Fat %", "Water Mass"]
+            selected_composition = st.selectbox("Composition Metric", composition_options, index=0)
+
+        # --- Charts: two time-series side-by-side ---
+        col_left, col_right = st.columns(2)
+        with col_left:
+            self.charts_view.render_metric_trend(measurements_f, None, selected_measurement)
+        with col_right:
+            self.charts_view.render_metric_trend(None, composition_f, selected_composition)
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+        # --- Radar chart (latest circumferences) ---
+        self.charts_view.render_circumference_radar(measurements_f)
 
     def _render_exercise_kpis(self, session_summary):
         latest_1rm = session_summary["Est1RM"].iloc[-1]

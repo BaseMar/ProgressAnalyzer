@@ -345,3 +345,173 @@ class ChartsView:
         )
 
         st.markdown(table_html, unsafe_allow_html=True)
+
+    # --- Body Metrics Charts ---
+    def render_body_metrics(self, measurements: Optional[pd.DataFrame], composition: Optional[pd.DataFrame]) -> None:
+        """Render body metrics section: weight trend, fat% & muscle mass trend, radar of latest measurements."""
+        st.subheader("Body Metrics")
+
+        if (measurements is None or measurements.empty) and (composition is None or composition.empty):
+            st.info("No body measurements or composition data available.")
+            return
+
+        # Line charts area
+        col1, col2 = st.columns(2)
+
+        # Weight trend (composition)
+        with col1:
+            st.markdown("**Weight Trend**")
+            if composition is None or composition.empty:
+                st.info("No weight data available.")
+            else:
+                dfw = composition.copy()
+                dfw = dfw.dropna(subset=["MeasurementDate"]).sort_values("MeasurementDate")
+                dfw["MeasurementDate"] = pd.to_datetime(dfw["MeasurementDate"]).dt.date
+                fig = px.line(dfw, x="MeasurementDate", y="Weight", markers=True, title="Weight over time", color_discrete_sequence=[self.colors.accent])
+                self._apply_common_layout(fig, xaxis_title="Date", yaxis_title="Weight (kg)")
+                st.plotly_chart(fig, use_container_width=True)
+
+        # Fat % & Muscle Mass trend
+        with col2:
+            st.markdown("**Fat % & Muscle Mass**")
+            if composition is None or composition.empty:
+                st.info("No composition data available.")
+            else:
+                dfc = composition.copy()
+                dfc = dfc.dropna(subset=["MeasurementDate"]).sort_values("MeasurementDate")
+                dfc["MeasurementDate"] = pd.to_datetime(dfc["MeasurementDate"]).dt.date
+                fig2 = px.line(dfc, x="MeasurementDate", y=["BodyFatPercentage", "MuscleMass"], markers=True, title="Fat % and Muscle Mass", color_discrete_sequence=[self.colors.accent, self.colors.accent_light])
+                self._apply_common_layout(fig2, xaxis_title="Date", yaxis_title="Value")
+                st.plotly_chart(fig2, use_container_width=True)
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+        # Radar chart of latest measurement (measurements df)
+        st.markdown("**Body Circumferences (latest)**")
+        if measurements is None or measurements.empty:
+            st.info("No circumference measurements available.")
+            return
+
+        dfm = measurements.copy()
+        dfm = dfm.dropna(subset=["MeasurementDate"]) if "MeasurementDate" in dfm.columns else dfm
+        dfm["MeasurementDate"] = pd.to_datetime(dfm["MeasurementDate"]) if "MeasurementDate" in dfm.columns else pd.to_datetime(dfm["SessionDate"]) if "SessionDate" in dfm.columns else None
+        latest_row = dfm.sort_values(by=["MeasurementDate"]).iloc[-1]
+
+        # pick typical circumference fields: Chest, Waist, Biceps, Thigh
+        radar_metrics = {
+            "Chest": latest_row.get("Chest", None),
+            "Waist": latest_row.get("Waist", None),
+            "Arms": latest_row.get("Biceps", None),
+            "Legs": latest_row.get("Thigh", None),
+        }
+
+        radar_df = pd.DataFrame({"metric": list(radar_metrics.keys()), "value": [float(v) if pd.notna(v) else 0.0 for v in radar_metrics.values()]})
+        if radar_df["value"].sum() == 0:
+            st.info("No valid circumference values found in latest measurement.")
+            return
+
+        fig_r = px.line_polar(radar_df, r="value", theta="metric", line_close=True, title="Body Circumferences")
+        fig_r.update_traces(fill='toself')
+        self._apply_common_layout(fig_r)
+        st.plotly_chart(fig_r, use_container_width=True)
+
+    def render_metric_trend(self, measurements: Optional[pd.DataFrame], composition: Optional[pd.DataFrame], metric: str) -> None:
+        """Render a single selected metric as a time-series (or radar for circumferences)."""
+        # Note: radar display is handled by `render_circumference_radar`.
+
+        # Map friendly metric names to dataframe columns
+        comp_map = {
+            "Weight": "Weight",
+            "Muscle Mass": "MuscleMass",
+            "Fat Mass": "FatMass",
+            "Body Fat %": "BodyFatPercentage",
+            "Water Mass": "WaterMass",
+        }
+
+        circ_cols = {
+            "Chest": "Chest",
+            "Waist": "Waist",
+            "Abdomen": "Abdomen",
+            "Hips": "Hips",
+            "Thigh": "Thigh",
+            "Calf": "Calf",
+            "Biceps": "Biceps",
+        }
+
+        # Composition metrics
+        if metric in comp_map:
+            col = comp_map[metric]
+            st.subheader(f"{metric} over time")
+            if composition is None or composition.empty:
+                st.info("No body composition data available for selected filters.")
+                return
+
+            dfc = composition.copy()
+            if "MeasurementDate" in dfc.columns:
+                dfc["MeasurementDate"] = pd.to_datetime(dfc["MeasurementDate"]).dt.date
+            dfc = dfc.dropna(subset=[col])
+            if dfc.empty:
+                st.info(f"No values for {metric} available in composition data.")
+                return
+
+            y_title = "%" if metric == "Body Fat %" else "kg"
+            fig = px.line(dfc, x="MeasurementDate", y=col, markers=True, title=f"{metric}", color_discrete_sequence=[self.colors.accent])
+            self._apply_common_layout(fig, xaxis_title="Date", yaxis_title=y_title)
+            st.plotly_chart(fig, use_container_width=True)
+            return
+
+        # Circumference metrics (single time-series)
+        if metric in circ_cols:
+            col = circ_cols[metric]
+            st.subheader(f"{metric} over time")
+            if measurements is None or measurements.empty:
+                st.info("No body circumference measurements available for selected filters.")
+                return
+
+            dfm = measurements.copy()
+            if "MeasurementDate" in dfm.columns:
+                dfm["MeasurementDate"] = pd.to_datetime(dfm["MeasurementDate"]).dt.date
+            dfm = dfm.dropna(subset=[col])
+            if dfm.empty:
+                st.info(f"No values for {metric} found in measurements.")
+                return
+
+            fig = px.line(dfm, x="MeasurementDate", y=col, markers=True, title=f"{metric} (cm)", color_discrete_sequence=[self.colors.accent_light])
+            self._apply_common_layout(fig, xaxis_title="Date", yaxis_title="cm")
+            st.plotly_chart(fig, use_container_width=True)
+            return
+
+        st.warning("Selected metric not recognized.")
+
+    def render_circumference_radar(self, measurements: Optional[pd.DataFrame]) -> None:
+        """Render radar chart of the latest circumference measurements."""
+        st.subheader("Body Circumferences (latest)")
+        if measurements is None or measurements.empty:
+            st.info("No circumference measurements available.")
+            return
+
+        dfm = measurements.copy()
+        dfm = dfm.dropna(subset=["MeasurementDate"]) if "MeasurementDate" in dfm.columns else dfm
+        dfm["MeasurementDate"] = pd.to_datetime(dfm["MeasurementDate"]) if "MeasurementDate" in dfm.columns else pd.to_datetime(dfm["SessionDate"]) if "SessionDate" in dfm.columns else None
+        try:
+            latest_row = dfm.sort_values(by=["MeasurementDate"]).iloc[-1]
+        except Exception:
+            st.info("No valid measurement rows found.")
+            return
+
+        radar_metrics = {
+            "Chest": latest_row.get("Chest", None),
+            "Waist": latest_row.get("Waist", None),
+            "Arms": latest_row.get("Biceps", None),
+            "Legs": latest_row.get("Thigh", None),
+        }
+
+        radar_df = pd.DataFrame({"metric": list(radar_metrics.keys()), "value": [float(v) if pd.notna(v) else 0.0 for v in radar_metrics.values()]})
+        if radar_df["value"].sum() == 0:
+            st.info("No valid circumference values found in latest measurement.")
+            return
+
+        fig_r = px.line_polar(radar_df, r="value", theta="metric", line_close=True, title="Body Circumferences")
+        fig_r.update_traces(fill='toself')
+        self._apply_common_layout(fig_r)
+        st.plotly_chart(fig_r, use_container_width=True)
