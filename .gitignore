@@ -86,4 +86,6 @@ build/
 __pycache__/
 *.pdf
 *.venv
-*.txt
+# Ignore all .txt files except requirements files
+!requirements.txt
+!requirements-dev.txt
