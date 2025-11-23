@@ -1,69 +1,102 @@
 import streamlit as st
+from typing import Any, Optional, cast
+
+import pandas as pd
+
 from ...services.history_service import HistoryService
 from ...styles.theme_manager import ThemeManager
 
+
 class HistoryView:
     """Enhanced history view with better navigation"""
-    
-    def __init__(self, df_sets, theme: ThemeManager):
-        self.service = HistoryService(df_sets)
-        self.theme = theme
-    
-    def render(self):
+
+    def __init__(self, df_sets: Any, theme: ThemeManager) -> None:
+        self.service: HistoryService = HistoryService(df_sets)
+        self.theme: ThemeManager = theme
+
+    def render(self) -> None:
         """Render full history view"""
         st.header("Historia treningów")
 
-        weeks = self.service.get_weeks()
-        if weeks.size == 0:
+        weeks_raw: Any = self.service.get_weeks()
+        # Normalize to a list of (year:int, week:int) tuples so types are explicit
+        weeks = [(int(r[0]), int(r[1])) for r in weeks_raw] if weeks_raw is not None else []
+        if not weeks:
             st.info("Brak danych o treningach.")
             return
-        
+
         self._render_week_navigation(weeks)
         self._render_week_details(weeks)
-    
-    def _render_week_navigation(self, weeks):
+
+    def _render_week_navigation(self, weeks: Any) -> None:
         """Render week navigation controls"""
-        current_idx = st.session_state.get("current_week_idx", len(weeks) - 1)
-        
+        current_idx: int = st.session_state.get("current_week_idx", len(weeks) - 1)
+
         col_prev, col_info, col_next = st.columns([1, 3, 1])
-        
+
         with col_prev:
-            if st.button("⬅️ Poprzedni", width='stretch') and current_idx > 0:
+            if st.button("⬅️ Poprzedni", key="hist_prev") and current_idx > 0:
                 st.session_state.current_week_idx = current_idx - 1
                 st.rerun()
-        
+
         with col_info:
-            year, week = weeks[current_idx]
-            st.markdown(f"<h3 style='text-align: center;'>Tydzień {week} / {year}</h3>", unsafe_allow_html=True)
-        
+                year_week = weeks[current_idx]
+                # year_week may be a numpy record or tuple - cast to ints for safety
+                year = int(year_week[0])
+                week = int(year_week[1])
+                st.markdown(
+                    f"<h3 style='text-align: center;'>Tydzień {week} / {year}</h3>",
+                    unsafe_allow_html=True,
+                )
+
         with col_next:
-            if st.button("➡️ Następny", width='stretch') and current_idx < len(weeks) - 1:
+            if st.button("➡️ Następny", key="hist_next") and current_idx < len(weeks) - 1:
                 st.session_state.current_week_idx = current_idx + 1
                 st.rerun()
-    
-    def _render_week_details(self, weeks):
+
+    def _render_week_details(self, weeks: Any) -> None:
         """Render detailed week information"""
-        current_idx = st.session_state.get("current_week_idx", len(weeks) - 1)
-        year, week = weeks[current_idx]
-        
-        week_sessions = self.service.get_week_sessions(year, week)
-        
+        current_idx: int = st.session_state.get("current_week_idx", len(weeks) - 1)
+        year_week = weeks[current_idx]
+        year = year_week[0]
+        week = year_week[1]
+
+        # mypy: underlying service returns Optional[list[dict]] where year/week may be numpy types.
+        # Use a narrow, runtime-validated call and ignore this specific arg-type complaint.
+        week_sessions: Optional[list[dict[str, object]]] = self.service.get_week_sessions(
+            year, week
+        )  # type: ignore[arg-type]
+
         if not week_sessions:
             st.warning("Brak treningów w tym tygodniu.")
             return
-        
+
         for i, session in enumerate(week_sessions):
-            st.markdown(f"#### Sesja {i+1} - {session['date'].strftime('%Y-%m-%d')}")
-            
+            # `session['date']` is a pandas Timestamp; cast for type-checking
+            session_date = cast(pd.Timestamp, session["date"])
+            st.markdown(f"#### Sesja {i+1} - {session_date.strftime('%Y-%m-%d')}")
+
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Liczba serii", session['total_sets'])
+                total_sets = int(cast(int, session["total_sets"]))
+                st.metric("Liczba serii", total_sets)
             with col2:
-                st.metric("Objętość", f"{session['total_volume']:.0f} kg")
-            
+                total_vol = (
+                    float(cast(float, session["total_volume"]))
+                    if session.get("total_volume") is not None
+                    else 0.0
+                )
+                st.metric("Objętość", f"{total_vol:.0f} kg")
+
             with st.expander("Pokaż szczegóły ćwiczeń"):
-                for _, ex in session["exercises"].iterrows():
+                exercises_df = cast(pd.DataFrame, session["exercises"])
+                for _, ex in exercises_df.iterrows():
+                    ex_vol = (
+                        float(cast(float, ex["total_volume"]))
+                        if ex.get("total_volume") is not None
+                        else 0.0
+                    )
                     st.markdown(
                         f"• **{ex['ExerciseName']}** — {ex['sets']} serii, "
-                        f"{ex['total_reps']} powtórzeń, objętość: {ex['total_volume']:.0f} kg"
+                        f"{ex['total_reps']} powtórzeń, objętość: {ex_vol:.0f} kg"
                     )

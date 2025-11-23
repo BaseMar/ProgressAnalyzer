@@ -1,5 +1,6 @@
 from pathlib import Path
 
+
 def load_css_files(path: str = "core/styles/css") -> str:
     css = ""
     base = Path(path)

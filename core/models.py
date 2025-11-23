@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import List, Optional
 
+
 @dataclass
 class WorkoutSet:
     """
@@ -18,10 +19,12 @@ class WorkoutSet:
     rpe : Optional[int]
         Subiektywna intensywność wysiłku (Rate of Perceived Exertion), 1–10
     """
+
     set_number: int
     reps: int
     weight: float
     rpe: Optional[int] = None
+
 
 @dataclass
 class WorkoutExercise:
@@ -37,9 +40,11 @@ class WorkoutExercise:
     sets : List[WorkoutSet]
         Lista serii wykonanych dla tego ćwiczenia
     """
+
     name: str
     body_part: str
     sets: List[WorkoutSet]
+
 
 @dataclass
 class WorkoutSession:
@@ -57,6 +62,7 @@ class WorkoutSession:
     notes : Optional[str]
         Dodatkowe notatki do treningu (np. samopoczucie, uwagi)
     """
+
     session_id: int
     session_date: date
     exercises: List[WorkoutExercise]
