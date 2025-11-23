@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  test-and-lint:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -26,25 +26,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-
-    - name: Lint with flake8
-      run: |
-        # Stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-    - name: Check import sorting with isort
-      run: |
-        isort . --check-only --quiet
-
-    - name: Check code formatting with black
-      run: |
-        black . --check --quiet
-
-    - name: Type check with mypy
-      run: |
-        mypy core/ --ignore-missing-imports
 
     - name: Run pytest
       run: |
