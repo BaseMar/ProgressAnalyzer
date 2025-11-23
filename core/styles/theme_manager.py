@@ -1,10 +1,13 @@
-import streamlit as st
-from typing import Dict, Optional
 from dataclasses import dataclass
+from typing import Dict, Optional
+
+import streamlit as st
+
 
 @dataclass
 class ColorPalette:
     """Data class for color management"""
+
     bg: str = "#222831"
     panel: str = "#393E46"
     accent: str = "#00ADB5"
@@ -13,18 +16,19 @@ class ColorPalette:
     text_muted: str = "#CCCCCC"
     sidebar_bg: str = "#1d2228"
 
+
 class ThemeManager:
     """
     Optimized theme manager for Streamlit applications.
     Handles styling with better organization and performance.
     """
-    
+
     def __init__(self, colors: Optional[ColorPalette] = None):
         self.colors = colors or ColorPalette()
         self.font_family = "'Poppins', sans-serif"
         self.base_font_size = "15px"
-        self._css_cache = None
-    
+        self._css_cache: Optional[str] = None
+
     def _generate_global_styles(self) -> str:
         """Generate global CSS styles"""
         return f"""
@@ -44,7 +48,7 @@ class ThemeManager:
             letter-spacing: 0.5px;
         }}
         """
-    
+
     def _generate_scrollbar_styles(self) -> str:
         """Generate scrollbar styles"""
         return f"""
@@ -60,7 +64,7 @@ class ThemeManager:
             background: {self.colors.panel};
         }}
         """
-    
+
     def _generate_button_styles(self) -> str:
         """Generate button styles"""
         return f"""
@@ -86,7 +90,7 @@ class ThemeManager:
             transform: scale(0.98);
         }}
         """
-    
+
     def _generate_kpi_styles(self) -> str:
         """Generate KPI card styles"""
         return f"""
@@ -142,7 +146,7 @@ class ThemeManager:
             font-weight: 500;
         }}
         """
-    
+
     def _generate_sidebar_styles(self) -> str:
         """Generates sidebar styles"""
         return f"""
@@ -169,7 +173,7 @@ class ThemeManager:
             display: none !important;
         }}
         """
-    
+
     def _generate_sidebar_button_styles(self) -> str:
         """Generates sidebar button style"""
         return f"""
@@ -216,7 +220,7 @@ class ThemeManager:
             padding: 0 !important;
         }}
         """
-    
+
     def _generate_footer_styles(self) -> str:
         """Generate footer styles"""
         return f"""
@@ -264,7 +268,7 @@ class ThemeManager:
             }}
         }}
         """
-    
+
     def _generate_additional_styles(self) -> str:
         """Generate additional utility styles"""
         return f"""
@@ -305,7 +309,7 @@ class ThemeManager:
             margin: 2rem 0;
         }}
         """
-    
+
     def generate_css(self) -> str:
         """Generate complete CSS with all styles"""
         if self._css_cache is None:
@@ -317,27 +321,29 @@ class ThemeManager:
                 self._generate_sidebar_styles(),
                 self._generate_sidebar_button_styles(),
                 self._generate_footer_styles(),
-                self._generate_additional_styles()
+                self._generate_additional_styles(),
             ]
             self._css_cache = "\n".join(styles)
         return f"<style>{self._css_cache}</style>"
-    
+
     def apply_theme(self) -> None:
         """Apply the complete theme to Streamlit"""
         st.markdown(self.generate_css(), unsafe_allow_html=True)
-    
+
     def update_colors(self, **kwargs) -> None:
         """Update color palette and clear cache"""
         for key, value in kwargs.items():
             if hasattr(self.colors, key):
                 setattr(self.colors, key, value)
         self._css_cache = None
-    
-    def create_kpi_card(self, title: str, value: str, icon: str = "", delta: Optional[str] = None) -> str:
+
+    def create_kpi_card(
+        self, title: str, value: str, icon: str = "", delta: Optional[str] = None
+    ) -> str:
         """Create a KPI card HTML"""
-        icon_html = f'<div class="kpi-icon">{icon}</div>' if icon else ''
-        delta_html = f'<div class="kpi-delta">{delta}</div>' if delta else ''
-        
+        icon_html = f'<div class="kpi-icon">{icon}</div>' if icon else ""
+        delta_html = f'<div class="kpi-delta">{delta}</div>' if delta else ""
+
         return f"""
         <div class="kpi-card">
             {icon_html}
@@ -346,7 +352,7 @@ class ThemeManager:
             {delta_html}
         </div>
         """
-    
+
     def create_footer(self, text: str) -> str:
         """Create footer HTML"""
         return f"""

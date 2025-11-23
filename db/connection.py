@@ -1,17 +1,23 @@
-import os
 import logging
+import os
+
+import streamlit as st
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
-from dotenv import load_dotenv
-import streamlit as st
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+
 @st.cache_resource
 def get_engine() -> Engine:
-    """Tworzy i cache'uje SQLAlchemy Engine. Oczekuje zmiennej środowiskowej DATABASE_URL"""
+    """Create and cache a SQLAlchemy Engine using the DATABASE_URL environment variable.
+
+    This function is cached by Streamlit to reuse the engine instance across reruns.
+    Raises RuntimeError if `DATABASE_URL` is not configured.
+    """
 
     database_url = os.getenv("DATABASE_URL")
     if not database_url:

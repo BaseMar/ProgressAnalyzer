@@ -1,5 +1,8 @@
 import pandas as pd
+from typing import Any, Optional
+
 from ..data_manager import DataManager
+
 
 class HistoryService:
     def __init__(self, df_sets: pd.DataFrame):
@@ -8,7 +11,7 @@ class HistoryService:
         self.df["Week"] = self.df["SessionDate"].dt.isocalendar().week
         self.df["Year"] = self.df["SessionDate"].dt.isocalendar().year
 
-    def get_weeks(self):
+    def get_weeks(self) -> Any:
         """Zwraca posortowaną listę dostępnych tygodni (Year, Week)."""
         self.df = self.df.dropna(subset=["Year", "Week"])
         self.df["Year"] = self.df["Year"].astype(int)
@@ -17,7 +20,7 @@ class HistoryService:
         df_sorted = df_unique.sort_values(by=["Year", "Week"])
         return df_sorted.to_records(index=False)
 
-    def get_week_sessions(self, year: int, week: int):
+    def get_week_sessions(self, year: int, week: int) -> Optional[list[dict[str, object]]]:
         """Zwraca wszystkie treningi z danego tygodnia, z listą ćwiczeń."""
         week_df = self.df[(self.df["Year"] == year) & (self.df["Week"] == week)]
         if week_df.empty:
@@ -25,10 +28,7 @@ class HistoryService:
 
         sessions = (
             week_df.groupby("SessionDate")
-            .agg(
-                total_sets=("ExerciseName", "count"),
-                total_volume=("Volume", "sum")
-            )
+            .agg(total_sets=("ExerciseName", "count"), total_volume=("Volume", "sum"))
             .reset_index()
             .sort_values("SessionDate")
         )
@@ -42,17 +42,19 @@ class HistoryService:
                 .agg(
                     sets=("ExerciseName", "count"),
                     total_reps=("Repetitions", "sum"),
-                    total_volume=("Volume", "sum")
+                    total_volume=("Volume", "sum"),
                 )
                 .reset_index()
                 .sort_values("ExerciseName")
             )
 
-            detailed_sessions.append({
-                "date": session_date,
-                "total_sets": int(session_row["total_sets"]),
-                "total_volume": int(session_row["total_volume"]),
-                "exercises": exercises
-            })
+            detailed_sessions.append(
+                {
+                    "date": session_date,
+                    "total_sets": int(session_row["total_sets"]),
+                    "total_volume": int(session_row["total_volume"]),
+                    "exercises": exercises,
+                }
+            )
 
         return detailed_sessions
