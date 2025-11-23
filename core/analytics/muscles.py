@@ -24,29 +24,16 @@ class MuscleAnalytics:
         # internal simple cache for computed summary
         self._cached_summary: Optional[pd.DataFrame] = None
 
-        # Default configuration for recommendations and trend calculation
+        # Only main categories are used
         self.recommended_sessions_map = {
-            # small muscles
-            "Biceps": (2, 4),
-            "Triceps": (2, 4),
-            "Forearms": (2, 4),
-            "Calves": (2, 4),
-            "Abs": (2, 4),
-            "Obliques": (2, 4),
-            # medium / large
-            "Shoulders": (1, 3),
             "Chest": (1, 3),
             "Back": (1, 3),
-            "Glutes": (1, 3),
-            "Hamstrings": (1, 3),
-            "Quadriceps": (1, 3),
-            # core / other
+            "Shoulders": (1, 3),
+            "Biceps": (2, 4),
+            "Triceps": (2, 4),
+            "Legs": (1, 3),
             "Core": (1, 3),
-            "Full Body": (1, 3),
-            "Cardio/Conditioning": (1, 3),
-            "Mobility": (1, 3),
         }
-
         self.default_recommended = (1, 3)
         self.tolerance_low = 0.9
         self.tolerance_high = 1.1
@@ -161,11 +148,11 @@ class MuscleAnalytics:
             rmin = row["recommended_min"]
             rmax = row["recommended_max"]
             if row["sessions_count"] == 0:
-                return "brak danych"
+                return "no data"
             if spw < rmin * self.tolerance_low:
-                return "za mało"
+                return "too little"
             if spw > rmax * self.tolerance_high:
-                return "za dużo"
+                return "too much"
             return "OK"
 
         summary["load_level"] = summary.apply(_load_level, axis=1)
@@ -198,22 +185,22 @@ class MuscleAnalytics:
                 row["sessions_count"] == 0
                 or self._available_weeks() < self.min_weeks_required
             ):
-                return "Za mało danych, aby wydać ocenę."
+                return "Not enough data to assess."
             trend = row["trend_pct"]
             level = row["load_level"]
-            if level == "za mało":
+            if level == "too little":
                 if trend > 0:
-                    return "Dobry kierunek — rośnie objętość. Możesz dalej zwiększać ostrożnie."
-                return "Zwiększ częstotliwość lub objętość treningową dla tej grupy."
+                    return "Good direction — volume is increasing. You can continue to increase cautiously."
+                return "Increase frequency or training volume for this group."
             if level == "OK":
                 if abs(trend) < self.trend_threshold_pct:
-                    return "Stabilnie — kontynuuj plan."
+                    return "Stable — continue your plan."
                 if trend > 0:
-                    return "Dobrze — widoczny progres."
-                return "Uwaga: objętość spada — monitoruj i w razie potrzeby zareaguj."
-            if level == "za dużo":
-                return "Uważaj na przetrenowanie — rozważ obniżenie objętości/intensywności."
-            return "Brak specyficznej oceny."
+                    return "Good — visible progress."
+                return "Warning: volume is decreasing — monitor and adjust if needed."
+            if level == "too much":
+                return "Watch out for overtraining — consider reducing volume/intensity."
+            return "No specific assessment."
 
         summary["assessment"] = summary.apply(_assessment, axis=1)
 

@@ -23,16 +23,8 @@ BODY_PARTS: List[str] = [
     "Shoulders",
     "Biceps",
     "Triceps",
-    "Forearms",
-    "Quadriceps",
-    "Hamstrings",
-    "Glutes",
-    "Calves",
-    "Abs",
-    "Obliques",
-    "Full Body",
-    "Cardio/Conditioning",
-    "Mobility",
+    "Legs",
+    "Core",
 ]
 
 
