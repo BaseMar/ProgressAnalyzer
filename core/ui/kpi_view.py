@@ -1,7 +1,7 @@
 import streamlit as st
 from typing import Optional, List, Dict, Any
 
-from ...styles.theme_manager import ThemeManager
+from ..styles.theme_manager import ThemeManager
 
 
 class KPIView:
