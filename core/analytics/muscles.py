@@ -38,7 +38,7 @@ class MuscleAnalytics:
         self.tolerance_low = 0.9
         self.tolerance_high = 1.1
         self.min_weeks_required = 4
-        self.trend_window_weeks = 4
+        self.trend_window_weeks = 1
         self.trend_threshold_pct = 5.0
 
     def _available_weeks(self) -> int:
@@ -164,17 +164,18 @@ class MuscleAnalytics:
             bp_weekly = weekly[weekly["BodyPart"] == bp].copy()
             if bp_weekly.empty:
                 return 0.0
+            
             # compute rolling windows by Year+Week ordering
             bp_weekly = bp_weekly.sort_values(["Year", "Week"]).reset_index(drop=True)
+            
             # get last N weeks and previous N weeks
             n = self.trend_window_weeks
-            if (
-                len(bp_weekly) < n * 2
-                or self._available_weeks() < self.min_weeks_required
-            ):
+            if (len(bp_weekly) < n * 2 or self._available_weeks() < self.min_weeks_required):
                 return 0.0
+            
             last_window = bp_weekly["WeeklyVolume"].iloc[-n:].mean()
             prev_window = bp_weekly["WeeklyVolume"].iloc[-(2 * n) : -n].mean()
+            
             return round(pct_change(last_window, prev_window), 2)
 
         summary["trend_pct"] = summary["BodyPart"].apply(_calc_trend)

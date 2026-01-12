@@ -35,7 +35,7 @@ class HistoryView:
         col_prev, col_info, col_next = st.columns([1, 3, 1])
 
         with col_prev:
-            if st.button("⬅️ Previous", key="hist_prev") and current_idx > 0:
+            if st.button("Previous", key="hist_prev", icon=":material/arrow_back_ios:", width="stretch") and current_idx > 0:
                 st.session_state.current_week_idx = current_idx - 1
                 st.rerun()
 
@@ -50,7 +50,7 @@ class HistoryView:
                 )
 
         with col_next:
-            if st.button("➡️ Next", key="hist_next") and current_idx < len(weeks) - 1:
+            if st.button("Next", key="hist_next", icon=":material/arrow_forward_ios:", width="stretch") and current_idx < len(weeks) - 1:
                 st.session_state.current_week_idx = current_idx + 1
                 st.rerun()
 

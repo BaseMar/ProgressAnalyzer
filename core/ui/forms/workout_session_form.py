@@ -1,11 +1,7 @@
-from datetime import date
-
+from datetime import date, time
 from typing import Any, Dict, List
-
 import streamlit as st
-
 from core.data_manager import DataManager
-
 from .base_form import BaseFormView
 
 
@@ -25,6 +21,8 @@ class SessionFormView(BaseFormView):
 
         # --- Data for session ---
         session_date: date = st.date_input("Session Date", date.today(), key="session_date")
+        session_start: time = st.time_input("Start Time", key="session_start")
+        session_end: time = st.time_input("End Time", key="session_end")
         notes: str = st.text_area("Notes (optional)", key="session_notes")
 
         st.markdown("---")
@@ -46,7 +44,7 @@ class SessionFormView(BaseFormView):
         sets_data: List[Dict[str, Any]] = []
         for i in range(num_sets):
             st.markdown(f"**Set {i+1}**")
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
             with col1:
                 reps: int = st.number_input(
                     f"Reps (Set {i+1})",
@@ -62,7 +60,20 @@ class SessionFormView(BaseFormView):
                     step=0.5,
                     key=f"weight_{i}",
                 )
-            sets_data.append({"reps": reps, "weight": weight})
+            with col3:
+                rir: int = st.number_input(
+                    f"RIR (Set {i+1})",
+                    min_value=0,
+                    max_value=10,
+                    value=2,
+                    key=f"rir_{i}",
+                )
+            
+            sets_data.append({
+                                "reps": reps,
+                                "weight": weight,
+                                "rir": rir
+                            })
 
         # --- Form---
         with st.form("confirm_form"):
@@ -70,8 +81,7 @@ class SessionFormView(BaseFormView):
 
             if submitted:
                 success: bool = self.data_manager.add_full_session(
-                    session_date, notes, selected_exercise, sets_data
-                )
+                    session_date, notes, selected_exercise, sets_data, session_start, session_end)
                 if success:
                     st.success(
                         f"✅ Session from {session_date} has been added successfully!"

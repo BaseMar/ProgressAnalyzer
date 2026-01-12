@@ -1,36 +1,27 @@
-import sys
-from pathlib import Path
-
 import streamlit as st
-
-sys.path.append(str(Path(__file__).parent))
-
-from core.analytics.training import TrainingAnalytics
 from core.config import AppConfig
-from core.data_manager import DataManager
-from core.services.kpi_service import KPIService
-from core.styles.theme_manager import ColorPalette, ThemeManager
+from core.styles.theme_manager import ThemeManager
 from core.ui.dashboard_mainpage.dashboard_view import DashboardView
+from data_loader import load_data
 
 
 class GymDashboardApp:
-    """Main application class for Gym Progress Dashboard"""
+    """Main application class for Gym Progress Dashboard."""
 
     def __init__(self):
         self.config = AppConfig()
         self.theme = ThemeManager()
-        self._initialize_session_state()
-        self._setup_page_config()
 
-    def _initialize_session_state(self):
-        """Initialize session state variables"""
-        if "current_section" not in st.session_state:
-            st.session_state.current_section = "Dashboard"
-        if "current_week_idx" not in st.session_state:
-            st.session_state.current_week_idx = 0
+        self._init_session_state()
+        self._init_page_config()
 
-    def _setup_page_config(self):
-        """Configure Streamlit page settings"""
+    def _init_session_state(self) -> None:
+        """Initialize Streamlit session state variables."""
+        st.session_state.setdefault("current_section", "Dashboard")
+        st.session_state.setdefault("current_week_idx", 0)
+
+    def _init_page_config(self) -> None:
+        """Configure Streamlit page settings."""
         st.set_page_config(
             page_title=self.config.APP_TITLE,
             page_icon="💪",
@@ -38,49 +29,32 @@ class GymDashboardApp:
             initial_sidebar_state="expanded",
         )
 
-    def _load_data(self):
-        """Load and prepare data (delegates to cached loader)."""
+    def _load_dependencies(self):
         try:
-            return cached_load_data()
-        except Exception as e:
-            st.error(f"Error loading data: {str(e)}")
+            return load_data()
+        except Exception as exc:
+            st.error(f"Failed to load data: {exc}")
             return None, None, None
 
-
-    def run(self):
-        """Main application entry point"""
-        # Apply theme
+    def run(self) -> None:
+        """Main application entry point."""
         self.theme.apply_theme()
 
-        # Load data
-        sets_df, analytics, kpi_service = self._load_data()
+        sets_df, analytics, kpi_service = self._load_dependencies()
 
         if analytics is None:
-            st.error("Failed to load data. Please check your data source.")
             return
 
-        # Initialize dashboard view
-        dashboard = DashboardView(sets_df, analytics, kpi_service, self.theme)
-
-        # Render application
+        dashboard = DashboardView(
+            sets_df=sets_df,
+            analytics=analytics,
+            kpi_service=kpi_service,
+            theme=self.theme,
+        )
         dashboard.render()
 
 
-@st.cache_data
-def cached_load_data():
-    """Cached helper to load data from the data manager and prepare analytics/services.
-
-    Cached with Streamlit so UI interactions don't reload DB repeatedly.
-    """
-    data_manager = DataManager()
-    sets_df = data_manager.load_sets()
-    analytics = TrainingAnalytics(sets_df)
-    kpi_service = KPIService(analytics)
-    return sets_df, analytics, kpi_service
-
-
 def main():
-    """Application entry point"""
     app = GymDashboardApp()
     app.run()
 
