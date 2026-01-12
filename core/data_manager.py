@@ -1,6 +1,6 @@
 import logging
 from typing import Any, Dict, List
-
+from datetime import time
 import pandas as pd
 from sqlalchemy import select, text
 
@@ -69,7 +69,7 @@ class DataManager:
             logger.exception("add_exercise failed: %s", e)
             return False
 
-    def add_full_session(self, session_date: Any, notes: str, exercise_name: str, sets_data: List[Dict[str, Any]]) -> bool:
+    def add_full_session(self, session_date: Any, notes: str, exercise_name: str, sets_data: List[Dict[str, Any]], session_start: time, session_end: time ) -> bool:
         """Insert a complete workout session including exercise and sets.
 
         Returns True on success or re-raises the exception if the operation fails.
@@ -87,10 +87,10 @@ class DataManager:
                 else:
                     # insert_session should return inserted id (use OUTPUT or RETURNING)
                     insert_q = text(
-                        "INSERT INTO WorkoutSessions (SessionDate, Notes) OUTPUT INSERTED.SessionID VALUES (:date, :notes)"
+                        "INSERT INTO WorkoutSessions (SessionDate, Notes, StartTime, EndTime) OUTPUT INSERTED.SessionID  VALUES (:date, :notes, :start_time, :end_time)"
                     )
                     session_id = conn.execute(
-                        insert_q, {"date": session_date, "notes": notes}
+                        insert_q, {"date": session_date, "notes": notes, "start_time": session_start, "end_time": session_end}
                     ).scalar()
 
                 # get exercise id
@@ -113,7 +113,7 @@ class DataManager:
                 # insert sets
                 for idx, s in enumerate(sets_data, start=1):
                     ins_set = text(
-                        "INSERT INTO WorkoutSets (WorkoutExerciseID, SetNumber, Repetitions, Weight) VALUES (:weid, :num, :reps, :weight)"
+                        "INSERT INTO WorkoutSets (WorkoutExerciseID, SetNumber, Repetitions, Weight, RIR) VALUES (:weid, :num, :reps, :weight, :rir)"
                     )
                     conn.execute(
                         ins_set,
@@ -122,6 +122,7 @@ class DataManager:
                             "num": idx,
                             "reps": s["reps"],
                             "weight": s["weight"],
+                            "rir": s["rir"]
                         },
                     )
             return True

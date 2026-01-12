@@ -51,7 +51,7 @@ def get_all_sets(engine) -> pd.DataFrame:
     query = text(
         """
         SELECT ws2.SetID, ws.SessionDate, e.ExerciseName, e.BodyPart, ws2.SetNumber, 
-               ws2.Repetitions, ws2.Weight, (ws2.Repetitions * ws2.Weight) AS Volume, ws2.RPE
+               ws2.Repetitions, ws2.Weight, (ws2.Repetitions * ws2.Weight) AS Volume, ws2.RIR
         FROM WorkoutSets ws2
         JOIN WorkoutExercises we ON ws2.WorkoutExerciseID = we.WorkoutExerciseID
         JOIN WorkoutSessions ws ON we.SessionID = ws.SessionID
