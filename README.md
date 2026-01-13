@@ -1,3 +1,45 @@
+# Gym Progress Analyzer
+
+A Python-based analytics application for tracking and analyzing gym training progress.
+The project focuses on clean data modeling, reproducible metrics, and separation of concerns
+between data access, analytics, and UI.
+
+## Key Features
+
+- Workout session tracking (sets, reps, volume, intensity, RIR)
+- Exercise-level strength and volume progression
+- Training frequency and fatigue analysis
+- Body composition and measurement trends
+- Correlation analysis between volume, intensity, and strength
+- Interactive dashboard for data exploration
+
+## Architecture Overview
+
+The project follows a layered architecture:
+
+UI (Streamlit)
+│
+├── Services (application logic)
+│
+├── Metrics (pure analytics, stateless)
+│
+├── Models (dataclasses, domain objects)
+│
+└── Database (SQL Server)
+
+
+### Core Principles
+
+- **UI does not compute metrics**
+- **Services orchestrate data flow**
+- **Metrics are pure, deterministic functions**
+- **Models reflect database structure**
+- **No business logic inside the database layer**
+
+---
+
+## Project Structure
+
 ```
 Analizator progresu na siłowni
 ├─ app.py
@@ -63,3 +105,36 @@ Analizator progresu na siłowni
 └─ requirements.txt
 
 ```
+
+---
+
+## Metrics Engine
+
+All analytics are computed through a centralized metrics engine.
+
+- Each metric module exposes a single `compute_*` function
+- Metrics are registered in a registry
+- The engine executes all metrics in a deterministic order
+
+This design allows:
+- Easy extensibility
+- Clear testing boundaries
+- No coupling between metrics
+
+---
+
+## Tech Stack
+
+- Python 3.11+
+- Pandas
+- SQLAlchemy
+- Microsoft SQL Server
+- Streamlit
+
+---
+
+## Future Improvements
+
+- Automated tests for metrics
+- Caching layer for expensive analytics
+- ML-based progression prediction
