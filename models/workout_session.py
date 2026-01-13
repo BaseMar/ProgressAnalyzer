@@ -3,8 +3,8 @@ from datetime import date, time
 
 
 @dataclass(frozen=True)
-class Session:
+class WorkoutSession:
     session_id: int
-    date: date
+    session_date: date
     start_time: time | None
     end_time: time | None

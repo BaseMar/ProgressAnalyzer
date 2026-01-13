@@ -1,5 +1,5 @@
 from .session import Session
-from .exercise import ExerciseSet
+from .exercise_set import ExerciseSet
 from .body import BodyCompositionEntry
 
 __all__ = [
