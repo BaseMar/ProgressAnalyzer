@@ -1,21 +1,27 @@
 from dataclasses import dataclass
-from typing import List, Optional
 
-from models.session import WorkoutSession, WorkoutExercise, WorkoutSet
+from models.workout_session import WorkoutSession
+from models.workout_exercise import WorkoutExercise
+from models.workout_set import WorkoutSet
 from models.exercise import Exercise
-from models.body import BodyComposition, BodyMeasurement
+from models.muscle_group import MuscleGroup
+from models.body_measurement import BodyMeasurement
+from models.body_composition import BodyComposition
 
 
 @dataclass(frozen=True)
 class MetricsInput:
-    """Input data structure for metrics computations."""
+    """
+    Immutable container with all data required to compute metrics.
+    Acts as a contract between data layer and metrics engine.
+    """
 
-    # --- training ---
-    sessions: List[WorkoutSession]
-    workout_exercises: List[WorkoutExercise]
-    sets: List[WorkoutSet]
-    exercises: List[Exercise]
+    sessions: list[WorkoutSession]
+    workout_exercises: list[WorkoutExercise]
+    sets: list[WorkoutSet]
 
-    # --- body ---
-    body_composition: Optional[List[BodyComposition]] = None
-    body_measurements: Optional[List[BodyMeasurement]] = None
+    exercises: list[Exercise]
+    muscle_groups: list[MuscleGroup]
+
+    body_measurements: list[BodyMeasurement]
+    body_composition: list[BodyComposition]

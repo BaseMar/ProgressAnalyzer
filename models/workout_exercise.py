@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class Exercise:
+class WorkoutExercise:
+    workout_exercise_id: int
+    session_id: int
     exercise_id: int
-    name: str
-    primary_muscle_group_id: int | None

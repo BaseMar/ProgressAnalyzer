@@ -2,12 +2,6 @@
 Analizator progresu na siłowni
 ├─ app.py
 ├─ core
-│  ├─ analytics
-│  │  ├─ base.py
-│  │  ├─ exercise.py
-│  │  ├─ muscles.py
-│  │  ├─ training.py
-│  │  └─ __init__.py
 │  ├─ config.py
 │  ├─ data_manager.py
 │  ├─ models.py
@@ -45,16 +39,25 @@ Analizator progresu na siłowni
 │  ├─ exercise_metrics.py
 │  ├─ fatigue_metrics.py
 │  ├─ frequency_metrics.py
+│  ├─ input.py
 │  ├─ metrics_engine.py
 │  ├─ progress_metrics.py
 │  ├─ registry.py
 │  ├─ session_metrics.py
 │  ├─ set_metrics.py
+│  ├─ utils
+│  │  ├─ strength.py
+│  │  └─ __init__.py
 │  └─ __init__.py
 ├─ models
 │  ├─ body.py
+│  ├─ body_composition.py
+│  ├─ body_measurement.py
 │  ├─ exercise.py
-│  ├─ session.py
+│  ├─ muscle_group.py
+│  ├─ workout_exercise.py
+│  ├─ workout_session.py
+│  ├─ workout_set.py
 │  └─ __init__.py
 ├─ README.md
 └─ requirements.txt
