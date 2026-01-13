@@ -1,50 +1,101 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict
 
-from core.analytics.exercise import ExerciseAnalytics
-from core.analytics.muscles import MuscleAnalytics
+from core.models import WorkoutExercise, WorkoutSession
+from metrics.metrics_engine import compute_all_metrics
+from metrics.input import MetricsInput
+from core.data_manager import DataManager
+from models.body_composition import BodyComposition
+from models.body_measurement import BodyMeasurement
+from models.exercise import Exercise
+from models.workout_set import WorkoutSet
 
 
 class DashboardService:
-    """Service layer that wraps analytics objects for the UI.
+    """
+    Service layer responsible for computing and exposing all dashboard metrics.
 
-    Purpose:
-    - Keep UI code thin by exposing concise methods returning ready-to-render
-      results (dataframes, KPI dicts, summaries).
-    - Acts as the single integration point between UI and analytics logic.
+    Acts as the integration layer between:
+    - database (DataManager)
+    - metrics engine
+    - UI
     """
 
-    def __init__(self, analytics: Any, kpi_service: Any) -> None:
-        self.analytics: Any = analytics
-        self.kpi_service: Any = kpi_service
-        # exercise & muscles helper instances operate on the same df_sets
-        self.exercise_analytics: ExerciseAnalytics = ExerciseAnalytics(
-            analytics.df_sets
-        )
-        self.muscles: MuscleAnalytics = MuscleAnalytics(analytics.df_sets)
+    def __init__(self, data_manager: DataManager) -> None:
+        self.data_manager = data_manager
 
-    def get_dashboard_kpis(self) -> Dict[str, Any]:
-        """Return KPIs for the main dashboard (delegates to KPI service)."""
-        return self.kpi_service.get_kpis()
-
-    def list_exercises(self) -> list[str]:
-        return self.exercise_analytics.list_exercises()
-
-    def get_exercise_analysis(self, exercise_name: str) -> Tuple[Any, Dict[str, Any], Any]:
-        """Compute exercise-level artifacts used by the UI.
-
-        Returns: (session_summary_df, kpis_dict, df_history)
+    def compute_dashboard_metrics(self) -> Dict[str, dict]:
         """
-        df_ex = self.exercise_analytics.filter_exercise(exercise_name)
-        session_summary = self.exercise_analytics.compute_session_summary(df_ex)
-        kpis = self.exercise_analytics.compute_kpis(session_summary)
-        df_history = self.exercise_analytics.compute_history_table(df_ex)
-        return session_summary, kpis, df_history
+        Load all required data, compute metrics and return results
+        ready for UI consumption.
+        """
 
-    def get_muscle_data(self, date_from: Optional[str] = None, date_to: Optional[str] = None) -> Tuple[MuscleAnalytics, Dict[str, Any], Any]:
-        """Return a MuscleAnalytics instance (optionally filtered) and muscle-level kpis & summary."""
-        muscles = self.muscles
-        if date_from or date_to:
-            muscles = muscles.filter_dates(date_from, date_to)
-        kpis = muscles.muscle_kpis()
-        summary = muscles.muscle_groups_summary()
-        return muscles, kpis, summary
+        metrics_input = self._build_metrics_input()
+        return compute_all_metrics(metrics_input)
+
+    def _build_metrics_input(self) -> MetricsInput:
+        """
+        Load raw data from the database and construct MetricsInput.
+        """
+
+        # --- load raw data ---
+        sessions_df = self.data_manager.load_sessions()
+        exercises_df = self.data_manager.load_exercises()
+        sets_df = self.data_manager.load_sets()
+        body_data = self.data_manager.load_body_data()
+
+        # --- map DataFrames -> domain models ---
+        sessions = [WorkoutSession(
+                session_id=row.SessionID,
+                session_date=row.SessionDate,
+                start_time=row.StartTime,
+                end_time=row.EndTime,)
+            for _, row in sessions_df.iterrows()]
+
+        exercises = [
+            Exercise(
+                exercise_id=row.ExerciseID,
+                name=row.ExerciseName,
+                primary_muscle_group_id=row.PrimaryMuscleGroupID, )
+            for _, row in exercises_df.iterrows()]
+
+        workout_exercises = [
+            WorkoutExercise(
+                workout_exercise_id=row.WorkoutExerciseID,
+                session_id=row.SessionID,
+                exercise_id=row.ExerciseID,)
+            for _, row in sets_df.drop_duplicates("WorkoutExerciseID").iterrows()]
+
+        sets = [
+            WorkoutSet(
+                workout_exercise_id=row.WorkoutExerciseID,
+                set_number=row.SetNumber,
+                repetitions=row.Repetitions,
+                weight=row.Weight,
+                rir=row.RIR,
+            )
+            for _, row in sets_df.iterrows()
+        ]
+
+        body_measurements = [
+            BodyMeasurement(
+                date=row.Date,
+                measurement_type=row.Type,
+                value=row.Value,)
+            for _, row in body_data["measurements"].iterrows()]
+
+        body_composition = [
+            BodyComposition(
+                date=row.Date,
+                weight=row.Weight,
+                fat_percentage=row.FatPercentage,)
+            for _, row in body_data["composition"].iterrows()]
+
+        return MetricsInput(
+            sessions=sessions,
+            workout_exercises=workout_exercises,
+            sets=sets,
+            exercises=exercises,
+            muscle_groups=[],
+            body_measurements=body_measurements,
+            body_composition=body_composition,
+        )
