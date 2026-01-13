@@ -17,6 +17,7 @@ between data access, analytics, and UI.
 
 The project follows a layered architecture:
 
+```
 UI (Streamlit)
 │
 ├── Services (application logic)
@@ -26,7 +27,7 @@ UI (Streamlit)
 ├── Models (dataclasses, domain objects)
 │
 └── Database (SQL Server)
-
+```
 
 ### Core Principles
 
