@@ -11,13 +11,9 @@ def get_workout_sessions(engine) -> pd.DataFrame:
     """
     query = text(
         """
-        SELECT ws.SessionID, ws.SessionDate, COUNT(DISTINCT we.ExerciseID) AS ExerciseCount, 
-               SUM(ws2.Repetitions * ws2.Weight) AS TotalVolume
+        SELECT ws.SessionID, ws.SessionDate, ws.StartTime, ws.EndTime
         FROM WorkoutSessions ws
-        JOIN WorkoutExercises we ON ws.SessionID = we.SessionID
-        JOIN WorkoutSets ws2 ON we.WorkoutExerciseID = ws2.WorkoutExerciseID
-        GROUP BY ws.SessionID, ws.SessionDate
-        ORDER BY ws.SessionDate;
+        ORDER BY ws.SessionDate DESC;
     """
     )
     with engine.connect() as conn:

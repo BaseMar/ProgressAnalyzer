@@ -1,7 +1,5 @@
 import streamlit as st
-from core.config import AppConfig
-from core.styles.theme_manager import ThemeManager
-from core.ui.dashboard_mainpage.dashboard_view import DashboardView
+from ui.dashboard_mainpage.dashboard_view import DashboardView
 from data_loader import load_data
 
 
@@ -9,21 +7,12 @@ class GymDashboardApp:
     """Main application class for Gym Progress Dashboard."""
 
     def __init__(self):
-        self.config = AppConfig()
-        self.theme = ThemeManager()
-
-        self._init_session_state()
         self._init_page_config()
-
-    def _init_session_state(self) -> None:
-        """Initialize Streamlit session state variables."""
-        st.session_state.setdefault("current_section", "Dashboard")
-        st.session_state.setdefault("current_week_idx", 0)
 
     def _init_page_config(self) -> None:
         """Configure Streamlit page settings."""
         st.set_page_config(
-            page_title=self.config.APP_TITLE,
+            page_title="Gym Progress Dashboard",
             page_icon="💪",
             layout="wide",
             initial_sidebar_state="expanded",
@@ -38,9 +27,8 @@ class GymDashboardApp:
 
     def run(self) -> None:
         """Main application entry point."""
-        self.theme.apply_theme()
         metrics, sets_df = self._load_dependencies()
-        dashboard = DashboardView(metrics=metrics, sets_df=sets_df, theme=self.theme)
+        dashboard = DashboardView(metrics=metrics, sets_df=sets_df)
         dashboard.render()
 
 

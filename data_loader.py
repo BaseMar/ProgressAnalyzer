@@ -1,5 +1,5 @@
-from core.data_manager import DataManager
-from core.mapper import *
+from data_manager import DataManager
+from mapper import *
 import streamlit as st
 
 from metrics.input import MetricsInput
