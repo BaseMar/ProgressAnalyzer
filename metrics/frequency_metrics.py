@@ -26,7 +26,7 @@ def compute_frequency_metrics(input: MetricsInput) -> dict:
     for we in input.workout_exercises:
         workout_exercises_by_session[we.session_id].append(we)
 
-    exercise_id_to_name = {e.exercise_id: e.exercise_name for e in input.exercises}
+    exercise_id_to_name = {e.exercise_id: e.name for e in input.exercises}
     exercise_id_to_bodypart = {e.exercise_id: e.body_part for e in input.exercises if e.body_part}
 
     # ---GLOBAL FREQUENCY
