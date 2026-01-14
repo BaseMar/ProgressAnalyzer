@@ -9,8 +9,11 @@ via MetricsInput. No database or UI dependencies are allowed here.
 """
 
 from collections import defaultdict
+from datetime import datetime, timedelta
 from statistics import mean
 from typing import Dict, Any
+
+import streamlit
 
 from metrics.input import MetricsInput
 
@@ -79,7 +82,15 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         # Session duration in minutes
         duration_minutes = None
         if session.start_time and session.end_time:
-            duration_minutes = (session.end_time - session.start_time).total_seconds() / 60
+            try:
+                start_dt = datetime.combine(session.session_date, session.start_time)
+                end_dt = datetime.combine(session.session_date, session.end_time)
+                if end_dt < start_dt:
+                    end_dt += timedelta(days=1)
+
+                duration_minutes = (end_dt - start_dt).total_seconds() / 60
+            except Exception:
+                duration_minutes = None
 
         total_sets = len(sets)
         total_reps = sum(s.repetitions for s in sets)
@@ -93,6 +104,7 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         sets_to_failure = sum(1 for s in sets if s.rir == 0)
 
         per_session[session_id] = {
+            "session_date": session.session_date,
             "duration_minutes": duration_minutes,
             "total_sets": total_sets,
             "total_reps": total_reps,
