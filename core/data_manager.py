@@ -11,6 +11,7 @@ from db.queries import (
     get_body_measurements,
     get_exercise_id_by_name,
     get_exercises,
+    get_sets_raw,
     get_workout_sessions,
     insert_body_composition,
     insert_body_measurements,
@@ -42,8 +43,8 @@ class DataManager:
         """Load all exercises from the database."""
         return get_exercises(self.engine)
 
-    def load_sets(self) -> pd.DataFrame:
-        """Load all workout sets with detailed information."""
+    def load_sets_ui(self) -> pd.DataFrame:
+        """Sets prepared for UI (joins, names, volume)."""
         return get_all_sets(self.engine)
 
     def load_body_data(self) -> dict[str, pd.DataFrame]:
@@ -153,3 +154,28 @@ class DataManager:
         except Exception as e:
             logger.exception("add_body_composition failed: %s", e)
             return False
+
+    def load_sets_raw(self) -> pd.DataFrame:
+        """Raw workout sets for metrics (IDs only)."""
+        return get_sets_raw(self.engine)
+
+    def load_workout_exercises(self) -> pd.DataFrame:
+        query = text(
+            """
+            SELECT WorkoutExerciseID, SessionID, ExerciseID
+            FROM WorkoutExercises
+            """
+        )
+        with self.engine.connect() as conn:
+            return pd.read_sql(query, conn)
+
+
+    def load_muscle_groups(self) -> pd.DataFrame:
+        query = text(
+            """
+            SELECT MuscleGroupID, Name
+            FROM MuscleGroups
+            """
+        )
+        with self.engine.connect() as conn:
+            return pd.read_sql(query, conn)

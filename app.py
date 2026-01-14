@@ -39,18 +39,8 @@ class GymDashboardApp:
     def run(self) -> None:
         """Main application entry point."""
         self.theme.apply_theme()
-
-        sets_df, analytics, kpi_service = self._load_dependencies()
-
-        if analytics is None:
-            return
-
-        dashboard = DashboardView(
-            sets_df=sets_df,
-            analytics=analytics,
-            kpi_service=kpi_service,
-            theme=self.theme,
-        )
+        metrics, sets_df = self._load_dependencies()
+        dashboard = DashboardView(metrics=metrics, sets_df=sets_df, theme=self.theme)
         dashboard.render()
 
 

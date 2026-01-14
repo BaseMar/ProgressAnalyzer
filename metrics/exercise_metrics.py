@@ -37,8 +37,8 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
     workout_to_exercise = {we.workout_exercise_id: we.exercise_id for we in input.workout_exercises}
 
     # workout_exercise_id -> session_date
-    workout_to_date = {we.workout_exercise_id: we.session_date for we in input.workout_exercises}
-
+    session_id_to_date = {s.session_id: s.session_date for s in input.sessions}
+    workout_to_date = {we.workout_exercise_id: session_id_to_date.get(we.session_id)for we in input.workout_exercises}
     sets_by_exercise: Dict[int, List] = defaultdict(list)
 
     for workout_set in input.sets:

@@ -272,3 +272,19 @@ def insert_session(engine, date, notes):
     )
     with engine.begin() as conn:
         conn.execute(query, {"date": date, "notes": notes})
+
+def get_sets_raw(engine) -> pd.DataFrame:
+    query = text(
+        """
+        SELECT
+            ws2.WorkoutExerciseID,
+            ws2.SetNumber,
+            ws2.Repetitions,
+            ws2.Weight,
+            ws2.RIR
+        FROM WorkoutSets ws2
+        ORDER BY ws2.WorkoutExerciseID, ws2.SetNumber
+        """
+    )
+    with engine.connect() as conn:
+        return pd.read_sql(query, conn)
