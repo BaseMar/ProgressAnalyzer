@@ -22,49 +22,42 @@ class DashboardView:
         avg_sessions_per_week = global_metrics.get("avg_sessions_per_week")
         avg_duration = global_metrics.get("avg_session_duration")
 
-        kpi_cols[0].metric("Liczba sesji", total_sessions)
-        kpi_cols[1].metric("Sesje / tydzień",round(avg_sessions_per_week, 2) if avg_sessions_per_week else "—",)
-        kpi_cols[2].metric("Średni wolumen / sesja",round(avg_volume, 1) if avg_volume else "—",)
-        kpi_cols[3].metric("Średnia liczba serii / sesja",round(avg_sets, 1) if avg_sets else "—",)
-        kpi_cols[4].metric("Średni czas sesji (min)",round(avg_duration, 1) if avg_duration else "—",)
+        kpi_cols[0].metric("Total Sessions", total_sessions)
+        kpi_cols[1].metric("Sessions / Week", round(avg_sessions_per_week, 2) if avg_sessions_per_week else "—")
+        kpi_cols[2].metric("Avg Volume / Session", round(avg_volume, 1) if avg_volume else "—")
+        kpi_cols[3].metric("Avg Sets / Session", round(avg_sets, 1) if avg_sets else "—")
+        kpi_cols[4].metric("Avg Session Duration (min)", round(avg_duration, 1) if avg_duration else "—")
 
-        # --------- 2️⃣ Trendy ----------
-        st.subheader("Trendy sesji")
+        # --------- 2️⃣ Trends ----------
+        st.subheader("Session Trends")
 
-        # przygotowanie danych
         trend_rows = []
         for s in per_session.values():
             if s.get("session_date") is None:
                 continue
             trend_rows.append({
-                "Data": s["session_date"],
-                "Wolumen": s.get("total_volume"),
-                "Czas (min)": s.get("duration_minutes"),
+                "Date": s["session_date"],
+                "Volume": s.get("total_volume"),
+                "Duration (min)": s.get("duration_minutes"),
             })
 
         if trend_rows:
-            trend_df = pd.DataFrame(trend_rows).sort_values("Data")
+            trend_df = pd.DataFrame(trend_rows).sort_values("Date")
 
             col1, col2 = st.columns(2)
 
             with col1:
-                st.markdown("**Wolumen na sesję**")
-                st.line_chart(
-                    trend_df.set_index("Data")[["Wolumen"]],
-                    height=300,
-                )
+                st.markdown("**Volume per Session**")
+                st.line_chart(trend_df.set_index("Date")[["Volume"]],height=300)
 
             with col2:
-                st.markdown("**Czas trwania sesji (min)**")
-                st.line_chart(
-                    trend_df.set_index("Data")[["Czas (min)"]],
-                    height=300,
-                )
+                st.markdown("**Session Duration (min)**")
+                st.line_chart(trend_df.set_index("Date")[["Duration (min)"]],height=300,)
         else:
-            st.info("Brak danych do wyświetlenia trendów.")
+            st.info("No data available to display trends.")
 
-        # --------- 3️⃣ Historia sesji ----------
-        st.subheader("Historia sesji")
+        # --------- 3️⃣ Session History ----------
+        st.subheader("Session History")
 
         df = self.sets_df.copy()
         df["SessionDate"] = pd.to_datetime(df["SessionDate"])
@@ -75,7 +68,7 @@ class DashboardView:
             total_sets = len(session_df)
             exercises_count = session_df["ExerciseName"].nunique()
 
-            with st.expander(f"📅 {session_date.date()} — {total_sets} serie, {exercises_count} ćwiczenia, Wolumen: {int(total_volume)}"):
+            with st.expander(f"📅 {session_date.date()} — {total_sets} sets, {exercises_count} exercises, Volume: {int(total_volume)}"):
                 for exercise, ex_df in session_df.groupby("ExerciseName"):
                     st.markdown(f"**{exercise}**")
                     sets_str = " | ".join(

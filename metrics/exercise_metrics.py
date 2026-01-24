@@ -35,12 +35,12 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
 
     # workout_exercise_id -> exercise_id
     workout_to_exercise = {we.workout_exercise_id: we.exercise_id for we in input.workout_exercises}
-
+    
     # workout_exercise_id -> session_date
     session_id_to_date = {s.session_id: s.session_date for s in input.sessions}
     workout_to_date = {we.workout_exercise_id: session_id_to_date.get(we.session_id)for we in input.workout_exercises}
     sets_by_exercise: Dict[int, List] = defaultdict(list)
-
+    exercise_id_to_name = {e.exercise_id: e.name for e in input.exercises}
     for workout_set in input.sets:
         exercise_id = workout_to_exercise.get(workout_set.workout_exercise_id)
         if exercise_id is None:
@@ -85,6 +85,7 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         avg_sets_per_session = total_sets / sessions_count
 
         per_exercise[exercise_id] = {
+            "exercise_name": exercise_id_to_name.get(exercise_id, f"Exercise {exercise_id}"),
             "total_sets": total_sets,
             "total_reps": total_reps,
             "total_volume": total_volume,

@@ -32,7 +32,7 @@ def map_exercise(row: dict) -> Exercise:
     return Exercise(
         exercise_id=row["ExerciseID"],
         name=row["ExerciseName"],
-        primary_muscle_group_id=None, #row.get("PrimaryMuscleGroupID"),
+        primary_muscle_group_id=None,
         body_part=row.get("BodyPart")
     )
 
