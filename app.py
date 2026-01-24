@@ -1,6 +1,7 @@
 import streamlit as st
-from ui.dashboard_mainpage.dashboard_view import DashboardView
+from ui.dashboard_view import DashboardView
 from data_loader import load_data
+from ui.exercise_view import ExerciseView
 
 
 class GymDashboardApp:
@@ -28,8 +29,19 @@ class GymDashboardApp:
     def run(self) -> None:
         """Main application entry point."""
         metrics, sets_df = self._load_dependencies()
-        dashboard = DashboardView(metrics=metrics, sets_df=sets_df)
-        dashboard.render()
+        
+        # inicjalizacja widoków
+        dashboard_view = DashboardView(metrics, sets_df)
+        exercises_view = ExerciseView(metrics["exercises"], sets_df)
+
+        # sidebar
+        section = st.sidebar.radio("Choose section",["Main Dashboard", "Exercises"])
+
+        # renderowanie wybranej sekcji
+        if section == "Main Dashboard":
+            dashboard_view.render()
+        elif section == "Exercises":
+            exercises_view.render()
 
 
 def main():
