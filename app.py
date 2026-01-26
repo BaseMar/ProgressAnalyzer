@@ -2,6 +2,7 @@ import streamlit as st
 from ui.dashboard_view import DashboardView
 from data_loader import load_data
 from ui.exercise_view import ExerciseView
+from ui.body_parts_view import BodyPartsView
 
 
 class GymDashboardApp:
@@ -33,15 +34,18 @@ class GymDashboardApp:
         # inicjalizacja widoków
         dashboard_view = DashboardView(metrics, sets_df)
         exercises_view = ExerciseView(metrics["exercises"], sets_df)
+        body_parts_view = BodyPartsView(metrics["exercises"])
 
         # sidebar
-        section = st.sidebar.radio("Choose section",["Main Dashboard", "Exercises"])
+        section = st.sidebar.radio("Choose section:",["Main Dashboard", "Exercises", "Body Parts"])
 
         # renderowanie wybranej sekcji
         if section == "Main Dashboard":
             dashboard_view.render()
         elif section == "Exercises":
             exercises_view.render()
+        elif section == "Body Parts":
+            body_parts_view.render()
 
 
 def main():
