@@ -86,6 +86,7 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
 
         per_exercise[exercise_id] = {
             "exercise_name": exercise_id_to_name.get(exercise_id, f"Exercise {exercise_id}"),
+            "body_part": next((e.body_part for e in input.exercises if e.exercise_id == exercise_id), None),
             "total_sets": total_sets,
             "total_reps": total_reps,
             "total_volume": total_volume,

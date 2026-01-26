@@ -11,25 +11,7 @@ import pandas as pd
 import streamlit as st
 
 from ui.utils.exercises_df import build_exercises_df
-
-
-def estimate_1rm(weight: float, reps: int) -> float:
-    """
-    Estimate one-repetition maximum (1RM) using Epley formula.
-
-    Parameters
-    ----------
-    weight : float
-        Weight used in the set.
-    reps : int
-        Number of repetitions.
-
-    Returns
-    -------
-    float
-        Estimated 1RM value.
-    """
-    return weight * (1 + reps / 30)
+from metrics.utils.strength import estimate_1rm
 
 
 class ExerciseView:

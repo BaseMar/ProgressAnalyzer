@@ -98,7 +98,6 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
 
         # Epley-based intensity estimate
         intensities = [s.weight * (1 + s.repetitions / 30) for s in sets]
-
         avg_intensity = mean(intensities) if intensities else None
         avg_rir = mean(s.rir for s in sets if s.rir is not None)
         sets_to_failure = sum(1 for s in sets if s.rir == 0)
@@ -120,7 +119,7 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
     durations = [s["duration_minutes"] for s in per_session.values() if s["duration_minutes"] is not None]
     volumes = [s["total_volume"] for s in per_session.values()]
     sets_counts = [s["total_sets"] for s in per_session.values()]
-
+    intensities = [s["avg_intensity"] for s in per_session.values() if s["avg_intensity"] is not None]
     # ISO year-week pairs
     weeks = {session.session_date.isocalendar()[:2] for session in input.sessions}
 
@@ -129,8 +128,9 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         "avg_volume_per_session": mean(volumes) if volumes else None,
         "avg_sets_per_session": mean(sets_counts) if sets_counts else None,
         "avg_sessions_per_week": (len(input.sessions) / len(weeks) if weeks else None),
+        "avg_intensity": mean(intensities) if intensities else None,
         }
-
+    
     return {
         "per_session": per_session,
         "global": global_metrics,
