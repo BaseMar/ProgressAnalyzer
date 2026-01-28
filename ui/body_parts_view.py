@@ -3,11 +3,6 @@ Body Parts view for the UI layer.
 
 Provides a high-level overview of training distribution
 across body parts (volume, sets, strength proxy).
-
-This view is intentionally macro-oriented:
-- no drill-downs
-- no time trends
-- no session-level logic
 """
 
 from typing import Dict

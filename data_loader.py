@@ -3,7 +3,6 @@ from mapper import *
 import streamlit as st
 
 from metrics.input import MetricsInput
-from metrics.metrics_engine import compute_all_metrics
 
 
 @st.cache_data
@@ -29,7 +28,5 @@ def load_data():
         body_measurements=body_measurements,
         body_composition=body_composition,
     )
-
-    metrics = compute_all_metrics(metrics_input)
-
-    return metrics, sets_df
+    
+    return metrics_input, sets_df
