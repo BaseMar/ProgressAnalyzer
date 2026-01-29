@@ -32,7 +32,7 @@ class ExerciseView:
 
     def render(self) -> None:
         """Render the Exercises view."""
-        st.header("Exercises")
+        st.header("Exercise Library")
         per_exercise = self.exercises_metrics.get("per_exercise", {})
         exercises_df = pd.DataFrame(per_exercise).T.reset_index(drop=True)
 
@@ -59,40 +59,7 @@ class ExerciseView:
         kpi_cols[4].metric("Estimated 1RM (max)", round(exercise["estimated_1rm_max"], 1))
 
         st.divider()
-
-        # ---------- KPI: secondary ----------
-        st.subheader("Training Characteristics")
-
-        sec_cols = st.columns(4)
-
-        avg_reps_per_set = (exercise["total_reps"] / exercise["total_sets"] if exercise["total_sets"] else None)
-
-        sec_cols[0].metric("Avg Weight", round(exercise["avg_weight"], 2))
-        sec_cols[1].metric("Avg Reps / Set", round(avg_reps_per_set, 1) if avg_reps_per_set else "—")
-        sec_cols[2].metric("Avg RIR",round(exercise["avg_rir"], 2) if exercise["avg_rir"] is not None else "—")
-        sec_cols[3].metric("Sets to Failure", exercise["sets_to_failure"])
-
-        st.divider()
-
-        # ---------- Progress indicators ----------
-        st.subheader("Progress")
-
-        prog_cols = st.columns(2)
-
-        prog_cols[0].metric(
-            "Strength Trend (1RM)",
-            round(exercise["estimated_1rm_max"], 1),
-            delta=round(exercise["strength_trend_1rm"], 1),
-        )
-
-        prog_cols[1].metric(
-            "Volume Trend",
-            int(exercise["total_volume"]),
-            delta=int(exercise["volume_trend"]),
-        )
-
-        st.divider()
-
+        
         # ---------- Trends ----------
         st.subheader("Trends")
 
