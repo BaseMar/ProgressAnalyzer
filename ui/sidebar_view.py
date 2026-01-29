@@ -9,6 +9,7 @@ Responsible for:
 from typing import Optional
 import pandas as pd
 import streamlit as st
+from ui.sidebar_upload import SidebarUpload
 
 
 class SidebarView:
@@ -67,3 +68,11 @@ class SidebarView:
         st.sidebar.title("Navigation")
 
         return st.sidebar.radio("Choose section:", ["Main Dashboard", "Exercises", "Body Parts"])
+
+    def render_upload(self) -> None:
+        """
+        Render workout upload section.
+        """
+        st.sidebar.divider()
+        
+        SidebarUpload().render()
