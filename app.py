@@ -8,6 +8,7 @@ from ui.exercise_view import ExerciseView
 from ui.body_parts_view import BodyPartsView
 from ui.utils.data_filter import filter_data_by_month
 from ui.sidebar_view import SidebarView
+from ui.analytics_view import AnalyticsView
 
 
 class GymDashboardApp:
@@ -89,6 +90,7 @@ class GymDashboardApp:
         dashboard_view = DashboardView(metrics, filtered_sets_df)
         exercises_view = ExerciseView(metrics["exercises"], filtered_sets_df)
         body_parts_view = BodyPartsView(metrics["exercises"])
+        analytics_view = AnalyticsView(metrics)
 
         # --- Navigation ---
         section = sidebar.render_navigation()
@@ -99,6 +101,8 @@ class GymDashboardApp:
             exercises_view.render()
         elif section == "Body Parts":
             body_parts_view.render()
+        elif section == "Analytics":
+            analytics_view.render()
 
     # --- Sidebar Upload ---
         sidebar.render_upload()
