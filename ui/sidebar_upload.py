@@ -31,7 +31,6 @@ class SidebarUpload:
         workout_date = st.sidebar.date_input("Workout date", value=datetime.today())
         parsed = self._parse_txt(content)
         start_time, end_time = self._parse_time_range(content)
-
         if not parsed:
             st.sidebar.error("Could not parse file.")
             return
@@ -129,20 +128,12 @@ class SidebarUpload:
         return exercises
 
     def _parse_time_range(self, text: str):
-        match = re.search(
-            r"Godzina:\s*(\d{2}:\d{2})-(\d{2}:\d{2})",
-            text
-        )
+        match = re.search(r"Godzina:\s*(\d{2}:\d{2})\s*[-–—]\s*(\d{2}:\d{2})",text)
 
         if not match:
             return None, None
 
-        start = datetime.strptime(
-            match.group(1), "%H:%M"
-        ).time()
-
-        end = datetime.strptime(
-            match.group(2), "%H:%M"
-        ).time()
+        start = datetime.strptime(match.group(1), "%H:%M").time()
+        end = datetime.strptime(match.group(2), "%H:%M").time()
 
         return start, end
