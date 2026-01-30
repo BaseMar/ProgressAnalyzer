@@ -1,8 +1,8 @@
-from collections import defaultdict
 from typing import Dict
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import plotly.figure_factory as ff
 
 
 class AnalyticsView:
@@ -10,60 +10,17 @@ class AnalyticsView:
         self.session_metrics = metrics.get("sessions", {})
         self.exercise_metrics = metrics.get("exercises", {})
         self.progress_metrics = metrics.get("progress", {})
+        self.fatigue_metrics = metrics.get("fatigue", {})
 
     def render(self) -> None:
-        st.header("Analytics")
+        st.header("Analytics Dashboard")
 
-        self._consistency_section()
+        self._fatigue_section()
         st.divider()
-
         self._progress_section()
-        st.divider()
-
-        self._intensity_section()
-        st.divider()
-
-        self._balance_section()
-
-    def _consistency_section(self):
-        st.subheader("Consistency")
-
-        per_session = self.session_metrics.get("per_session", {})
-        global_m = self.session_metrics.get("global", {})
-        if not per_session:
-            st.info("No session data.")
-            return
-
-        # --- KPIs ---
-        c1, c2, c3, c4 = st.columns(4)
-
-        c1.metric("Sessions / Week", round(global_m.get("avg_sessions_per_week", 0), 2))
-        
-        dur = global_m.get("avg_session_duration")
-        c2.metric("Avg Duration (min)", round(dur, 1) if dur else "—")
-
-        sets = global_m.get("avg_sets_per_session")
-        c3.metric("Avg Sets / Session", round(sets, 1) if sets else "—",)
-
-        streak = self.streak_counter(per_session)
-        c4.metric("Current Streak (weeks)", streak)
-
-        rows = []
-        for s in per_session.values():
-            if not s.get("session_date"):
-                continue
-
-            d = pd.to_datetime(s["session_date"])
-            iso = d.isocalendar()
-            rows.append({"year": iso.year, "week": iso.week})
-
-        if rows:
-            df = (pd.DataFrame(rows).value_counts().reset_index(name="sessions").sort_values(["year", "week"]))
-            df["year_week"] = (df["year"].astype(str) + "-W" + df["week"].astype(str))
-            st.bar_chart(df.set_index("year_week")["sessions"], height=250)
 
     def _progress_section(self):
-        st.subheader("Progress")
+        st.subheader("Strength Progress")
 
         per_ex = self.progress_metrics.get("per_exercise", {})
         if not per_ex:
@@ -71,137 +28,124 @@ class AnalyticsView:
             return
 
         df = pd.DataFrame(per_ex).T
+        df["progress_per_exposure"] = df["progress_pct"] / df["exposure_count"]
+        df.fillna(0, inplace=True)
 
-        if "progress_pct" not in df.columns:
-            st.info("Missing progress data.")
-            return
-
-        if "exposure_count" not in df.columns:
-            df["exposure_count"] = 1
-
+        # --- KPI ---
         median_progress = df["progress_pct"].median()
         improving = (df["progress_pct"] > 2).sum()
-        progress_ratio = improving / len(df) * 100
-        plateau_count = (df["progress_pct"].abs() < 2).sum()
-        best = df.loc[df["progress_pct"].idxmax()]
-        worst = df.loc[df["progress_pct"].idxmin()]
+        plateau_count = ((df["progress_pct"].abs() < 2).sum())
+        progress_ratio = improving / len(df) * 100 if len(df) else 0
+        top_exercise = df.loc[df['progress_pct'].idxmax()]['exercise_name']
+        worst_exercise = df.loc[df['progress_pct'].idxmin()]['exercise_name']
+        
 
-        df["progress_per_exposure"] = (df["progress_pct"] / df["exposure_count"])
-        ppe = df["progress_per_exposure"].median()
-
-        c1,c2,c3,c4,c5 = st.columns(5)
-        c1.metric("Median Progress %", round(median_progress,1))
-        c2.metric("Progress Ratio", f"{round(progress_ratio)}%")
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("Median Progress (%)", round(median_progress, 1))
+        c2.metric("Progress Ratio (%)", f"{round(progress_ratio)}%")
         c3.metric("Plateaus", int(plateau_count))
-        c4.metric("Top Improver", f"{round(best['progress_pct'],1)}%")
-        c5.metric("Top Regressor", f"{round(worst['progress_pct'],1)}%")
+        c4.metric("Top Improver (%)", f"{top_exercise}")
+        c5.metric("Top Regressor (%)", f"{worst_exercise}")
 
-        st.metric("Progress / Exposure", round(ppe,2), help="Median % gain per workout exposure")
+        # --- Top/Bottom 10 Bar Chart ---
+        top10 = df.sort_values("progress_pct", ascending=False).head(10)
+        bottom10 = df.sort_values("progress_pct", ascending=True).head(10)
 
-        st.markdown("### Strength Progress by Exercise")
-        chart_df = df.sort_values("progress_pct",ascending=False).head(10).set_index("exercise_name")
-        st.bar_chart(chart_df["progress_pct"], height=300)
+        col1, col2 = st.columns(2)
 
-        st.markdown("### Coach Insight")
-        if progress_ratio > 70:
-            st.success("Program is highly effective. Most lifts progressing.")
-        elif plateau_count > len(df)*0.4:
-            st.warning("Many lifts are plateauing. Consider progression changes or deload.")
-        elif (df["progress_pct"] < 0).sum() > improving:
-            st.error("More lifts regressing than improving. Recovery or load management may be limiting progress.")
-        else:
-            st.info("Progress is steady. Stay consistent.")
+        with col1:
+            st.markdown("**Top 10 Exercises**")
+            fig_top = px.bar(
+                top10,
+                x="exercise_name",
+                y="progress_pct",
+                text="progress_pct",
+                labels={"exercise_name": "Exercise", "progress_pct": "Strength Progress (%)"},
+            )
+            fig_top.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+            st.plotly_chart(fig_top, width='stretch')
 
-    def _intensity_section(self):
-        st.subheader("Intensity")
+        with col2:
+            st.markdown("**Bottom 10 Exercises**")
+            fig_bottom = px.bar(
+                bottom10,
+                x="exercise_name",
+                y="progress_pct",
+                text="progress_pct",
+                labels={"exercise_name": "Exercise", "progress_pct": "Strength Progress (%)"},
+            )
+            fig_bottom.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+            st.plotly_chart(fig_bottom, width='stretch')
 
-        per_session = self.session_metrics.get("per_session", {})
-        global_m = self.session_metrics.get("global", {})
+        # --- Heatmap ---
+        st.markdown("### Progress Heatmap per Exercise vs Session")
+       
+        progress_data = []
+        for ex_id, ex in per_ex.items():
+            for i, date_entry in enumerate(range(ex.get("exposure_count",0))):
+                progress_data.append({
+                    "Exercise": ex["exercise_name"],
+                    "Session": i+1,
+                    "Progress (%)": round(ex["progress_pct"]/ex.get("exposure_count",1),2)
+                })
+        
+        heat_df = pd.DataFrame(progress_data)
+        if not heat_df.empty:
+            heat_pivot = heat_df.pivot(index="Exercise", columns="Session", values="Progress (%)").fillna(0)
+            fig_heat = ff.create_annotated_heatmap(
+                z=heat_pivot.values,
+                x=[f"Session {i}" for i in heat_pivot.columns],
+                y=heat_pivot.index.tolist(),
+                colorscale="Viridis",
+                showscale=True,
+                annotation_text=heat_pivot.round(1).values
+            )
+            fig_heat.update_layout(height=400, margin=dict(l=100, r=40, t=40, b=40))
+            st.plotly_chart(fig_heat, width='stretch')
+
+    def _fatigue_section(self):
+        st.subheader("Fatigue & Recovery")
+
+        per_session = self.fatigue_metrics.get("per_session", {})
+        global_f = self.fatigue_metrics.get("global", {})
 
         if not per_session:
+            st.info("No fatigue data.")
             return
 
-        total_sets = sum(s["total_sets"] for s in per_session.values())
-        failure_sets = sum(s["sets_to_failure"] for s in per_session.values())
+        # ---------- KPI ----------
+        # avg intensity + sets to failure z session metrics
+        total_sets = sum(s["total_sets"] for s in self.session_metrics.get("per_session", {}).values())
+        failure_sets = sum(s["sets_to_failure"] for s in self.session_metrics.get("per_session", {}).values())
+        failure_pct = (failure_sets / total_sets * 100) if total_sets else 0
+        avg_intensity = self.session_metrics.get("global", {}).get("avg_intensity",0)
 
-        failure_pct = ((failure_sets / total_sets) * 100 if total_sets else 0)
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Avg Fatigue Score", global_f.get("avg_fatigue_score","—"))
+        c2.metric("% High Fatigue Sessions", global_f.get("high_fatigue_sessions_ratio","—"))
+        c3.metric("Max Consecutive High Fatigue", global_f.get("max_consecutive_high_fatigue_sessions","—"))
+        c4.metric("Avg Session Intensity", f"{round(avg_intensity,2)}%")
 
-        c1, c2 = st.columns(2)
+        st.markdown(f"**Sets to Failure (%)**: {round(failure_pct,1)}%")
 
-        c1.metric("Avg Intensity", round(global_m.get("avg_intensity", 0), 2) if global_m.get("avg_intensity")else "—")
-        c2.metric("Sets to Failure %", round(failure_pct, 1))
+        # ---------- Fatigue Trend ----------
+        df = pd.DataFrame([
+            {
+                "session_id": sid,
+                "date": s.get("session_date"),
+                "fatigue_score": s.get("fatigue_score",0)
+            } for sid,s in per_session.items()
+        ])
+        df = df.dropna(subset=["date"])
+        if not df.empty:
+            df["date"] = pd.to_datetime(df["date"])
+            fig_line = px.line(df, x="date", y="fatigue_score", markers=True,
+                               labels={"date":"Session Date", "fatigue_score":"Fatigue Score"},
+                               title="Fatigue Score Over Time")
+            st.plotly_chart(fig_line, width='stretch')
 
-        # --- Insight ---
-        if failure_pct < 5:
-            st.info("You rarely reach failure. " "Consider pushing harder on key lifts.")
-        elif failure_pct < 25:
-            st.success("Good intensity balance. " "You train hard without overdoing it.")
+        # ---------- Insight ----------
+        if global_f.get("high_fatigue_sessions_ratio",0) > 0.3:
+            st.warning("High frequency of fatigue-heavy sessions – monitor recovery!")
         else:
-            st.warning("High failure rate may hurt recovery." "Monitor fatigue.")
-
-    def _balance_section(self):
-        st.subheader("Balance")
-
-        per_ex = self.exercise_metrics.get("per_exercise", {})
-
-        if not per_ex:
-            return
-
-        df = pd.DataFrame(per_ex).T
-
-        if "body_part" not in df.columns:
-            st.info("No body part data available.")
-            return
-
-        body_df = (df.groupby("body_part").agg(volume=("total_volume", "sum"), sets=("total_sets", "sum")).sort_values("volume", ascending=False))
-
-        if body_df.empty:
-            return
-
-        st.bar_chart(body_df["volume"], height=300)
-
-        most = body_df.index[0]
-        least = body_df.index[-1]
-
-        c1, c2 = st.columns(2)
-        c1.metric("Most Trained", most)
-        c2.metric("Least Trained", least)
-
-    def streak_counter(self, per_session: Dict) -> int:
-        """Calculate the current workout streak in weeks if i go 3+ days.
-
-        Parameters
-        ----------
-        per_session : Dict
-            Dictionary of session-level metrics.
-
-        Returns
-        -------
-        int
-            Current streak in weeks.
-        """
-        
-        # calculate number of sessions per week
-        sessions_per_week = defaultdict(int)
-        for date in per_session.values():
-            if date.get("session_date"):
-                d = pd.to_datetime(date["session_date"])
-                iso = d.isocalendar()
-                year_week = (iso.year, iso.week)
-                sessions_per_week[year_week] += 1
-
-        # calculate weeks with 3+ sessions
-        good_weeks = sorted((yw for yw, cnt in sessions_per_week.items() if cnt >= 3))
-
-        # calculate current streak
-        current_streak = 1
-        for i in range(len(good_weeks) - 1, 0, -1):
-            year, week = good_weeks[i]
-            prev_year, prev_week = good_weeks[i - 1]
-
-            # check if previous week is consecutive
-            if (year == prev_year and week == prev_week + 1) or (year == prev_year + 1 and week == 1 and prev_week == 52):
-                current_streak += 1
-            else:
-                break
-        return current_streak
+            st.success("Fatigue levels are balanced. Keep consistency.")
