@@ -12,6 +12,7 @@ def compute_progress_metrics(input: MetricsInput) -> dict:
     session_dates = {s.session_id: s.session_date for s in input.sessions}
     we_to_date = {we.workout_exercise_id: session_dates.get(we.session_id) for we in input.workout_exercises}
     exercise_sets = defaultdict(list)
+    exercise_name_map = {e.exercise_id: e.name for e in input.exercises}
 
     for s in input.sets:
         ex_id = we_to_exercise.get(s.workout_exercise_id)
@@ -28,8 +29,10 @@ def compute_progress_metrics(input: MetricsInput) -> dict:
         one_rms = [estimate_1rm(s.weight, s.repetitions) for _, s in entries]
         if len(one_rms) < 2:
             continue
-
-        start, end = one_rms[0], one_rms[-1]
+        
+        n = min(3, len(one_rms)//2)
+        start = mean(one_rms[:n])
+        end = mean(one_rms[-n:])
         progress_pct = round(((end - start) / start) * 100, 2) if start else 0
 
         if progress_pct > 2:
@@ -42,9 +45,11 @@ def compute_progress_metrics(input: MetricsInput) -> dict:
         progress_values.append(progress_pct)
 
         per_exercise[ex_id] = {
+            "exercise_name": exercise_name_map[ex_id],
             "start_1rm": round(start, 2),
             "end_1rm": round(end, 2),
             "progress_pct": progress_pct,
+            "exposure_count": len(entries),
         }
 
     global_metrics = {
