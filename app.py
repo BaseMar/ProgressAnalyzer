@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 from metrics.exercise_metrics import compute_exercise_metrics
+from metrics.progress_metrics import compute_progress_metrics
 from metrics.session_metrics import compute_session_metrics
 from ui.dashboard_view import DashboardView
 from data_loader import load_data
@@ -84,6 +85,7 @@ class GymDashboardApp:
         metrics = {
             "sessions": compute_session_metrics(filtered_input),
             "exercises": compute_exercise_metrics(filtered_input),
+            "progress": compute_progress_metrics(filtered_input),
         }
 
         # --- Views ---

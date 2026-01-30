@@ -44,38 +44,12 @@ UI (Streamlit)
 ```
 Analizator progresu na siłowni
 ├─ app.py
-├─ core
-│  ├─ config.py
-│  ├─ data_manager.py
-│  ├─ models.py
-│  ├─ services
-│  │  ├─ body_metrics_service.py
-│  │  ├─ dashboard_service.py
-│  │  ├─ history_service.py
-│  │  └─ kpi_service.py
-│  ├─ styles
-│  │  ├─ css_loader.py
-│  │  └─ theme_manager.py
-│  ├─ ui
-│  │  ├─ body_metrics_view.py
-│  │  ├─ charts_view.py
-│  │  ├─ dashboard_mainpage
-│  │  │  ├─ dashboard_view.py
-│  │  │  └─ history_view.py
-│  │  ├─ footer_view.py
-│  │  ├─ forms
-│  │  │  ├─ base_form.py
-│  │  │  ├─ body_composition_form.py
-│  │  │  ├─ body_measurement_form.py
-│  │  │  ├─ exercise_form.py
-│  │  │  └─ workout_session_form.py
-│  │  ├─ kpi_view.py
-│  │  └─ sidebar_view.py
-│  └─ __init__.py
 ├─ data_loader.py
+├─ data_manager.py
 ├─ db
 │  ├─ connection.py
 │  └─ queries.py
+├─ mapper.py
 ├─ metrics
 │  ├─ body_metrics.py
 │  ├─ correlation_metrics.py
@@ -83,6 +57,7 @@ Analizator progresu na siłowni
 │  ├─ fatigue_metrics.py
 │  ├─ frequency_metrics.py
 │  ├─ input.py
+│  ├─ input_builder.py
 │  ├─ metrics_engine.py
 │  ├─ progress_metrics.py
 │  ├─ registry.py
@@ -103,7 +78,17 @@ Analizator progresu na siłowni
 │  ├─ workout_set.py
 │  └─ __init__.py
 ├─ README.md
-└─ requirements.txt
+├─ requirements.txt
+└─ ui
+   ├─ analytics_view.py
+   ├─ body_parts_view.py
+   ├─ dashboard_view.py
+   ├─ exercise_view.py
+   ├─ sidebar_upload.py
+   ├─ sidebar_view.py
+   └─ utils
+      ├─ data_filter.py
+      └─ exercise_matcher.py
 
 ```
 
