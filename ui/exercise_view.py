@@ -9,6 +9,8 @@ from typing import Dict
 import pandas as pd
 import streamlit as st
 
+from metrics.utils.strength import estimate_1rm
+
 
 class ExerciseView:
     """
@@ -35,7 +37,6 @@ class ExerciseView:
         st.header("Exercise Library")
         per_exercise = self.exercises_metrics.get("per_exercise", {})
         exercises_df = pd.DataFrame(per_exercise).T.reset_index(drop=True)
-
         if exercises_df.empty:
             st.info("No exercise data available.")
             return
@@ -44,6 +45,7 @@ class ExerciseView:
         exercise_name = st.selectbox("Select exercise", options=exercises_df["exercise_name"].tolist(),)
         exercise_row = exercises_df[exercises_df["exercise_name"] == exercise_name].iloc[0]
         exercise = exercise_row.to_dict()
+        
 
         st.divider()
 
@@ -64,18 +66,18 @@ class ExerciseView:
         st.subheader("Trends")
 
         exercise_sets = self.sets_df[self.sets_df["ExerciseName"] == exercise_name].copy()
-
         if exercise_sets.empty:
             st.info("No time-series data available for this exercise.")
             return
 
         exercise_sets["SessionDate"] = pd.to_datetime(exercise_sets["SessionDate"])
-
+        exercise_sets["Estimated1RM"] = exercise_sets.apply(lambda r: estimate_1rm(r["Weight"], r["Repetitions"]),axis=1)
+        
         trend_df = (exercise_sets.groupby("SessionDate").agg(
                 Volume=("Volume", "sum"),
-                MaxWeight=("Weight", "max"),
+                Estimated1RM=("Estimated1RM", "mean"),
             ).reset_index().sort_values("SessionDate"))
-
+        trend_df["Estimated1RM"] = trend_df["Estimated1RM"].round(2)
         col1, col2 = st.columns(2)
 
         with col1:
@@ -83,8 +85,8 @@ class ExerciseView:
             st.line_chart(trend_df.set_index("SessionDate")[["Volume"]],height=300)
 
         with col2:
-            st.markdown("**Max Weight per Session**")
-            st.line_chart(trend_df.set_index("SessionDate")[["MaxWeight"]],height=300)
+            st.markdown("**Avg 1RM per Session**")
+            st.line_chart(trend_df.set_index("SessionDate")[["Estimated1RM"]],height=300)
 
         st.divider()
         

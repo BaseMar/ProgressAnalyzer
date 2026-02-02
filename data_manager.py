@@ -9,16 +9,12 @@ from db.queries import (
     get_all_sets,
     get_body_composition,
     get_body_measurements,
-    get_exercise_id_by_name,
     get_exercises,
     get_sets_raw,
     get_workout_sessions,
     insert_body_composition,
     insert_body_measurements,
     insert_exercise,
-    insert_session,
-    insert_workout_exercise,
-    insert_workout_set,
 )
 
 logger = logging.getLogger(__name__)
@@ -168,7 +164,6 @@ class DataManager:
         )
         with self.engine.connect() as conn:
             return pd.read_sql(query, conn)
-
 
     def load_muscle_groups(self) -> pd.DataFrame:
         query = text(
