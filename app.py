@@ -5,6 +5,7 @@ from metrics.exercise_metrics import compute_exercise_metrics
 from metrics.fatigue_metrics import compute_fatigue_metrics
 from metrics.progress_metrics import compute_progress_metrics
 from metrics.session_metrics import compute_session_metrics
+from ui.body_metrics_view import BodyMetricsView
 from ui.dashboard_view import DashboardView
 from data_loader import load_data
 from ui.exercise_view import ExerciseView
@@ -97,6 +98,7 @@ class GymDashboardApp:
         exercises_view = ExerciseView(metrics["exercises"], filtered_sets_df)
         body_parts_view = BodyPartsView(metrics["exercises"])
         analytics_view = AnalyticsView(metrics)
+        body_metrics_view = BodyMetricsView(metrics["body"])
 
         # --- Navigation ---
         section = sidebar.render_navigation()
@@ -109,6 +111,8 @@ class GymDashboardApp:
             body_parts_view.render()
         elif section == "Analytics":
             analytics_view.render()
+        elif section == "Body Metrics":
+            body_metrics_view.render()
 
     # --- Sidebar Upload ---
         sidebar.render_upload()

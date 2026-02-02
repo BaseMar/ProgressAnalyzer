@@ -67,7 +67,8 @@ class SidebarView:
         st.sidebar.divider()
         st.sidebar.title("Navigation")
 
-        return st.sidebar.radio("Choose section:", ["Main Dashboard", "Exercises", "Body Parts", "Analytics"])
+        return st.sidebar.radio("Choose section:", 
+                                ["Main Dashboard", "Exercises", "Body Parts", "Analytics", "Body Metrics"])
 
     def render_upload(self) -> None:
         """

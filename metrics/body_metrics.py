@@ -1,3 +1,4 @@
+from collections import defaultdict
 from statistics import mean
 from metrics.input import MetricsInput
 
@@ -7,10 +8,17 @@ def compute_body_metrics(input: MetricsInput) -> dict:
         return {}
 
     records = sorted(input.body_composition, key=lambda x: x.date)
+    measurements_by_date = defaultdict(dict)
 
+    for day_measurements in input.body_measurements:
+        for m in day_measurements:
+            measurements_by_date[m.date][m.measurement_type.lower()] = m.value
+    
     weights = [r.weight for r in records]
-    fat_pct = [r.fat_percentage for r in records if r.fat_percentage is not None]
     muscle_mass = [r.muscle_mass for r in records if r.muscle_mass is not None]
+    fat_mass = [r.fat_mass for r in records if r.fat_mass is not None]
+    water_mass = [r.water_mass for r in records if r.water_mass is not None]
+    fat_pct = [r.fat_percentage for r in records if r.fat_percentage is not None]    
 
     start_weight = weights[0]
     end_weight = weights[-1]
@@ -27,15 +35,27 @@ def compute_body_metrics(input: MetricsInput) -> dict:
         "avg_muscle_mass": round(mean(muscle_mass), 2) if muscle_mass else None,
     }
 
-    timeline = [
-        {
+    timeline = []
+
+    for r in records:
+        m = measurements_by_date.get(r.date, {})
+
+        timeline.append({
             "date": r.date,
             "weight": r.weight,
-            "fat_percentage": r.fat_percentage,
             "muscle_mass": r.muscle_mass,
-        }
-        for r in records
-    ]
+            "fat_mass": r.fat_mass,
+            "water_mass": r.water_mass,
+            "fat_percentage": r.fat_percentage,
+
+            "chest": m.get("chest"),
+            "waist": m.get("waist"),
+            "abdomen": m.get("abdomen"),
+            "hips": m.get("hips"),
+            "thigh": m.get("thigh"),
+            "calf": m.get("calf"),
+            "biceps": m.get("biceps"),
+        })
 
     return {
         "timeline": timeline,
