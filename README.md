@@ -1,126 +1,123 @@
-# Gym Progress Analyzer
+# Gym Progress Dashboard
 
-A Python-based analytics application for tracking and analyzing gym training progress.
-The project focuses on clean data modeling, reproducible metrics, and separation of concerns
-between data access, analytics, and UI.
+A personal strength training & body composition analytics dashboard built with **Streamlit**.   Designed for lifters who want data-driven insights, not just workout logs.
 
-## Key Features
-
-- Workout session tracking (sets, reps, volume, intensity, RIR)
-- Exercise-level strength and volume progression
-- Training frequency and fatigue analysis
-- Body composition and measurement trends
-- Correlation analysis between volume, intensity, and strength
-- Interactive dashboard for data exploration
-
-## Architecture Overview
-
-The project follows a layered architecture:
-
-```
-UI (Streamlit)
-│
-├── Services (application logic)
-│
-├── Metrics (pure analytics, stateless)
-│
-├── Models (dataclasses, domain objects)
-│
-└── Database (SQL Server)
-```
-
-### Core Principles
-
-- **UI does not compute metrics**
-- **Services orchestrate data flow**
-- **Metrics are pure, deterministic functions**
-- **Models reflect database structure**
-- **No business logic inside the database layer**
+The app tracks training volume, intensity, exercise progress, fatigue, and body metrics — with a strong focus on long-term trends, recomposition quality, and proportions.
 
 ---
 
-## Project Structure
+## Features
 
-```
-Analizator progresu na siłowni
-├─ app.py
-├─ data_loader.py
-├─ data_manager.py
-├─ db
-│  ├─ connection.py
-│  └─ queries.py
-├─ mapper.py
-├─ metrics
-│  ├─ body_metrics.py
-│  ├─ correlation_metrics.py
-│  ├─ exercise_metrics.py
-│  ├─ fatigue_metrics.py
-│  ├─ frequency_metrics.py
-│  ├─ input.py
-│  ├─ input_builder.py
-│  ├─ metrics_engine.py
-│  ├─ progress_metrics.py
-│  ├─ registry.py
-│  ├─ session_metrics.py
-│  ├─ set_metrics.py
-│  ├─ utils
-│  │  ├─ strength.py
-│  │  └─ __init__.py
-│  └─ __init__.py
-├─ models
-│  ├─ body.py
-│  ├─ body_composition.py
-│  ├─ body_measurement.py
-│  ├─ exercise.py
-│  ├─ muscle_group.py
-│  ├─ workout_exercise.py
-│  ├─ workout_session.py
-│  ├─ workout_set.py
-│  └─ __init__.py
-├─ README.md
-├─ requirements.txt
-└─ ui
-   ├─ analytics_view.py
-   ├─ body_parts_view.py
-   ├─ dashboard_view.py
-   ├─ exercise_view.py
-   ├─ sidebar_upload.py
-   ├─ sidebar_view.py
-   └─ utils
-      ├─ data_filter.py
-      └─ exercise_matcher.py
+### Training & Progress
+- Workout session overview (volume, intensity, duration)
+- Exercise-level strength progress
+- Per-body-part training distribution
+- Estimated 1RM trends
+- Consistency & exposure-based progress tracking
 
-```
+### Advanced Analytics
+- Fatigue & recovery monitoring
+- Progress vs exposure insights
+- Plateau and regression detection
+- Training balance across body parts
+
+### Body Metrics
+- Body composition tracking (weight, muscle mass, fat mass, water mass)
+- Body measurements tracking (waist, chest, hips, thighs, arms, calves)
+- Trend-based analysis instead of single measurements
+- Proportion ratios (e.g. chest/waist, thigh/waist)
+- Recomposition quality insights (lean mass vs total weight change)
+
+### UX & Design
+- Dark UI
+- KPI-first layout (current / average / best)
+- Dropdown-based metric selection to avoid chart overload
+- Clean visual hierarchy
 
 ---
 
-## Metrics Engine
+## Screenshots
 
-All analytics are computed through a centralized metrics engine.
+- Main Dashboard
+![Main Dashboard](screenshots\Dashboard_1.png)
+![History Session](screenshots\Dashboard_2.png)
 
-- Each metric module exposes a single `compute_*` function
-- Metrics are registered in a registry
-- The engine executes all metrics in a deterministic order
+- Analytics View
+![Analytics Tab Part 1](screenshots\Analytics_1.png)
+![Analytics Tab Part 2](screenshots\Analytics_2.png)
+![Analytics Tab Part 3](screenshots\Analytics_3.png)
 
-This design allows:
-- Easy extensibility
-- Clear testing boundaries
-- No coupling between metrics
+- Body Metrics View  
+![Body Metrics Part 1](screenshots\Body_Metrics_1.png)
+![Body Metrics Part 2](screenshots\Body_Metrics_2.png)
+![Body Metrics Part 3](screenshots\Body_Metrics_3.png)
+
+---
+
+## Application Sections
+
+### Main Dashboard
+High-level training overview:
+- Avg intensity
+- Sessions per week
+- Volume & duration trends
+- Session history
+
+### Exercises
+- Strength progress per exercise
+- Volume and exposure tracking
+- Exercise-specific trends
+
+### Body Parts
+- Volume distribution per body part
+- Avg estimated 1RM per body part
+- Training balance overview
+
+### Analytics
+- Fatigue & recovery analysis
+- Strength progress quality
+- Plateaus vs improving lifts
+- Basic insights
+
+### Body Metrics
+- Body composition trends
+- Body measurements trends
+- Proportion analysis
+- Recomposition quality
+- Manual measurement input
 
 ---
 
 ## Tech Stack
 
-- Python 3.11+
-- Pandas
-- SQLAlchemy
-- Microsoft SQL Server
-- Streamlit
+- **Python**
+- **Streamlit** – UI & app framework
+- **Pandas** – data processing
+- **Plotly** – interactive charts
+- **SQLAlchemy** – database access
+- **SQL (MS SQL / SQLite)** – persistent storage
 
 ---
 
-## Future Improvements
+## Data Model
 
-- Automated tests for metrics
-- Caching layer for expensive analytics
-- ML-based progression prediction
+### Training
+- `WorkoutSessions`
+- `WorkoutExercises`
+- `WorkoutSets`
+- `Exercises`
+
+### Body Tracking
+- `BodyComposition`  
+  *(weight, muscle mass, fat mass, water mass, body fat %)*
+- `BodyMeasurements`  
+  *(waist, chest, abdomen, hips, thighs, arms, calves)*
+
+---
+
+## How to Run
+
+### Clone repository
+```bash
+git clone https://github.com/BaseMar/ProgressAnalyzer.git
+cd gym-progress-dashboard
