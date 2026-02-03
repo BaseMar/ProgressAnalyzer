@@ -1,6 +1,7 @@
 from typing import Dict
 import pandas as pd
 import streamlit as st
+from data_manager import DataManager
 
 METRIC_CONFIG = {
     # body composition metrics
@@ -75,6 +76,7 @@ METRIC_CONFIG = {
 class BodyMetricsView:
     def __init__(self, body_metrics: Dict):
         self.body_metrics = body_metrics
+        self.dm = DataManager()
 
     def render(self):
         st.header("Body Metrics")
@@ -150,6 +152,9 @@ class BodyMetricsView:
             st.info("Mixed weight gain. Acceptable balance.")
         else:
             st.warning("Fat-dominant weight gain. Review nutrition.")
+        
+        if abs(delta_weight) < 0.5:
+            st.info("Body weight stable – recomposition focus.")
 
     def _render_measurement_trends(self, df: pd.DataFrame):
         self._render_metric_trends_section(df, section_key="measurements", title="Measurements")
@@ -204,22 +209,63 @@ class BodyMetricsView:
             st.info("Not enough data for strong insights yet.")
 
     def _add_measurement_form(self):
-        st.subheader("Add New Measurement")
+        st.subheader("Add New Body Metrics")
+        st.caption("Log body composition or body measurements. One entry per day.")
 
-        with st.form("body_measurement_form"):
-            date = st.date_input("Date")
-            weight = st.number_input("Weight (kg)", step=0.1)
-            fat = st.number_input("Body Fat %", step=0.1)
-            muscle = st.number_input("Muscle Mass (kg)", step=0.1)
-            waist = st.number_input("Waist (cm)", step=0.1)
-            chest = st.number_input("Chest (cm)", step=0.1)
-            thigh = st.number_input("Thigh (cm)", step=0.1)
-            biceps = st.number_input("Biceps (cm)", step=0.1)
+        tabs = st.tabs(["Body Composition", "Body Measurements"])
 
-            submitted = st.form_submit_button("Save")
+        # body composition tab
+        with tabs[0]:
+            with st.form("body_composition_form"):
+                date = st.date_input("Measurement date")
 
-        if submitted:
-            st.success("Measurement saved (connect DB write here).")
+                weight = st.number_input("Weight (kg)", step=0.1)
+                fat_pct = st.number_input("Body Fat (%)", step=0.1)
+                muscle_mass = st.number_input("Muscle Mass (kg)", step=0.1)
+                fat_mass = st.number_input("Fat Mass (kg)", step=0.1)
+                water_mass = st.number_input("Water Mass (kg)", step=0.1)
+
+                submitted = st.form_submit_button("Save Body Composition")
+
+            if submitted:
+                if self._measurement_exists(date, category="composition"):
+                    st.error("Body composition for this date already exists.")
+                else:
+                    self._save_body_composition(date=date, weight=weight, fat_pct=fat_pct, muscle_mass=muscle_mass, fat_mass=fat_mass, water_mass=water_mass)
+                    st.success("Body composition saved.")
+                    st.rerun()
+
+        # body measurements tab
+        with tabs[1]:
+            with st.form("body_measurements_form"):
+                date = st.date_input("Measurement date", key="measure_date")
+
+                chest = st.number_input("Chest (cm)", step=0.1)
+                waist = st.number_input("Waist (cm)", step=0.1)
+                abdomen = st.number_input("Abdomen (cm)", step=0.1)
+                hips = st.number_input("Hips (cm)", step=0.1)
+                thigh = st.number_input("Thigh (cm)", step=0.1)
+                calf = st.number_input("Calf (cm)", step=0.1)
+                biceps = st.number_input("Biceps (cm)", step=0.1)
+
+                submitted = st.form_submit_button("Save Measurements")
+
+            if submitted:
+                if self._measurement_exists(date, category="measurements"):
+                    st.error("Body measurements for this date already exist.")
+                else:
+                    self._save_body_measurements(
+                        date=date,
+                        chest=chest,
+                        waist=waist,
+                        abdomen=abdomen,
+                        hips=hips,
+                        thigh=thigh,
+                        calf=calf,
+                        biceps=biceps,
+                    )
+                    st.success("Body measurements saved.")
+                    st.rerun()
     
     def _render_metric_kpis(self, df: pd.DataFrame, col: str, unit: str, best_mode: str = "max") -> None:
         """Render centered KPI row (Current / Average / Best), each using Streamlit metric(value, delta) pattern.
@@ -310,3 +356,45 @@ class BodyMetricsView:
                 st.success("Positive upward trend.")
             elif delta < 0:
                 st.warning("Negative downward trend.")
+
+    def _measurement_exists(self, date, category: str) -> bool:
+        """Check if a measurement for the given date and category already exists.
+        Args:
+            date: date to check
+            category: 'composition' or 'measurements'
+        Returns:
+            bool: True if measurement exists, False otherwise"""
+        
+        timeline = self.body_metrics.get("timeline", [])
+        if not timeline:
+            return False
+
+        for r in timeline:
+            if r["date"] == date:
+                if category == "composition" and "weight" in r:
+                    return True
+                if category == "measurements" and any(k in r for k in ["chest", "waist", "thigh"]):
+                    return True
+        return False
+    
+    def _save_body_composition(self, date, weight, fat_pct, muscle_mass, fat_mass, water_mass):
+        data = {"date": date, 
+                "weight": weight, 
+                "muscle_mass": muscle_mass,
+                "fat_mass": fat_mass,
+                "water_mass": water_mass,
+                "bf_percent": fat_pct,
+                "method": "SmartWatch"}
+        self.dm.add_body_composition(data)
+
+    def _save_body_measurements(self, date, chest, waist, abdomen, hips, thigh, calf, biceps):
+        data = {"date": date,
+                "chest": chest,
+                "waist": waist,
+                "abdomen": abdomen,
+                "hips": hips,
+                "thigh": thigh,
+                "calf": calf,
+                "biceps": biceps}
+        self.dm.add_body_measurements(data)
+    
