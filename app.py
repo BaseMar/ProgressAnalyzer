@@ -1,3 +1,4 @@
+from pathlib import Path
 import pandas as pd
 import streamlit as st
 from metrics.body_metrics import compute_body_metrics
@@ -30,6 +31,7 @@ class GymDashboardApp:
             layout="wide",
             initial_sidebar_state="expanded",
         )
+        self.load_css()
 
     def _load_dependencies(self) -> tuple[dict, pd.DataFrame]:
         """Load necessary data dependencies."""
@@ -116,6 +118,12 @@ class GymDashboardApp:
 
     # --- Sidebar Upload ---
         sidebar.render_upload()
+    
+    def load_css(self) -> None:
+        css_path = Path("styles/main.css")
+        if css_path.exists():
+            with open(css_path) as f:
+                st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
 def main():
