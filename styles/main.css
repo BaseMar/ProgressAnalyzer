@@ -1,0 +1,166 @@
+/* =========================
+   GLOBAL
+========================= */
+
+html, body {
+    background-color: #252A34;
+    color: #EAEAEA;
+    font-family: "Inter", system-ui, sans-serif;
+}
+
+.block-container {
+    padding-top: 2rem;
+    padding-left: 3rem;
+    padding-right: 3rem;
+    max-width: 1400px;
+}
+
+/* =========================
+   SIDEBAR
+========================= */
+
+section[data-testid="stSidebar"] {
+    background-color: #1f232b;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] label {
+    color: #EAEAEA;
+}
+
+/* =========================
+   HEADERS
+========================= */
+
+h1 {
+    font-size: 2.4rem;
+    margin-bottom: 1.8rem;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 1.6rem;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+h3 {
+    font-size: 1.2rem;
+    opacity: 0.85;
+}
+
+/* =========================
+   SELECTS / INPUTS
+========================= */
+
+div[data-baseweb="select"] > div,
+input,
+textarea {
+    background-color: #252A34 !important;
+    color: #EAEAEA !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+}
+
+/* =========================
+   METRICS (KPI CARDS)
+========================= */
+
+div[data-testid="metric-container"] {
+    background: linear-gradient(
+        145deg,
+        rgba(255,255,255,0.05),
+        rgba(255,255,255,0.01)
+    );
+    border-radius: 16px;
+    padding: 18px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+div[data-testid="metric-container"] label {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+div[data-testid="metric-container"] div {
+    font-size: 1.7rem;
+    font-weight: 600;
+}
+
+/* KPI delta */
+span[aria-label="Delta"] {
+    color: #08D9D6 !important;
+}
+
+/* =========================
+   CHARTS
+========================= */
+
+canvas {
+    filter: brightness(0.92);
+}
+
+/* =========================
+   TABLES
+========================= */
+
+thead tr th {
+    background-color: #1f232b !important;
+    color: #EAEAEA !important;
+    font-weight: 600;
+}
+
+tbody tr {
+    background-color: #252A34;
+}
+
+tbody tr:hover {
+    background-color: rgba(8, 217, 214, 0.05);
+}
+
+/* =========================
+   BUTTONS
+========================= */
+
+button[kind="primary"] {
+    background-color: #08D9D6 !important;
+    color: #252A34 !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+}
+
+button[kind="primary"]:hover {
+    background-color: #06c2bf !important;
+}
+
+/* =========================
+   RADIO / NAVIGATION
+========================= */
+
+div[role="radiogroup"] label[data-checked="true"] {
+    color: #08D9D6 !important;
+    font-weight: 600;
+}
+
+/* =========================
+   ALERTS
+========================= */
+
+div[data-testid="stAlert"] {
+    border-radius: 14px;
+}
+
+div[data-testid="stAlert"][data-baseweb="notification"][kind="error"] {
+    border-left: 4px solid #FF2E63;
+}
+
+div[data-testid="stAlert"][data-baseweb="notification"][kind="warning"] {
+    border-left: 4px solid #FF2E63;
+}
+
+div[data-testid="stAlert"][data-baseweb="notification"][kind="success"] {
+    border-left: 4px solid #08D9D6;
+}
