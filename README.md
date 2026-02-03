@@ -43,14 +43,14 @@ The app tracks training volume, intensity, exercise progress, fatigue, and body 
 ![History Session](https://github.com/BaseMar/ProgressAnalyzer/blob/841e6416b843d2e3b012cfba825cee9b031de574/screenshots/Dashboard_2.png)
 
 - Analytics View
-![Analytics Tab Part 1](screenshots\Analytics_1.png)
-![Analytics Tab Part 2](screenshots\Analytics_2.png)
-![Analytics Tab Part 3](screenshots\Analytics_3.png)
+![Analytics Tab Part 1](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Analytics_1.png)
+![Analytics Tab Part 2](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Analytics_2.png)
+![Analytics Tab Part 3](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Analytics_3.png)
 
 - Body Metrics View  
-![Body Metrics Part 1](screenshots\Body_Metrics_1.png)
-![Body Metrics Part 2](screenshots\Body_Metrics_2.png)
-![Body Metrics Part 3](screenshots\Body_Metrics_3.png)
+![Body Metrics Part 1](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Body_Metrics_1.png)
+![Body Metrics Part 2](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Body_Metrics_2.png)
+![Body Metrics Part 3](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Body_Metrics_3.png)
 
 ---
 
