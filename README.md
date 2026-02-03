@@ -39,8 +39,8 @@ The app tracks training volume, intensity, exercise progress, fatigue, and body 
 ## Screenshots
 
 - Main Dashboard
-![Main Dashboard](https://github.com/BaseMar/ProgressAnalyzer/blob/945fbc9d157bed43a5318eaede45ebae96345f11/screenshots/Dashboard_1.png)]
-![History Session](screenshots\Dashboard_2.png)
+![Main Dashboard](https://github.com/BaseMar/ProgressAnalyzer/blob/945fbc9d157bed43a5318eaede45ebae96345f11/screenshots/Dashboard_1.png)
+![History Session](https://github.com/BaseMar/ProgressAnalyzer/blob/841e6416b843d2e3b012cfba825cee9b031de574/screenshots/Dashboard_2.png)
 
 - Analytics View
 ![Analytics Tab Part 1](screenshots\Analytics_1.png)
