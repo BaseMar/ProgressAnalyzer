@@ -21,8 +21,9 @@ def filter_data_by_month(input_data: MetricsInput, sets_df: pd.DataFrame, month:
     Tuple[MetricsInput, pd.DataFrame]
         Filtered MetricsInput and sets_df.
     """
-    if not month:
+    if month is None or month == "All time":
         return input_data, sets_df
+
 
     year, month_num = map(int, month.split("-"))
 

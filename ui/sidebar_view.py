@@ -49,11 +49,14 @@ class SidebarView:
         df["SessionDate"] = pd.to_datetime(df["SessionDate"])
 
         available_months = (df["SessionDate"].dt.to_period("M").astype(str).sort_values().unique())
-
+        month_options = ["All time", *available_months]
+        
         if len(available_months) == 0:
             return None
-
-        return st.sidebar.selectbox("Select month",options=available_months, index=len(available_months) - 1)
+        
+        selected_month = st.sidebar.selectbox("Select month",options=month_options,index=0)
+        
+        return selected_month
 
     def render_navigation(self) -> str:
         """

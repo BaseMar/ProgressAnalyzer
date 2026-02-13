@@ -113,7 +113,6 @@ class StreamlitApp:
             "body": compute_body_metrics(input_data),
         }   
 
-
 def main() -> None:
     """Application entry point."""
     StreamlitApp().run()
