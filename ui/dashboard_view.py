@@ -22,7 +22,7 @@ class DashboardView:
         avg_sessions_per_week = global_metrics.get("avg_sessions_per_week")
         avg_duration = global_metrics.get("avg_session_duration")
 
-        kpi_cols[0].metric("Avg Intensity", round(avg_intensity, 2) if avg_intensity is not None else "—")
+        kpi_cols[0].metric("Avg Intensity", f"{round(avg_intensity, 2)} %" if avg_intensity is not None else "—")
         kpi_cols[1].metric("Sessions / Week", round(avg_sessions_per_week, 2) if avg_sessions_per_week else "—")
         kpi_cols[2].metric("Avg Volume / Session", round(avg_volume, 1) if avg_volume else "—")
         kpi_cols[3].metric("Avg Sets / Session", round(avg_sets, 1) if avg_sets else "—")

@@ -1,0 +1,97 @@
+/* Global configuration */
+.stApp{
+    background: #222831;
+    color: #EEEEEE;
+}
+
+.block-container {
+    max-width: 1200px;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+section.main > div {
+    padding-top: 0rem;
+}
+
+/* Typography */
+h1 {
+    font-size: 42px;
+    font-weight: 700;
+    color: #EEEEEE;
+    letter-spacing: 0.5px;
+}
+
+h2 {
+    font-size: 30px;
+    font-weight: 600;
+    color: #EEEEEE;
+}
+
+h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #00ADB5;
+}
+
+.css-10trblm {
+    color: #9aa0a6;
+}
+
+p {
+    color: #EEEEEE;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #393E46;
+    border-right: 1px solid rgba(255,255,255,0.08);
+}
+
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {
+    color: #00ADB5;
+}
+
+section[data-testid="stSidebar"] .stRadio,
+section[data-testid="stSidebar"] .stSelectbox {
+    margin-bottom: 18px;
+}
+
+/* Metrics - KPIs */
+[data-testid="stMetric"] {
+    background-color: #393E46;
+    border-radius: 16px;
+    padding: 18px 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: 0.2s ease;
+}
+[data-testid="stMetric"]:hover {
+    transform: translateY(-4px);
+    border: 1px solid rgba(0,173,181,0.5);
+    box-shadow: 0 6px 18px rgba(0,173,181,0.15);
+}
+[data-testid="stMetricLabel"] {
+    color: #9aa0a6;
+    font-size: 14px;
+    font-weight: 500;
+}
+[data-testid="stMetricValue"] {
+    color: #EEEEEE;
+    font-size: 30px;
+    font-weight: 700;
+}
+[data-testid="stMetricDelta"] {
+    font-size: 14px;
+    font-weight: 600;
+}
+[data-testid="stMetricDelta"] svg {
+    color: #00ADB5 !important;
+}
+[data-testid="stMetricDelta"] > div {
+    color: #00ADB5 !important;
+}
+div[data-testid="column"] {
+    padding: 6px;
+}
