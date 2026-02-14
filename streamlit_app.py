@@ -18,7 +18,6 @@ from ui.analytics_view import AnalyticsView
 from ui.body_metrics_view import BodyMetricsView
 from ui.utils.data_filter import filter_data_by_month
 
-
 class StreamlitApp:
     """
     Main entry point for the Workout Progress Analyzer Streamlit application.
@@ -84,7 +83,7 @@ class StreamlitApp:
     
     def _load_global_styles(self) -> None:
         """Load global CSS styles used across the application."""
-        css_path = Path(__file__).resolve().parent / "styles" / "main.css"
+        css_path = Path(__file__).resolve().parent / "ui" / "styles" / "main.css"
 
         if css_path.exists():
             with open(css_path, encoding="utf-8") as f:
