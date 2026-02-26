@@ -210,7 +210,7 @@ class BodyMetricsView:
 
     def _add_measurement_form(self):
         st.subheader("Add New Body Metrics")
-        st.caption("Log body composition or body measurements. One entry per day.")
+        st.caption("Log body composition or body measurements. One entry per day per type (composition vs. measurements).")
 
         tabs = st.tabs(["Body Composition", "Body Measurements"])
 
@@ -233,6 +233,7 @@ class BodyMetricsView:
                 else:
                     self._save_body_composition(date=date, weight=weight, fat_pct=fat_pct, muscle_mass=muscle_mass, fat_mass=fat_mass, water_mass=water_mass)
                     st.success("Body composition saved.")
+                    st.cache_data.clear()
                     st.rerun()
 
         # body measurements tab
@@ -265,6 +266,7 @@ class BodyMetricsView:
                         biceps=biceps,
                     )
                     st.success("Body measurements saved.")
+                    st.cache_data.clear()
                     st.rerun()
     
     def _render_metric_kpis(self, df: pd.DataFrame, col: str, unit: str, best_mode: str = "max") -> None:
@@ -369,12 +371,28 @@ class BodyMetricsView:
         if not timeline:
             return False
 
+        # helper to determine whether a value should be considered "present"
+        def _has_value(val):
+            if val is None:
+                return False
+            # pandas may use numpy.nan which is float
+            try:
+                from math import isnan
+            except ImportError:
+                return val is not None
+            if isinstance(val, float) and isnan(val):
+                return False
+            return True
+
         for r in timeline:
             if r["date"] == date:
-                if category == "composition" and "weight" in r:
+                if category == "composition" and _has_value(r.get("weight")):
                     return True
-                if category == "measurements" and any(k in r for k in ["chest", "waist", "thigh"]):
-                    return True
+                if category == "measurements":
+                    # only count as existing if at least one real measurement value is stored
+                    for k in ["chest", "waist", "abdomen", "hips", "thigh", "calf", "biceps"]:
+                        if _has_value(r.get(k)):
+                            return True
         return False
     
     def _save_body_composition(self, date, weight, fat_pct, muscle_mass, fat_mass, water_mass):
