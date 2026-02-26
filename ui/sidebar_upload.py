@@ -137,7 +137,7 @@ class SidebarUpload:
     def _new_exercise_form(self, suggested_name):
         """Form to handle exercise that doesn't exist in database.
         
-        First shows available exercises that might match, then allows creating new one.
+        First shows similar exercises, then all exercises from database, then allows creating new one.
         """
         st.sidebar.warning(f"Exercise '{suggested_name}' not found in database")
 
@@ -151,7 +151,8 @@ class SidebarUpload:
             suggested_names = [row.ExerciseName for row in similar]
             selected_exercise = st.sidebar.selectbox(
                 "Select existing exercise:",
-                options=suggested_names
+                options=suggested_names,
+                key="similar_exercise_select"
             )
             
             if st.sidebar.button("✓ Use selected exercise"):
@@ -164,7 +165,27 @@ class SidebarUpload:
                 return
             
             st.sidebar.divider()
-            st.sidebar.caption("Or add new exercise below")
+        
+        # Show all exercises from database for selection
+        st.sidebar.subheader("Or choose from all exercises")
+        all_exercise_names = sorted([row.ExerciseName for row in exercises_db.itertuples()])
+        selected_exercise_all = st.sidebar.selectbox(
+            "Select exercise from database:",
+            options=all_exercise_names,
+            key="all_exercises_select"
+        )
+        
+        if st.sidebar.button("✓ Use this exercise"):
+            # Add mapping and attempt import again
+            st.session_state.exercise_mapping[suggested_name] = selected_exercise_all
+            st.session_state.adding_exercise = False
+            st.session_state.pending_exercise = None
+            st.cache_data.clear()
+            st.rerun()
+            return
+        
+        st.sidebar.divider()
+        st.sidebar.caption("Or add new exercise below")
         
         # Form to add new exercise
         st.sidebar.subheader("Add new exercise")
