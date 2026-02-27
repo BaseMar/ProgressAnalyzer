@@ -1,100 +1,115 @@
 """
 Exercise view for the UI layer.
 
-Displays exercise-level KPIs, progress indicators,
-time trends, and comparative analysis.
+Displays exercise-level KPIs, time trends, and comparative analysis.
 """
 
+from __future__ import annotations
+
 from typing import Dict
+
 import pandas as pd
 import streamlit as st
 
 from metrics.utils.strength import estimate_1rm
+from ui.utils.ui_helpers import chart_label, fmt_num, line_chart, page_title, section_header
 
 
 class ExerciseView:
     """
-    UI view responsible for presenting exercise-level insights.
+    UI view for exercise-level insights.
 
-    Data sources:
-    - exercises_metrics: aggregated metrics per exercise
-    - sets_df: raw set-level data (for time-based trends only)
-
-    Responsibilities:
-    - exercise selector
-    - KPI summary
-    - progress indicators
-    - trends visualization
-    - comparative table
+    Data sources
+    ------------
+    exercises_metrics : aggregated metrics per exercise
+    sets_df           : raw set-level data (used for time-based trends)
     """
 
-    def __init__(self, exercises_metrics: Dict, sets_df: pd.DataFrame):
+    def __init__(self, exercises_metrics: Dict, sets_df: pd.DataFrame) -> None:
         self.exercises_metrics = exercises_metrics
         self.sets_df = sets_df
 
     def render(self) -> None:
-        """Render the Exercises view."""
-        st.header("Exercise Library")
+        page_title("Exercises", "Exercise Library")
+
         per_exercise = self.exercises_metrics.get("per_exercise", {})
         exercises_df = pd.DataFrame(per_exercise).T.reset_index(drop=True)
+
         if exercises_df.empty:
             st.info("No exercise data available.")
             return
 
-        # ---------- Exercise selector ----------
-        exercise_name = st.selectbox("Select exercise", options=exercises_df["exercise_name"].tolist(),)
-        exercise_row = exercises_df[exercises_df["exercise_name"] == exercise_name].iloc[0]
-        exercise = exercise_row.to_dict()
-        
+        self._render_selector(exercises_df)
 
-        st.divider()
+    # ── Private sections ─────────────────────────────────────
 
-        # ---------- KPI: primary ----------
-        st.subheader("Performance Overview")
+    def _render_selector(self, exercises_df: pd.DataFrame) -> None:
+        exercise_name = st.selectbox(
+            "Select exercise",
+            options=exercises_df["exercise_name"].tolist(),
+        )
+        exercise = exercises_df[
+            exercises_df["exercise_name"] == exercise_name
+        ].iloc[0].to_dict()
 
-        kpi_cols = st.columns(5)
+        self._render_kpis(exercise)
+        self._render_trends(exercise_name)
+        self._render_comparison(exercises_df, exercise_name)
 
-        kpi_cols[0].metric("Total Sets", exercise["total_sets"])
-        kpi_cols[1].metric("Sessions", exercise["sessions_count"])
-        kpi_cols[2].metric("Total Volume", int(exercise["total_volume"]))
-        kpi_cols[3].metric("Max Weight", round(exercise["max_weight"], 1))
-        kpi_cols[4].metric("Estimated 1RM (max)", round(exercise["estimated_1rm_max"], 1))
+    def _render_kpis(self, exercise: dict) -> None:
+        section_header("Performance Overview")
 
-        st.divider()
-        
-        # ---------- Trends ----------
-        st.subheader("Trends")
+        cols = st.columns(5)
+        cols[0].metric("Total Sets",      exercise["total_sets"])
+        cols[1].metric("Sessions",        exercise["sessions_count"])
+        cols[2].metric("Total Volume",    f"{fmt_num(exercise['total_volume'], 0)} kg")
+        cols[3].metric("Max Weight",      f"{fmt_num(exercise['max_weight'], 1)} kg")
+        cols[4].metric("Est. 1RM",        f"{fmt_num(exercise['estimated_1rm_max'], 1)} kg")
 
-        exercise_sets = self.sets_df[self.sets_df["ExerciseName"] == exercise_name].copy()
+    def _render_trends(self, exercise_name: str) -> None:
+        section_header("Trends")
+
+        exercise_sets = self.sets_df[
+            self.sets_df["ExerciseName"] == exercise_name
+        ].copy()
+
         if exercise_sets.empty:
             st.info("No time-series data available for this exercise.")
             return
 
         exercise_sets["SessionDate"] = pd.to_datetime(exercise_sets["SessionDate"])
-        exercise_sets["Estimated1RM"] = exercise_sets.apply(lambda r: estimate_1rm(r["Weight"], r["Repetitions"]),axis=1)
-        
-        trend_df = (exercise_sets.groupby("SessionDate").agg(
+        exercise_sets["Estimated1RM"] = exercise_sets.apply(
+            lambda r: estimate_1rm(r["Weight"], r["Repetitions"]), axis=1
+        )
+
+        trend_df = (
+            exercise_sets
+            .groupby("SessionDate")
+            .agg(
                 Volume=("Volume", "sum"),
                 Estimated1RM=("Estimated1RM", "mean"),
-            ).reset_index().sort_values("SessionDate"))
+            )
+            .reset_index()
+            .sort_values("SessionDate")
+            .set_index("SessionDate")
+        )
         trend_df["Estimated1RM"] = trend_df["Estimated1RM"].round(2)
+
         col1, col2 = st.columns(2)
 
         with col1:
-            st.markdown("**Volume per Session**")
-            st.line_chart(trend_df.set_index("SessionDate")[["Volume"]],height=300)
+            chart_label("Volume per Session")
+            line_chart(trend_df, "Volume")
 
         with col2:
-            st.markdown("**Avg 1RM per Session**")
-            st.line_chart(trend_df.set_index("SessionDate")[["Estimated1RM"]],height=300)
+            chart_label("Avg 1RM per Session")
+            line_chart(trend_df, "Estimated1RM")
 
-        st.divider()
-        
-        # ---------- Comparative table ----------
-        st.subheader("Exercise Comparison")
+    def _render_comparison(self, exercises_df: pd.DataFrame, exercise_name: str) -> None:
+        section_header("Exercise Comparison")
 
-        compare_df = exercises_df[
-            [
+        compare_df = (
+            exercises_df[[
                 "exercise_name",
                 "total_sets",
                 "sessions_count",
@@ -102,31 +117,35 @@ class ExerciseView:
                 "estimated_1rm_max",
                 "avg_rir",
                 "avg_sets_per_session",
-            ]
-        ].rename(columns={
-            "exercise_name": "Exercise",
-            "total_sets": "Total Sets",
-            "sessions_count": "Sessions",
-            "total_volume": "Total Volume",
-            "estimated_1rm_max": "Estimated 1RM",
-            "avg_rir": "Avg RIR",
-            "avg_sets_per_session": "Avg Sets / Session",
-        })
-
-        def highlight_selected(row):
-            if row["Exercise"] == exercise_name:
-                return ["background-color: #2a2a2a"] * len(row)
-            return [""] * len(row)
+            ]]
+            .rename(columns={
+                "exercise_name":      "Exercise",
+                "total_sets":         "Total Sets",
+                "sessions_count":     "Sessions",
+                "total_volume":       "Total Volume",
+                "estimated_1rm_max":  "Est. 1RM",
+                "avg_rir":            "Avg RIR",
+                "avg_sets_per_session": "Avg Sets / Session",
+            })
+            .sort_values("Total Volume", ascending=False)
+        )
 
         st.dataframe(
-            compare_df
-            .sort_values("Total Volume", ascending=False)
-            .style.apply(highlight_selected, axis=1),
+            compare_df.style.apply(self._highlight_selected(exercise_name), axis=1),
             column_config={
-                "Estimated 1RM": st.column_config.NumberColumn(format="%.2f"),
-                "Avg RIR": st.column_config.NumberColumn(format="%.2f"),
-                "Avg Sets / Session": st.column_config.NumberColumn(format="%.2f"),
-                "Total Volume": st.column_config.NumberColumn(format="%.0f"),
+                "Est. 1RM":           st.column_config.NumberColumn(format="%.1f kg"),
+                "Avg RIR":            st.column_config.NumberColumn(format="%.1f"),
+                "Avg Sets / Session": st.column_config.NumberColumn(format="%.1f"),
+                "Total Volume":       st.column_config.NumberColumn(format="%.0f"),
             },
-            width="stretch",
+            width='stretch'
         )
+
+    @staticmethod
+    def _highlight_selected(exercise_name: str):
+        """Return a pandas Styler function that highlights the selected exercise row."""
+        def _apply(row):
+            if row["Exercise"] == exercise_name:
+                return ["background-color: rgba(0,173,181,0.12); color: #EEEEEE"] * len(row)
+            return [""] * len(row)
+        return _apply
