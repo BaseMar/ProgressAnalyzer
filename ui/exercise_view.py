@@ -12,6 +12,7 @@ import pandas as pd
 import streamlit as st
 
 from metrics.utils.strength import estimate_1rm
+from ui.utils.exercise_table import render_exercise_table
 from ui.utils.ui_helpers import chart_label, fmt_num, line_chart, page_title, section_header
 
 
@@ -41,16 +42,11 @@ class ExerciseView:
 
         self._render_selector(exercises_df)
 
-    # ── Private sections ─────────────────────────────────────
+    # Private sections
 
     def _render_selector(self, exercises_df: pd.DataFrame) -> None:
-        exercise_name = st.selectbox(
-            "Select exercise",
-            options=exercises_df["exercise_name"].tolist(),
-        )
-        exercise = exercises_df[
-            exercises_df["exercise_name"] == exercise_name
-        ].iloc[0].to_dict()
+        exercise_name = st.selectbox("Select exercise", options=exercises_df["exercise_name"].tolist())
+        exercise = exercises_df[exercises_df["exercise_name"] == exercise_name].iloc[0].to_dict()
 
         self._render_kpis(exercise)
         self._render_trends(exercise_name)
@@ -60,27 +56,23 @@ class ExerciseView:
         section_header("Performance Overview")
 
         cols = st.columns(5)
-        cols[0].metric("Total Sets",      exercise["total_sets"])
-        cols[1].metric("Sessions",        exercise["sessions_count"])
-        cols[2].metric("Total Volume",    f"{fmt_num(exercise['total_volume'], 0)} kg")
-        cols[3].metric("Max Weight",      f"{fmt_num(exercise['max_weight'], 1)} kg")
-        cols[4].metric("Est. 1RM",        f"{fmt_num(exercise['estimated_1rm_max'], 1)} kg")
+        cols[0].metric("Total Sets", exercise["total_sets"])
+        cols[1].metric("Sessions", exercise["sessions_count"])
+        cols[2].metric("Total Volume", f"{fmt_num(exercise['total_volume'], 0)} kg")
+        cols[3].metric("Max Weight", f"{fmt_num(exercise['max_weight'], 1)} kg")
+        cols[4].metric("Est. 1RM", f"{fmt_num(exercise['estimated_1rm_max'], 1)} kg")
 
     def _render_trends(self, exercise_name: str) -> None:
         section_header("Trends")
 
-        exercise_sets = self.sets_df[
-            self.sets_df["ExerciseName"] == exercise_name
-        ].copy()
+        exercise_sets = self.sets_df[self.sets_df["ExerciseName"] == exercise_name].copy()
 
         if exercise_sets.empty:
             st.info("No time-series data available for this exercise.")
             return
 
         exercise_sets["SessionDate"] = pd.to_datetime(exercise_sets["SessionDate"])
-        exercise_sets["Estimated1RM"] = exercise_sets.apply(
-            lambda r: estimate_1rm(r["Weight"], r["Repetitions"]), axis=1
-        )
+        exercise_sets["Estimated1RM"] = exercise_sets.apply(lambda r: estimate_1rm(r["Weight"], r["Repetitions"]), axis=1)
 
         trend_df = (
             exercise_sets
@@ -96,11 +88,9 @@ class ExerciseView:
         trend_df["Estimated1RM"] = trend_df["Estimated1RM"].round(2)
 
         col1, col2 = st.columns(2)
-
         with col1:
             chart_label("Volume per Session")
             line_chart(trend_df, "Volume")
-
         with col2:
             chart_label("Avg 1RM per Session")
             line_chart(trend_df, "Estimated1RM")
@@ -117,35 +107,19 @@ class ExerciseView:
                 "estimated_1rm_max",
                 "avg_rir",
                 "avg_sets_per_session",
+                "body_part",
             ]]
             .rename(columns={
-                "exercise_name":      "Exercise",
-                "total_sets":         "Total Sets",
-                "sessions_count":     "Sessions",
-                "total_volume":       "Total Volume",
-                "estimated_1rm_max":  "Est. 1RM",
-                "avg_rir":            "Avg RIR",
+                "exercise_name":        "Exercise",
+                "total_sets":           "Total Sets",
+                "sessions_count":       "Sessions",
+                "total_volume":         "Total Volume",
+                "estimated_1rm_max":    "Est. 1RM",
+                "avg_rir":              "Avg RIR",
                 "avg_sets_per_session": "Avg Sets / Session",
             })
             .sort_values("Total Volume", ascending=False)
+            .reset_index(drop=True)
         )
 
-        st.dataframe(
-            compare_df.style.apply(self._highlight_selected(exercise_name), axis=1),
-            column_config={
-                "Est. 1RM":           st.column_config.NumberColumn(format="%.1f kg"),
-                "Avg RIR":            st.column_config.NumberColumn(format="%.1f"),
-                "Avg Sets / Session": st.column_config.NumberColumn(format="%.1f"),
-                "Total Volume":       st.column_config.NumberColumn(format="%.0f"),
-            },
-            width='stretch'
-        )
-
-    @staticmethod
-    def _highlight_selected(exercise_name: str):
-        """Return a pandas Styler function that highlights the selected exercise row."""
-        def _apply(row):
-            if row["Exercise"] == exercise_name:
-                return ["background-color: rgba(0,173,181,0.12); color: #EEEEEE"] * len(row)
-            return [""] * len(row)
-        return _apply
+        render_exercise_table(compare_df, selected=exercise_name)
