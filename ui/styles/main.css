@@ -524,3 +524,38 @@ div[data-testid="column"] { padding: 6px; }
     border-top: 1px solid var(--border) !important;
     margin: 4px 0 0 0 !important;
 }
+
+/* ============================================================
+   NOTE — Plotly Charts (analytics_view.py)
+   ============================================================
+   Plotly renders on its own canvas — main.css cannot style it.
+   The theme is applied via _PLOTLY_LAYOUT in analytics_view.py.
+   Keep these tokens in sync with the variables defined above.
+
+   Tokens used by _PLOTLY_LAYOUT (analytics_view.py):
+     paper_bgcolor / plot_bgcolor : --bg-base       #222831
+     font color                   : --text-primary  #EEEEEE
+     axis tick/label color        : --text-muted    #9aa0a6
+     grid lines                   : rgba(255,255,255,0.06)
+     axis lines                   : --border        rgba(255,255,255,0.07)
+     accent (fatigue line, top 10): --accent        #00ADB5
+     danger (bottom 10 bars)      : #ff8585
+     warning                      : #ffc947
+   ============================================================ */
+
+
+/* ============================================================
+   Plotly — Container reset
+   Removes the default white background Streamlit adds around
+   Plotly iframes so charts blend into the page background.
+   ============================================================ */
+[data-testid="stPlotlyChart"] {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+[data-testid="stPlotlyChart"] > div {
+    background-color: transparent !important;
+}

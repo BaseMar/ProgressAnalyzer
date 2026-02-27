@@ -1,27 +1,95 @@
+"""
+Analytics view for the UI layer.
+
+Styling strategy (mirrors dashboard_view.py):
+  - page_title / section_header / chart_label  → main.css handles rendering
+  - st.metric                                  → main.css handles styling
+  - Plotly charts                              → themed via PLOTLY_LAYOUT from ui_helpers
+  - Plateau expanders                          → main.css stExpander styles apply
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
 from typing import Dict
+
 import pandas as pd
-import streamlit as st
 import plotly.express as px
-import plotly.figure_factory as ff
-from datetime import datetime, timedelta
+import streamlit as st
+
+from ui.utils.ui_helpers import (chart_label, fmt_num, page_title, section_header, ACCENT, DANGER, MUTED, WARN, PLOTLY_LAYOUT)
+
+def _apply_theme(fig, title: str = "") -> None:
+    """Apply the shared Plotly theme to a figure in-place."""
+    fig.update_layout(**PLOTLY_LAYOUT,title=dict(text=title.upper(), font=dict(color=MUTED, size=10), x=0))
 
 
 class AnalyticsView:
-    def __init__(self, metrics: Dict):
+    def __init__(self, metrics: Dict) -> None:
         self.session_metrics = metrics.get("sessions", {})
         self.exercise_metrics = metrics.get("exercises", {})
         self.progress_metrics = metrics.get("progress", {})
         self.fatigue_metrics = metrics.get("fatigue", {})
 
     def render(self) -> None:
-        st.header("Analytics Dashboard")
-
+        page_title("Analytics", "Training Analytics")
         self._fatigue_section()
-        st.divider()
         self._progress_section()
 
-    def _progress_section(self):
-        st.subheader("Strength Progress")
+    def _fatigue_section(self) -> None:
+        section_header("Fatigue & Recovery")
+
+        per_session = self.fatigue_metrics.get("per_session", {})
+        global_f = self.fatigue_metrics.get("global", {})
+
+        if not per_session:
+            st.info("No fatigue data.")
+            return
+
+        total_sets = sum(s["total_sets"] for s in self.session_metrics.get("per_session", {}).values())
+        failure_sets = sum(s["sets_to_failure"] for s in self.session_metrics.get("per_session", {}).values())
+        failure_pct = (failure_sets / total_sets * 100) if total_sets else 0
+        avg_intensity = self.session_metrics.get("global", {}).get("avg_intensity", 0)
+
+        cols = st.columns(5)
+        cols[0].metric("Avg Fatigue Score", global_f.get("avg_fatigue_score", "—"))
+        cols[1].metric("High Fatigue Sessions", global_f.get("high_fatigue_sessions_ratio", "—"))
+        cols[2].metric("Max Consecutive High Fatigue", global_f.get("max_consecutive_high_fatigue_sessions", "—"))
+        cols[3].metric("Avg Session Intensity", f"{round(avg_intensity, 2)}%")
+        cols[4].metric("Sets to Failure", f"{round(failure_pct, 1)}%")
+
+        df = pd.DataFrame([
+            {"date": s.get("session_date"), "fatigue_score": s.get("fatigue_score", 0)}
+            for s in per_session.values()
+        ]).dropna(subset=["date"])
+
+        if not df.empty:
+            df["date"] = pd.to_datetime(df["date"])
+            df = df.sort_values("date")
+
+            fig = px.line(
+                df, x="date", y="fatigue_score",
+                markers=True,
+                labels={"date": "Session Date", "fatigue_score": "Fatigue Score"},
+            )
+            fig.update_traces(
+                line_color=ACCENT,
+                line_width=2,
+                marker=dict(color=ACCENT, size=5),
+            )
+            _apply_theme(fig)
+
+            chart_label("Fatigue Score Over Time")
+            st.plotly_chart(fig, width='stretch')
+
+        ratio = global_f.get("high_fatigue_sessions_ratio", 0)
+        if ratio > 0.3:
+            st.warning("High frequency of fatigue-heavy sessions — monitor recovery.")
+        else:
+            st.success("Fatigue levels are balanced. Keep up the consistency.")
+
+    def _progress_section(self) -> None:
+        section_header("Strength Progress")
 
         per_ex = self.progress_metrics.get("per_exercise", {})
         if not per_ex:
@@ -32,196 +100,135 @@ class AnalyticsView:
         df["progress_per_exposure"] = df["progress_pct"] / df["exposure_count"]
         df.fillna(0, inplace=True)
 
-        # --- KPI ---
         median_progress = df["progress_pct"].median()
         improving = (df["progress_pct"] > 2).sum()
-        plateau_count = ((df["progress_pct"].abs() < 2).sum())
+        plateau_count = (df["progress_pct"].abs() < 2).sum()
         progress_ratio = improving / len(df) * 100 if len(df) else 0
-        top_exercise = df.loc[df['progress_pct'].idxmax()]['exercise_name']
-        worst_exercise = df.loc[df['progress_pct'].idxmin()]['exercise_name']
-        
+        top_exercise = df.loc[df["progress_pct"].idxmax(), "exercise_name"]
+        worst_exercise = df.loc[df["progress_pct"].idxmin(), "exercise_name"]
 
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Median Progress (%)", round(median_progress, 1))
-        c2.metric("Progress Ratio (%)", f"{round(progress_ratio)}%")
-        c3.metric("Plateaus", int(plateau_count))
-        c4.metric("Top Improver (%)", f"{top_exercise}")
-        c5.metric("Top Regressor (%)", f"{worst_exercise}")
+        cols = st.columns(5)
+        cols[0].metric("Median Progress", f"{round(median_progress, 1)}%")
+        cols[1].metric("Progress Ratio", f"{round(progress_ratio)}%")
+        cols[2].metric("Plateaus", int(plateau_count))
+        cols[3].metric("Top Improver", top_exercise)
+        cols[4].metric("Top Regressor", worst_exercise)
 
-        # --- Top/Bottom 10 Bar Chart ---
         top10 = df.sort_values("progress_pct", ascending=False).head(10)
         bottom10 = df.sort_values("progress_pct", ascending=True).head(10)
 
         col1, col2 = st.columns(2)
 
         with col1:
-            st.markdown("**Top 10 Exercises**")
+            chart_label("Top 10 Exercises")
             fig_top = px.bar(
-                top10,
-                x="exercise_name",
-                y="progress_pct",
+                top10, x="exercise_name", y="progress_pct",
                 text="progress_pct",
-                labels={"exercise_name": "Exercise", "progress_pct": "Strength Progress (%)"},
+                labels={"exercise_name": "", "progress_pct": "Progress (%)"},
             )
-            fig_top.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+            fig_top.update_traces(
+                marker_color=ACCENT,
+                marker_opacity=0.85,
+                texttemplate="%{text:.1f}%",
+                textposition="outside",
+                textfont=dict(color=MUTED, size=10),
+            )
+            fig_top.update_layout(bargap=0.35)
+            _apply_theme(fig_top)
             st.plotly_chart(fig_top, width='stretch')
 
         with col2:
-            st.markdown("**Bottom 10 Exercises**")
+            chart_label("Bottom 10 Exercises")
             fig_bottom = px.bar(
-                bottom10,
-                x="exercise_name",
-                y="progress_pct",
+                bottom10, x="exercise_name", y="progress_pct",
                 text="progress_pct",
-                labels={"exercise_name": "Exercise", "progress_pct": "Strength Progress (%)"},
+                labels={"exercise_name": "", "progress_pct": "Progress (%)"},
             )
-            fig_bottom.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+            fig_bottom.update_traces(
+                marker_color=DANGER,
+                marker_opacity=0.85,
+                texttemplate="%{text:.1f}%",
+                textposition="outside",
+                textfont=dict(color=MUTED, size=10),
+            )
+            fig_bottom.update_layout(bargap=0.35)
+            _apply_theme(fig_bottom)
             st.plotly_chart(fig_bottom, width='stretch')
 
-        # --- Plateau Detection & Smart Recommendations ---
-        st.markdown("### Plateau Zone Analysis & Interventions")
+        self._plateau_section(per_ex)
 
-        per_ex = self.progress_metrics.get("per_exercise", {})
+    def _plateau_section(self, per_ex: dict) -> None:
+        section_header("Plateau Zone Analysis")
+
         exercise_per = self.exercise_metrics.get("per_exercise", {})
+        today = datetime.now().date()
+        recency_threshold = 28
 
-        # Build enriched plateau data with recency info
         plateau_data = []
         abandoned_data = []
-        today = datetime.now().date()
-        recency_threshold_days = 28  # Only flag as active plateau if trained in last 28 days
 
-        for ex_id, progress_row in per_ex.items():
-            if abs(progress_row["progress_pct"]) >= 2:
-                continue  # Skip improving/regressing exercises
+        for ex_id, row in per_ex.items():
+            if abs(row["progress_pct"]) >= 2:
+                continue
 
-            ex_name = progress_row["exercise_name"]
-            progress = progress_row["progress_pct"]
-            exposure = progress_row["exposure_count"]
-
-            # Get last training date from exercise_metrics
             ex_info = exercise_per.get(ex_id, {})
             per_session_1rm = ex_info.get("per_session_1rm", [])
-            
-            last_date = None
-            if per_session_1rm:
-                last_date = pd.to_datetime(per_session_1rm[-1]["date"]).date()
+            last_date = pd.to_datetime(per_session_1rm[-1]["date"]).date() if per_session_1rm else None
 
-            days_since = (today - last_date).days if last_date else None
+            if last_date is None:
+                continue
 
-            if days_since is None:
-                continue  # Skip if no date info
+            days_since = (today - last_date).days
+            entry = {
+                "exercise_name": row["exercise_name"],
+                "progress_pct": row["progress_pct"],
+                "exposure_count": row["exposure_count"],
+                "last_date":     last_date,
+                "days_since":    days_since,
+            }
 
-            if days_since <= recency_threshold_days:
-                # Active plateau - being trained recently
-                plateau_data.append({
-                    "exercise_id": ex_id,
-                    "exercise_name": ex_name,
-                    "progress_pct": progress,
-                    "exposure_count": exposure,
-                    "last_date": last_date,
-                    "days_since": days_since,
-                })
+            if days_since <= recency_threshold:
+                plateau_data.append(entry)
             else:
-                # Abandoned - not trained recently
-                abandoned_data.append({
-                    "exercise_id": ex_id,
-                    "exercise_name": ex_name,
-                    "progress_pct": progress,
-                    "exposure_count": exposure,
-                    "last_date": last_date,
-                    "days_since": days_since,
-                })
+                abandoned_data.append(entry)
 
-        # Sort by exposure count (priority for action)
-        plateau_data = sorted(plateau_data, key=lambda x: x["exposure_count"], reverse=True)
+        plateau_data = sorted(plateau_data,   key=lambda x: x["exposure_count"], reverse=True)
         abandoned_data = sorted(abandoned_data, key=lambda x: x["days_since"], reverse=True)
 
-        # --- Display Active Plateaus ---
         if not plateau_data:
-            st.success("✅ No active exercises in plateau zone! All recently trained exercises are either progressing or regressing.")
+            st.success("No active exercises in plateau zone — all recently trained exercises are progressing.")
         else:
-            st.info(f"⚠️ **{len(plateau_data)} active exercise(s)** stuck in plateau (trained in last {recency_threshold_days} days)")
-            
-            for idx, item in enumerate(plateau_data):
-                ex_name = item["exercise_name"]
-                progress = item["progress_pct"]
-                exposure = item["exposure_count"]
-                days_since = item["days_since"]
-                
-                # Build recommendation logic
+            st.info(f"{len(plateau_data)} active exercise(s) stuck in plateau (trained in last {recency_threshold} days)")
+
+            for i, item in enumerate(plateau_data):
                 recs = []
-                if exposure < 5:
-                    recs.append("📈 **Increase Frequency** — Less than 5 sessions; 2-3x/week for better adaptation signal")
-                elif exposure >= 12:
-                    recs.append("💪 **Boost Volume or Intensity** — 12+ exposures; try +10% weight, change rep range, or add drop sets")
+                if item["exposure_count"] < 5:
+                    recs.append("**Increase Frequency** — Less than 5 sessions; aim for 2–3×/week for a stronger adaptation signal.")
+                elif item["exposure_count"] >= 12:
+                    recs.append("**Boost Volume or Intensity** — 12+ exposures; try +10% weight, change rep range, or add drop sets.")
                 else:
-                    recs.append("🔄 **Change Stimulus** — Moderate frequency; try new angle, tempo (3-0-1), pause reps, or variation")
-                
-                if progress < -0.5:
-                    recs.append("⚙️ **Form Check** — Slight regression; review technique or consider deload week")
-                else:
-                    recs.append("✓ **Stabilizing** — Minor fluctuations; maintain current approach or progress incrementally")
+                    recs.append("**Change Stimulus** — Try a new angle, tempo (3-0-1), pause reps, or a variation.")
 
-                with st.expander(f"**{ex_name}** — Progress: {progress:.1f}% | Exposures: {int(exposure)} | Last: {days_since}d ago", expanded=(idx == 0)):
+                if item["progress_pct"] < -0.5:
+                    recs.append("**Form Check** — Slight regression detected; review technique or consider a deload week.")
+                else:
+                    recs.append("**Stabilising** — Minor fluctuations; maintain current approach or progress incrementally.")
+
+                label = (
+                    f"{item['exercise_name']}   ·   "
+                    f"Progress: {item['progress_pct']:.1f}%   ·   "
+                    f"Exposures: {int(item['exposure_count'])}   ·   "
+                    f"Last: {item['days_since']}d ago"
+                )
+                with st.expander(label, expanded=(i == 0)):
                     for rec in recs:
-                        st.markdown(rec)
+                        st.markdown(f"— {rec}")
 
-        # --- Display Abandoned Exercises ---
         if abandoned_data:
-            st.divider()
-            st.markdown("#### Abandoned Exercises")
-            st.caption(f"Not trained in {recency_threshold_days}+ days (no active intervention needed)")
-            
+            section_header("Abandoned Exercises")
             for item in abandoned_data:
-                ex_name = item["exercise_name"]
-                progress = item["progress_pct"]
-                days_since = item["days_since"]
-                
-                st.markdown(f"• **{ex_name}** — Progress: {progress:.1f}% | Last trained: {days_since} days ago")
-
-    def _fatigue_section(self):
-        st.subheader("Fatigue & Recovery")
-
-        per_session = self.fatigue_metrics.get("per_session", {})
-        global_f = self.fatigue_metrics.get("global", {})
-
-        if not per_session:
-            st.info("No fatigue data.")
-            return
-
-        # ---------- KPI ----------
-        # avg intensity + sets to failure z session metrics
-        total_sets = sum(s["total_sets"] for s in self.session_metrics.get("per_session", {}).values())
-        failure_sets = sum(s["sets_to_failure"] for s in self.session_metrics.get("per_session", {}).values())
-        failure_pct = (failure_sets / total_sets * 100) if total_sets else 0
-        avg_intensity = self.session_metrics.get("global", {}).get("avg_intensity",0)
-
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Avg Fatigue Score", global_f.get("avg_fatigue_score","—"))
-        c2.metric("% High Fatigue Sessions", global_f.get("high_fatigue_sessions_ratio","—"))
-        c3.metric("Max Consecutive High Fatigue", global_f.get("max_consecutive_high_fatigue_sessions","—"))
-        c4.metric("Avg Session Intensity", f"{round(avg_intensity,2)}%")
-
-        st.markdown(f"**Sets to Failure (%)**: {round(failure_pct,1)}%")
-
-        # ---------- Fatigue Trend ----------
-        df = pd.DataFrame([
-            {
-                "session_id": sid,
-                "date": s.get("session_date"),
-                "fatigue_score": s.get("fatigue_score",0)
-            } for sid,s in per_session.items()
-        ])
-        df = df.dropna(subset=["date"])
-        if not df.empty:
-            df["date"] = pd.to_datetime(df["date"])
-            fig_line = px.line(df, x="date", y="fatigue_score", markers=True,
-                               labels={"date":"Session Date", "fatigue_score":"Fatigue Score"},
-                               title="Fatigue Score Over Time")
-            st.plotly_chart(fig_line, width='stretch')
-
-        # ---------- Insight ----------
-        if global_f.get("high_fatigue_sessions_ratio",0) > 0.3:
-            st.warning("High frequency of fatigue-heavy sessions – monitor recovery!")
-        else:
-            st.success("Fatigue levels are balanced. Keep consistency.")
+                st.markdown(
+                    f"**{item['exercise_name']}** — "
+                    f"Progress: {item['progress_pct']:.1f}% · "
+                    f"Last trained: {item['days_since']} days ago"
+                )
