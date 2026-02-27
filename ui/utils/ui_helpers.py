@@ -29,7 +29,31 @@ VEGA_CONFIG: dict = {
     "view": {"stroke": "transparent"},
 }
 
-ACCENT = "#00ADB5"
+# ── Design tokens — single source of truth for Python code ──────────────────
+# main.css owns these for HTML/CSS. Plotly and other canvas-based renderers
+# cannot read CSS, so we redeclare them here. Any palette change needs
+# updating in BOTH main.css (:root) AND here.
+ACCENT   = "#00ADB5"
+SURFACE  = "#393E46"
+BG       = "#222831"
+WARN     = "#ffc947"
+DANGER   = "#ff8585"
+TEXT     = "#EEEEEE"
+MUTED    = "#9aa0a6"
+BORDER   = "rgba(255,255,255,0.07)"
+GRID     = "rgba(255,255,255,0.06)"
+
+# ── Plotly layout — apply with fig.update_layout(**PLOTLY_LAYOUT) ─────────────
+PLOTLY_LAYOUT = dict(
+    paper_bgcolor = BG,
+    plot_bgcolor  = BG,
+    font          = dict(color=TEXT, family="sans-serif", size=12),
+    xaxis         = dict(gridcolor=GRID, linecolor=BORDER, tickcolor=BORDER, tickfont=dict(color=MUTED, size=11)),
+    yaxis         = dict(gridcolor=GRID, linecolor=BORDER, tickcolor=BORDER, tickfont=dict(color=MUTED, size=11)),
+    margin        = dict(l=8, r=8, t=36, b=8),
+    title_font    = dict(color=MUTED, size=11, family="sans-serif"),
+    showlegend    = False,
+)
 
 def fmt_num(value, decimals: int = 1) -> str:
     """Return value formatted with thin-space thousands separator."""
@@ -105,3 +129,4 @@ def line_chart(
     }
 
     st.vega_lite_chart(spec, width='stretch')
+    

@@ -74,16 +74,10 @@ class BodyPartsView:
 
         col1, col2 = st.columns(2)
 
-        # labels and charts are rendered in the same column context
         with col1:
             chart_label("Volume per Body Part")
             data_records = body_df.to_dict(orient="records")
             spec = _bar_spec(y_field="Total_Volume", y_title="Volume (kg)")
-            # no explicit key here – Streamlit will automatically redraw when the
-            # underlying `body_df` changes (which happens when the month filter
-            # updates). previously the custom key only tracked total volume & count,
-            # leading to situations where the distribution changed but the chart
-            # stayed the same because the key didn't change.
             st.vega_lite_chart(data=data_records, spec=spec, width="stretch")
 
         with col2:
