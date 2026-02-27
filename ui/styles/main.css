@@ -329,6 +329,7 @@ ul[role="listbox"] li:focus,
     position: relative;
     overflow: hidden;
     text-align: center !important;
+    min-height: 133px;
 }
 
 /* Teal top-edge line on hover */
@@ -558,4 +559,34 @@ div[data-testid="column"] { padding: 6px; }
 
 [data-testid="stPlotlyChart"] > div {
     background-color: transparent !important;
+}
+
+/* ============================================================
+   Tabs
+   ============================================================ */
+
+/* Active tab underline — accent instead of Streamlit's default red */
+[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+    background-color: var(--accent) !important;
+}
+
+/* Tab border bottom (the full-width divider line) */
+[data-testid="stTabs"] [data-baseweb="tab-border"] {
+    background-color: var(--border) !important;
+}
+
+/* Tab label colours */
+[data-testid="stTabs"] button[role="tab"] {
+    color: var(--text-muted) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+}
+
+[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    color: var(--accent) !important;
+    font-weight: 600 !important;
+}
+
+[data-testid="stTabs"] button[role="tab"]:hover {
+    color: var(--text-primary) !important;
 }
