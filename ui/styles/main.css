@@ -1,7 +1,30 @@
-/* Global configuration */
-.stApp{
-    background: #222831;
-    color: #EEEEEE;
+/* ============================================================
+   Design Tokens
+   ============================================================ */
+:root {
+    --bg-base:        #222831;
+    --bg-surface:     #393E46;
+    --bg-surface-alt: #2e343d;
+    --accent:         #00ADB5;
+    --accent-dim:     rgba(0, 173, 181, 0.12);
+    --accent-glow:    rgba(0, 173, 181, 0.20);
+    --text-primary:   #EEEEEE;
+    --text-muted:     #9aa0a6;
+    --border-subtle:  rgba(255, 255, 255, 0.07);
+    --border-accent:  rgba(0, 173, 181, 0.45);
+    --radius-sm:      1px;
+    --radius-md:      10px;
+    --radius-lg:      14px;
+    --transition:     all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+/* ============================================================
+   Global
+   ============================================================ */
+.stApp {
+    background: var(--bg-base);
+    color: var(--text-primary);
 }
 
 .block-container {
@@ -11,41 +34,52 @@
 }
 
 section.main > div {
-    padding-top: 0rem;
+    padding-top: 0;
 }
 
-/* Typography */
+
+/* ============================================================
+   Typography
+   ============================================================ */
 h1 {
-    font-size: 42px;
+    font-size: 40px;
     font-weight: 700;
-    color: #EEEEEE;
-    letter-spacing: 0.5px;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    line-height: 1.2;
 }
 
 h2 {
-    font-size: 30px;
+    font-size: 26px;
     font-weight: 600;
-    color: #EEEEEE;
+    color: var(--text-primary);
+    letter-spacing: -0.2px;
 }
 
 h3 {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
-    color: #00ADB5;
+    color: var(--accent);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
 }
 
 .css-10trblm {
-    color: #9aa0a6;
+    color: var(--text-muted);
 }
 
 p {
-    color: #EEEEEE;
+    color: var(--text-primary);
+    line-height: 1.6;
 }
 
-/* Sidebar */
+
+/* ============================================================
+   Sidebar
+   ============================================================ */
 section[data-testid="stSidebar"] {
-    background-color: #393E46;
-    border-right: 1px solid rgba(255,255,255,0.08);
+    background-color: var(--bg-surface);
+    border-right: 1px solid var(--border-subtle);
     min-width: 260px !important;
     max-width: 260px !important;
 }
@@ -53,9 +87,10 @@ section[data-testid="stSidebar"] {
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3 {
-    color: #00ADB5;
-    font-family: 'Roboto', sans-serif;
-    font-size: 24px;
+    color: var(--accent);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
 }
 
 section[data-testid="stSidebar"] .stRadio,
@@ -63,51 +98,155 @@ section[data-testid="stSidebar"] .stSelectbox {
     margin-bottom: 5px;
 }
 
-/* Sidebar navigation buttons */
-section[data-testid="stSidebar"] .stButton > button {    
+
+/* ============================================================
+   Sidebar — Navigation Buttons (base)
+   ============================================================ */
+section[data-testid="stSidebar"] .stButton > button {
     width: 100% !important;
     min-width: 210px !important;
-    text-align: center !important;    
-    padding: 10px 15px !important;    
-    margin-bottom: 10px !important;    
-    border-radius: 1px !important;    
+    text-align: left !important;
+    padding: 10px 16px !important;
+    margin-bottom: 6px !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 14px !important;
     font-weight: 500 !important;
+    letter-spacing: 0.1px !important;
+    color: var(--text-primary) !important;
+    background-color: transparent !important;
+    border: 1px solid var(--border-subtle) !important;
     box-sizing: border-box !important;
+    position: relative !important;
+    overflow: hidden !important;
+    transition: var(--transition) !important;
 }
 
-/* Metrics - KPIs */
+/* Subtle left-bar accent */
+section[data-testid="stSidebar"] .stButton > button::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%) scaleY(0);
+    width: 3px;
+    height: 60%;
+    background: var(--accent);
+    border-radius: 0 2px 2px 0;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+/* ============================================================
+   Sidebar — Button: Hover
+   ============================================================ */
+section[data-testid="stSidebar"] .stButton > button:hover {
+    color: var(--accent) !important;
+    background-color: var(--accent-dim) !important;
+    border-color: var(--border-accent) !important;
+    box-shadow: 0 4px 14px var(--accent-glow) !important;
+    transform: translateX(3px) !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover::before {
+    transform: translateY(-50%) scaleY(1) !important;
+}
+
+
+/* ============================================================
+   Sidebar — Button: Active (click press)
+   ============================================================ */
+section[data-testid="stSidebar"] .stButton > button:active {
+    color: #111518 !important;
+    background-color: var(--accent) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 2px 6px rgba(0, 173, 181, 0.4) !important;
+    transform: translateX(3px) scale(0.975) !important;
+    transition: all 0.1s ease !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button:active::before {
+    background: #111518;
+    transform: translateY(-50%) scaleY(1) !important;
+}
+
+
+/* ============================================================
+   Sidebar — Button: Focus (keyboard / post-click)
+   ============================================================ */
+section[data-testid="stSidebar"] .stButton > button:focus:not(:active) {
+    color: var(--accent) !important;
+    background-color: var(--accent-dim) !important;
+    border-color: var(--border-accent) !important;
+    box-shadow: 0 0 0 3px rgba(0, 173, 181, 0.18) !important;
+    outline: none !important;
+}
+
+
+/* ============================================================
+   Metrics — KPI Cards
+   ============================================================ */
 [data-testid="stMetric"] {
-    background-color: #393E46;
-    border-radius: 16px;
-    padding: 18px 10px;
-    border: 1px solid rgba(255,255,255,0.06);
-    transition: 0.2s ease;
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    padding: 20px 16px;
+    border: 1px solid var(--border-subtle);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
 }
+
+/* Top-edge accent line that reveals on hover */
+[data-testid="stMetric"]::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 16px;
+    right: 16px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    border-radius: 0 0 2px 2px;
+}
+
 [data-testid="stMetric"]:hover {
-    transform: translateY(-4px);
-    border: 1px solid rgba(0,173,181,0.5);
-    box-shadow: 0 6px 18px rgba(0,173,181,0.15);
+    transform: translateY(-3px);
+    border-color: var(--border-accent);
+    box-shadow: 0 8px 24px var(--accent-glow);
 }
+
+[data-testid="stMetric"]:hover::after {
+    opacity: 1;
+}
+
 [data-testid="stMetricLabel"] {
-    color: #9aa0a6;
-    font-size: 14px;
+    color: var(--text-muted);
+    font-size: 13px;
     font-weight: 500;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
 }
+
 [data-testid="stMetricValue"] {
-    color: #EEEEEE;
-    font-size: 30px;
+    color: var(--text-primary);
+    font-size: 28px;
     font-weight: 700;
+    letter-spacing: -0.5px;
 }
+
 [data-testid="stMetricDelta"] {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
 }
+
 [data-testid="stMetricDelta"] svg {
-    color: #00ADB5 !important;
+    color: var(--accent) !important;
 }
+
 [data-testid="stMetricDelta"] > div {
-    color: #00ADB5 !important;
+    color: var(--accent) !important;
 }
+
 div[data-testid="column"] {
     padding: 6px;
 }
