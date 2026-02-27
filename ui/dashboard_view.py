@@ -68,7 +68,8 @@ class DashboardView:
             total_sets = len(session_df)
             exercises_count = session_df["ExerciseName"].nunique()
 
-            with st.expander(f"📅 {session_date.date()} — {total_sets} sets, {exercises_count} exercises, Volume: {int(total_volume)}"):
+            with st.expander(f"{session_date.date()} — {total_sets} sets, {exercises_count} exercises, Volume: {int(total_volume)}",
+                             icon=":material/archive:" ):
                 for exercise, ex_df in session_df.groupby("ExerciseName"):
                     st.markdown(f"**{exercise}**")
                     sets_str = " | ".join(

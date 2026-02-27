@@ -83,13 +83,21 @@ class SidebarView:
             "Body Metrics",
         ]
 
+        icons = {
+            "Main Dashboard": ":material/dashboard:",
+            "Exercises":      ":material/fitness_center:",
+            "Body Parts":     ":material/accessibility_new:",
+            "Analytics":      ":material/bar_chart:",
+            "Body Metrics":   ":material/monitor_weight:",
+        }
+
         # initialise state if missing
         if "nav_selected" not in st.session_state:
             st.session_state.nav_selected = options[0]
 
         # render buttons vertically inside sidebar
         for opt in options:
-            if st.sidebar.button(opt, key=f"nav_{opt}"):
+            if st.sidebar.button(opt, key=f"nav_{opt}", icon=icons[opt]):
                 st.session_state.nav_selected = opt
 
         return st.session_state.nav_selected
@@ -101,3 +109,4 @@ class SidebarView:
         st.sidebar.divider()
         
         SidebarUpload().render()
+        
