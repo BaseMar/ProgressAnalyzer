@@ -1,13 +1,12 @@
-"""
-Body Parts view for the UI layer.
-
-Provides a high-level overview of training distribution
-across body parts based on exercise-level metrics.
-"""
+from __future__ import annotations
 
 from typing import Dict
+
 import pandas as pd
 import streamlit as st
+
+from ui.utils.body_parts_table import render_body_parts_table
+from ui.utils.ui_helpers import ACCENT, VEGA_CONFIG, chart_label, fmt_num, page_title, section_header
 
 
 class BodyPartsView:
@@ -19,33 +18,22 @@ class BodyPartsView:
 
     Responsibilities:
     - KPI overview
-    - distribution charts
-    - comparison table
+    - Distribution charts
+    - Comparison table
     """
 
-    def __init__(self, exercises_metrics: Dict):
+    def __init__(self, exercises_metrics: Dict) -> None:
         self.exercises_metrics = exercises_metrics
 
     def _build_bodypart_df(self) -> pd.DataFrame:
-        """
-        Aggregate exercise metrics per body part.
-
-        Returns
-        -------
-        pd.DataFrame
-            Aggregated metrics per body part.
-        """
+        """Aggregate exercise metrics per body part."""
         per_exercise = self.exercises_metrics.get("per_exercise", {})
-
         if not per_exercise:
             return pd.DataFrame()
 
-        df = pd.DataFrame(per_exercise).T
+        df = pd.DataFrame(per_exercise).T.dropna(subset=["body_part"])
 
-        # Drop exercises without body part
-        df = df.dropna(subset=["body_part"])
-
-        body_df = (
+        return (
             df.groupby("body_part")
             .agg(
                 Total_Sets=("total_sets", "sum"),
@@ -56,13 +44,11 @@ class BodyPartsView:
             .reset_index()
             .rename(columns={"body_part": "Body Part"})
             .sort_values("Total_Volume", ascending=False)
+            .reset_index(drop=True)
         )
 
-        return body_df
-
     def render(self) -> None:
-        """Render Body Parts view."""
-        st.header("Body Parts")
+        page_title("Body Parts", "Training Distribution")
 
         body_df = self._build_bodypart_df()
 
@@ -70,42 +56,77 @@ class BodyPartsView:
             st.info("No body part data available.")
             return
 
-        # ---------- KPI ----------
-        st.subheader("Overview")
+        self._render_kpis(body_df)
+        self._render_charts(body_df)
+        self._render_table(body_df)
 
-        total_parts = len(body_df)
-        most_trained = body_df.iloc[0]["Body Part"]
-        least_trained = body_df.iloc[-1]["Body Part"]
-        avg_volume = body_df["Total_Volume"].mean()
+    def _render_kpis(self, body_df: pd.DataFrame) -> None:
+        section_header("Overview")
 
-        kpi_cols = st.columns(4)
+        cols = st.columns(4)
+        cols[0].metric("Body Parts Trained", len(body_df))
+        cols[1].metric("Most Trained", body_df.iloc[0]["Body Part"].title())
+        cols[2].metric("Least Trained", body_df.iloc[-1]["Body Part"].title())
+        cols[3].metric("Avg Volume / Part", f"{fmt_num(body_df['Total_Volume'].mean(), 0)} kg")
 
-        kpi_cols[0].metric("Body Parts Trained", total_parts)
-        kpi_cols[1].metric("Most Trained", most_trained)
-        kpi_cols[2].metric("Least Trained", least_trained)
-        kpi_cols[3].metric("Avg Volume / Part", int(avg_volume))
-
-        # ---------- Charts ----------
-        st.subheader("Training Distribution")
+    def _render_charts(self, body_df: pd.DataFrame) -> None:
+        section_header("Training Distribution")
 
         col1, col2 = st.columns(2)
 
+        # labels and charts are rendered in the same column context
         with col1:
-            st.markdown("**Volume per Body Part**")
-            st.bar_chart(body_df.set_index("Body Part")["Total_Volume"], height=320)
+            chart_label("Volume per Body Part")
+            data_records = body_df.to_dict(orient="records")
+            spec = _bar_spec(y_field="Total_Volume", y_title="Volume (kg)")
+            # no explicit key here – Streamlit will automatically redraw when the
+            # underlying `body_df` changes (which happens when the month filter
+            # updates). previously the custom key only tracked total volume & count,
+            # leading to situations where the distribution changed but the chart
+            # stayed the same because the key didn't change.
+            st.vega_lite_chart(data=data_records, spec=spec, width="stretch")
 
         with col2:
-            st.markdown("**Avg 1RM per Body Part**")
-            st.bar_chart(body_df.set_index("Body Part")["Avg_1RM"], height=320,)
+            chart_label("Avg 1RM per Body Part")
+            data_records = body_df.to_dict(orient="records")
+            spec2 = _bar_spec(y_field="Avg_1RM", y_title="Avg 1RM (kg)")
+            st.vega_lite_chart(data=data_records, spec=spec2, width="stretch")
 
-        # ---------- Table ----------
-        st.subheader("Body Part Comparison")
+    def _render_table(self, body_df: pd.DataFrame) -> None:
+        section_header("Body Part Comparison")
+        render_body_parts_table(body_df)
 
-        st.dataframe(
-            body_df,
-            column_config={
-                "Total_Volume": st.column_config.NumberColumn(format="%.0f"),
-                "Avg_1RM": st.column_config.NumberColumn(format="%.2f"),
+def _bar_spec(y_field: str, y_title: str) -> dict:
+    """
+    Themed horizontal bar chart using VEGA_CONFIG + ACCENT from ui_helpers.
+    Horizontal layout suits categorical body-part labels better than vertical.
+    """
+    return {
+        "config": VEGA_CONFIG,
+        "width":  "container",
+        "height": 280,
+        "mark": {
+            "type":            "bar",
+            "color":           ACCENT,
+            "opacity":         0.85,
+            "cornerRadiusEnd": 3,
+        },
+        "encoding": {
+            "y": {
+                "field": "Body Part",
+                "type":  "nominal",
+                "sort":  "-x",
+                "axis":  {"labelFontSize": 11},
+                "title": None,
             },
-            width="stretch",
-        )
+            "x": {
+                "field": y_field,
+                "type":  "quantitative",
+                "axis":  {"tickCount": 5},
+                "title": y_title,
+            },
+            "tooltip": [
+                {"field": "Body Part", "type": "nominal"},
+                {"field": y_field,     "type": "quantitative", "title": y_title, "format": ".0f"},
+            ],
+        }}
