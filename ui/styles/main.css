@@ -29,7 +29,7 @@ h2 {
 }
 
 h3 {
-    font-size: 22px;
+    font-size: 10px;
     font-weight: 600;
     color: #00ADB5;
 }
@@ -46,17 +46,33 @@ p {
 section[data-testid="stSidebar"] {
     background-color: #393E46;
     border-right: 1px solid rgba(255,255,255,0.08);
+    min-width: 260px !important;
+    max-width: 260px !important;
 }
 
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3 {
     color: #00ADB5;
+    font-family: 'Roboto', sans-serif;
+    font-size: 24px;
 }
 
 section[data-testid="stSidebar"] .stRadio,
 section[data-testid="stSidebar"] .stSelectbox {
-    margin-bottom: 18px;
+    margin-bottom: 5px;
+}
+
+/* Sidebar navigation buttons */
+section[data-testid="stSidebar"] .stButton > button {    
+    width: 100% !important;
+    min-width: 210px !important;
+    text-align: center !important;    
+    padding: 10px 15px !important;    
+    margin-bottom: 10px !important;    
+    border-radius: 1px !important;    
+    font-weight: 500 !important;
+    box-sizing: border-box !important;
 }
 
 /* Metrics - KPIs */

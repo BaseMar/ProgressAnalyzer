@@ -62,6 +62,11 @@ class SidebarView:
         """
         Render navigation section.
 
+        Instead of a radio button list we display a row of tile-like
+        buttons. The currently selected section is stored in
+        :obj:`st.session_state['nav_selected']` so that the selection
+        persists across reruns.
+
         Returns
         -------
         str
@@ -70,8 +75,24 @@ class SidebarView:
         st.sidebar.divider()
         st.sidebar.title("Navigation")
 
-        return st.sidebar.radio("Choose section:", 
-                                ["Main Dashboard", "Exercises", "Body Parts", "Analytics", "Body Metrics"])
+        options = [
+            "Main Dashboard",
+            "Exercises",
+            "Body Parts",
+            "Analytics",
+            "Body Metrics",
+        ]
+
+        # initialise state if missing
+        if "nav_selected" not in st.session_state:
+            st.session_state.nav_selected = options[0]
+
+        # render buttons vertically inside sidebar
+        for opt in options:
+            if st.sidebar.button(opt, key=f"nav_{opt}"):
+                st.session_state.nav_selected = opt
+
+        return st.session_state.nav_selected
 
     def render_upload(self) -> None:
         """
