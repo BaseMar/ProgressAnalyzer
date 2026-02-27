@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.figure_factory as ff
+from datetime import datetime, timedelta
 
 
 class AnalyticsView:
@@ -77,31 +78,106 @@ class AnalyticsView:
             fig_bottom.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
             st.plotly_chart(fig_bottom, width='stretch')
 
-        # --- Heatmap ---
-        st.markdown("### Progress Heatmap per Exercise vs Session")
-       
-        progress_data = []
-        for ex_id, ex in per_ex.items():
-            for i, date_entry in enumerate(range(ex.get("exposure_count",0))):
-                progress_data.append({
-                    "Exercise": ex["exercise_name"],
-                    "Session": i+1,
-                    "Progress (%)": round(ex["progress_pct"]/ex.get("exposure_count",1),2)
+        # --- Plateau Detection & Smart Recommendations ---
+        st.markdown("### Plateau Zone Analysis & Interventions")
+
+        per_ex = self.progress_metrics.get("per_exercise", {})
+        exercise_per = self.exercise_metrics.get("per_exercise", {})
+
+        # Build enriched plateau data with recency info
+        plateau_data = []
+        abandoned_data = []
+        today = datetime.now().date()
+        recency_threshold_days = 28  # Only flag as active plateau if trained in last 28 days
+
+        for ex_id, progress_row in per_ex.items():
+            if abs(progress_row["progress_pct"]) >= 2:
+                continue  # Skip improving/regressing exercises
+
+            ex_name = progress_row["exercise_name"]
+            progress = progress_row["progress_pct"]
+            exposure = progress_row["exposure_count"]
+
+            # Get last training date from exercise_metrics
+            ex_info = exercise_per.get(ex_id, {})
+            per_session_1rm = ex_info.get("per_session_1rm", [])
+            
+            last_date = None
+            if per_session_1rm:
+                last_date = pd.to_datetime(per_session_1rm[-1]["date"]).date()
+
+            days_since = (today - last_date).days if last_date else None
+
+            if days_since is None:
+                continue  # Skip if no date info
+
+            if days_since <= recency_threshold_days:
+                # Active plateau - being trained recently
+                plateau_data.append({
+                    "exercise_id": ex_id,
+                    "exercise_name": ex_name,
+                    "progress_pct": progress,
+                    "exposure_count": exposure,
+                    "last_date": last_date,
+                    "days_since": days_since,
                 })
-        
-        heat_df = pd.DataFrame(progress_data)
-        if not heat_df.empty:
-            heat_pivot = heat_df.pivot(index="Exercise", columns="Session", values="Progress (%)").fillna(0)
-            fig_heat = ff.create_annotated_heatmap(
-                z=heat_pivot.values,
-                x=[f"Session {i}" for i in heat_pivot.columns],
-                y=heat_pivot.index.tolist(),
-                colorscale="Viridis",
-                showscale=True,
-                annotation_text=heat_pivot.round(1).values
-            )
-            fig_heat.update_layout(height=400, margin=dict(l=100, r=40, t=40, b=40))
-            st.plotly_chart(fig_heat, width='stretch')
+            else:
+                # Abandoned - not trained recently
+                abandoned_data.append({
+                    "exercise_id": ex_id,
+                    "exercise_name": ex_name,
+                    "progress_pct": progress,
+                    "exposure_count": exposure,
+                    "last_date": last_date,
+                    "days_since": days_since,
+                })
+
+        # Sort by exposure count (priority for action)
+        plateau_data = sorted(plateau_data, key=lambda x: x["exposure_count"], reverse=True)
+        abandoned_data = sorted(abandoned_data, key=lambda x: x["days_since"], reverse=True)
+
+        # --- Display Active Plateaus ---
+        if not plateau_data:
+            st.success("✅ No active exercises in plateau zone! All recently trained exercises are either progressing or regressing.")
+        else:
+            st.info(f"⚠️ **{len(plateau_data)} active exercise(s)** stuck in plateau (trained in last {recency_threshold_days} days)")
+            
+            for idx, item in enumerate(plateau_data):
+                ex_name = item["exercise_name"]
+                progress = item["progress_pct"]
+                exposure = item["exposure_count"]
+                days_since = item["days_since"]
+                
+                # Build recommendation logic
+                recs = []
+                if exposure < 5:
+                    recs.append("📈 **Increase Frequency** — Less than 5 sessions; 2-3x/week for better adaptation signal")
+                elif exposure >= 12:
+                    recs.append("💪 **Boost Volume or Intensity** — 12+ exposures; try +10% weight, change rep range, or add drop sets")
+                else:
+                    recs.append("🔄 **Change Stimulus** — Moderate frequency; try new angle, tempo (3-0-1), pause reps, or variation")
+                
+                if progress < -0.5:
+                    recs.append("⚙️ **Form Check** — Slight regression; review technique or consider deload week")
+                else:
+                    recs.append("✓ **Stabilizing** — Minor fluctuations; maintain current approach or progress incrementally")
+
+                with st.expander(f"**{ex_name}** — Progress: {progress:.1f}% | Exposures: {int(exposure)} | Last: {days_since}d ago", expanded=(idx == 0)):
+                    for rec in recs:
+                        st.markdown(rec)
+
+        # --- Display Abandoned Exercises ---
+        if abandoned_data:
+            st.divider()
+            st.markdown("#### Abandoned Exercises")
+            st.caption(f"Not trained in {recency_threshold_days}+ days (no active intervention needed)")
+            
+            for item in abandoned_data:
+                ex_name = item["exercise_name"]
+                progress = item["progress_pct"]
+                days_since = item["days_since"]
+                
+                st.markdown(f"• **{ex_name}** — Progress: {progress:.1f}% | Last trained: {days_since} days ago")
 
     def _fatigue_section(self):
         st.subheader("Fatigue & Recovery")

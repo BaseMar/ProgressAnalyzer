@@ -84,6 +84,25 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         sessions_count = len({workout_to_date[s.workout_exercise_id] for s in sets})
         avg_sets_per_session = total_sets / sessions_count
 
+        # --- Per-session series (estimated 1RM and per-session volume) ---
+        per_session_map = defaultdict(list)
+        per_session_volume = defaultdict(int)
+        for s in sets:
+            date = workout_to_date.get(s.workout_exercise_id)
+            if date is None:
+                continue
+            per_session_map[date].append(estimate_1rm(s.weight, s.repetitions))
+            per_session_volume[date] += s.repetitions * s.weight
+
+        per_session_1rm = [
+            {"date": d, "estimated_1rm": round(mean(vals), 2)}
+            for d, vals in sorted(per_session_map.items())
+        ]
+
+        per_session_volume_series = [
+            {"date": d, "volume": v} for d, v in sorted(per_session_volume.items())
+        ]
+
         per_exercise[exercise_id] = {
             "exercise_name": exercise_id_to_name.get(exercise_id, f"Exercise {exercise_id}"),
             "body_part": next((e.body_part for e in input.exercises if e.exercise_id == exercise_id), None),
@@ -100,6 +119,8 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
             "strength_trend_1rm": strength_trend_1rm,
             "sessions_count": sessions_count,
             "avg_sets_per_session": avg_sets_per_session,
+            "per_session_1rm": per_session_1rm,
+            "per_session_volume": per_session_volume_series,
         }
 
     # -------- Global aggregates --------
