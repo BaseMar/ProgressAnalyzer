@@ -2,20 +2,19 @@
    Design Tokens
    ============================================================ */
 :root {
-    --bg-base:        #222831;
-    --bg-surface:     #393E46;
-    --bg-surface-alt: #2e343d;
-    --accent:         #00ADB5;
-    --accent-dim:     rgba(0, 173, 181, 0.12);
-    --accent-glow:    rgba(0, 173, 181, 0.20);
-    --text-primary:   #EEEEEE;
-    --text-muted:     #9aa0a6;
-    --border-subtle:  rgba(255, 255, 255, 0.07);
-    --border-accent:  rgba(0, 173, 181, 0.45);
-    --radius-sm:      1px;
-    --radius-md:      10px;
-    --radius-lg:      14px;
-    --transition:     all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    --bg-base:       #222831;
+    --bg-surface:    #393E46;
+    --accent:        #00ADB5;
+    --accent-dim:    rgba(0, 173, 181, 0.12);
+    --accent-glow:   rgba(0, 173, 181, 0.20);
+    --accent-border: rgba(0, 173, 181, 0.45);
+    --text-primary:  #EEEEEE;
+    --text-muted:    #9aa0a6;
+    --border:        rgba(255, 255, 255, 0.07);
+    --radius-sm:     6px;
+    --radius-md:     10px;
+    --radius-lg:     14px;
+    --ease:          cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 
@@ -33,74 +32,68 @@
     padding-bottom: 2rem;
 }
 
-section.main > div {
-    padding-top: 0;
-}
+section.main > div { padding-top: 0; }
+
+p { color: var(--text-primary); line-height: 1.6; }
+
+.css-10trblm { color: var(--text-muted); }
 
 
 /* ============================================================
-   Typography
+   Typography — global headings
    ============================================================ */
-h1 {
-    font-size: 40px;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.3px;
-    line-height: 1.2;
-}
+h1 { font-size: 40px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; line-height: 1.2; }
+h2 { font-size: 26px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.2px; }
+h3 { font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: 1.2px; text-transform: uppercase; }
 
-h2 {
-    font-size: 26px;
-    font-weight: 600;
-    color: var(--text-primary);
-    letter-spacing: -0.2px;
-}
-
-h3 {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--accent);
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-}
-
-.css-10trblm {
-    color: var(--text-muted);
-}
-
-p {
-    color: var(--text-primary);
-    line-height: 1.6;
+/* Main area subheaders */
+.main [data-testid="stHeadingWithActionElements"] h2 {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.4px !important;
+    color: var(--text-muted) !important;
 }
 
 
 /* ============================================================
-   Sidebar
+   Sidebar — Shell
    ============================================================ */
 section[data-testid="stSidebar"] {
     background-color: var(--bg-surface);
-    border-right: 1px solid var(--border-subtle);
+    border-right: 1px solid var(--border);
     min-width: 260px !important;
     max-width: 260px !important;
 }
 
+/* All headings inside sidebar become section labels */
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3 {
-    color: var(--accent);
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.2px;
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] [data-testid="stHeadingWithActionElements"] h1,
+section[data-testid="stSidebar"] [data-testid="stHeadingWithActionElements"] h2,
+section[data-testid="stSidebar"] [data-testid="stHeadingWithActionElements"] h3 {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.4px !important;
+    color: var(--text-muted) !important;
+    margin-bottom: 8px !important;
+    margin-top: 4px !important;
+}
+
+section[data-testid="stSidebar"] hr {
+    border: none !important;
+    border-top: 1px solid var(--border) !important;
+    margin: 14px 0 !important;
 }
 
 section[data-testid="stSidebar"] .stRadio,
-section[data-testid="stSidebar"] .stSelectbox {
-    margin-bottom: 5px;
-}
+section[data-testid="stSidebar"] .stSelectbox { margin-bottom: 5px; }
 
 
 /* ============================================================
-   Sidebar — Navigation Buttons (base)
+   Sidebar — Navigation Buttons
    ============================================================ */
 section[data-testid="stSidebar"] .stButton > button {
     width: 100% !important;
@@ -114,35 +107,33 @@ section[data-testid="stSidebar"] .stButton > button {
     letter-spacing: 0.1px !important;
     color: var(--text-primary) !important;
     background-color: transparent !important;
-    border: 1px solid var(--border-subtle) !important;
+    border: 1px solid var(--border) !important;
     box-sizing: border-box !important;
     position: relative !important;
     overflow: hidden !important;
-    transition: var(--transition) !important;
+    transition: color 0.22s var(--ease),
+                background-color 0.22s var(--ease),
+                border-color 0.22s var(--ease),
+                box-shadow 0.22s var(--ease),
+                transform 0.22s var(--ease) !important;
 }
 
-/* Subtle left-bar accent */
+/* Left accent bar */
 section[data-testid="stSidebar"] .stButton > button::before {
     content: '';
     position: absolute;
-    left: 0;
-    top: 50%;
+    left: 0; top: 50%;
     transform: translateY(-50%) scaleY(0);
-    width: 3px;
-    height: 60%;
+    width: 3px; height: 60%;
     background: var(--accent);
     border-radius: 0 2px 2px 0;
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.2s var(--ease);
 }
 
-
-/* ============================================================
-   Sidebar — Button: Hover
-   ============================================================ */
 section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--accent) !important;
     background-color: var(--accent-dim) !important;
-    border-color: var(--border-accent) !important;
+    border-color: var(--accent-border) !important;
     box-shadow: 0 4px 14px var(--accent-glow) !important;
     transform: translateX(3px) !important;
 }
@@ -151,10 +142,6 @@ section[data-testid="stSidebar"] .stButton > button:hover::before {
     transform: translateY(-50%) scaleY(1) !important;
 }
 
-
-/* ============================================================
-   Sidebar — Button: Active (click press)
-   ============================================================ */
 section[data-testid="stSidebar"] .stButton > button:active {
     color: #111518 !important;
     background-color: var(--accent) !important;
@@ -169,147 +156,36 @@ section[data-testid="stSidebar"] .stButton > button:active::before {
     transform: translateY(-50%) scaleY(1) !important;
 }
 
-
-/* ============================================================
-   Sidebar — Button: Focus (keyboard / post-click)
-   ============================================================ */
 section[data-testid="stSidebar"] .stButton > button:focus:not(:active) {
     color: var(--accent) !important;
     background-color: var(--accent-dim) !important;
-    border-color: var(--border-accent) !important;
+    border-color: var(--accent-border) !important;
     box-shadow: 0 0 0 3px rgba(0, 173, 181, 0.18) !important;
     outline: none !important;
 }
 
 
 /* ============================================================
-   Metrics — KPI Cards
-   ============================================================ */
-[data-testid="stMetric"] {
-    background-color: var(--bg-surface);
-    border-radius: var(--radius-lg);
-    padding: 20px 16px;
-    border: 1px solid var(--border-subtle);
-    transition: var(--transition);
-    position: relative;
-    overflow: hidden;
-}
-
-/* Top-edge accent line that reveals on hover */
-[data-testid="stMetric"]::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 16px;
-    right: 16px;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    opacity: 0;
-    transition: opacity 0.25s ease;
-    border-radius: 0 0 2px 2px;
-}
-
-[data-testid="stMetric"]:hover {
-    transform: translateY(-3px);
-    border-color: var(--border-accent);
-    box-shadow: 0 8px 24px var(--accent-glow);
-}
-
-[data-testid="stMetric"]:hover::after {
-    opacity: 1;
-}
-
-[data-testid="stMetricLabel"] {
-    color: var(--text-muted);
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-}
-
-[data-testid="stMetricValue"] {
-    color: var(--text-primary);
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-}
-
-[data-testid="stMetricDelta"] {
-    font-size: 13px;
-    font-weight: 600;
-}
-
-[data-testid="stMetricDelta"] svg {
-    color: var(--accent) !important;
-}
-
-[data-testid="stMetricDelta"] > div {
-    color: var(--accent) !important;
-}
-
-div[data-testid="column"] {
-    padding: 6px;
-}
-
-
-/* ============================================================
-   Sidebar — Section Headers (header / title / subheader)
+   Sidebar — Form Inputs (selectbox, date, text)
    ============================================================ */
 
-/* st.sidebar.header() — "Filters", etc. */
-section[data-testid="stSidebar"] [data-testid="stHeadingWithActionElements"] h2,
-section[data-testid="stSidebar"] .stMarkdown h2 {
-    font-size: 11px !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 1.4px !important;
+/* Shared label style */
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] label,
+section[data-testid="stSidebar"] [data-testid="stDateInput"] label,
+section[data-testid="stSidebar"] [data-testid="stTextInput"] label {
     color: var(--text-muted) !important;
-    margin-bottom: 10px !important;
-    margin-top: 4px !important;
-}
-
-/* st.sidebar.title() — "Navigation" */
-section[data-testid="stSidebar"] [data-testid="stHeadingWithActionElements"] h1,
-section[data-testid="stSidebar"] .stMarkdown h1 {
     font-size: 11px !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
     text-transform: uppercase !important;
-    letter-spacing: 1.4px !important;
-    color: var(--text-muted) !important;
-    margin-bottom: 10px !important;
-    margin-top: 4px !important;
+    letter-spacing: 0.9px !important;
 }
 
-/* st.sidebar.subheader() — "Import workout", "Add new exercise" */
-section[data-testid="stSidebar"] [data-testid="stHeadingWithActionElements"] h3,
-section[data-testid="stSidebar"] .stMarkdown h3 {
-    font-size: 11px !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 1.4px !important;
-    color: var(--text-muted) !important;
-    margin-bottom: 8px !important;
-    margin-top: 4px !important;
-}
-
-
-/* ============================================================
-   Sidebar — Divider
-   ============================================================ */
-section[data-testid="stSidebar"] hr {
-    border: none !important;
-    border-top: 1px solid var(--border-subtle) !important;
-    margin: 14px 0 !important;
-    opacity: 1 !important;
-}
-
-
-/* ============================================================
-   Sidebar — Selectbox
-   ============================================================ */
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div {
+/* Shared input box style */
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div,
+section[data-testid="stSidebar"] [data-testid="stDateInput"] input,
+section[data-testid="stSidebar"] [data-testid="stTextInput"] input {
     background-color: var(--bg-base) !important;
-    border: 1px solid var(--border-subtle) !important;
+    border: 1px solid var(--border) !important;
     border-radius: var(--radius-sm) !important;
     color: var(--text-primary) !important;
     font-size: 13px !important;
@@ -321,39 +197,11 @@ section[data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div:hover {
     box-shadow: 0 0 0 2px rgba(0, 173, 181, 0.1) !important;
 }
 
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] label {
-    color: var(--text-muted) !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.9px !important;
-}
-
-
-/* ============================================================
-   Sidebar — Date Input
-   ============================================================ */
-section[data-testid="stSidebar"] [data-testid="stDateInput"] input {
-    background-color: var(--bg-base) !important;
-    border: 1px solid var(--border-subtle) !important;
-    border-radius: var(--radius-sm) !important;
-    color: var(--text-primary) !important;
-    font-size: 13px !important;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stDateInput"] input:focus {
+section[data-testid="stSidebar"] [data-testid="stDateInput"] input:focus,
+section[data-testid="stSidebar"] [data-testid="stTextInput"] input:focus {
     border-color: var(--accent) !important;
     box-shadow: 0 0 0 2px rgba(0, 173, 181, 0.15) !important;
     outline: none !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stDateInput"] label {
-    color: var(--text-muted) !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.9px !important;
 }
 
 
@@ -373,40 +221,9 @@ section[data-testid="stSidebar"] [data-testid="stFileUploader"]:hover {
     background-color: rgba(0, 173, 181, 0.04) !important;
 }
 
-section[data-testid="stSidebar"] [data-testid="stFileUploader"] label {
-    color: var(--text-muted) !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.9px !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stFileUploader"] small,
-section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] {
-    color: var(--text-muted) !important;
-    font-size: 12px !important;
-}
-
-
-/* ============================================================
-   Sidebar — Text Input
-   ============================================================ */
-section[data-testid="stSidebar"] [data-testid="stTextInput"] input {
-    background-color: var(--bg-base) !important;
-    border: 1px solid var(--border-subtle) !important;
-    border-radius: var(--radius-sm) !important;
-    color: var(--text-primary) !important;
-    font-size: 13px !important;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stTextInput"] input:focus {
-    border-color: var(--accent) !important;
-    box-shadow: 0 0 0 2px rgba(0, 173, 181, 0.15) !important;
-    outline: none !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stTextInput"] label {
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] label,
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"],
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] small {
     color: var(--text-muted) !important;
     font-size: 11px !important;
     font-weight: 600 !important;
@@ -416,9 +233,8 @@ section[data-testid="stSidebar"] [data-testid="stTextInput"] label {
 
 
 /* ============================================================
-   Sidebar — Feedback banners (success / warning / error / info)
+   Sidebar — Alerts (success / warning / error / info)
    ============================================================ */
-section[data-testid="stSidebar"] [data-testid="stNotification"],
 section[data-testid="stSidebar"] .stAlert {
     border-radius: var(--radius-sm) !important;
     font-size: 13px !important;
@@ -426,55 +242,41 @@ section[data-testid="stSidebar"] .stAlert {
     border-left-width: 3px !important;
 }
 
-/* Success */
-section[data-testid="stSidebar"] [data-baseweb="notification"][kind="positive"],
 section[data-testid="stSidebar"] .element-container .stSuccess {
     background-color: rgba(0, 173, 181, 0.1) !important;
     border-color: var(--accent) !important;
     color: var(--accent) !important;
 }
 
-/* Warning */
-section[data-testid="stSidebar"] [data-baseweb="notification"][kind="warning"],
 section[data-testid="stSidebar"] .element-container .stWarning {
     background-color: rgba(255, 180, 0, 0.08) !important;
     border-color: rgba(255, 180, 0, 0.6) !important;
     color: #ffc947 !important;
 }
 
-/* Error */
-section[data-testid="stSidebar"] [data-baseweb="notification"][kind="negative"],
 section[data-testid="stSidebar"] .element-container .stError {
     background-color: rgba(255, 75, 75, 0.08) !important;
     border-color: rgba(255, 75, 75, 0.5) !important;
     color: #ff6b6b !important;
 }
 
-/* Info */
-section[data-testid="stSidebar"] [data-baseweb="notification"][kind="info"],
 section[data-testid="stSidebar"] .element-container .stInfo {
     background-color: rgba(0, 173, 181, 0.07) !important;
-    border-color: rgba(0, 173, 181, 0.3) !important;
+    border-color: rgba(0, 173, 181, 0.55) !important;
     color: var(--text-muted) !important;
 }
 
-
-/* ============================================================
-   Sidebar — Caption
-   ============================================================ */
 section[data-testid="stSidebar"] .stCaption,
 section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
     color: var(--text-muted) !important;
     font-size: 11px !important;
-    letter-spacing: 0.2px !important;
     opacity: 0.75;
 }
 
-/* ============================================================
-   Dropdown / Select — Popover panel (Base Web, global layer)
-   ============================================================ */
 
-/* Panel background */
+/* ============================================================
+   Dropdown — Global portal (listbox rendered at body level)
+   ============================================================ */
 [data-testid="stSelectboxVirtualDropdown"],
 ul[role="listbox"] {
     background-color: #393E46 !important;
@@ -485,7 +287,6 @@ ul[role="listbox"] {
     overflow: hidden !important;
 }
 
-/* Each option row */
 ul[role="listbox"] li,
 [data-testid="stSelectboxVirtualDropdown"] li {
     background-color: transparent !important;
@@ -498,14 +299,12 @@ ul[role="listbox"] li,
     cursor: pointer !important;
 }
 
-/* Hover */
 ul[role="listbox"] li:hover,
 [data-testid="stSelectboxVirtualDropdown"] li:hover {
     background-color: rgba(0, 173, 181, 0.1) !important;
     color: #EEEEEE !important;
 }
 
-/* Keyboard-highlighted / selected */
 ul[role="listbox"] li[aria-selected="true"],
 ul[role="listbox"] li:focus,
 [data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"] {
@@ -513,4 +312,215 @@ ul[role="listbox"] li:focus,
     color: #00ADB5 !important;
     box-shadow: inset 3px 0 0 #00ADB5 !important;
     outline: none !important;
+}
+
+
+/* ============================================================
+   KPI Cards
+   ============================================================ */
+[data-testid="stMetric"] {
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    padding: 20px 16px;
+    border: 1px solid var(--border);
+    transition: transform 0.22s var(--ease),
+                border-color 0.22s var(--ease),
+                box-shadow 0.22s var(--ease);
+    position: relative;
+    overflow: hidden;
+    text-align: center !important;
+}
+
+/* Teal top-edge line on hover */
+[data-testid="stMetric"]::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 16px; right: 16px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+[data-testid="stMetric"]:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent-border);
+    box-shadow: 0 8px 24px var(--accent-glow);
+}
+
+[data-testid="stMetric"]:hover::after { opacity: 1; }
+
+[data-testid="stMetric"] > div,
+[data-testid="stMetricValue"] > div {
+    text-align: center !important;
+    width: 100% !important;
+}
+
+[data-testid="stMetricLabel"] > div,
+[data-testid="stMetricLabel"] p {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.2px !important;
+    color: var(--text-muted) !important;
+    text-align: center !important;
+}
+
+[data-testid="stMetricValue"] {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.5px !important;
+    color: var(--text-primary) !important;
+}
+
+[data-testid="stMetricDelta"] { font-size: 13px !important; font-weight: 600 !important; }
+[data-testid="stMetricDelta"] svg,
+[data-testid="stMetricDelta"] > div { color: var(--accent) !important; }
+
+div[data-testid="column"] { padding: 6px; }
+
+
+/* ============================================================
+   Charts — Transparent, no box
+   ============================================================ */
+[data-testid="stArrowVegaLiteChart"],
+[data-testid="stArrowVegaLiteChart"] > div,
+[data-testid="stVegaLiteChart"],
+[data-testid="stVegaLiteChart"] > div {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+
+/* ============================================================
+   Session History — Expanders
+   ============================================================ */
+[data-testid="stExpander"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: var(--radius-md) !important;
+    margin-bottom: 6px !important;
+    overflow: hidden !important;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+[data-testid="stExpander"]:hover {
+    border-color: rgba(0, 173, 181, 0.55) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-testid="stExpander"] summary {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--text-primary) !important;
+    padding: 12px 16px !important;
+    letter-spacing: 0.1px !important;
+}
+
+[data-testid="stExpander"] summary:hover { color: var(--accent) !important; }
+
+[data-testid="stExpander"] summary svg { color: var(--text-muted) !important; transition: color 0.15s ease !important; }
+[data-testid="stExpander"] summary:hover svg { color: var(--accent) !important; }
+
+[data-testid="stExpander"] > div[data-testid="stExpanderDetails"] {
+    padding: 4px 16px 14px 16px !important;
+    border-top: 1px solid var(--border) !important;
+}
+
+/* ============================================================
+   Dashboard — Page Title
+   ============================================================ */
+.page-eyebrow {
+    padding-top: 12px;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: var(--accent);
+}
+
+.page-title {
+    font-size: 32px !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    letter-spacing: -0.5px !important;
+    margin: 0 0 2px 0 !important;
+    line-height: 1.15 !important;
+}
+
+
+/* ============================================================
+   Dashboard — Section Header (labelled rule)
+   ============================================================ */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 28px 0 16px 0;
+}
+
+.section-header span {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.section-rule {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+
+/* ============================================================
+   Dashboard — Chart Label
+   ============================================================ */
+.chart-label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.1px !important;
+    color: var(--text-muted) !important;
+    margin: 0 0 6px 0 !important;
+}
+
+
+/* ============================================================
+   Dashboard — Exercise Label & Set Pills (Session History)
+   ============================================================ */
+.exercise-label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.2px !important;
+    color: var(--accent) !important;
+    margin: 10px 0 6px 0 !important;
+}
+
+.set-pills {
+    margin-bottom: 6px;
+}
+
+.set-pill {
+    display: inline-block;
+    background: var(--accent-dim);
+    border: 1px solid rgba(0, 173, 181, 0.25);
+    border-radius: 4px;
+    padding: 3px 10px;
+    margin: 2px 4px 2px 0;
+    font-size: 12px;
+    font-family: monospace;
+    color: var(--text-primary);
+}
+
+.exercise-divider {
+    border: none !important;
+    border-top: 1px solid var(--border) !important;
+    margin: 4px 0 0 0 !important;
 }
