@@ -91,6 +91,9 @@ section[data-testid="stSidebar"] hr {
 section[data-testid="stSidebar"] .stRadio,
 section[data-testid="stSidebar"] .stSelectbox { margin-bottom: 5px; }
 
+/* apply consistent bottom spacing to all selectboxes globally */
+.stSelectbox { margin-bottom: 5px !important; }
+
 
 /* ============================================================
    Sidebar — Navigation Buttons
@@ -199,6 +202,42 @@ section[data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div:hover {
 
 section[data-testid="stSidebar"] [data-testid="stDateInput"] input:focus,
 section[data-testid="stSidebar"] [data-testid="stTextInput"] input:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px rgba(0, 173, 181, 0.15) !important;
+    outline: none !important;
+}
+
+/* ============================================================
+   Global Form Inputs (non-sidebar dropdowns inherit same look)
+   ============================================================ */
+[data-testid="stSelectbox"] label,
+[data-testid="stDateInput"] label,
+[data-testid="stTextInput"] label {
+    color: var(--text-muted) !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.9px !important;
+}
+
+[data-testid="stSelectbox"] > div > div,
+[data-testid="stDateInput"] input,
+[data-testid="stTextInput"] input {
+    background-color: var(--bg-base) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--text-primary) !important;
+    font-size: 13px !important;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+[data-testid="stSelectbox"] > div > div:hover {
+    border-color: rgba(0, 173, 181, 0.35) !important;
+    box-shadow: 0 0 0 2px rgba(0, 173, 181, 0.1) !important;
+}
+
+[data-testid="stDateInput"] input:focus,
+[data-testid="stTextInput"] input:focus {
     border-color: var(--accent) !important;
     box-shadow: 0 0 0 2px rgba(0, 173, 181, 0.15) !important;
     outline: none !important;
@@ -329,7 +368,6 @@ ul[role="listbox"] li:focus,
     position: relative;
     overflow: hidden;
     text-align: center !important;
-    min-height: 133px;
 }
 
 /* Teal top-edge line on hover */
@@ -380,6 +418,16 @@ ul[role="listbox"] li:focus,
 
 div[data-testid="column"] { padding: 6px; }
 
+
+/* ============================================================
+   Application footer
+   ============================================================ */
+.app-footer {
+    font-size: 11px !important;
+    color: var(--text-muted) !important;
+    text-align: center !important;
+    padding: 8px 0 !important;
+}
 
 /* ============================================================
    Charts — Transparent, no box

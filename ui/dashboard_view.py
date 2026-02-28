@@ -30,8 +30,7 @@ def _set_pills(ex_df: pd.DataFrame) -> str:
     """
     return "".join(
         f'<span class="set-pill">{row["Repetitions"]} × {row["Weight"]:g} kg</span>'
-        for _, row in ex_df.sort_values("SetNumber").iterrows()
-    )
+        for _, row in ex_df.sort_values("SetNumber").iterrows())
 
 
 class DashboardView:
@@ -75,26 +74,11 @@ class DashboardView:
         section_header("Performance Snapshot")
 
         cols = st.columns(5)
-        cols[0].metric(
-            "Avg Intensity",
-            f"{format_number(g.get('avg_intensity'), 1)} %" if g.get("avg_intensity") is not None else "—"
-        )
-        cols[1].metric(
-            "Sessions / Week",
-            format_number(g.get("avg_sessions_per_week"), 1) if g.get("avg_sessions_per_week") else "—"
-        )
-        cols[2].metric(
-            "Avg Volume / Session",
-            f"{format_number(g.get('avg_volume_per_session'), 0)} kg" if g.get("avg_volume_per_session") else "—"
-        )
-        cols[3].metric(
-            "Avg Sets / Session",
-            format_number(g.get("avg_sets_per_session"), 1) if g.get("avg_sets_per_session") else "—"
-        )
-        cols[4].metric(
-            "Avg Duration",
-            f"{format_number(g.get('avg_session_duration'), 0)} min" if g.get("avg_session_duration") else "—"
-        )
+        cols[0].metric("Avg Intensity", f"{format_number(g.get('avg_intensity'), 1)} %" if g.get("avg_intensity") is not None else "—")
+        cols[1].metric("Sessions / Week", format_number(g.get("avg_sessions_per_week"), 1) if g.get("avg_sessions_per_week") else "—")
+        cols[2].metric("Avg Volume / Session", f"{format_number(g.get('avg_volume_per_session'), 0)} kg" if g.get("avg_volume_per_session") else "—")
+        cols[3].metric("Avg Sets / Session",format_number(g.get("avg_sets_per_session"), 1) if g.get("avg_sets_per_session") else "—")
+        cols[4].metric("Avg Duration",f"{format_number(g.get('avg_session_duration'), 0)} min" if g.get("avg_session_duration") else "—")
 
     def _render_trends(self) -> None:
         """Render session trend charts (volume and duration over time)."""

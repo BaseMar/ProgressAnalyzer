@@ -25,17 +25,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from ui.utils.ui_helpers import (
-    chart_label,
-    format_number,
-    page_title,
-    section_header,
-    ACCENT,
-    DANGER,
-    MUTED,
-    WARN,
-    PLOTLY_LAYOUT,
-)
+from ui.utils.ui_helpers import (chart_label, page_title, section_header, ACCENT, DANGER, MUTED, PLOTLY_LAYOUT)
 
 
 def _apply_theme(fig, title: str = "") -> None:
@@ -45,10 +35,7 @@ def _apply_theme(fig, title: str = "") -> None:
         fig: Plotly Figure object
         title: Optional chart title (rendered in uppercase small-caps)
     """
-    fig.update_layout(
-        **PLOTLY_LAYOUT,
-        title=dict(text=title.upper(), font=dict(color=MUTED, size=10), x=0)
-    )
+    fig.update_layout(**PLOTLY_LAYOUT, title=dict(text=title.upper(), font=dict(color=MUTED, size=10), x=0))
 
 
 class AnalyticsView:

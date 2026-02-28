@@ -61,9 +61,7 @@ class ExerciseView:
 
     def _render_selector(self, exercises_df: pd.DataFrame) -> None:
         """Render exercise selector dropdown and associated analysis sections."""
-        exercise_name = st.selectbox(
-            "Select exercise", options=exercises_df["exercise_name"].tolist()
-        )
+        exercise_name = st.selectbox("Select exercise", options=exercises_df["exercise_name"].tolist())
         exercise = exercises_df[exercises_df["exercise_name"] == exercise_name].iloc[0].to_dict()
 
         self._render_kpis(exercise)
@@ -77,18 +75,9 @@ class ExerciseView:
         cols = st.columns(5)
         cols[0].metric("Total Sets", exercise["total_sets"])
         cols[1].metric("Sessions", exercise["sessions_count"])
-        cols[2].metric(
-            "Total Volume",
-            f"{format_number(exercise['total_volume'], 0)} kg"
-        )
-        cols[3].metric(
-            "Max Weight",
-            f"{format_number(exercise['max_weight'], 1)} kg"
-        )
-        cols[4].metric(
-            "Est. 1RM",
-            f"{format_number(exercise['estimated_1rm_max'], 1)} kg"
-        )
+        cols[2].metric("Total Volume", f"{format_number(exercise['total_volume'], 0)} kg")
+        cols[3].metric("Max Weight", f"{format_number(exercise['max_weight'], 1)} kg")
+        cols[4].metric("Est. 1RM", f"{format_number(exercise['estimated_1rm_max'], 1)} kg")
 
     def _render_trends(self, exercise_name: str) -> None:
         """Render strength trend charts (volume and 1RM over time)."""
@@ -101,9 +90,7 @@ class ExerciseView:
             return
 
         exercise_sets["SessionDate"] = pd.to_datetime(exercise_sets["SessionDate"])
-        exercise_sets["Estimated1RM"] = exercise_sets.apply(
-            lambda r: estimate_1rm(r["Weight"], r["Repetitions"]), axis=1
-        )
+        exercise_sets["Estimated1RM"] = exercise_sets.apply(lambda r: estimate_1rm(r["Weight"], r["Repetitions"]), axis=1)
 
         trend_df = (
             exercise_sets
