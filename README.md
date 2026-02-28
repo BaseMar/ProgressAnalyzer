@@ -116,19 +116,30 @@ The application follows a **clean architecture** with clear separation of concer
 
 ## Screenshots
 
-- Main Dashboard
-![Main Dashboard](https://github.com/BaseMar/ProgressAnalyzer/blob/945fbc9d157bed43a5318eaede45ebae96345f11/screenshots/Dashboard_1.png)
-![History Session](https://github.com/BaseMar/ProgressAnalyzer/blob/841e6416b843d2e3b012cfba825cee9b031de574/screenshots/Dashboard_2.png)
+### Main Dashboard
+![Dashboard 1](screenshots/Dashboard_1.png)
+![Dashboard 2](screenshots/Dashboard_2.png)
+![Dashboard 3](screenshots/Dashboard_3.png)
 
-- Analytics View
-![Analytics Tab Part 1](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Analytics_1.png)
-![Analytics Tab Part 2](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Analytics_2.png)
-![Analytics Tab Part 3](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Analytics_3.png)
+### Exercises
+![Exercise View 1](screenshots/Exercise_1.png)
+![Exercise View 2](screenshots/Exercise_2.png)
 
-- Body Metrics View  
-![Body Metrics Part 1](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Body_Metrics_1.png)
-![Body Metrics Part 2](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Body_Metrics_2.png)
-![Body Metrics Part 3](https://github.com/BaseMar/ProgressAnalyzer/blob/827973c09b01290e78a6a6b7284e50308e104827/screenshots/Body_Metrics_3.png)
+### Body Parts
+![Body Parts 1](screenshots/Body_Parts_1.png)
+![Body Parts 2](screenshots/Body_Parts_2.png)
+
+### Analytics View
+![Analytics Tab Part 1](screenshots/Analytics_1.png)
+![Analytics Tab Part 2](screenshots/Analytics_2.png)
+![Analytics Tab Part 3](screenshots/Analytics_3.png)
+
+### Body Metrics View
+![Body Metrics Part 1](screenshots/Body_Metrics_1.png)
+![Body Metrics Part 2](screenshots/Body_Metrics_2.png)
+![Body Metrics Part 3](screenshots/Body_Metrics_3.png)
+![Body Metrics Part 4](screenshots/Body_Metrics_4.png)
+![Body Metrics Part 5](screenshots/Body_Metrics_5.png)
 
 ---
 
