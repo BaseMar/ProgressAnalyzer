@@ -1,7 +1,14 @@
 """
-Exercise view for the UI layer.
+Exercise View
 
-Displays exercise-level KPIs, time trends, and comparative analysis.
+Displays exercise-level analysis including KPIs, strength trends, and comparative metrics.
+
+Responsibilities:
+  - Render per-exercise performance metrics (volume, max weight, estimated 1RM)
+  - Display strength trends over time (volume and estimated 1RM progression)
+  - Provide comparative exercise table showing all exercises ranked by volume
+  
+All calculations are pre-computed in the metrics layer; this view handles presentation only.
 """
 
 from __future__ import annotations
@@ -13,24 +20,34 @@ import streamlit as st
 
 from metrics.utils.strength import estimate_1rm
 from ui.utils.exercise_table import render_exercise_table
-from ui.utils.ui_helpers import chart_label, fmt_num, line_chart, page_title, section_header
+from ui.utils.ui_helpers import chart_label, format_number, line_chart, page_title, section_header
 
 
 class ExerciseView:
-    """
-    UI view for exercise-level insights.
-
-    Data sources
-    ------------
-    exercises_metrics : aggregated metrics per exercise
-    sets_df           : raw set-level data (used for time-based trends)
+    """UI view for exercise-level insights and trends.
+    
+    Displays:
+    - Exercise-level KPIs (total sets, sessions, volume, max weight, estimated 1RM)
+    - Strength trends over time (volume per session, average 1RM per session)
+    - Comparative table of all exercises ranked by total volume
+    
+    Data Sources:
+    - exercises_metrics: Pre-computed metrics per exercise
+    - sets_df: Raw set-level data for calculating time-series trends
     """
 
     def __init__(self, exercises_metrics: Dict, sets_df: pd.DataFrame) -> None:
+        """Initialize with pre-computed exercise metrics and raw set data.
+        
+        Args:
+            exercises_metrics: Dictionary with 'per_exercise' key mapping exercise IDs to metrics
+            sets_df: DataFrame with columns: ExerciseName, SessionDate, Weight, Repetitions, Volume
+        """
         self.exercises_metrics = exercises_metrics
         self.sets_df = sets_df
 
     def render(self) -> None:
+        """Render the complete exercise analysis view."""
         page_title("Exercises", "Exercise Library")
 
         per_exercise = self.exercises_metrics.get("per_exercise", {})
@@ -42,10 +59,11 @@ class ExerciseView:
 
         self._render_selector(exercises_df)
 
-    # Private sections
-
     def _render_selector(self, exercises_df: pd.DataFrame) -> None:
-        exercise_name = st.selectbox("Select exercise", options=exercises_df["exercise_name"].tolist())
+        """Render exercise selector dropdown and associated analysis sections."""
+        exercise_name = st.selectbox(
+            "Select exercise", options=exercises_df["exercise_name"].tolist()
+        )
         exercise = exercises_df[exercises_df["exercise_name"] == exercise_name].iloc[0].to_dict()
 
         self._render_kpis(exercise)
@@ -53,16 +71,27 @@ class ExerciseView:
         self._render_comparison(exercises_df, exercise_name)
 
     def _render_kpis(self, exercise: dict) -> None:
+        """Render per-exercise performance snapshot."""
         section_header("Performance Overview")
 
         cols = st.columns(5)
         cols[0].metric("Total Sets", exercise["total_sets"])
         cols[1].metric("Sessions", exercise["sessions_count"])
-        cols[2].metric("Total Volume", f"{fmt_num(exercise['total_volume'], 0)} kg")
-        cols[3].metric("Max Weight", f"{fmt_num(exercise['max_weight'], 1)} kg")
-        cols[4].metric("Est. 1RM", f"{fmt_num(exercise['estimated_1rm_max'], 1)} kg")
+        cols[2].metric(
+            "Total Volume",
+            f"{format_number(exercise['total_volume'], 0)} kg"
+        )
+        cols[3].metric(
+            "Max Weight",
+            f"{format_number(exercise['max_weight'], 1)} kg"
+        )
+        cols[4].metric(
+            "Est. 1RM",
+            f"{format_number(exercise['estimated_1rm_max'], 1)} kg"
+        )
 
     def _render_trends(self, exercise_name: str) -> None:
+        """Render strength trend charts (volume and 1RM over time)."""
         section_header("Trends")
 
         exercise_sets = self.sets_df[self.sets_df["ExerciseName"] == exercise_name].copy()
@@ -72,7 +101,9 @@ class ExerciseView:
             return
 
         exercise_sets["SessionDate"] = pd.to_datetime(exercise_sets["SessionDate"])
-        exercise_sets["Estimated1RM"] = exercise_sets.apply(lambda r: estimate_1rm(r["Weight"], r["Repetitions"]), axis=1)
+        exercise_sets["Estimated1RM"] = exercise_sets.apply(
+            lambda r: estimate_1rm(r["Weight"], r["Repetitions"]), axis=1
+        )
 
         trend_df = (
             exercise_sets
@@ -96,6 +127,7 @@ class ExerciseView:
             line_chart(trend_df, "Estimated1RM")
 
     def _render_comparison(self, exercises_df: pd.DataFrame, exercise_name: str) -> None:
+        """Render comparative table of all exercises ranked by volume."""
         section_header("Exercise Comparison")
 
         compare_df = (
@@ -110,12 +142,12 @@ class ExerciseView:
                 "body_part",
             ]]
             .rename(columns={
-                "exercise_name":        "Exercise",
-                "total_sets":           "Total Sets",
-                "sessions_count":       "Sessions",
-                "total_volume":         "Total Volume",
-                "estimated_1rm_max":    "Est. 1RM",
-                "avg_rir":              "Avg RIR",
+                "exercise_name": "Exercise",
+                "total_sets": "Total Sets",
+                "sessions_count": "Sessions",
+                "total_volume": "Total Volume",
+                "estimated_1rm_max": "Est. 1RM",
+                "avg_rir": "Avg RIR",
                 "avg_sets_per_session": "Avg Sets / Session",
             })
             .sort_values("Total Volume", ascending=False)

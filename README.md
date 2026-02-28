@@ -6,6 +6,64 @@ The app tracks training volume, intensity, exercise progress, fatigue, and body 
 
 ---
 
+## Architecture
+
+### Layered Design
+
+The application follows a **clean architecture** with clear separation of concerns:
+
+```
+┌─────────────────────────────────────────┐
+│         UI Layer (ui/*.py)              │  ← Presentation only
+│    DashboardView, ExerciseView, etc     │
+└──────────────┬──────────────────────────┘
+               │ uses pre-computed
+               ↓
+┌─────────────────────────────────────────┐
+│       Metrics Layer (metrics/*.py)      │  ← Business logic
+│   Computes all KPIs and analytics      │
+└──────────────┬──────────────────────────┘
+               │ consumes
+               ↓
+┌─────────────────────────────────────────┐
+│      Data Layer (data_*.py, db/)        │  ← Persistence
+│    Database queries & transformations   │
+└─────────────────────────────────────────┘
+```
+
+### Directory Structure
+
+- **`ui/`** — Streamlit presentation layer
+  - View classes that render pre-computed metrics
+  - No business logic (no calculations, filtering, or data manipulation)
+  - Communicates via styled components to the metrics layer
+  - Utilities for formatting and helpers (`ui_helpers.py`)
+
+- **`metrics/`** — Business logic & analytics engine
+  - Pure functions that compute KPIs from raw data
+  - Each domain has dedicated metrics modules:
+    - `session_metrics.py` — Training volume, intensity, consistency
+    - `exercise_metrics.py` — Per-exercise progress and volume distribution
+    - `progress_metrics.py` — Strength progress, plateaus, regressions
+    - `fatigue_metrics.py` — Fatigue and recovery monitoring
+    - `body_metrics.py` — Body composition, measurements, proportions, insights
+  - All calculations are **stateless** and **testable**
+
+- **`data_loader.py`** — Data orchestration
+  - Loads all data from database
+  - Transforms database records into MetricsInput domain objects
+  - Handles caching
+
+- **`data_manager.py`** — Database abstraction
+  - Wraps SQL queries and database operations
+  - Returns Pandas DataFrames for convenience
+
+- **`db/`** — Database layer
+  - Connection management
+  - Raw SQL queries and mutations
+
+---
+
 ## Features
 
 ### Training & Progress
@@ -33,6 +91,26 @@ The app tracks training volume, intensity, exercise progress, fatigue, and body 
 - KPI-first layout (current / average / best)
 - Dropdown-based metric selection to avoid chart overload
 - Clean visual hierarchy
+
+---
+
+## Development Principles
+
+### Views Don't Calculate
+- Views are **presentation-only**
+- All metrics are pre-computed by the metrics layer
+- Views receive structured data and render it
+- This keeps views testable and simple
+
+### Metrics Are Pure
+- Metrics functions are pure functions with no side effects
+- All calculations happen in the metrics layer
+- Easy to test independently without Streamlit context
+
+### Type Safety
+- All functions have type hints
+- MetricsInput is a structured dataclass
+- Views receive strongly-typed metric dictionaries
 
 ---
 
@@ -90,12 +168,12 @@ High-level training overview:
 
 ## Tech Stack
 
-- **Python**
-- **Streamlit** – UI & app framework
-- **Pandas** – data processing
-- **Plotly** – interactive charts
-- **SQLAlchemy** – database access
-- **SQL (MS SQL / SQLite)** – persistent storage
+- **Python** — Language
+- **Streamlit** — UI & app framework
+- **Pandas** — data processing
+- **Plotly** — interactive charts
+- **SQLAlchemy** — database access
+- **SQL (MS SQL / SQLite)** — persistent storage
 
 ---
 

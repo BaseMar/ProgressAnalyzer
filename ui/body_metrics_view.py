@@ -1,11 +1,20 @@
 """
-Body Metrics view for the UI layer.
+Body Metrics View
 
-Styling strategy (mirrors dashboard_view.py):
+Displays body composition and measurement trends with proportions and insights.
+
+Styling strategy:
   - page_title / section_header / chart_label  → main.css handles rendering
   - st.metric                                  → main.css handles styling
   - st.tabs, st.form, st.expander              → main.css handles styling
   - line charts                                → line_chart() from ui_helpers (Vega-Lite themed)
+
+Responsibilities:
+  - Render pre-computed body metrics
+  - Display trends, proportions, and insights from metrics layer
+  - Provide form for adding new body composition/measurement data
+  
+All calculations are performed in metrics.body_metrics; this layer is presentation-only.
 """
 
 from __future__ import annotations
@@ -16,7 +25,7 @@ import pandas as pd
 import streamlit as st
 
 from data_manager import DataManager
-from ui.utils.ui_helpers import chart_label, fmt_num, line_chart, page_title, section_header
+from ui.utils.ui_helpers import chart_label, format_number, line_chart, page_title, section_header
 
 METRIC_CONFIG = {
     "composition": {
@@ -39,11 +48,33 @@ METRIC_CONFIG = {
 
 
 class BodyMetricsView:
+    """UI view for body composition and measurement metrics.
+    
+    Displays pre-computed metrics from the body_metrics engine including:
+    - Current body composition snapshot
+    - Composition and measurement trends over time
+    - Body proportions and recomposition quality 
+    - Generated insights from trends
+    - Forms for adding new measurements
+    """
+
     def __init__(self, body_metrics: Dict) -> None:
+        """Initialize view with pre-computed body metrics.
+        
+        Args:
+            body_metrics: Dictionary containing:
+                - timeline: List of timestamped measurements
+                - global: Global summary metrics
+                - proportions: Calculated body proportion ratios
+                - recomposition: Recomposition quality metrics
+                - insights: Generated trend insights
+                - deltas: Change values for each metric
+        """
         self.body_metrics = body_metrics
         self.dm = DataManager()
 
     def render(self) -> None:
+        """Render the complete body metrics view."""
         page_title("Body Metrics", "Body Metrics")
 
         timeline = self.body_metrics.get("timeline", [])
@@ -57,96 +88,123 @@ class BodyMetricsView:
 
         self._render_snapshot_kpis(df)
         self._render_composition_trends(df)
-        self._weight_quality(df)
+        self._render_recomposition_quality()
         self._render_measurement_trends(df)
-        self._proportions_section(df)
-        self._insights(df)
+        self._render_proportions()
+        self._render_insights()
         self._add_measurement_form()
 
     def _render_snapshot_kpis(self, df: pd.DataFrame) -> None:
+        """Render a snapshot of the latest key metrics."""
         section_header("Snapshot")
 
         latest = df.iloc[-1]
+        deltas = self.body_metrics.get("deltas", {})
+        
         cols = st.columns(4)
 
-        cols[0].metric("Weight", f"{latest['weight']} kg", f"{self._calculate_delta(df, 'weight')} kg")
+        delta_weight = deltas.get("weight")
+        cols[0].metric(
+            "Weight", 
+            f"{latest['weight']} kg",
+            f"{delta_weight} kg" if delta_weight is not None else "—"
+        )
 
         if "fat_percentage" in df.columns:
-            cols[1].metric("Body Fat %", f"{latest['fat_percentage']} %", f"{self._calculate_delta(df, 'fat_percentage')} %")
+            delta_fat = deltas.get("fat_percentage")
+            cols[1].metric(
+                "Body Fat %",
+                f"{latest['fat_percentage']} %",
+                f"{delta_fat} %" if delta_fat is not None else "—"
+            )
 
         if "muscle_mass" in df.columns:
-            cols[2].metric("Muscle Mass", f"{latest['muscle_mass']} kg", f"{self._calculate_delta(df, 'muscle_mass')} kg")
+            delta_muscle = deltas.get("muscle_mass")
+            cols[2].metric(
+                "Muscle Mass",
+                f"{latest['muscle_mass']} kg",
+                f"{delta_muscle} kg" if delta_muscle is not None else "—"
+            )
 
-        if "waist" in df.columns and "chest" in df.columns:
-            ratio = round(latest["chest"] / latest["waist"], 2)
-            cols[3].metric("Chest / Waist", ratio, delta="")
+        # Chest to waist ratio as a key proportion
+        proportions = self.body_metrics.get("proportions", {})
+        ratio_c2w = proportions.get("chest_to_waist")
+        if ratio_c2w:
+            cols[3].metric("Chest / Waist", f"{ratio_c2w}", delta="")
 
     def _render_composition_trends(self, df: pd.DataFrame) -> None:
-        self._render_metric_trends_section(df, section_key="composition", title="Body Composition Trends")
+        """Render body composition metric trends."""
+        self._render_metric_trends_section(
+            df, section_key="composition", title="Body Composition Trends"
+        )
 
-    def _weight_quality(self, df: pd.DataFrame) -> None:
+    def _render_recomposition_quality(self) -> None:
+        """Render recomposition quality metrics from metrics layer."""
         section_header("Weight Change Quality")
         st.caption("How much of your weight change comes from lean mass.")
 
-        if not {"weight", "muscle_mass", "fat_percentage"}.issubset(df.columns):
-            st.info("Not enough data for recomposition analysis.")
-            return
-
-        delta_weight = df["weight"].iloc[-1] - df["weight"].iloc[0]
-        delta_muscle = df["muscle_mass"].iloc[-1] - df["muscle_mass"].iloc[0]
-        lean_ratio   = round((delta_muscle / delta_weight * 100) if delta_weight else 0, 1)
+        recomp = self.body_metrics.get("recomposition", {})
+        lean_ratio = recomp.get("lean_mass_contribution_pct", 0)
+        recomp_type = recomp.get("recomposition_type", "unknown")
 
         st.metric("Lean Mass Contribution", f"{lean_ratio} %")
 
-        if lean_ratio > 60:
+        # Show guidance based on recomposition type
+        if recomp_type == "lean_bulk":
             st.success("Most weight change is lean mass — excellent recomposition.")
-        elif lean_ratio > 30:
+        elif recomp_type == "mixed_bulk":
             st.info("Mixed weight gain. Acceptable balance.")
-        else:
+        elif recomp_type == "fat_bulk":
             st.warning("Fat-dominant weight gain. Review nutrition.")
-
-        if abs(delta_weight) < 0.5:
+        elif recomp_type == "lean_cut":
+            st.success("Lean mass loss minimized — good cut quality.")
+        elif recomp_type == "mixed_cut":
+            st.info("Mixed weight loss. Monitor muscle preservation.")
+        elif recomp_type == "fat_loss":
+            st.warning("Fat loss minimal — ensure caloric deficit is adequate.")
+        elif recomp_type == "stable":
             st.info("Body weight stable — recomposition focus.")
 
     def _render_measurement_trends(self, df: pd.DataFrame) -> None:
+        """Render body measurement trends."""
         self._render_metric_trends_section(df, section_key="measurements", title="Measurements")
 
-    def _proportions_section(self, df: pd.DataFrame) -> None:
+    def _render_proportions(self) -> None:
+        """Render body proportion ratios from pre-computed metrics."""
         section_header("Proportions")
 
-        latest = df.iloc[-1]
-        cols   = st.columns(3)
+        proportions = self.body_metrics.get("proportions", {})
+        if not proportions:
+            st.info("Not enough measurement data for proportions.")
+            return
 
-        if "waist" in df.columns and "chest" in df.columns:
-            ratio = round(latest["chest"] / latest["waist"], 2)
-            cols[0].metric("Chest / Waist", ratio, delta=" ")
-            if ratio > 1.3:
+        cols = st.columns(3)
+
+        # Chest to waist ratio
+        c2w = proportions.get("chest_to_waist")
+        if c2w:
+            cols[0].metric("Chest / Waist", c2w, delta=" ")
+            if c2w > 1.3:
                 st.success("Strong upper-body dominance.")
-            elif ratio < 1.1:
+            elif c2w < 1.1:
                 st.warning("Consider upper-body hypertrophy focus.")
 
-        if "waist" in df.columns and "thigh" in df.columns:
-            cols[1].metric("Thigh / Waist", round(latest["thigh"] / latest["waist"], 2), delta=" ")
+        # Thigh to waist ratio
+        t2w = proportions.get("thigh_to_waist")
+        if t2w:
+            cols[1].metric("Thigh / Waist", t2w, delta=" ")
 
-        if "waist" in df.columns and "biceps" in df.columns:
-            cols[2].metric("Biceps / Waist", round(latest["biceps"] / latest["waist"], 2), delta=" ")
+        # Biceps to waist ratio
+        b2w = proportions.get("biceps_to_waist")
+        if b2w:
+            cols[2].metric("Biceps / Waist", b2w, delta=" ")
 
-    def _insights(self, df: pd.DataFrame) -> None:
+    def _render_insights(self) -> None:
+        """Render pre-computed insights from metrics layer."""
         section_header("Insights")
 
-        insights = []
-
-        if "weight" in df.columns and df["weight"].iloc[-1] > df["weight"].iloc[0]:
-            insights.append("Weight trending up.")
-
-        if "fat_percentage" in df.columns:
-            if df["fat_percentage"].iloc[-1] < df["fat_percentage"].iloc[0]:
-                insights.append("Body fat decreasing — good recomposition.")
-
-        if "waist" in df.columns and "thigh" in df.columns:
-            if df["waist"].iloc[-1] > df["thigh"].iloc[-1]:
-                insights.append("Waist growth outpacing legs — consider volume redistribution.")
-
+        insights = self.body_metrics.get("insights", [])
+        
         if insights:
             for insight in insights:
                 st.success(insight)
@@ -154,6 +212,7 @@ class BodyMetricsView:
             st.info("Not enough data for strong insights yet.")
 
     def _add_measurement_form(self) -> None:
+        """Provide forms for adding new body composition and measurement data."""
         section_header("Add New Body Metrics")
         st.caption("Log body composition or measurements. One entry per day per type.")
 
@@ -173,7 +232,9 @@ class BodyMetricsView:
                 if self._measurement_exists(date, category="composition"):
                     st.error("Body composition for this date already exists.")
                 else:
-                    self._save_body_composition(date, weight, fat_pct, muscle_mass, fat_mass, water_mass)
+                    self._save_body_composition(
+                        date, weight, fat_pct, muscle_mass, fat_mass, water_mass
+                    )
                     st.success("Body composition saved.")
                     st.cache_data.clear()
                     st.rerun()
@@ -181,36 +242,47 @@ class BodyMetricsView:
         with tabs[1]:
             with st.form("body_measurements_form"):
                 date = st.date_input("Measurement date", key="measure_date")
-                chest = st.number_input("Chest (cm)",   step=0.1)
-                waist = st.number_input("Waist (cm)",   step=0.1)
+                chest = st.number_input("Chest (cm)", step=0.1)
+                waist = st.number_input("Waist (cm)", step=0.1)
                 abdomen = st.number_input("Abdomen (cm)", step=0.1)
-                hips = st.number_input("Hips (cm)",    step=0.1)
-                thigh = st.number_input("Thigh (cm)",   step=0.1)
-                calf = st.number_input("Calf (cm)",    step=0.1)
-                biceps = st.number_input("Biceps (cm)",  step=0.1)
+                hips = st.number_input("Hips (cm)", step=0.1)
+                thigh = st.number_input("Thigh (cm)", step=0.1)
+                calf = st.number_input("Calf (cm)", step=0.1)
+                biceps = st.number_input("Biceps (cm)", step=0.1)
                 submitted = st.form_submit_button("Save Measurements")
 
             if submitted:
                 if self._measurement_exists(date, category="measurements"):
                     st.error("Body measurements for this date already exist.")
                 else:
-                    self._save_body_measurements(date, chest, waist, abdomen, hips, thigh, calf, biceps)
+                    self._save_body_measurements(
+                        date, chest, waist, abdomen, hips, thigh, calf, biceps
+                    )
                     st.success("Body measurements saved.")
                     st.cache_data.clear()
                     st.rerun()
 
-    def _render_metric_trends_section(self, df: pd.DataFrame, section_key: str, title: str) -> None:
+    def _render_metric_trends_section(
+        self, df: pd.DataFrame, section_key: str, title: str
+    ) -> None:
+        """Render a selectable metric trend with KPIs and chart."""
         section_header(title)
         st.caption("Track trends over time. KPI shows total change since first record.")
 
-        section   = METRIC_CONFIG.get(section_key, {})
-        available = {label: cfg for label, cfg in section.items() if cfg["col"] in df.columns}
+        section = METRIC_CONFIG.get(section_key, {})
+        available = {
+            label: cfg
+            for label, cfg in section.items()
+            if cfg["col"] in df.columns
+        }
 
         if not available:
             st.info("No data available.")
             return
 
-        selected_label = st.selectbox("Select metric", list(available.keys()), key=f"{section_key}_select")
+        selected_label = st.selectbox(
+            "Select metric", list(available.keys()), key=f"{section_key}_select"
+        )
         cfg = available[selected_label]
         col = cfg["col"]
         unit = cfg["unit"]
@@ -219,12 +291,14 @@ class BodyMetricsView:
         self._render_metric_kpis(df, col, unit, best_mode)
         self._render_trend_insight(df, col, best_mode)
 
-        # Themed Vega-Lite line chart via ui_helpers — matches all other views
         chart_label(selected_label)
         trend_df = df.set_index("date")[[col]].rename(columns={col: selected_label})
         line_chart(trend_df, selected_label)
 
-    def _render_metric_kpis(self, df: pd.DataFrame, col: str, unit: str, best_mode: str = "max") -> None:
+    def _render_metric_kpis(
+        self, df: pd.DataFrame, col: str, unit: str, best_mode: str = "max"
+    ) -> None:
+        """Render current, average, and best values for a metric."""
         values = df[col].dropna()
         if values.empty:
             return
@@ -232,17 +306,23 @@ class BodyMetricsView:
         current = round(values.iloc[-1], 2)
         avg = round(values.mean(), 2)
         best = round(values.min() if best_mode == "min" else values.max(), 2)
-        delta = self._calculate_delta(df, col)
+        delta = _calculate_delta(values)
 
         _, c1, c2, c3, _ = st.columns([1, 2, 2, 2, 1])
         c1.metric("Current", f"{current} {unit}", f"{delta} {unit}")
         c2.metric("Average", f"{avg} {unit}", f"{delta} {unit}")
         c3.metric("Best", f"{best} {unit}", f"{delta} {unit}")
 
-    def _render_trend_insight(self, df: pd.DataFrame, col: str, best_mode: str) -> None:
-        delta = self._calculate_delta(df, col)
-        if delta is None:
+    def _render_trend_insight(
+        self, df: pd.DataFrame, col: str, best_mode: str
+    ) -> None:
+        """Render directional insight based on metric trend."""
+        values = df[col].dropna()
+        if len(values) < 2:
             return
+
+        delta = values.iloc[-1] - values.iloc[0]
+        
         if best_mode == "min":
             if delta < 0:
                 st.success("Trend improving over time.")
@@ -254,13 +334,8 @@ class BodyMetricsView:
             elif delta < 0:
                 st.warning("Negative downward trend.")
 
-    def _calculate_delta(self, df: pd.DataFrame, col: str) -> float | None:
-        if col not in df.columns or df[col].dropna().empty:
-            return None
-        values = df[col].dropna()
-        return round(values.iloc[-1] - values.iloc[0], 2)
-
     def _measurement_exists(self, date, category: str) -> bool:
+        """Check if a measurement exists for the given date."""
         timeline = self.body_metrics.get("timeline", [])
         if not timeline:
             return False
@@ -284,15 +359,45 @@ class BodyMetricsView:
                             return True
         return False
 
-    def _save_body_composition(self, date, weight, fat_pct, muscle_mass, fat_mass, water_mass) -> None:
+    def _save_body_composition(
+        self, date, weight, fat_pct, muscle_mass, fat_mass, water_mass
+    ) -> None:
+        """Save body composition data to database."""
         self.dm.add_body_composition({
-            "date": date, "weight": weight, "muscle_mass": muscle_mass,
-            "fat_mass": fat_mass, "water_mass": water_mass,
-            "bf_percent": fat_pct, "method": "SmartWatch",
+            "date": date,
+            "weight": weight,
+            "muscle_mass": muscle_mass,
+            "fat_mass": fat_mass,
+            "water_mass": water_mass,
+            "bf_percent": fat_pct,
+            "method": "SmartWatch",
         })
 
-    def _save_body_measurements(self, date, chest, waist, abdomen, hips, thigh, calf, biceps) -> None:
+    def _save_body_measurements(
+        self, date, chest, waist, abdomen, hips, thigh, calf, biceps
+    ) -> None:
+        """Save body measurements data to database."""
         self.dm.add_body_measurements({
-            "date": date, "chest": chest, "waist": waist, "abdomen": abdomen,
-            "hips": hips, "thigh": thigh, "calf": calf, "biceps": biceps,
+            "date": date,
+            "chest": chest,
+            "waist": waist,
+            "abdomen": abdomen,
+            "hips": hips,
+            "thigh": thigh,
+            "calf": calf,
+            "biceps": biceps,
         })
+
+
+def _calculate_delta(values: pd.Series) -> float | None:
+    """Calculate change from first to last value.
+    
+    Args:
+        values: Series of numeric values
+    
+    Returns:
+        Change value rounded to 2 decimals, or None if insufficient data
+    """
+    if values.empty or len(values) < 2:
+        return None
+    return round(values.iloc[-1] - values.iloc[0], 2)
