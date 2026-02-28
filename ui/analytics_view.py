@@ -1,7 +1,15 @@
 """
-Analytics view for the UI layer.
+Analytics View
 
-Styling strategy (mirrors dashboard_view.py):
+Advanced training analytics including fatigue monitoring, strength progress analysis, and plateau detection.
+
+Responsibilities:
+  - Render fatigue and recovery metrics with time-series visualization
+  - Display strength progress analysis with top/bottom exercises
+  - Identify and analyze plateaus and regressed exercises
+  
+All calculations are performed in the metrics layer; this view handles presentation only.
+Styling strategy:
   - page_title / section_header / chart_label  → main.css handles rendering
   - st.metric                                  → main.css handles styling
   - Plotly charts                              → themed via PLOTLY_LAYOUT from ui_helpers
@@ -17,26 +25,66 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from ui.utils.ui_helpers import (chart_label, fmt_num, page_title, section_header, ACCENT, DANGER, MUTED, WARN, PLOTLY_LAYOUT)
+from ui.utils.ui_helpers import (
+    chart_label,
+    format_number,
+    page_title,
+    section_header,
+    ACCENT,
+    DANGER,
+    MUTED,
+    WARN,
+    PLOTLY_LAYOUT,
+)
+
 
 def _apply_theme(fig, title: str = "") -> None:
-    """Apply the shared Plotly theme to a figure in-place."""
-    fig.update_layout(**PLOTLY_LAYOUT,title=dict(text=title.upper(), font=dict(color=MUTED, size=10), x=0))
+    """Apply shared Plotly theme to a figure in-place.
+    
+    Args:
+        fig: Plotly Figure object
+        title: Optional chart title (rendered in uppercase small-caps)
+    """
+    fig.update_layout(
+        **PLOTLY_LAYOUT,
+        title=dict(text=title.upper(), font=dict(color=MUTED, size=10), x=0)
+    )
 
 
 class AnalyticsView:
+    """UI view for advanced training analytics.
+    
+    Displays:
+    - Fatigue and recovery monitoring with per-session fatigue scores
+    - Strength progress analysis identifying top/bottom improving exercises
+    - Plateau and regression zone analysis for stalled exercises
+    
+    Data Sources:
+    - session_metrics: Per-session and global training metrics
+    - exercise_metrics: Exercise-level metrics
+    - progress_metrics: Strength progress per exercise
+    - fatigue_metrics: Fatigue scores and recovery trends
+    """
+
     def __init__(self, metrics: Dict) -> None:
+        """Initialize with pre-computed analytics metrics.
+        
+        Args:
+            metrics: Dictionary with keys 'sessions', 'exercises', 'progress', 'fatigue'
+        """
         self.session_metrics = metrics.get("sessions", {})
         self.exercise_metrics = metrics.get("exercises", {})
         self.progress_metrics = metrics.get("progress", {})
         self.fatigue_metrics = metrics.get("fatigue", {})
 
     def render(self) -> None:
+        """Render the complete analytics view."""
         page_title("Analytics", "Training Analytics")
         self._fatigue_section()
         self._progress_section()
 
     def _fatigue_section(self) -> None:
+        """Render fatigue and recovery insights with per-session fatigue trends."""
         section_header("Fatigue & Recovery")
 
         per_session = self.fatigue_metrics.get("per_session", {})
@@ -89,6 +137,7 @@ class AnalyticsView:
             st.success("Fatigue levels are balanced. Keep up the consistency.")
 
     def _progress_section(self) -> None:
+        """Render strength progress analysis with top/bottom improving exercises."""
         section_header("Strength Progress")
 
         per_ex = self.progress_metrics.get("per_exercise", {})
@@ -158,6 +207,7 @@ class AnalyticsView:
         self._plateau_section(per_ex)
 
     def _plateau_section(self, per_ex: dict) -> None:
+        """Render plateau and regression analysis for stalled exercises."""
         section_header("Plateau Zone Analysis")
 
         exercise_per = self.exercise_metrics.get("per_exercise", {})

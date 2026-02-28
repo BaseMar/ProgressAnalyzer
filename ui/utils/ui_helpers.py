@@ -55,8 +55,16 @@ PLOTLY_LAYOUT = dict(
     showlegend    = False,
 )
 
-def fmt_num(value, decimals: int = 1) -> str:
-    """Return value formatted with thin-space thousands separator."""
+def format_number(value, decimals: int = 1) -> str:
+    """Format a number with thousands separator using thin-space.
+    
+    Args:
+        value: Numeric value to format (or None to return dash)
+        decimals: Number of decimal places (default 1)
+    
+    Returns:
+        Formatted string with thin-space thousands separator, or "—" if None/invalid
+    """
     if value is None:
         return "—"
     try:

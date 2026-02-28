@@ -1,12 +1,34 @@
-from data_manager import DataManager
-from mapper import *
+"""
+Data Loader
+
+Responsible for loading and transforming raw data from database into
+structured MetricsInput for processing by the metrics engine.
+
+This module bridges the data persistence layer with domain logic.
+"""
+
+from typing import Tuple
+
+import pandas as pd
 import streamlit as st
 
+from data_manager import DataManager
+from mapper import *
 from metrics.input import MetricsInput
 
 
 @st.cache_data
-def load_data():
+def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
+    """Load all application data from database.
+    
+    This is the main entry point for data loading. Data is cached automatically
+    by Streamlit to avoid redundant database queries.
+    
+    Returns:
+        Tuple of:
+        - MetricsInput: structured domain objects for metrics computation
+        - pd.DataFrame: raw sets data with joined names for UI display
+    """
     dm = DataManager()
     sets_df = dm.load_sets_ui()
 
