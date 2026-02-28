@@ -92,10 +92,7 @@ class BodyPartsView:
         cols[0].metric("Body Parts Trained", len(body_df))
         cols[1].metric("Most Trained", body_df.iloc[0]["Body Part"].title())
         cols[2].metric("Least Trained", body_df.iloc[-1]["Body Part"].title())
-        cols[3].metric(
-            "Avg Volume / Part",
-            f"{format_number(body_df['Total_Volume'].mean(), 0)} kg"
-        )
+        cols[3].metric("Avg Volume / Part", f"{format_number(body_df['Total_Volume'].mean(), 0)} kg")
 
     def _render_charts(self, body_df: pd.DataFrame) -> None:
         """Render volume and strength distribution charts."""

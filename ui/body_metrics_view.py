@@ -25,24 +25,25 @@ import pandas as pd
 import streamlit as st
 
 from data_manager import DataManager
-from ui.utils.ui_helpers import chart_label, format_number, line_chart, page_title, section_header
+from ui.utils.ui_helpers import chart_label, line_chart, page_title, section_header
+
 
 METRIC_CONFIG = {
     "composition": {
-        "Weight":      {"col": "weight",         "unit": "kg", "best": "max"},
-        "Muscle Mass": {"col": "muscle_mass",     "unit": "kg", "best": "max"},
-        "Fat Mass":    {"col": "fat_mass",        "unit": "kg", "best": "min"},
-        "Water Mass":  {"col": "water_mass",      "unit": "kg", "best": "max"},
-        "Body Fat":    {"col": "fat_percentage",  "unit": "%",  "best": "min"},
+        "Weight": {"col": "weight", "unit": "kg", "best": "max"},
+        "Muscle Mass": {"col": "muscle_mass", "unit": "kg", "best": "max"},
+        "Fat Mass": {"col": "fat_mass", "unit": "kg", "best": "min"},
+        "Water Mass": {"col": "water_mass", "unit": "kg", "best": "max"},
+        "Body Fat": {"col": "fat_percentage", "unit": "%",  "best": "min"},
     },
     "measurements": {
-        "Chest":   {"col": "chest",   "unit": "cm", "best": "max"},
-        "Waist":   {"col": "waist",   "unit": "cm", "best": "min"},
+        "Chest": {"col": "chest", "unit": "cm", "best": "max"},
+        "Waist": {"col": "waist", "unit": "cm", "best": "min"},
         "Abdomen": {"col": "abdomen", "unit": "cm", "best": "min"},
-        "Hips":    {"col": "hips",    "unit": "cm", "best": "min"},
-        "Thigh":   {"col": "thigh",   "unit": "cm", "best": "max"},
-        "Calf":    {"col": "calf",    "unit": "cm", "best": "max"},
-        "Biceps":  {"col": "biceps",  "unit": "cm", "best": "max"},
+        "Hips": {"col": "hips", "unit": "cm", "best": "min"},
+        "Thigh": {"col": "thigh", "unit": "cm", "best": "max"},
+        "Calf": {"col": "calf", "unit": "cm", "best": "max"},
+        "Biceps": {"col": "biceps", "unit": "cm", "best": "max"},
     },
 }
 
@@ -104,39 +105,26 @@ class BodyMetricsView:
         cols = st.columns(4)
 
         delta_weight = deltas.get("weight")
-        cols[0].metric(
-            "Weight", 
-            f"{latest['weight']} kg",
-            f"{delta_weight} kg" if delta_weight is not None else "—"
-        )
+        cols[0].metric("Weight", f"{latest['weight']} kg", f"{delta_weight} kg" if delta_weight is not None else "—")
 
         if "fat_percentage" in df.columns:
             delta_fat = deltas.get("fat_percentage")
-            cols[1].metric(
-                "Body Fat %",
-                f"{latest['fat_percentage']} %",
-                f"{delta_fat} %" if delta_fat is not None else "—"
-            )
+            cols[1].metric("Body Fat %", f"{latest['fat_percentage']} %", f"{delta_fat} %" if delta_fat is not None else "—")
 
         if "muscle_mass" in df.columns:
             delta_muscle = deltas.get("muscle_mass")
-            cols[2].metric(
-                "Muscle Mass",
-                f"{latest['muscle_mass']} kg",
-                f"{delta_muscle} kg" if delta_muscle is not None else "—"
-            )
+            cols[2].metric("Muscle Mass", f"{latest['muscle_mass']} kg", f"{delta_muscle} kg" if delta_muscle is not None else "—")
 
-        # Chest to waist ratio as a key proportion
         proportions = self.body_metrics.get("proportions", {})
         ratio_c2w = proportions.get("chest_to_waist")
         if ratio_c2w:
-            cols[3].metric("Chest / Waist", f"{ratio_c2w}", delta="")
+            delta_ratio = deltas.get("chest_to_waist")
+            delta_text = f"{delta_ratio:+.2f}" if delta_ratio is not None else "—"
+            cols[3].metric("Chest / Waist", f"{ratio_c2w}", delta=delta_text)
 
     def _render_composition_trends(self, df: pd.DataFrame) -> None:
         """Render body composition metric trends."""
-        self._render_metric_trends_section(
-            df, section_key="composition", title="Body Composition Trends"
-        )
+        self._render_metric_trends_section(df, section_key="composition", title="Body Composition Trends")
 
     def _render_recomposition_quality(self) -> None:
         """Render recomposition quality metrics from metrics layer."""
@@ -149,7 +137,6 @@ class BodyMetricsView:
 
         st.metric("Lean Mass Contribution", f"{lean_ratio} %")
 
-        # Show guidance based on recomposition type
         if recomp_type == "lean_bulk":
             st.success("Most weight change is lean mass — excellent recomposition.")
         elif recomp_type == "mixed_bulk":
@@ -180,7 +167,6 @@ class BodyMetricsView:
 
         cols = st.columns(3)
 
-        # Chest to waist ratio
         c2w = proportions.get("chest_to_waist")
         if c2w:
             cols[0].metric("Chest / Waist", c2w, delta=" ")
@@ -262,9 +248,7 @@ class BodyMetricsView:
                     st.cache_data.clear()
                     st.rerun()
 
-    def _render_metric_trends_section(
-        self, df: pd.DataFrame, section_key: str, title: str
-    ) -> None:
+    def _render_metric_trends_section(self, df: pd.DataFrame, section_key: str, title: str) -> None:
         """Render a selectable metric trend with KPIs and chart."""
         section_header(title)
         st.caption("Track trends over time. KPI shows total change since first record.")
@@ -280,9 +264,7 @@ class BodyMetricsView:
             st.info("No data available.")
             return
 
-        selected_label = st.selectbox(
-            "Select metric", list(available.keys()), key=f"{section_key}_select"
-        )
+        selected_label = st.selectbox("Select metric", list(available.keys()), key=f"{section_key}_select")
         cfg = available[selected_label]
         col = cfg["col"]
         unit = cfg["unit"]
@@ -295,9 +277,7 @@ class BodyMetricsView:
         trend_df = df.set_index("date")[[col]].rename(columns={col: selected_label})
         line_chart(trend_df, selected_label)
 
-    def _render_metric_kpis(
-        self, df: pd.DataFrame, col: str, unit: str, best_mode: str = "max"
-    ) -> None:
+    def _render_metric_kpis(self, df: pd.DataFrame, col: str, unit: str, best_mode: str = "max") -> None:
         """Render current, average, and best values for a metric."""
         values = df[col].dropna()
         if values.empty:
@@ -313,9 +293,7 @@ class BodyMetricsView:
         c2.metric("Average", f"{avg} {unit}", f"{delta} {unit}")
         c3.metric("Best", f"{best} {unit}", f"{delta} {unit}")
 
-    def _render_trend_insight(
-        self, df: pd.DataFrame, col: str, best_mode: str
-    ) -> None:
+    def _render_trend_insight(self, df: pd.DataFrame, col: str, best_mode: str) -> None:
         """Render directional insight based on metric trend."""
         values = df[col].dropna()
         if len(values) < 2:
@@ -359,9 +337,7 @@ class BodyMetricsView:
                             return True
         return False
 
-    def _save_body_composition(
-        self, date, weight, fat_pct, muscle_mass, fat_mass, water_mass
-    ) -> None:
+    def _save_body_composition(self, date, weight, fat_pct, muscle_mass, fat_mass, water_mass) -> None:
         """Save body composition data to database."""
         self.dm.add_body_composition({
             "date": date,
@@ -373,9 +349,7 @@ class BodyMetricsView:
             "method": "SmartWatch",
         })
 
-    def _save_body_measurements(
-        self, date, chest, waist, abdomen, hips, thigh, calf, biceps
-    ) -> None:
+    def _save_body_measurements(self, date, chest, waist, abdomen, hips, thigh, calf, biceps) -> None:
         """Save body measurements data to database."""
         self.dm.add_body_measurements({
             "date": date,
@@ -387,7 +361,6 @@ class BodyMetricsView:
             "calf": calf,
             "biceps": biceps,
         })
-
 
 def _calculate_delta(values: pd.Series) -> float | None:
     """Calculate change from first to last value.

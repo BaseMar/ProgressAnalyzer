@@ -147,6 +147,9 @@ def main() -> None:
     views[selected_page].render()
     sidebar.render_upload()
 
+    # personal data disclaimer footer
+    st.markdown('<div class="app-footer">All data shown are my personal workout and body measurements, used solely for the purposes of this project.</div>', unsafe_allow_html=True,)
+
 _configure_page()
 
 

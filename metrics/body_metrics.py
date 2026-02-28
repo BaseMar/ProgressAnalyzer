@@ -238,6 +238,21 @@ def compute_body_metrics(input: MetricsInput) -> dict:
         "biceps": _calculate_metric_deltas(timeline, "biceps"),
     }
 
+    # add a delta for the chest/waist ratio if enough data exists
+    def _calculate_ratio_delta(timeline: list[dict], num: str, den: str) -> float | None:
+        vals = []
+        for e in timeline:
+            n = e.get(num)
+            d = e.get(den)
+            if n is None or d in (None, 0):
+                continue
+            vals.append(n / d)
+        if len(vals) < 2:
+            return None
+        return round(vals[-1] - vals[0], 2)
+
+    deltas["chest_to_waist"] = _calculate_ratio_delta(timeline, "chest", "waist")
+
     return {
         "timeline": timeline,
         "global": global_metrics,
