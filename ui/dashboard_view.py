@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import pandas as pd
 import streamlit as st
+from data_manager import DataManager
 
 from ui.utils.ui_helpers import chart_label, format_number, line_chart, page_title, section_header
 
@@ -55,6 +56,8 @@ class DashboardView:
         """
         self.metrics = metrics
         self.sets_df = sets_df
+        self.dm = DataManager()
+
 
     def render(self) -> None:
         """Render the complete dashboard view."""
@@ -111,14 +114,13 @@ class DashboardView:
             line_chart(trend_df, "Duration (min)")
 
     def _render_history(self) -> None:
-        """Render expandable session history with exercise details."""
         section_header("Session History")
 
         df = self.sets_df.copy()
         df["SessionDate"] = pd.to_datetime(df["SessionDate"])
-        df = df.sort_values("SessionDate", ascending=False)
+        grouped = df.groupby(["SessionID", "SessionDate"], sort=False)
 
-        for session_date, session_df in df.groupby("SessionDate", sort=False):
+        for (session_id, session_date), session_df in grouped:
             total_volume = (session_df["Repetitions"] * session_df["Weight"]).sum()
             total_sets = len(session_df)
             exercises_count = session_df["ExerciseName"].nunique()
@@ -138,4 +140,13 @@ class DashboardView:
                         f'<div class="set-pills">{_set_pills(ex_df)}</div>',
                         unsafe_allow_html=True,
                     )
-                st.markdown('<hr class="exercise-divider">', unsafe_allow_html=True)
+                
+                st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
+                
+                col1, col2 = st.columns([0.8, 0.2])
+                with col2:
+                    if st.button("Delete Session", key=f"del_{session_id}", type="secondary", use_container_width=True, icon=":material/delete:"):
+                        if self.dm.delete_session(session_id):
+                            st.cache_data.clear()
+                            st.toast(f"Session deleted successfully!")
+                            st.rerun()
