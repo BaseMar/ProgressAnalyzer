@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict, List
 from datetime import time
 import pandas as pd
-from sqlalchemy import select, text
+from sqlalchemy import text
 
 from db.connection import get_engine
 from db.queries import (
@@ -15,6 +15,7 @@ from db.queries import (
     insert_body_composition,
     insert_body_measurements,
     insert_exercise,
+    delete_workout_session
 )
 
 logger = logging.getLogger(__name__)
@@ -174,3 +175,12 @@ class DataManager:
         )
         with self.engine.connect() as conn:
             return pd.read_sql(query, conn)
+
+    def delete_session(self, session_id: int) -> bool:
+        """Delete session from ui"""
+        try:
+            from db.queries import delete_workout_session
+            return delete_workout_session(self.engine, session_id)
+        except Exception:
+            return False
+        

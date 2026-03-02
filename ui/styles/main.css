@@ -638,3 +638,32 @@ div[data-testid="column"] { padding: 6px; }
 [data-testid="stTabs"] button[role="tab"]:hover {
     color: var(--text-primary) !important;
 }
+
+/* Delete button in expander */
+div[data-testid="stExpander"] button[kind="secondary"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-primary) !important;
+    font-size: 10px !important;
+    height: 28px !important;
+    text-transform: uppercase !important;
+    transition: all 0.3s var(--ease) !important;
+}
+
+div[data-testid="stExpander"] button[kind="secondary"]:hover {
+     color: var(--accent) !important;
+    background-color: var(--accent-dim) !important;
+    border-color: var(--accent-border) !important;
+    box-shadow: 0 4px 14px var(--accent-glow) !important;
+    transform: translateX(3px) !important;
+}
+
+div[data-testid="stExpander"] button[kind="secondary"]:active{
+    color: #111518 !important;
+    background-color: var(--accent) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 2px 6px rgba(0, 173, 181, 0.4) !important;
+    transform: translateX(3px) scale(0.975) !important;
+    transition: all 0.1s ease !important;
+    font
+}
