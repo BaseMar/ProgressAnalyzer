@@ -200,17 +200,27 @@ def _rm_bar(rm: float, max_rm: float) -> str:
     )
 
 
-def _rir_dots(rir: float) -> str:
+def _rir_dots(rir) -> str:
+    if rir is None:
+        return '<div class="rir-dots"></div><div class="rir-label">-</div>'
+
+    try:
+        rir = float(rir)
+    except (TypeError, ValueError):
+        return '<div class="rir-dots"></div><div class="rir-label">-</div>'
+
     if rir <= 1.5:
         cls, filled = "high", 3 if rir <= 1.3 else 2
     elif rir <= 1.9:
         cls, filled = "mid", 2
     else:
         cls, filled = "low", 1
+
     dots = "".join(
         f'<span class="dot {cls if i < filled else ""}"></span>'
         for i in range(3)
     )
+
     return f'<div class="rir-dots">{dots}</div><div class="rir-label">{rir:.1f}</div>'
 
 

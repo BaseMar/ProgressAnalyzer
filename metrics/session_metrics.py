@@ -99,7 +99,12 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         # Epley-based intensity estimate
         intensities = [s.weight * (1 + s.repetitions / 30) for s in sets]
         avg_intensity = mean(intensities) if intensities else None
-        avg_rir = mean(s.rir for s in sets if s.rir is not None)
+        rir_values = [s.rir for s in sets if s.rir is not None]
+
+        if rir_values:
+            avg_rir = sum(rir_values) / len(rir_values)
+        else:
+            avg_rir = 0
         sets_to_failure = sum(1 for s in sets if s.rir == 0)
 
         per_session[session_id] = {

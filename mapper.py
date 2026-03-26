@@ -3,8 +3,8 @@ from models import (WorkoutSession, WorkoutExercise, WorkoutSet, Exercise, Muscl
 
 def map_workout_session(row: dict) -> WorkoutSession:
     return WorkoutSession(
-        session_id=row["SessionID"],
-        session_date=row["SessionDate"],
+        session_id=row["session_id"],
+        session_date=row["session_date"],
         start_time=row.get("StartTime"),
         end_time=row.get("EndTime"),
     )
@@ -12,28 +12,28 @@ def map_workout_session(row: dict) -> WorkoutSession:
 
 def map_workout_exercise(row: dict) -> WorkoutExercise:
     return WorkoutExercise(
-        workout_exercise_id=row["WorkoutExerciseID"],
-        session_id=row["SessionID"],
-        exercise_id=row["ExerciseID"],
+        workout_exercise_id=row["workout_exercise_id"],
+        session_id=row["session_id"],
+        exercise_id=row["exercise_id"],
     )
 
 
 def map_workout_set(row: dict) -> WorkoutSet:
     return WorkoutSet(
-        workout_exercise_id=row["WorkoutExerciseID"],
-        set_number=row["SetNumber"],
-        repetitions=row["Repetitions"],
-        weight=row["Weight"],
+        workout_exercise_id=row["workout_exercise_id"],
+        set_number=row["set_number"],
+        repetitions=row["repetitions"],
+        weight=row["weight"],
         rir=row.get("RIR"),
     )
 
 
 def map_exercise(row: dict) -> Exercise:
     return Exercise(
-        exercise_id=row["ExerciseID"],
-        name=row["ExerciseName"],
+        exercise_id=row["exercise_id"],
+        name=row["exercise_name"],
         primary_muscle_group_id=None,
-        body_part=row.get("BodyPart")
+        body_part=row.get("body_part")
     )
 
 
@@ -47,9 +47,9 @@ def map_muscle_group(row: dict) -> MuscleGroup:
 def map_body_measurement(row: dict) -> list[BodyMeasurement]:
     """Map one DB row with multiple columns to a list of BodyMeasurement instances."""
     measurements = []
-    date = row["MeasurementDate"]
+    date = row["measurement_date"]
     
-    for col in ["Chest", "Waist", "Abdomen", "Hips", "Thigh", "Calf", "Biceps"]:
+    for col in ["chest", "waist", "abdomen", "hips", "thigh", "calf", "biceps"]:
         if row[col] is not None:
             measurements.append(
                 BodyMeasurement(
@@ -63,11 +63,11 @@ def map_body_measurement(row: dict) -> list[BodyMeasurement]:
 
 def map_body_composition(row: dict) -> BodyComposition:
     return BodyComposition(
-        date=row["MeasurementDate"],
-        weight=row["Weight"],
-        muscle_mass = row["MuscleMass"], 
-        fat_mass = row["FatMass"], 
-        water_mass = row["WaterMass"],
-        fat_percentage=row["BodyFatPercentage"],
-        method = row["Method"]
+        date=row["measurement_date"],
+        weight=row["weight"],
+        muscle_mass = row["muscle_mass"], 
+        fat_mass = row["fat_mass"], 
+        water_mass = row["water_mass"],
+        fat_percentage=row["body_fat_percentage"],
+        method = row["method"]
     )

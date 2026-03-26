@@ -75,9 +75,9 @@ class SidebarUpload:
         normalized_map = {}
         original_map = {}
         for row in exercises_db.itertuples():
-            norm_name = normalize(row.ExerciseName)
-            normalized_map[norm_name] = row.ExerciseID
-            original_map[norm_name] = row.ExerciseName
+            norm_name = normalize(row.exercise_name)
+            normalized_map[norm_name] = row.exercise_id
+            original_map[norm_name] = row.exercise_name
 
         # Apply user's exercise mappings (from selection dialog)
         for original_name, selected_name in st.session_state.exercise_mapping.items():
@@ -148,14 +148,14 @@ class SidebarUpload:
         
         if similar:
             st.sidebar.info("Did you mean? (showing similar exercises)")
-            suggested_names = [row.ExerciseName for row in similar]
+            suggested_names = [row.exercise_name for row in similar]
             selected_exercise = st.sidebar.selectbox(
                 "Select existing exercise:",
                 options=suggested_names,
                 key="similar_exercise_select"
             )
             
-            if st.sidebar.button("✓ Use selected exercise"):
+            if st.sidebar.button("Use selected exercise", icon=":material/check:"):
                 # Add mapping and attempt import again
                 st.session_state.exercise_mapping[suggested_name] = selected_exercise
                 st.session_state.adding_exercise = False
@@ -168,14 +168,14 @@ class SidebarUpload:
         
         # Show all exercises from database for selection
         st.sidebar.subheader("Or choose from all exercises")
-        all_exercise_names = sorted([row.ExerciseName for row in exercises_db.itertuples()])
+        all_exercise_names = sorted([row.exercise_name for row in exercises_db.itertuples()])
         selected_exercise_all = st.sidebar.selectbox(
             "Select exercise from database:",
             options=all_exercise_names,
             key="all_exercises_select"
         )
         
-        if st.sidebar.button("✓ Use this exercise"):
+        if st.sidebar.button("Use this exercise", icon=":material/check:"):
             # Add mapping and attempt import again
             st.session_state.exercise_mapping[suggested_name] = selected_exercise_all
             st.session_state.adding_exercise = False
@@ -193,35 +193,32 @@ class SidebarUpload:
         category = st.sidebar.selectbox("Category", ["Push", "Pull", "Legs"], key="exercise_category")
         body = st.sidebar.selectbox(
             "Body Part",
-            ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Legs", "Calves"],
+            ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Abs", "Legs", "Calves"],
             key="exercise_body"
         )
 
-        col1, col2 = st.sidebar.columns(2)
-        with col1:
-            if st.button("➕ Add exercise"):
-                if not name or not name.strip():
-                    st.sidebar.error("Exercise name cannot be empty")
-                    return
+        if st.sidebar.button("Add exercise", icon=":material/add:", width="stretch"):
+            if not name or not name.strip():
+                st.sidebar.error("Exercise name cannot be empty")
+                return
+            
+            try:
+                self.dm.add_exercise(name.strip(), category, body)
+                st.sidebar.success("Exercise added!")
                 
-                try:
-                    self.dm.add_exercise(name.strip(), category, body)
-                    st.sidebar.success("Exercise added!")
-                    
-                    # Clear cache and reset state - will re-attempt import
-                    st.cache_data.clear()
-                    st.session_state.adding_exercise = False
-                    st.session_state.pending_exercise = None
-                    st.rerun()
-                except Exception as e:
-                    st.sidebar.error(f"Failed to add exercise: {str(e)}")
-        
-        with col2:
-            if st.button("❌ Cancel"):
+                # Clear cache and reset state - will re-attempt import
+                st.cache_data.clear()
                 st.session_state.adding_exercise = False
                 st.session_state.pending_exercise = None
-                st.session_state.exercise_mapping = {}
                 st.rerun()
+            except Exception as e:
+                st.sidebar.error(f"Failed to add exercise: {str(e)}")
+        
+        if st.sidebar.button("Cancel", icon=":material/close:", width="stretch"):
+            st.session_state.adding_exercise = False
+            st.session_state.pending_exercise = None
+            st.session_state.exercise_mapping = {}
+            st.rerun()
 
     def _find_similar_exercises(self, query: str, exercises_df):
         """Find exercises with similar normalized names."""
@@ -229,7 +226,7 @@ class SidebarUpload:
         similar = []
         
         for row in exercises_df.itertuples():
-            exercise_norm = normalize(row.ExerciseName)
+            exercise_norm = normalize(row.exercise_name)
             
             # Check for substring match or high similarity
             if (query_norm in exercise_norm or 

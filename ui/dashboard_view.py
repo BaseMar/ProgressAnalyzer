@@ -30,8 +30,8 @@ def _set_pills(ex_df: pd.DataFrame) -> str:
         HTML string with set pill badges (reps × weight)
     """
     return "".join(
-        f'<span class="set-pill">{row["Repetitions"]} × {row["Weight"]:g} kg</span>'
-        for _, row in ex_df.sort_values("SetNumber").iterrows())
+        f'<span class="set-pill">{row["repetitions"]} × {row["weight"]:g} kg</span>'
+        for _, row in ex_df.sort_values("set_number").iterrows())
 
 
 class DashboardView:
@@ -52,7 +52,7 @@ class DashboardView:
         
         Args:
             metrics: Dictionary with keys 'sessions', 'exercises', 'progress', 'fatigue', 'body'
-            sets_df: DataFrame with columns: SessionDate, ExerciseName, Weight, Repetitions, SetNumber
+            sets_df: DataFrame with columns: session_date, ExerciseName, Weight, Repetitions, set_number
         """
         self.metrics = metrics
         self.sets_df = sets_df
@@ -117,13 +117,13 @@ class DashboardView:
         section_header("Session History")
 
         df = self.sets_df.copy()
-        df["SessionDate"] = pd.to_datetime(df["SessionDate"])
-        grouped = df.groupby(["SessionID", "SessionDate"], sort=False)
+        df["session_date"] = pd.to_datetime(df["session_date"])
+        grouped = df.groupby(["session_id", "session_date"], sort=False)
 
         for (session_id, session_date), session_df in grouped:
-            total_volume = (session_df["Repetitions"] * session_df["Weight"]).sum()
+            total_volume = (session_df["repetitions"] * session_df["weight"]).sum()
             total_sets = len(session_df)
-            exercises_count = session_df["ExerciseName"].nunique()
+            exercises_count = session_df["exercise_name"].nunique()
             volume_str = f"{total_volume:,.0f}".replace(",", "\u202f")
 
             label = (
@@ -134,7 +134,7 @@ class DashboardView:
             )
 
             with st.expander(label, icon=":material/event:"):
-                for exercise, ex_df in session_df.groupby("ExerciseName"):
+                for exercise, ex_df in session_df.groupby("exercise_name"):
                     st.markdown(
                         f'<p class="exercise-label">{exercise}</p>'
                         f'<div class="set-pills">{_set_pills(ex_df)}</div>',

@@ -25,7 +25,7 @@ def get_engine() -> Engine:
         raise RuntimeError("DATABASE_URL is not set")
 
     try:
-        engine = create_engine(database_url, fast_executemany=True)
+        engine = create_engine(database_url)
         logger.info("Connected to database (SQLAlchemy)")
         return engine
     except Exception as ex:
