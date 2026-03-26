@@ -84,7 +84,9 @@ class DataManager:
                     session_id = row[0]
                 else:
                     insert_q = text(
-                        "INSERT INTO workout_sessions (session_date, notes, start_time, end_time) RETURNING session_id  VALUES (:date, :notes, :start_time, :end_time)"
+                        """INSERT INTO workout_sessions (session_date, notes, start_time, end_time)
+                           VALUES (:date, :notes, :start_time, :end_time)
+                           RETURNING session_id"""
                     )
                     session_id = conn.execute(
                         insert_q, {"date": session_date, "notes": notes, "start_time": session_start, "end_time": session_end}
