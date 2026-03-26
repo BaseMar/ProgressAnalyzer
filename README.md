@@ -191,15 +191,15 @@ High-level training overview:
 ## Data Model
 
 ### Training
-- `WorkoutSessions`
-- `WorkoutExercises`
-- `WorkoutSets`
+- `workout_sessions`
+- `workout_exercises`
+- `workout_sets`
 - `Exercises`
 
 ### Body Tracking
 - `BodyComposition`  
   *(weight, muscle mass, fat mass, water mass, body fat %)*
-- `BodyMeasurements`  
+- `body_measurements`  
   *(waist, chest, abdomen, hips, thighs, arms, calves)*
 
 ---

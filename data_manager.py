@@ -77,7 +77,7 @@ class DataManager:
             with engine.begin() as conn:
                 # check existing session
                 qry = text(
-                    "SELECT SessionID FROM WorkoutSessions WHERE CAST(SessionDate AS DATE) = :session_date"
+                    "SELECT session_id FROM workout_sessions WHERE CAST(session_date AS DATE) = :session_date"
                 )
                 row = conn.execute(qry, {"session_date": session_date}).fetchone()
                 if row:
@@ -85,7 +85,7 @@ class DataManager:
                 else:
                     # insert_session should return inserted id (use OUTPUT or RETURNING)
                     insert_q = text(
-                        "INSERT INTO WorkoutSessions (SessionDate, Notes, StartTime, EndTime) OUTPUT INSERTED.SessionID  VALUES (:date, :notes, :start_time, :end_time)"
+                        "INSERT INTO workout_sessions (session_date, notes, start_time, end_time) OUTPUT INSERTED.session_id  VALUES (:date, :notes, :start_time, :end_time)"
                     )
                     session_id = conn.execute(
                         insert_q, {"date": session_date, "notes": notes, "start_time": session_start, "end_time": session_end}
@@ -93,7 +93,7 @@ class DataManager:
 
                 # get exercise id
                 ex_id_q = text(
-                    "SELECT ExerciseID FROM Exercises WHERE ExerciseName = :name"
+                    "SELECT exercise_id FROM Exercises WHERE exercise_name = :name"
                 )
                 res = conn.execute(ex_id_q, {"name": exercise_name}).fetchone()
                 if not res:
@@ -102,7 +102,7 @@ class DataManager:
 
                 # insert workout exercise and get id
                 insert_we = text(
-                    "INSERT INTO WorkoutExercises (SessionID, ExerciseID) OUTPUT INSERTED.WorkoutExerciseID VALUES (:sid, :eid)"
+                    "INSERT INTO workout_exercises (session_id, exercise_id) OUTPUT INSERTED.workout_exercise_id VALUES (:sid, :eid)"
                 )
                 workout_ex_id = conn.execute(
                     insert_we, {"sid": session_id, "eid": exercise_id}
@@ -111,7 +111,7 @@ class DataManager:
                 # insert sets
                 for idx, s in enumerate(sets_data, start=1):
                     ins_set = text(
-                        "INSERT INTO WorkoutSets (WorkoutExerciseID, SetNumber, Repetitions, Weight, RIR) VALUES (:weid, :num, :reps, :weight, :rir)"
+                        "INSERT INTO workout_sets (workout_exercise_id, set_number, repetitions, weight, RIR) VALUES (:weid, :num, :reps, :weight, :rir)"
                     )
                     conn.execute(
                         ins_set,
@@ -159,8 +159,8 @@ class DataManager:
     def load_workout_exercises(self) -> pd.DataFrame:
         query = text(
             """
-            SELECT WorkoutExerciseID, SessionID, ExerciseID
-            FROM WorkoutExercises
+            SELECT workout_exercise_id, session_id, exercise_id
+            FROM workout_exercises
             """
         )
         with self.engine.connect() as conn:

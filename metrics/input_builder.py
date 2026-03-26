@@ -18,31 +18,31 @@ class MetricsInputBuilder:
     def build(sessions_df, exercises_df, sets_df, body_measurements_df, body_composition_df,) -> MetricsInput:
 
         sessions = [WorkoutSession(
-                session_id=row.SessionID,
-                date=row.SessionDate,
+                session_id=row.session_id,
+                date=row.session_date,
                 start_time=row.StartTime,
                 end_time=row.EndTime,)
             for row in sessions_df.itertuples()]
 
         workout_exercises = [WorkoutExercise(
-                workout_exercise_id=row.WorkoutExerciseID,
-                session_id=row.SessionID,
-                exercise_id=row.ExerciseID,)
-            for row in sets_df.drop_duplicates("WorkoutExerciseID").itertuples()]
+                workout_exercise_id=row.workout_exercise_id,
+                session_id=row.session_id,
+                exercise_id=row.exercise_id,)
+            for row in sets_df.drop_duplicates("workout_exercise_id").itertuples()]
 
         sets = [WorkoutSet(
-                workout_exercise_id=row.WorkoutExerciseID,
-                set_number=row.SetNumber,
-                repetitions=row.Repetitions,
+                workout_exercise_id=row.workout_exercise_id,
+                set_number=row.set_number,
+                repetitions=row.repetitions,
                 weight=row.Weight,
                 rir=row.RIR,)
             for row in sets_df.itertuples()]
 
         exercises = [Exercise(
-                exercise_id=row.ExerciseID,
-                name=row.ExerciseName,
+                exercise_id=row.exercise_id,
+                name=row.exercise_name,
                 category=row.Category,
-                body_part=row.BodyPart,)
+                body_part=row.body_part,)
             for row in exercises_df.itertuples()]
 
         body_measurements = [BodyMeasurement(**row._asdict()) for row in body_measurements_df.itertuples(index=False)]

@@ -53,10 +53,10 @@ def filter_data_by_month(input_data: MetricsInput, sets_df: pd.DataFrame, month:
 
     # ---- Filter sets_df (UI) ----
     sets_df = sets_df.copy()
-    sets_df["SessionDate"] = pd.to_datetime(sets_df["SessionDate"])
+    sets_df["session_date"] = pd.to_datetime(sets_df["session_date"])
 
     filtered_sets_df = sets_df[
-        (sets_df["SessionDate"].dt.year == year) &
-        (sets_df["SessionDate"].dt.month == month_num)]
+        (sets_df["session_date"].dt.year == year) &
+        (sets_df["session_date"].dt.month == month_num)]
  
     return filtered_input, filtered_sets_df

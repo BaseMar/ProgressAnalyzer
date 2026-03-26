@@ -32,7 +32,7 @@ class SidebarView:
         Parameters
         ----------
         sets_df : pd.DataFrame
-            Set-level dataframe containing `SessionDate`.
+            Set-level dataframe containing `session_date`.
 
         Returns
         -------
@@ -46,9 +46,9 @@ class SidebarView:
             return None
 
         df = sets_df.copy()
-        df["SessionDate"] = pd.to_datetime(df["SessionDate"])
+        df["session_date"] = pd.to_datetime(df["session_date"])
 
-        available_months = (df["SessionDate"].dt.to_period("M").astype(str).sort_values().unique())
+        available_months = (df["session_date"].dt.to_period("M").astype(str).sort_values().unique())
         month_options = ["All time", *available_months]
         
         if len(available_months) == 0:

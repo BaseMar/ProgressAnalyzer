@@ -4,7 +4,7 @@ Set-level training metrics.
 This module computes global metrics describing training quality,
 intensity, effort, and load across all performed sets.
 
-    set -> 1 record from workoutsets
+    set -> 1 record from workout_sets
     failure -> RIR == 0
     heavy set -> estimated_1rm >= 0.8 * max_estimated_1rm
     RIR 3+ -> all >= 3

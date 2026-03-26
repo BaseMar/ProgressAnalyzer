@@ -41,7 +41,7 @@ class ExerciseView:
         
         Args:
             exercises_metrics: Dictionary with 'per_exercise' key mapping exercise IDs to metrics
-            sets_df: DataFrame with columns: ExerciseName, SessionDate, Weight, Repetitions, Volume
+            sets_df: DataFrame with columns: ExerciseName, session_date, Weight, repetitions, Volume
         """
         self.exercises_metrics = exercises_metrics
         self.sets_df = sets_df
@@ -83,25 +83,25 @@ class ExerciseView:
         """Render strength trend charts (volume and 1RM over time)."""
         section_header("Trends")
 
-        exercise_sets = self.sets_df[self.sets_df["ExerciseName"] == exercise_name].copy()
+        exercise_sets = self.sets_df[self.sets_df["exercise_name"] == exercise_name].copy()
 
         if exercise_sets.empty:
             st.info("No time-series data available for this exercise.")
             return
 
-        exercise_sets["SessionDate"] = pd.to_datetime(exercise_sets["SessionDate"])
-        exercise_sets["Estimated1RM"] = exercise_sets.apply(lambda r: estimate_1rm(r["Weight"], r["Repetitions"]), axis=1)
+        exercise_sets["session_date"] = pd.to_datetime(exercise_sets["session_date"])
+        exercise_sets["Estimated1RM"] = exercise_sets.apply(lambda r: estimate_1rm(r["weight"], r["repetitions"]), axis=1)
 
         trend_df = (
             exercise_sets
-            .groupby("SessionDate")
+            .groupby("session_date")
             .agg(
-                Volume=("Volume", "sum"),
+                Volume=("volume", "sum"),
                 Estimated1RM=("Estimated1RM", "mean"),
             )
             .reset_index()
-            .sort_values("SessionDate")
-            .set_index("SessionDate")
+            .sort_values("session_date")
+            .set_index("session_date")
         )
         trend_df["Estimated1RM"] = trend_df["Estimated1RM"].round(2)
 
