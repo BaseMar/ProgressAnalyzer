@@ -103,8 +103,7 @@ class DataManager:
 
                 # insert workout exercise and get id
                 insert_we = text(
-                    "INSERT INTO workout_exercises (session_id, exercise_id) RETURNING workout_exercise_id VALUES (:sid, :eid)"
-                )
+                    "INSERT INTO workout_exercises (session_id, exercise_id) VALUES (:sid, :eid) RETURNING workout_exercise_id;")
                 workout_ex_id = conn.execute(
                     insert_we, {"sid": session_id, "eid": exercise_id}
                 ).scalar()

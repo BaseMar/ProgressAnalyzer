@@ -89,3 +89,9 @@ __pycache__/
 # Ignore all .txt files except requirements files
 !requirements.txt
 !requirements-dev.txt
+
+#files
+backup_db.py
+
+# folders
+backups/
