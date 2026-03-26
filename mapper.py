@@ -5,8 +5,8 @@ def map_workout_session(row: dict) -> WorkoutSession:
     return WorkoutSession(
         session_id=row["session_id"],
         session_date=row["session_date"],
-        start_time=row.get("StartTime"),
-        end_time=row.get("EndTime"),
+        start_time=row.get("start_time"),
+        end_time=row.get("end_time"),
     )
 
 
@@ -24,7 +24,7 @@ def map_workout_set(row: dict) -> WorkoutSet:
         set_number=row["set_number"],
         repetitions=row["repetitions"],
         weight=row["weight"],
-        rir=row.get("RIR"),
+        rir=row.get("rir"),
     )
 
 

@@ -169,7 +169,7 @@ def insert_workout_exercise(engine, session_id: int, exercise_id: int):
     query = text(
         """
         INSERT INTO workout_exercises (session_id, exercise_id)
-        OUTPUT INSERTED.workout_exercise_id
+        RETURNING workout_exercise_id
         VALUES (:session_id, :exercise_id)
     """
     )
@@ -220,8 +220,7 @@ def insert_body_measurements(engine, data):
     """
     query = text(
         """
-        INSERT INTO body_measurements 
-        (measurement_date, chest, waist, Abdomen, Hips, Thigh, Calf, Biceps)
+        INSERT INTO body_measurements (measurement_date, chest, waist, abdomen, hips, thigh, calf, biceps)
         VALUES (:date, :chest, :waist, :abdomen, :hips, :thigh, :calf, :biceps)
     """
     )
@@ -253,7 +252,7 @@ def insert_session(engine, date, notes):
     """
     query = text(
         """
-        INSERT INTO workout_sessions (session_date, Notes)
+        INSERT INTO workout_sessions (session_date, notes)
         VALUES (:date, :notes)
     """
     )
@@ -268,7 +267,7 @@ def get_sets_raw(engine) -> pd.DataFrame:
             ws2.set_number,
             ws2.repetitions,
             ws2.weight,
-            ws2.RIR
+            ws2.rir
         FROM workout_sets ws2
         ORDER BY ws2.workout_exercise_id, ws2.set_number
         """
