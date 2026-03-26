@@ -83,9 +83,8 @@ class DataManager:
                 if row:
                     session_id = row[0]
                 else:
-                    # insert_session should return inserted id (use OUTPUT or RETURNING)
                     insert_q = text(
-                        "INSERT INTO workout_sessions (session_date, notes, start_time, end_time) OUTPUT INSERTED.session_id  VALUES (:date, :notes, :start_time, :end_time)"
+                        "INSERT INTO workout_sessions (session_date, notes, start_time, end_time) RETURNING session_id  VALUES (:date, :notes, :start_time, :end_time)"
                     )
                     session_id = conn.execute(
                         insert_q, {"date": session_date, "notes": notes, "start_time": session_start, "end_time": session_end}
@@ -102,7 +101,7 @@ class DataManager:
 
                 # insert workout exercise and get id
                 insert_we = text(
-                    "INSERT INTO workout_exercises (session_id, exercise_id) OUTPUT INSERTED.workout_exercise_id VALUES (:sid, :eid)"
+                    "INSERT INTO workout_exercises (session_id, exercise_id) RETURNING workout_exercise_id VALUES (:sid, :eid)"
                 )
                 workout_ex_id = conn.execute(
                     insert_we, {"sid": session_id, "eid": exercise_id}
