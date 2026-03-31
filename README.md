@@ -6,6 +6,9 @@ The app tracks training volume, intensity, exercise progress, fatigue, and body 
 
 ---
 
+## Website
+https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app
+
 ## Architecture
 
 ### Layered Design
@@ -210,7 +213,6 @@ High-level training overview:
 ```bash
 git clone https://github.com/BaseMar/ProgressAnalyzer.git
 cd gym-progress-dashboard
+streamlit run streamlit_app.py
 ```
-### Website
-https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app
 
