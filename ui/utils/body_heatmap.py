@@ -385,7 +385,7 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
         padding: 18px;
       }}
       .figure-wrap {{
-        background: #f3f3f0;
+        background: transparent;
         border: 1px solid var(--border);
         border-radius: 8px;
         min-height: 520px;
@@ -603,7 +603,15 @@ def _hex_to_rgb(color: str) -> tuple[int, int, int]:
 
 @st.cache_data(show_spinner=False)
 def _body_image_data_uri(mtime_ns: int) -> str:
-    encoded = base64.b64encode(BODY_IMAGE_PATH.read_bytes()).decode("ascii")
+    image = Image.open(BODY_IMAGE_PATH).convert("RGBA")
+    pixels = np.array(image)
+    rgb = pixels[:, :, :3]
+    near_white = (rgb.min(axis=2) > 245) & ((rgb.max(axis=2) - rgb.min(axis=2)) < 12)
+    pixels[near_white, 3] = 0
+
+    buffer = BytesIO()
+    Image.fromarray(pixels, mode="RGBA").save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return f"data:image/png;base64,{encoded}"
 
 
