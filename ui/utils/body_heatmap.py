@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from ui.utils.ui_helpers import ACCENT, MUTED, SURFACE, TEXT, chart_label
 
@@ -127,6 +127,21 @@ MUSCLE_GROUP_SEEDS = {
         (1054, 925),
         (882, 972),
         (1084, 973),
+    ],
+}
+
+EXCLUDED_OVERLAY_REGIONS = {
+    "hands": [
+        (215, 486, 315, 610),
+        (584, 486, 684, 610),
+        (748, 486, 850, 610),
+        (1106, 486, 1208, 610),
+    ],
+    "feet": [
+        (315, 934, 430, 1034),
+        (482, 934, 586, 1034),
+        (836, 934, 934, 1034),
+        (1032, 934, 1125, 1034),
     ],
 }
 
@@ -533,11 +548,24 @@ def _body_fill_mask(mtime_ns: int) -> np.ndarray:
     min_channel = pixels.min(axis=2)
     mean_channel = pixels.mean(axis=2)
 
-    return (
+    fill_mask = (
         (mean_channel > 120)
         & (mean_channel < 235)
         & ((max_channel - min_channel) < 28)
     )
+    return fill_mask & ~_excluded_overlay_mask(fill_mask.shape)
+
+
+def _excluded_overlay_mask(shape: tuple[int, int]) -> np.ndarray:
+    height, width = shape
+    image = Image.new("1", (width, height), 0)
+    draw = ImageDraw.Draw(image)
+
+    for regions in EXCLUDED_OVERLAY_REGIONS.values():
+        for box in regions:
+            draw.ellipse(box, fill=1)
+
+    return np.array(image, dtype=bool)
 
 
 def _mask_from_seeds(fill_mask: np.ndarray, seeds: list[tuple[int, int]]) -> np.ndarray:
