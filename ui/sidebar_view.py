@@ -91,11 +91,9 @@ class SidebarView:
             "Body Metrics":   ":material/monitor_weight:",
         }
 
-        # initialise state if missing
         if "nav_selected" not in st.session_state:
             st.session_state.nav_selected = options[0]
 
-        # render buttons vertically inside sidebar
         for opt in options:
             button_type = "primary" if st.session_state.nav_selected == opt else "secondary"
             st.sidebar.button(

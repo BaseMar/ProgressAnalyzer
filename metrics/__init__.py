@@ -1,9 +1,12 @@
 __all__ = [
-    "session_metrics",
+    "body_metrics",
     "exercise_metrics",
-    "progress_metrics",
     "fatigue_metrics",
     "frequency_metrics",
-    "body_metrics",
-    "correlation_metrics",
+    "input",
+    "metrics_engine",
+    "progress_metrics",
+    "registry",
+    "session_metrics",
+    "set_metrics",
 ]

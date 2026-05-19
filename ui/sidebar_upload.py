@@ -15,7 +15,6 @@ class SidebarUpload:
     def render(self):
         st.sidebar.subheader("Import workout")
 
-        # ---- session state init ----
         if "adding_exercise" not in st.session_state:
             st.session_state.adding_exercise = False
 
@@ -30,7 +29,6 @@ class SidebarUpload:
 
         file = st.sidebar.file_uploader("Upload .txt workout", type=["txt"])
 
-        # Handle file removal from memory
         if not file:
             if st.session_state.uploaded_file_name is not None:
                 st.session_state.uploaded_file_name = None
@@ -39,7 +37,6 @@ class SidebarUpload:
                 st.session_state.exercise_mapping = {}
             return
 
-        # Track uploaded file to detect changes
         if file.name != st.session_state.uploaded_file_name:
             st.session_state.uploaded_file_name = file.name
             st.session_state.adding_exercise = False
@@ -54,12 +51,10 @@ class SidebarUpload:
             st.sidebar.error("Could not parse file.")
             return
 
-        # ---- show add exercise form if needed ----
         if st.session_state.adding_exercise:
             self._new_exercise_form(st.session_state.pending_exercise)
             return
 
-        # ---- IMPORT BUTTON ----
         if st.sidebar.button("Import workout", icon=":material/upload:"):
             self._process(parsed, workout_date, start_time, end_time)
 
@@ -71,7 +66,6 @@ class SidebarUpload:
             st.sidebar.error("No exercises in database. Add exercises first.")
             return
 
-        # Create normalized name to exercise mapping
         normalized_map = {}
         original_map = {}
         for row in exercises_db.itertuples():
@@ -79,13 +73,11 @@ class SidebarUpload:
             normalized_map[norm_name] = row.exercise_id
             original_map[norm_name] = row.exercise_name
 
-        # Apply user's exercise mappings (from selection dialog)
         for original_name, selected_name in st.session_state.exercise_mapping.items():
             parsed_exercise = next((ex for ex in parsed if ex["name"] == original_name), None)
             if parsed_exercise:
                 parsed_exercise["name"] = selected_name
 
-        # Check all exercises and handle missing ones
         missing_exercises = []
         for ex in parsed:
             norm_name = normalize(ex["name"])
@@ -98,16 +90,13 @@ class SidebarUpload:
             st.rerun()
             return
 
-        # Validate that we have sets
         if not all(ex["sets"] for ex in parsed):
             st.sidebar.error("Some exercises have no valid sets.")
             return
 
-        # Validate time values
         if start_time is None or end_time is None:
             st.sidebar.warning("Time range not found in file. Importing without time data.")
 
-        # Save session with validated data
         try:
             for ex in parsed:
                 norm_name = normalize(ex["name"])
@@ -124,7 +113,6 @@ class SidebarUpload:
 
             st.sidebar.success("Workout imported successfully!")
 
-            # Clear cache and reset state
             st.cache_data.clear()
             st.session_state.adding_exercise = False
             st.session_state.pending_exercise = None
@@ -143,7 +131,6 @@ class SidebarUpload:
 
         exercises_db = self.dm.load_exercises()
         
-        # Find similar exercises (simple fuzzy match)
         similar = self._find_similar_exercises(suggested_name, exercises_db)
         
         if similar:
@@ -156,7 +143,6 @@ class SidebarUpload:
             )
             
             if st.sidebar.button("Use selected exercise", icon=":material/check:"):
-                # Add mapping and attempt import again
                 st.session_state.exercise_mapping[suggested_name] = selected_exercise
                 st.session_state.adding_exercise = False
                 st.session_state.pending_exercise = None
@@ -166,7 +152,6 @@ class SidebarUpload:
             
             st.sidebar.divider()
         
-        # Show all exercises from database for selection
         st.sidebar.subheader("Or choose from all exercises")
         all_exercise_names = sorted([row.exercise_name for row in exercises_db.itertuples()])
         selected_exercise_all = st.sidebar.selectbox(
@@ -176,7 +161,6 @@ class SidebarUpload:
         )
         
         if st.sidebar.button("Use this exercise", icon=":material/check:"):
-            # Add mapping and attempt import again
             st.session_state.exercise_mapping[suggested_name] = selected_exercise_all
             st.session_state.adding_exercise = False
             st.session_state.pending_exercise = None
@@ -187,7 +171,6 @@ class SidebarUpload:
         st.sidebar.divider()
         st.sidebar.caption("Or add new exercise below")
         
-        # Form to add new exercise
         st.sidebar.subheader("Add new exercise")
         name = st.sidebar.text_input("Exercise name", value=suggested_name, key="new_exercise_name")
         category = st.sidebar.selectbox("Category", ["Push", "Pull", "Legs"], key="exercise_category")
@@ -219,7 +202,6 @@ class SidebarUpload:
                 self.dm.add_exercise(name.strip(), category, body)
                 st.sidebar.success("Exercise added!")
                 
-                # Clear cache and reset state - will re-attempt import
                 st.cache_data.clear()
                 st.session_state.adding_exercise = False
                 st.session_state.pending_exercise = None
@@ -241,7 +223,6 @@ class SidebarUpload:
         for row in exercises_df.itertuples():
             exercise_norm = normalize(row.exercise_name)
             
-            # Check for substring match or high similarity
             if (query_norm in exercise_norm or 
                 exercise_norm in query_norm or 
                 self._similarity_score(query_norm, exercise_norm) > 0.6):
@@ -254,7 +235,6 @@ class SidebarUpload:
         if s1 == s2:
             return 1.0
         
-        # Count matching characters
         matches = sum(c1 == c2 for c1, c2 in zip(s1, s2))
         max_len = max(len(s1), len(s2))
         
@@ -270,7 +250,6 @@ class SidebarUpload:
         """
         exercises = []
 
-        # Regex to capture: number + name, sets line, RIR line
         pattern = r"\d+\.\s(.+?)\n(.+?)\nRIR[:\s]*(.+?)(?:\n|$)"
         matches = re.findall(pattern, text, re.S)
 
@@ -286,7 +265,6 @@ class SidebarUpload:
             sets = [s.strip() for s in sets_line.split("/")]
             rirs = [r.strip() for r in rir_line.split("/")]
 
-            # Ensure same number of sets and RIRs
             if len(sets) != len(rirs):
                 st.sidebar.warning(f"Exercise '{name}': set count != RIR count. Skipping.")
                 continue
@@ -295,7 +273,6 @@ class SidebarUpload:
 
             for set_str, rir_str in zip(sets, rirs):
                 try:
-                    # Parse "reps x weight" format
                     if 'x' not in set_str:
                         st.sidebar.warning(f"Exercise '{name}': Invalid set format '{set_str}'. Expected 'reps x weight'")
                         continue
@@ -305,7 +282,6 @@ class SidebarUpload:
                     weight = float(weight_str.strip())
                     rir = int(rir_str.strip())
                     
-                    # Basic validation
                     if reps <= 0 or weight < 0 or rir < 0:
                         st.sidebar.warning(f"Exercise '{name}': Negative values not allowed. Set skipped.")
                         continue
@@ -319,7 +295,7 @@ class SidebarUpload:
                     st.sidebar.warning(f"Exercise '{name}': Failed to parse set '{set_str}' - {str(e)}")
                     continue
 
-            if sets_data:  # Only add exercise if it has valid sets
+            if sets_data:
                 exercises.append({
                     "name": name,
                     "sets": sets_data

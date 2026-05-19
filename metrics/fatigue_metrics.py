@@ -20,8 +20,10 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
     if not input.sessions or not input.sets:
         return {}
 
-    # ---Helpers
-    we_to_session = {we.workout_exercise_id: we.session_id for we in input.workout_exercises}
+    we_to_session = {
+        we.workout_exercise_id: we.session_id
+        for we in input.workout_exercises
+    }
 
     sets_by_session = defaultdict(list)
     for s in input.sets:
@@ -29,7 +31,6 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
         if session_id is not None:
             sets_by_session[session_id].append(s)
 
-    # ---PER SESSION METRICS
     per_session = {}
 
     fatigue_scores = []
@@ -47,10 +48,8 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
         sets_to_failure_ratio = sets_to_failure / total_sets
         volume_load = sum(s.repetitions * s.weight for s in sets)
 
-        # Simple intensity proxy (same standard across project)
         intensity_load = mean(s.weight * (1 + s.repetitions / 30) for s in sets)
 
-        # Fatigue score (0–1)
         fatigue_score = 0
 
         if avg_rir is not None:
@@ -70,7 +69,6 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
             "fatigue_score": fatigue_score,
         }
 
-    # ---GLOBAL FATIGUE METRICS
     consecutive_max = 0
     current = 0
 

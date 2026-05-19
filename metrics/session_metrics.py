@@ -62,7 +62,6 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         for we in input.workout_exercises
     }
 
-    # Assign sets to sessions
     for workout_set in input.sets:
         session_id = workout_exercise_to_session.get(workout_set.workout_exercise_id)
         if session_id is None:
@@ -78,7 +77,6 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         if session is None:
             continue
 
-        # Session duration in minutes
         duration_minutes = None
         if session.start_time and session.end_time:
             try:
@@ -95,7 +93,6 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         total_reps = sum(s.repetitions for s in sets)
         total_volume = sum(s.repetitions * s.weight for s in sets)
 
-        # Epley-based intensity estimate
         intensities = [s.weight * (1 + s.repetitions / 30) for s in sets]
         avg_intensity = mean(intensities) if intensities else None
         rir_values = [s.rir for s in sets if s.rir is not None]
@@ -118,7 +115,6 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
             "exercises_count": len(exercises_by_session[session_id]),
         }
 
-    # -------- Global aggregates --------
     durations = [
         s["duration_minutes"]
         for s in per_session.values()

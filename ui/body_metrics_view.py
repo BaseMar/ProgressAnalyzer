@@ -1,21 +1,4 @@
-"""
-Body Metrics View
-
-Displays body composition and measurement trends with proportions and insights.
-
-Styling strategy:
-  - page_title / section_header / chart_label  → main.css handles rendering
-  - st.metric                                  → main.css handles styling
-  - st.tabs, st.form, st.expander              → main.css handles styling
-  - line charts                                → line_chart() from ui_helpers (Vega-Lite themed)
-
-Responsibilities:
-  - Render pre-computed body metrics
-  - Display trends, proportions, and insights from metrics layer
-  - Provide form for adding new body composition/measurement data
-  
-All calculations are performed in metrics.body_metrics; this layer is presentation-only.
-"""
+"""Body composition and measurement trends view."""
 
 from __future__ import annotations
 
@@ -175,12 +158,10 @@ class BodyMetricsView:
             elif c2w < 1.1:
                 st.warning("Consider upper-body hypertrophy focus.")
 
-        # Thigh to waist ratio
         t2w = proportions.get("thigh_to_waist")
         if t2w:
             cols[1].metric("Thigh / Waist", t2w, delta=" ")
 
-        # Biceps to waist ratio
         b2w = proportions.get("biceps_to_waist")
         if b2w:
             cols[2].metric("Biceps / Waist", b2w, delta=" ")

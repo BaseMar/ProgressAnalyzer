@@ -61,49 +61,6 @@ def get_all_sets(engine) -> pd.DataFrame:
         df = pd.read_sql(query, conn)
     return df
 
-def get_exercise_progress(engine, exercise_name: str) -> pd.DataFrame:
-    """Compute per-session progress metrics for a single exercise.
-
-    Returns a DataFrame grouped by session date for the given exercise_name with
-    AvgWeight, MaxWeight and TotalVolume per session.
-    """
-    query = text(
-        """
-        SELECT ws.session_date, e.exercise_name, AVG(ws2.weight) AS Avgweight, MAX(ws2.weight) AS Maxweight, 
-               SUM(ws2.repetitions * ws2.weight) AS TotalVolume
-        FROM workout_sets ws2
-        JOIN workout_exercises we ON ws2.workout_exercise_id = we.workout_exercise_id
-        JOIN workout_sessions ws ON we.session_id = ws.session_id
-        JOIN exercises e ON we.exercise_id = e.exercise_id
-        WHERE e.exercise_name = :exercise_name
-        GROUP BY ws.session_date, e.exercise_name
-        ORDER BY ws.session_date;
-    """
-    )
-    with engine.connect() as conn:
-        df = pd.read_sql(query, conn, params={"exercise_name": exercise_name})
-    return df
-
-def get_volume_by_bodypart(engine) -> pd.DataFrame:
-    """Retrieve training volume aggregated by body part and session date.
-
-    Returns a DataFrame with columns: body_part, session_date, TotalVolume.
-    """
-    query = text(
-        """
-        SELECT e.body_part, ws.session_date, SUM(ws2.repetitions * ws2.weight) AS TotalVolume
-        FROM workout_sets ws2
-        JOIN workout_exercises we ON ws2.workout_exercise_id = we.workout_exercise_id
-        JOIN workout_sessions ws ON we.session_id = ws.session_id
-        JOIN exercises e ON we.exercise_id = e.exercise_id
-        GROUP BY e.body_part, ws.session_date
-        ORDER BY ws.session_date;
-    """
-    )
-    with engine.connect() as conn:
-        df = pd.read_sql(query, conn)
-    return df
-
 def get_body_measurements(engine) -> pd.DataFrame:
     """Retrieve body measurements records from the database.
 
@@ -160,58 +117,6 @@ def insert_exercise(engine, name: str, category: str, body_part: str) -> bool:
         logger.exception("SQL error when adding exercise: %s", e)
         return False
 
-def insert_workout_exercise(engine, session_id: int, exercise_id: int):
-    """Insert a workout-exercise relation and return the new record ID.
-
-    The function inserts a row into the workout_exercises table linking a session
-    with an exercise and returns the generated workout_exercise_id.
-    """
-    query = text(
-        """
-        INSERT INTO workout_exercises (session_id, exercise_id)
-        VALUES (:session_id, :exercise_id)
-        RETURNING workout_exercise_id
-    """
-    )
-    with engine.begin() as conn:
-        result = conn.execute(
-            query, {"session_id": session_id, "exercise_id": exercise_id}
-        )
-        workout_exercise_id = result.scalar()
-    return workout_exercise_id
-
-def insert_workout_set(
-    engine, workout_exercise_id: int, set_number: int, repetitions: int, weight: float
-):
-    """Insert a single workout set for a given workout-exercise relation.
-
-    Parameters match the workout_sets table columns: workout_exercise_id, set_number,
-    repetitions and Weight.
-    """
-    query = text(
-        """
-        INSERT INTO workout_sets (workout_exercise_id, set_number, repetitions, weight)
-        VALUES (:workout_exercise_id, :set_number, :reps, :weight)
-    """
-    )
-    with engine.begin() as conn:
-        conn.execute(
-            query,
-            {
-                "workout_exercise_id": workout_exercise_id,
-                "set_number": set_number,
-                "reps": repetitions,
-                "weight": weight,
-            },
-        )
-
-def get_exercise_id_by_name(engine, exercise_name: str) -> int:
-    """Return the exercise_id for the given exercise name, or None if not found."""
-    query = text("SELECT exercise_id FROM exercises WHERE exercise_name = :name")
-    with engine.connect() as conn:
-        result = conn.execute(query, {"name": exercise_name}).fetchone()
-        return result[0] if result else None
-
 def insert_body_measurements(engine, data):
     """Insert a body measurements record into the body_measurements table.
 
@@ -242,22 +147,6 @@ def insert_body_composition(engine, data):
     )
     with engine.begin() as conn:
         conn.execute(query, data)
-
-def insert_session(engine, date, notes):
-    """Insert a new workout session into the workout_sessions table.
-
-    Parameters:
-    - date: session date (datetime/date)
-    - notes: optional text notes for the session
-    """
-    query = text(
-        """
-        INSERT INTO workout_sessions (session_date, notes)
-        VALUES (:date, :notes)
-    """
-    )
-    with engine.begin() as conn:
-        conn.execute(query, {"date": date, "notes": notes})
 
 def get_sets_raw(engine) -> pd.DataFrame:
     query = text(

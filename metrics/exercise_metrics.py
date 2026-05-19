@@ -34,10 +34,10 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         - "global": dict[str, Any]
     """
 
-    # workout_exercise_id -> exercise_id
-    workout_to_exercise = {we.workout_exercise_id: we.exercise_id for we in input.workout_exercises}
-    
-    # workout_exercise_id -> session_date
+    workout_to_exercise = {
+        we.workout_exercise_id: we.exercise_id
+        for we in input.workout_exercises
+    }
     session_id_to_date = {s.session_id: s.session_date for s in input.sessions}
     workout_to_date = {
         we.workout_exercise_id: session_id_to_date.get(we.session_id)
@@ -79,13 +79,11 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         avg_rir = mean(rirs) if rirs else None
         sets_to_failure = sum(1 for s in sets if s.rir == 0)
 
-        # --- 1RM estimates ---
         one_rms = [estimate_1rm(s.weight, s.repetitions) for s in sets]
 
         estimated_1rm_max = max(one_rms)
         estimated_1rm_avg = mean(one_rms)
 
-        # --- Progression (ordered by session date) ---
         sets_sorted = sorted(
             sets,
             key=lambda s: workout_to_date.get(s.workout_exercise_id) or date.max,
@@ -99,7 +97,6 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         last_1rm = estimate_1rm(sets_sorted[-1].weight, sets_sorted[-1].repetitions)
         strength_trend_1rm = last_1rm - first_1rm
 
-        # --- Consistency ---
         sessions_count = len(
             {
                 workout_to_date.get(s.workout_exercise_id)
@@ -109,7 +106,6 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         )
         avg_sets_per_session = total_sets / sessions_count if sessions_count else None
 
-        # --- Per-session series (estimated 1RM and per-session volume) ---
         per_session_map = defaultdict(list)
         per_session_volume = defaultdict(int)
         for s in sets:
@@ -151,8 +147,6 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
             "per_session_1rm": per_session_1rm,
             "per_session_volume": per_session_volume_series,
         }
-
-    # -------- Global aggregates --------
 
     global_metrics = {}
 

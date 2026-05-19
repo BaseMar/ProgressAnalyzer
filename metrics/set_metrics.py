@@ -3,11 +3,6 @@ Set-level training metrics.
 
 This module computes global metrics describing training quality,
 intensity, effort, and load across all performed sets.
-
-    set -> 1 record from workout_sets
-    failure -> RIR == 0
-    heavy set -> estimated_1rm >= 0.8 * max_estimated_1rm
-    RIR 3+ -> all >= 3
 """
 
 from statistics import mean
@@ -46,7 +41,6 @@ def compute_set_metrics(input: MetricsInput) -> Dict[str, Any]:
     rirs = [s.rir for s in sets if s.rir is not None]
     avg_rir = mean(rirs) if rirs else None
 
-    # --- RIR distribution ---
     rir_distribution = {
         "rir_0": sum(1 for s in sets if s.rir == 0),
         "rir_1": sum(1 for s in sets if s.rir == 1),
@@ -57,12 +51,10 @@ def compute_set_metrics(input: MetricsInput) -> Dict[str, Any]:
     sets_to_failure = rir_distribution["rir_0"]
     failure_ratio = sets_to_failure / total_sets
 
-    # --- Strength estimation ---
     one_rms = [estimate_1rm(s.weight, s.repetitions) for s in sets]
     avg_estimated_1rm = mean(one_rms)
     max_estimated_1rm = max(one_rms)
 
-    # --- Density & quality ---
     avg_reps_per_set = total_reps / total_sets
     heavy_threshold = 0.8 * max_estimated_1rm
     heavy_sets = sum(1 for orm in one_rms if orm >= heavy_threshold)

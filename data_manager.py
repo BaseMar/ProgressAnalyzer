@@ -101,7 +101,6 @@ class DataManager:
         try:
             engine = self.engine
             with engine.begin() as conn:
-                # check existing session
                 qry = text(
                     "SELECT session_id FROM workout_sessions WHERE CAST(session_date AS DATE) = :session_date"
                 )
@@ -124,7 +123,6 @@ class DataManager:
                         },
                     ).scalar()
 
-                # get exercise id
                 ex_id_q = text(
                     "SELECT exercise_id FROM Exercises WHERE exercise_name = :name"
                 )
@@ -133,14 +131,12 @@ class DataManager:
                     raise ValueError("Exercise not found")
                 exercise_id = res[0]
 
-                # insert workout exercise and get id
                 insert_we = text(
                     "INSERT INTO workout_exercises (session_id, exercise_id) VALUES (:sid, :eid) RETURNING workout_exercise_id;")
                 workout_ex_id = conn.execute(
                     insert_we, {"sid": session_id, "eid": exercise_id}
                 ).scalar()
 
-                # insert sets
                 for idx, s in enumerate(sets_data, start=1):
                     ins_set = text(
                         "INSERT INTO workout_sets (workout_exercise_id, set_number, repetitions, weight, RIR) VALUES (:weid, :num, :reps, :weight, :rir)"
@@ -198,18 +194,7 @@ class DataManager:
         with self.engine.connect() as conn:
             return pd.read_sql(query, conn)
 
-    def load_muscle_groups(self) -> pd.DataFrame:
-        query = text(
-            """
-            SELECT MuscleGroupID, Name
-            FROM MuscleGroups
-            """
-        )
-        with self.engine.connect() as conn:
-            return pd.read_sql(query, conn)
-
     def delete_session(self, session_id: int) -> bool:
-        """Delete session from ui"""
         try:
             return delete_workout_session(self.engine, session_id)
         except Exception:

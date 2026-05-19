@@ -12,9 +12,6 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-# ── Vega-Lite theme ──────────────────────────────────────────
-# These values live here — not in CSS — because they are passed
-# directly into the Vega-Lite JS renderer which CSS cannot reach.
 VEGA_CONFIG: dict = {
     "background": "#222831",
     "axis": {
@@ -29,10 +26,6 @@ VEGA_CONFIG: dict = {
     "view": {"stroke": "transparent"},
 }
 
-# ── Design tokens — single source of truth for Python code ──────────────────
-# main.css owns these for HTML/CSS. Plotly and other canvas-based renderers
-# cannot read CSS, so we redeclare them here. Any palette change needs
-# updating in BOTH main.css (:root) AND here.
 ACCENT   = "#00ADB5"
 SURFACE  = "#393E46"
 BG       = "#222831"
@@ -43,7 +36,6 @@ MUTED    = "#9aa0a6"
 BORDER   = "rgba(255,255,255,0.07)"
 GRID     = "rgba(255,255,255,0.06)"
 
-# ── Plotly layout — apply with fig.update_layout(**PLOTLY_LAYOUT) ─────────────
 PLOTLY_LAYOUT = dict(
     paper_bgcolor = BG,
     plot_bgcolor  = BG,

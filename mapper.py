@@ -3,7 +3,6 @@ from models import (
     BodyMeasurement,
     Exercise,
     ExerciseMuscleTarget,
-    MuscleGroup,
     WorkoutExercise,
     WorkoutSession,
     WorkoutSet,
@@ -55,13 +54,6 @@ def map_exercise_muscle_target(row: dict) -> ExerciseMuscleTarget:
         muscle_name=row["muscle_name"],
         role=row["role"],
         set_factor=float(row["set_factor"]),
-    )
-
-
-def map_muscle_group(row: dict) -> MuscleGroup:
-    return MuscleGroup(
-        muscle_group_id=row["MuscleGroupID"],
-        name=row["Name"],
     )
 
 

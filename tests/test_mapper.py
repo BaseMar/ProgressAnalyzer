@@ -5,7 +5,6 @@ from mapper import (
     map_body_measurement,
     map_exercise,
     map_exercise_muscle_target,
-    map_muscle_group,
     map_workout_exercise,
     map_workout_session,
     map_workout_set,
@@ -52,11 +51,8 @@ def test_exercise_and_muscle_mappers_return_expected_values():
             "set_factor": "1.0",
         }
     )
-    group = map_muscle_group({"MuscleGroupID": 4, "Name": "Back"})
-
     assert exercise.name == "Row"
     assert target.set_factor == 1.0
-    assert group.name == "Back"
 
 
 def test_body_measurement_mapper_flattens_non_empty_columns():

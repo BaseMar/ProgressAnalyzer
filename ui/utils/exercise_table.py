@@ -7,7 +7,6 @@ import streamlit.components.v1 as components
 
 from ui.utils.muscle_tags import resolve_muscle_tag
 
-# Design tokens (mirrors main.css)
 _CSS = """
 <style>
   :root {
@@ -28,8 +27,6 @@ _CSS = """
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: transparent; font-family: sans-serif; color: var(--text-primary); }
-
-  /* ── Table wrapper ── */
   .table-wrap {
     background: var(--bg-surface);
     border: 1px solid var(--border);
@@ -38,8 +35,6 @@ _CSS = """
   }
 
   table { width: 100%; border-collapse: collapse; }
-
-  /* ── Header ── */
   thead tr {
     background: var(--bg-base);
     border-bottom: 1px solid var(--border);
@@ -55,8 +50,6 @@ _CSS = """
   }
   th.right { text-align: right; }
   th.center { text-align: center; }
-
-  /* ── Body rows ── */
   tbody tr {
     border-bottom: 1px solid var(--border);
     transition: background 0.18s var(--ease), border-color 0.18s var(--ease);
@@ -67,8 +60,6 @@ _CSS = """
     background: rgba(0, 173, 181, 0.05);
     border-color: rgba(0, 173, 181, 0.12);
   }
-
-  /* Selected row — matches _highlight_selected in original code */
   tbody tr.selected-row {
     background: rgba(0, 173, 181, 0.08);
     border-left: 2px solid var(--accent);
@@ -80,8 +71,6 @@ _CSS = """
   }
 
   td { padding: 12px 14px; font-size: 13px; vertical-align: middle; }
-
-  /* ── Exercise cell ── */
   .exercise-cell { min-width: 180px; }
   .exercise-name {
     font-weight: 500;
@@ -89,8 +78,6 @@ _CSS = """
     margin-bottom: 5px;
     letter-spacing: 0.1px;
   }
-
-  /* ── Muscle tags — tinted accent variants ── */
   .muscle-tag {
     display: inline-block;
     font-size: 9px;
@@ -101,7 +88,6 @@ _CSS = """
     text-transform: uppercase;
     font-weight: 600;
   }
-  /* Each tag uses a hue shift from the base accent #00ADB5 */
   .tag-legs      { background: rgba(0,173,181,0.12);  color: #00ADB5; border: 1px solid rgba(0,173,181,0.30); }
   .tag-back      { background: rgba(0,173,181,0.08);  color: #4ecdc4; border: 1px solid rgba(78,205,196,0.25); }
   .tag-lower-back{ background: rgba(80,210,190,0.09); color: #78e0d4; border: 1px solid rgba(120,224,212,0.25); }
@@ -115,16 +101,12 @@ _CSS = """
   .tag-obliques  { background: rgba(255,190,90,0.10); color: #ffbe5a; border: 1px solid rgba(255,190,90,0.25); }
   .tag-glutes    { background: rgba(100,180,255,0.10);color: #64b4ff; border: 1px solid rgba(100,180,255,0.25); }
   .tag-other     { background: rgba(255,255,255,0.05);color: var(--text-muted); border: 1px solid var(--border); }
-
-  /* ── Numeric cells ── */
   .num-cell {
     font-family: var(--mono);
     font-size: 13px;
     text-align: right;
     color: var(--text-primary);
   }
-
-  /* ── Volume bar cell ── */
   .vol-cell { min-width: 150px; }
   .vol-num {
     font-family: var(--mono);
@@ -144,8 +126,6 @@ _CSS = """
     border-radius: 2px;
     background: linear-gradient(90deg, rgba(0,173,181,0.6), var(--accent));
   }
-
-  /* ── 1RM cell ── */
   .rm-cell { min-width: 110px; }
   .rm-val {
     font-family: var(--mono);
@@ -158,8 +138,6 @@ _CSS = """
     border-radius: 2px;
     background: linear-gradient(90deg, rgba(255,107,107,0.7), #ffc947);
   }
-
-  /* ── RIR dots ── */
   .rir-cell { text-align: center; width: 90px; }
   .rir-dots { display: flex; gap: 3px; justify-content: center; margin-bottom: 3px; }
   .dot {
@@ -180,7 +158,6 @@ _HEADER_HEIGHT_PX = 42
 _PADDING_PX       = 16
 
 
-# ── Cell builders ─────────────────────────────────────────────────────────────
 
 def _vol_bar(vol: float, max_vol: float) -> str:
     pct = round(vol / max_vol * 100, 1) if max_vol else 0
@@ -192,7 +169,6 @@ def _vol_bar(vol: float, max_vol: float) -> str:
 
 def _rm_bar(rm: float, max_rm: float) -> str:
     pct = round(rm / max_rm * 100, 1) if max_rm else 0
-    # Colour tiers using app's own accent / warning palette
     if rm >= max_rm * 0.75:
         color = "var(--accent)"
     elif rm >= max_rm * 0.5:
@@ -238,7 +214,6 @@ def _exercise_cell(name: str, body_part: str | None, muscle_targets: str | None 
     )
 
 
-# ── Public component ──────────────────────────────────────────────────────────
 
 def render_exercise_table(compare_df: pd.DataFrame, selected: str) -> None:
     """

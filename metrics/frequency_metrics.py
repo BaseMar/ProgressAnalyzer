@@ -19,7 +19,6 @@ def compute_frequency_metrics(input: MetricsInput) -> dict:
     if not input.sessions:
         return {}
 
-    # ---Helper mappings
     sessions = sorted(input.sessions, key=lambda s: s.session_date)
 
     workout_exercises_by_session = defaultdict(list)
@@ -29,7 +28,6 @@ def compute_frequency_metrics(input: MetricsInput) -> dict:
     exercise_id_to_name = {e.exercise_id: e.name for e in input.exercises}
     exercise_id_to_bodypart = {e.exercise_id: e.body_part for e in input.exercises if e.body_part}
 
-    # ---GLOBAL FREQUENCY
     session_dates = [s.session_date for s in sessions]
     iso_weeks = set(d.isocalendar()[:2] for d in session_dates)
     sessions_per_week = len(session_dates) / len(iso_weeks) if iso_weeks else None
@@ -43,7 +41,6 @@ def compute_frequency_metrics(input: MetricsInput) -> dict:
         else None,
     }
 
-    # ---PER-EXERCISE FREQUENCY
     exercise_sessions = defaultdict(set)
 
     for session in sessions:
@@ -68,7 +65,6 @@ def compute_frequency_metrics(input: MetricsInput) -> dict:
             "total_sessions": len(dates),
         }
 
-    # ---PER-MUSCLE GROUP FREQUENCY
     muscle_sessions = defaultdict(set)
 
     for session in sessions:
