@@ -147,32 +147,35 @@ names and lets the user select an existing exercise or add a new one.
 
 ## Screenshots
 
+### Sidebar
+
+![Sidebar navigation and filters](screenshots/SideBar.png)
+
 ### Main Dashboard
 
-![Dashboard 1](screenshots/Dashboard_1.png)
-![Dashboard 2](screenshots/Dashboard_2.png)
-![Dashboard 3](screenshots/Dashboard_3.png)
+![Main Dashboard overview](screenshots/Main_Dashboard_1.png)
+![Main Dashboard session history](screenshots/Main_Dashboard_2.png)
 
 ### Exercises
 
-![Exercise View 1](screenshots/Exercise_1.png)
-![Exercise View 2](screenshots/Exercise_2.png)
+![Exercises summary](screenshots/Exercises_1.png)
+![Exercise details](screenshots/Exercises_2.png)
 
 ### Body Parts
 
-![Body Parts 1](screenshots/Body_Parts_1.png)
-![Body Parts 2](screenshots/Body_Parts_2.png)
+![Body parts overview](screenshots/Body_Parts_1.png)
+![Body parts heatmap](screenshots/Body_Parts_2.png)
+![Body parts details](screenshots/Body_Parts_3.png)
 
 ### Analytics
 
-![Analytics 1](screenshots/Analytics_1.png)
-![Analytics 2](screenshots/Analytics_2.png)
-![Analytics 3](screenshots/Analytics_3.png)
+![Analytics overview](screenshots/Analytics_1.png)
+![Fatigue analytics](screenshots/Analytics_2.png)
+![Progress analytics](screenshots/Analytics_3.png)
 
 ### Body Metrics
 
-![Body Metrics 1](screenshots/Body_Metrics_1.png)
-![Body Metrics 2](screenshots/Body_Metrics_2.png)
-![Body Metrics 3](screenshots/Body_Metrics_3.png)
-![Body Metrics 4](screenshots/Body_Metrics_4.png)
-![Body Metrics 5](screenshots/Body_Metrics_5.png)
+![Body metrics snapshot](screenshots/Body_Metrics_1.png)
+![Body composition trends](screenshots/Body_Metrics_2.png)
+![Body measurement trends](screenshots/Body_Metrics_3.png)
+![Body proportions](screenshots/Body_Metrics_4.png)
