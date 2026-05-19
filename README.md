@@ -1,44 +1,44 @@
-# Analizator progresu na silowni
+# Workout Progress Analyzer
 
-Dashboard analityczny do monitorowania treningu silowego, progresu cwiczen,
-zmeczenia treningowego oraz zmian w skladzie i pomiarach ciala. Aplikacja jest
-zbudowana w Streamlit, a logika obliczen jest wydzielona do testowalnej warstwy
-metryk.
+A Streamlit analytics dashboard for tracking strength training, exercise
+progress, training fatigue, body composition, and body measurements. The app is
+structured around a testable metrics layer so the UI renders precomputed data
+instead of owning business logic.
 
-Wersja online: <https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app>
+Live app: <https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app>
 
-## Glowne funkcje
+## Features
 
-- przeglad sesji treningowych: objetosc, liczba serii, intensywnosc, czas trwania,
-- metryki cwiczen: laczna objetosc, szacowane 1RM, trendy sily, ekspozycja,
-- analiza partii miesniowych z uwzglednieniem mapowania cwiczenie-miesien,
-- heatmapa partii miesniowych na podstawie tygodniowej objetosci,
-- monitoring zmeczenia na podstawie RIR, serii do upadku i objetosci,
-- analiza progresu: cwiczenia poprawiajace sie, stagnujace i regresujace,
-- metryki ciala: masa, masa miesniowa, tkanka tluszczowa, obwody, proporcje,
-- import treningow z plikow TXT przez panel boczny.
+- workout session overview: volume, set count, intensity, and duration,
+- exercise metrics: total volume, estimated 1RM, strength trends, and exposure,
+- body-part analysis using detailed exercise-to-muscle mappings,
+- body-part heatmap based on weekly training volume,
+- fatigue monitoring based on RIR, failure sets, intensity, and volume,
+- progress analysis for improving, stagnating, and regressing exercises,
+- body metrics: weight, muscle mass, body fat, measurements, and proportions,
+- TXT workout import from the sidebar.
 
-## Architektura
+## Architecture
 
-Projekt jest podzielony na warstwy:
+The project is split into clear layers:
 
 ```text
 streamlit_app.py
-  -> ui/                 # widoki Streamlit i helpery prezentacyjne
-  -> metrics/            # czysta logika obliczania metryk
-  -> data_loader.py      # mapowanie danych z bazy do modeli domenowych
-  -> data_manager.py     # operacje wysokiego poziomu na danych
-  -> db/                 # polaczenie i zapytania SQL
-  -> models/             # niemutowalne modele domenowe
+  -> ui/                 # Streamlit views and presentation helpers
+  -> metrics/            # pure metric calculation logic
+  -> data_loader.py      # maps database data into domain models
+  -> data_manager.py     # high-level data operations
+  -> db/                 # database connection and SQL queries
+  -> models/             # immutable domain models
 ```
 
-Najwazniejsza zasada: widoki nie licza metryk. Dane sa ladowane, mapowane do
-`MetricsInput`, przetwarzane przez `metrics.metrics_engine.compute_all_metrics`,
-a dopiero potem renderowane w UI.
+Core rule: views do not calculate metrics. Data is loaded, mapped into
+`MetricsInput`, processed by `metrics.metrics_engine.compute_all_metrics`, and
+then rendered by the UI.
 
-## Struktura danych
+## Data Model
 
-Warstwa treningowa korzysta z tabel:
+Training data uses:
 
 - `workout_sessions`
 - `workout_exercises`
@@ -46,12 +46,12 @@ Warstwa treningowa korzysta z tabel:
 - `exercises`
 - `exercise_muscle_map`
 
-Warstwa pomiarow ciala korzysta z tabel:
+Body tracking data uses:
 
 - `body_composition`
 - `body_measurements`
 
-Tabela `exercise_muscle_map` pozwala przypisac cwiczenie do wielu miesni:
+`exercise_muscle_map` supports multiple muscle targets per exercise:
 
 - `exercise_id`
 - `muscle_group`
@@ -59,48 +59,48 @@ Tabela `exercise_muscle_map` pozwala przypisac cwiczenie do wielu miesni:
 - `role` (`primary`, `secondary`, `stabilizer`)
 - `set_factor`
 
-Domyslne wagi uzywane w analizie objetosci:
+Default volume attribution weights:
 
 - `primary`: `1.0`
 - `secondary`: `0.5`
 - `stabilizer`: `0.25`
 
-Seed mapowania miesni:
+Seed the exercise-muscle mapping with:
 
 ```bash
 python -m db.seed_exercise_muscle_map
 ```
 
-## Wymagania
+## Requirements
 
-- Python 3.12 lub nowszy
-- baza danych dostepna przez `DATABASE_URL`
-- zaleznosci z `requirements.txt`
+- Python 3.12 or newer
+- a database available through `DATABASE_URL`
+- dependencies from `requirements.txt`
 
-Minimalny plik `.env`:
+Minimal `.env` example:
 
 ```env
 DATABASE_URL=postgresql+psycopg2://user:password@host:5432/database
 ```
 
-## Instalacja
+## Installation
 
 ```bash
 git clone https://github.com/BaseMar/ProgressAnalyzer.git
-cd "Analizator progresu na silowni"
+cd ProgressAnalyzer
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## Uruchomienie
+## Running The App
 
 ```bash
 streamlit run streamlit_app.py
 ```
 
-Po starcie aplikacja laduje dane z bazy, buduje `MetricsInput`, liczy metryki i
-udostepnia widoki:
+On startup, the app loads data from the database, builds `MetricsInput`,
+computes all metrics, and exposes these sections:
 
 - Main Dashboard
 - Exercises
@@ -108,19 +108,19 @@ udostepnia widoki:
 - Analytics
 - Body Metrics
 
-## Testy
+## Tests
 
-Testy sa oparte o `pytest` i pokrywaja modele, mappery, warstwe metryk,
-filtrowanie danych oraz czyste helpery UI.
+The test suite uses `pytest` and covers mappers, domain models, the metrics
+layer, month filtering, and pure UI helpers.
 
 ```bash
 python -m pytest
 python -m compileall -q db metrics models ui streamlit_app.py data_loader.py data_manager.py mapper.py
 ```
 
-## Import treningu TXT
+## TXT Workout Import
 
-Importer oczekuje formatu:
+The importer expects this format:
 
 ```text
 Godzina: 10:30 - 12:45
@@ -134,18 +134,18 @@ RIR: 2 / 1 / 0
 RIR: 3 / 2
 ```
 
-Jezeli cwiczenie nie istnieje w bazie, aplikacja pokazuje podobne nazwy i pozwala
-wybrac istniejace cwiczenie albo dodac nowe.
+If an exercise is missing from the database, the app shows similar exercise
+names and lets the user select an existing exercise or add a new one.
 
-## Zasady projektowe
+## Design Principles
 
-- metryki sa funkcjami bez zaleznosci od Streamlit,
-- modele domenowe sa niemutowalne (`dataclass(frozen=True)`),
-- dostep do bazy jest odseparowany od obliczen,
-- UI renderuje gotowe dane i nie wykonuje logiki biznesowej,
-- testy sprawdzaja zachowanie, a nie szczegoly implementacyjne.
+- metrics are pure functions without Streamlit dependencies,
+- domain models are immutable (`dataclass(frozen=True)`),
+- database access is separated from calculation logic,
+- the UI renders prepared data and does not own business rules,
+- tests verify behavior instead of implementation details.
 
-## Zrzuty ekranu
+## Screenshots
 
 ### Main Dashboard
 
