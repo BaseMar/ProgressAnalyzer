@@ -105,7 +105,7 @@ class AnalyticsView:
             fig = px.line(
                 df, x="date", y="fatigue_score",
                 markers=True,
-                labels={"date": "Session Date", "fatigue_score": "Fatigue Score"},
+                labels={"date": "Date", "fatigue_score": "Fatigue Score"},
             )
             fig.update_traces(
                 line_color=ACCENT,
@@ -114,7 +114,7 @@ class AnalyticsView:
             )
             _apply_theme(fig)
 
-            chart_label("Fatigue Score Over Time")
+            chart_label("Fatigue Score")
             st.plotly_chart(fig, width='stretch')
 
         ratio = global_f.get("high_fatigue_sessions_ratio", 0)
@@ -156,11 +156,11 @@ class AnalyticsView:
         col1, col2 = st.columns(2)
 
         with col1:
-            chart_label("Top 10 Exercises")
+            chart_label("Top Strength Progress")
             fig_top = px.bar(
                 top10, x="exercise_name", y="progress_pct",
                 text="progress_pct",
-                labels={"exercise_name": "", "progress_pct": "Progress (%)"},
+                labels={"exercise_name": "Exercise", "progress_pct": "Progress (%)"},
             )
             fig_top.update_traces(
                 marker_color=ACCENT,
@@ -174,11 +174,11 @@ class AnalyticsView:
             st.plotly_chart(fig_top, width='stretch')
 
         with col2:
-            chart_label("Bottom 10 Exercises")
+            chart_label("Weakest Strength Progress")
             fig_bottom = px.bar(
                 bottom10, x="exercise_name", y="progress_pct",
                 text="progress_pct",
-                labels={"exercise_name": "", "progress_pct": "Progress (%)"},
+                labels={"exercise_name": "Exercise", "progress_pct": "Progress (%)"},
             )
             fig_bottom.update_traces(
                 marker_color=DANGER,

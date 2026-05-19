@@ -96,22 +96,25 @@ class ExerciseView:
             exercise_sets
             .groupby("session_date")
             .agg(
-                Volume=("volume", "sum"),
-                Estimated1RM=("Estimated1RM", "mean"),
+                **{
+                    "Volume (kg)": ("volume", "sum"),
+                    "Avg 1RM (kg)": ("Estimated1RM", "mean"),
+                }
             )
             .reset_index()
             .sort_values("session_date")
-            .set_index("session_date")
+            .rename(columns={"session_date": "Date"})
+            .set_index("Date")
         )
-        trend_df["Estimated1RM"] = trend_df["Estimated1RM"].round(2)
+        trend_df["Avg 1RM (kg)"] = trend_df["Avg 1RM (kg)"].round(2)
 
         col1, col2 = st.columns(2)
         with col1:
-            chart_label("Volume per Session")
-            line_chart(trend_df, "Volume")
+            chart_label("Session Volume")
+            line_chart(trend_df, "Volume (kg)")
         with col2:
-            chart_label("Avg 1RM per Session")
-            line_chart(trend_df, "Estimated1RM")
+            chart_label("Average 1RM")
+            line_chart(trend_df, "Avg 1RM (kg)")
 
     def _render_comparison(self, exercises_df: pd.DataFrame, exercise_name: str) -> None:
         """Render comparative table of all exercises ranked by volume."""

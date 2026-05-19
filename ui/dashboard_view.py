@@ -106,7 +106,7 @@ class DashboardView:
         col1, col2 = st.columns(2)
 
         with col1:
-            chart_label("Volume per Session")
+            chart_label("Session Volume")
             line_chart(trend_df, "Volume (kg)")
 
         with col2:

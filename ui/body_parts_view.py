@@ -206,7 +206,7 @@ class BodyPartsView:
         col1, col2 = st.columns(2)
 
         with col1:
-            chart_label("Volume per Body Part")
+            chart_label("Volume by Body Part")
             st.plotly_chart(
                 _bar_fig(body_df, y_field="Total_Volume", y_title="Volume (kg)"),
                 width="stretch",
@@ -214,7 +214,7 @@ class BodyPartsView:
             )
 
         with col2:
-            chart_label("Avg 1RM per Body Part")
+            chart_label("Average 1RM by Body Part")
             st.plotly_chart(
                 _bar_fig(body_df, y_field="Avg_1RM", y_title="Avg 1RM (kg)"),
                 width="stretch",

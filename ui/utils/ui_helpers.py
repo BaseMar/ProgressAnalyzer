@@ -89,6 +89,7 @@ def page_title(eyebrow: str, title: str) -> None:
 def line_chart(
     df: pd.DataFrame,
     y_col: str,
+    y_title: str | None = None,
     height: int = 260,
     x_type: str = "temporal",
     x_format: str = "%b %d",
@@ -105,12 +106,15 @@ def line_chart(
     x_type   : Vega encoding type for x-axis ('temporal' or 'quantitative').
     x_format : Axis tick format string (used when x_type is 'temporal').
     """
-    chart_df = df.reset_index()
-    x_col = chart_df.columns[0]
+    chart_df = df.reset_index().rename(columns={df.index.name or "index": "Date"})
+    x_col = "Date"
+    y_axis_title = y_title or y_col
 
     x_axis = {"tickCount": 6}
     if x_type == "temporal":
         x_axis["format"] = x_format
+
+    y_axis = {"tickCount": 5, "title": y_axis_title}
 
     spec = {
         "config": VEGA_CONFIG,
@@ -124,7 +128,7 @@ def line_chart(
         },
         "encoding": {
             "x": {"field": x_col, "type": x_type, "axis": x_axis},
-            "y": {"field": y_col, "type": "quantitative", "axis": {"tickCount": 5}},
+            "y": {"field": y_col, "type": "quantitative", "axis": y_axis},
         },
     }
 
