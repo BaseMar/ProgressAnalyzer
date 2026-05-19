@@ -40,6 +40,24 @@ class DataManager:
         """Load all exercises from the database."""
         return get_exercises(self.engine)
 
+    def load_exercise_muscle_targets(self) -> pd.DataFrame:
+        """Load detailed exercise-to-muscle mappings if the mapping table exists."""
+        query = text(
+            """
+            SELECT exercise_id, muscle_group, muscle_name, role, set_factor
+            FROM exercise_muscle_map
+            ORDER BY exercise_id, muscle_group, muscle_name
+            """
+        )
+        try:
+            with self.engine.connect() as conn:
+                return pd.read_sql(query, conn)
+        except Exception:
+            logger.exception("load_exercise_muscle_targets failed")
+            return pd.DataFrame(
+                columns=["exercise_id", "muscle_group", "muscle_name", "role", "set_factor"]
+            )
+
     def load_sets_ui(self) -> pd.DataFrame:
         """Sets prepared for UI (joins, names, volume)."""
         return get_all_sets(self.engine)

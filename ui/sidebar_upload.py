@@ -193,7 +193,20 @@ class SidebarUpload:
         category = st.sidebar.selectbox("Category", ["Push", "Pull", "Legs"], key="exercise_category")
         body = st.sidebar.selectbox(
             "Body Part",
-            ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Abs", "Legs", "Calves"],
+            [
+                "Chest",
+                "Back",
+                "Lower Back",
+                "Glutes",
+                "Shoulders",
+                "Biceps",
+                "Triceps",
+                "Forearms",
+                "Abs",
+                "Obliques",
+                "Legs",
+                "Calves",
+            ],
             key="exercise_body"
         )
 

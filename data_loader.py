@@ -36,6 +36,10 @@ def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
     workout_exercises = [map_workout_exercise(row) for row in dm.load_workout_exercises().to_dict("records")]
     sets = [map_workout_set(row) for row in dm.load_sets_raw().to_dict("records")]
     exercises = [map_exercise(row) for row in dm.load_exercises().to_dict("records")]
+    exercise_muscle_targets = [
+        map_exercise_muscle_target(row)
+        for row in dm.load_exercise_muscle_targets().to_dict("records")
+    ]
     muscle_groups = list({ex.body_part for ex in exercises if ex.body_part})
     body = dm.load_body_data()
     body_measurements = [map_body_measurement(row) for row in body["measurements"].to_dict("records")]
@@ -46,6 +50,7 @@ def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
         workout_exercises=workout_exercises,
         sets=sets,
         exercises=exercises,
+        exercise_muscle_targets=exercise_muscle_targets,
         muscle_groups=muscle_groups,
         body_measurements=body_measurements,
         body_composition=body_composition,

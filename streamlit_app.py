@@ -139,7 +139,7 @@ def main() -> None:
     views = {
         "Main Dashboard": DashboardView(metrics, filtered_sets_dataframe),
         "Exercises": ExerciseView(metrics["exercises"], filtered_sets_dataframe),
-        "Body Parts": BodyPartsView(metrics["exercises"]),
+        "Body Parts": BodyPartsView(metrics["exercises"], selected_month),
         "Analytics": AnalyticsView(metrics),
         "Body Metrics": BodyMetricsView(metrics["body"]),
     }

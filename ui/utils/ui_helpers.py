@@ -100,6 +100,7 @@ def line_chart(
     height: int = 260,
     x_type: str = "temporal",
     x_format: str = "%b %d",
+    key: str | None = None,
 ) -> None:
     """
     Render a themed Vega-Lite line chart.
@@ -133,8 +134,16 @@ def line_chart(
             "x": {"field": x_col, "type": x_type, "axis": x_axis},
             "y": {"field": y_col, "type": "quantitative", "axis": {"tickCount": 5}},
         },
-        "data": {"values": chart_df.to_dict(orient="records")},
     }
 
-    st.vega_lite_chart(spec, width='stretch')
+    if key is None:
+        data_hash = int(pd.util.hash_pandas_object(chart_df, index=True).sum())
+        key = f"line_chart_{y_col}_{len(chart_df)}_{data_hash}"
+
+    st.vega_lite_chart(
+        data=chart_df,
+        spec=spec,
+        width="stretch",
+        key=key,
+    )
     

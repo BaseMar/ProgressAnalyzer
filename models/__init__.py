@@ -3,6 +3,7 @@ from .workout_exercise import WorkoutExercise
 from .workout_set import WorkoutSet
 
 from .exercise import Exercise
+from .exercise_muscle_target import ExerciseMuscleTarget
 from .muscle_group import MuscleGroup
 
 from .body_measurement import BodyMeasurement
@@ -16,6 +17,7 @@ __all__ = [
 
     # anatomy
     "Exercise",
+    "ExerciseMuscleTarget",
     "MuscleGroup",
 
     # body tracking

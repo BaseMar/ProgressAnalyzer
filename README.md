@@ -73,6 +73,8 @@ The application follows a **clean architecture** with clear separation of concer
 - Workout session overview (volume, intensity, duration)
 - Exercise-level strength progress
 - Per-body-part training distribution
+- Anatomical muscle heatmap with front/back body reference image
+- Detailed exercise-to-muscle mapping, including primary, secondary, and stabilizer roles
 - Estimated 1RM trends
 - Consistency & exposure-based progress tracking
 
@@ -80,7 +82,17 @@ The application follows a **clean architecture** with clear separation of concer
 - Fatigue & recovery monitoring
 - Progress vs exposure insights
 - Plateau and regression detection
-- Training balance across body parts
+- Training balance across major and smaller muscle groups
+- Weighted set and volume attribution for muscles used as secondary movers or stabilizers
+
+### Muscle Heatmap
+- Uses `ui/wzorzec/human_body.png` as the anatomical body reference
+- Generates a transparent overlay from the body image mask, so highlights stay inside the model contours
+- Highlights trained, undertrained, and overtrained areas with distinct status colors
+- Tracks broad and smaller muscle groups:
+  - Chest, Back, Lower Back, Glutes, Legs, Shoulders
+  - Biceps, Triceps, Forearms, Abs, Obliques, Calves
+- Weekly volume ranges are editable in the app and persisted locally in `user_settings/body_heatmap_ranges.json`
 
 ### Body Metrics
 - Body composition tracking (weight, muscle mass, fat mass, water mass)
@@ -164,6 +176,8 @@ High-level training overview:
 - Volume distribution per body part
 - Avg estimated 1RM per body part
 - Training balance overview
+- Heatmap-based weekly volume status
+- Muscle-group analysis based on detailed exercise mappings instead of a single body-part label
 
 ### Analytics
 - Fatigue & recovery analysis
@@ -185,6 +199,7 @@ High-level training overview:
 - **Python** — Language
 - **Streamlit** — UI & app framework
 - **Pandas** — data processing
+- **Pillow** — image mask generation for heatmap overlays
 - **Plotly** — interactive charts
 - **SQLAlchemy** — database access
 - **SQL (MS SQL / SQLite)** — persistent storage
@@ -198,6 +213,29 @@ High-level training overview:
 - `workout_exercises`
 - `workout_sets`
 - `Exercises`
+- `exercise_muscle_map`
+
+### Muscle Mapping
+The app supports multiple muscle targets per exercise through `exercise_muscle_map`.
+Each row stores:
+- `exercise_id`
+- `muscle_group` used by the heatmap and body-part analytics
+- `muscle_name` with the more specific anatomical target
+- `role`: `primary`, `secondary`, or `stabilizer`
+- `set_factor`, used to weight set and volume contribution
+
+Default weighting:
+- `primary`: 1.0
+- `secondary`: 0.5
+- `stabilizer`: 0.25
+
+The mapping for existing exercises can be seeded with:
+
+```bash
+python -m db.seed_exercise_muscle_map
+```
+
+The seed data is based on exercise anatomy references such as ExRx, Mayo Clinic, and peer-reviewed EMG literature for hinge and hip-extension movements.
 
 ### Body Tracking
 - `BodyComposition`  

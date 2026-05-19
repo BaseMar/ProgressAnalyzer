@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from html import escape
+
 import pandas as pd
 import streamlit.components.v1 as components
 
@@ -102,12 +104,15 @@ _CSS = """
   /* Each tag uses a hue shift from the base accent #00ADB5 */
   .tag-legs      { background: rgba(0,173,181,0.12);  color: #00ADB5; border: 1px solid rgba(0,173,181,0.30); }
   .tag-back      { background: rgba(0,173,181,0.08);  color: #4ecdc4; border: 1px solid rgba(78,205,196,0.25); }
+  .tag-lower-back{ background: rgba(80,210,190,0.09); color: #78e0d4; border: 1px solid rgba(120,224,212,0.25); }
   .tag-chest     { background: rgba(255,107,107,0.10);color: #ff8585; border: 1px solid rgba(255,107,107,0.25); }
   .tag-calves    { background: rgba(154,160,166,0.10);color: #b0b8bf; border: 1px solid rgba(154,160,166,0.25); }
   .tag-shoulders { background: rgba(255,201,71,0.10); color: #ffc947; border: 1px solid rgba(255,201,71,0.25); }
   .tag-biceps    { background: rgba(0,200,150,0.10);  color: #00c896; border: 1px solid rgba(0,200,150,0.25); }
   .tag-triceps   { background: rgba(200,130,255,0.10);color: #c882ff; border: 1px solid rgba(200,130,255,0.25); }
+  .tag-forearms  { background: rgba(140,170,255,0.10);color: #9aaeff; border: 1px solid rgba(140,170,255,0.25); }
   .tag-core      { background: rgba(255,160,80,0.10); color: #ffa050; border: 1px solid rgba(255,160,80,0.25); }
+  .tag-obliques  { background: rgba(255,190,90,0.10); color: #ffbe5a; border: 1px solid rgba(255,190,90,0.25); }
   .tag-glutes    { background: rgba(100,180,255,0.10);color: #64b4ff; border: 1px solid rgba(100,180,255,0.25); }
   .tag-other     { background: rgba(255,255,255,0.05);color: var(--text-muted); border: 1px solid var(--border); }
 
@@ -224,10 +229,11 @@ def _rir_dots(rir) -> str:
     return f'<div class="rir-dots">{dots}</div><div class="rir-label">{rir:.1f}</div>'
 
 
-def _exercise_cell(name: str, body_part: str | None) -> str:
+def _exercise_cell(name: str, body_part: str | None, muscle_targets: str | None = None) -> str:
     tag_label, tag_cls = resolve_muscle_tag(body_part)
+    title = escape(muscle_targets or "")
     return (
-        f'<div class="exercise-name">{name}</div>'
+        f'<div class="exercise-name" title="{title}">{escape(str(name))}</div>'
         f'<span class="muscle-tag tag-{tag_cls}">{tag_label}</span>'
     )
 
@@ -254,7 +260,7 @@ def render_exercise_table(compare_df: pd.DataFrame, selected: str) -> None:
         delay = f"animation-delay:{i * 40}ms"
         rows_html += f"""
         <tr class="{row_class}" style="{delay}">
-          <td class="exercise-cell">{_exercise_cell(row["Exercise"], row.get("body_part"))}</td>
+          <td class="exercise-cell">{_exercise_cell(row["Exercise"], row.get("body_part"), row.get("Muscle Targets"))}</td>
           <td class="num-cell">{int(row["Total Sets"])}</td>
           <td class="num-cell">{int(row["Sessions"])}</td>
           <td class="vol-cell">{_vol_bar(row["Total Volume"], max_vol)}</td>

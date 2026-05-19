@@ -41,6 +41,18 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
     workout_to_date = {we.workout_exercise_id: session_id_to_date.get(we.session_id)for we in input.workout_exercises}
     sets_by_exercise: Dict[int, List] = defaultdict(list)
     exercise_id_to_name = {e.exercise_id: e.name for e in input.exercises}
+    exercise_id_to_bodypart = {e.exercise_id: e.body_part for e in input.exercises}
+    targets_by_exercise: Dict[int, List[dict[str, Any]]] = defaultdict(list)
+    for target in input.exercise_muscle_targets:
+        targets_by_exercise[target.exercise_id].append(
+            {
+                "muscle_group": target.muscle_group,
+                "muscle_name": target.muscle_name,
+                "role": target.role,
+                "set_factor": target.set_factor,
+            }
+        )
+
     for workout_set in input.sets:
         exercise_id = workout_to_exercise.get(workout_set.workout_exercise_id)
         if exercise_id is None:
@@ -102,10 +114,14 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         per_session_volume_series = [
             {"date": d, "volume": v} for d, v in sorted(per_session_volume.items())
         ]
+        body_part = exercise_id_to_bodypart.get(exercise_id)
+        muscle_targets = targets_by_exercise.get(exercise_id) or _fallback_muscle_targets(body_part)
 
         per_exercise[exercise_id] = {
             "exercise_name": exercise_id_to_name.get(exercise_id, f"Exercise {exercise_id}"),
-            "body_part": next((e.body_part for e in input.exercises if e.exercise_id == exercise_id), None),
+            "body_part": body_part,
+            "muscle_targets": muscle_targets,
+            "muscle_target_summary": _muscle_target_summary(muscle_targets),
             "total_sets": total_sets,
             "total_reps": total_reps,
             "total_volume": total_volume,
@@ -138,3 +154,24 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         "per_exercise": per_exercise,
         "global": global_metrics,
     }
+
+
+def _fallback_muscle_targets(body_part: str | None) -> list[dict[str, Any]]:
+    if not body_part:
+        return []
+
+    return [
+        {
+            "muscle_group": body_part,
+            "muscle_name": body_part,
+            "role": "primary",
+            "set_factor": 1.0,
+        }
+    ]
+
+
+def _muscle_target_summary(muscle_targets: list[dict[str, Any]]) -> str:
+    return "; ".join(
+        f"{target['muscle_group']} ({target['role']}): {target['muscle_name']}"
+        for target in muscle_targets
+    )

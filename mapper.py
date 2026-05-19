@@ -1,4 +1,13 @@
-from models import (WorkoutSession, WorkoutExercise, WorkoutSet, Exercise, MuscleGroup, BodyMeasurement,BodyComposition)
+from models import (
+    BodyComposition,
+    BodyMeasurement,
+    Exercise,
+    ExerciseMuscleTarget,
+    MuscleGroup,
+    WorkoutExercise,
+    WorkoutSession,
+    WorkoutSet,
+)
 
 
 def map_workout_session(row: dict) -> WorkoutSession:
@@ -34,6 +43,16 @@ def map_exercise(row: dict) -> Exercise:
         name=row["exercise_name"],
         primary_muscle_group_id=None,
         body_part=row.get("body_part")
+    )
+
+
+def map_exercise_muscle_target(row: dict) -> ExerciseMuscleTarget:
+    return ExerciseMuscleTarget(
+        exercise_id=row["exercise_id"],
+        muscle_group=row["muscle_group"],
+        muscle_name=row["muscle_name"],
+        role=row["role"],
+        set_factor=float(row["set_factor"]),
     )
 
 

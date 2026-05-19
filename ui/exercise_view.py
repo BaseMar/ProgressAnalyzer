@@ -127,6 +127,7 @@ class ExerciseView:
                 "avg_rir",
                 "avg_sets_per_session",
                 "body_part",
+                "muscle_target_summary",
             ]]
             .rename(columns={
                 "exercise_name": "Exercise",
@@ -136,6 +137,7 @@ class ExerciseView:
                 "estimated_1rm_max": "Est. 1RM",
                 "avg_rir": "Avg RIR",
                 "avg_sets_per_session": "Avg Sets / Session",
+                "muscle_target_summary": "Muscle Targets",
             })
             .sort_values("Total Volume", ascending=False)
             .reset_index(drop=True)

@@ -54,6 +54,7 @@ class MetricsInputBuilder:
             workout_exercises=workout_exercises,
             sets=sets,
             exercises=exercises,
+            exercise_muscle_targets=[],
             muscle_groups=[],
             body_measurements=body_measurements,
             body_composition=body_composition,

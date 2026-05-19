@@ -13,11 +13,14 @@ All metrics are pre-computed in the exercise_metrics layer; this view aggregates
 
 from __future__ import annotations
 
+from collections import defaultdict
+from calendar import monthrange
 from typing import Dict
 
 import pandas as pd
 import streamlit as st
 
+from ui.utils.body_heatmap import render_body_heatmap
 from ui.utils.body_parts_table import render_body_parts_table
 from ui.utils.ui_helpers import ACCENT, VEGA_CONFIG, chart_label, format_number, page_title, section_header
 
@@ -35,13 +38,15 @@ class BodyPartsView:
     - exercises_metrics: Pre-computed per-exercise metrics aggregated by body part
     """
 
-    def __init__(self, exercises_metrics: Dict) -> None:
+    def __init__(self, exercises_metrics: Dict, selected_month: str | None = None) -> None:
         """Initialize with pre-computed exercise metrics.
         
         Args:
             exercises_metrics: Dictionary with 'per_exercise' key containing exercise-level metrics
+            selected_month: Active global month filter, or "All time".
         """
         self.exercises_metrics = exercises_metrics
+        self.selected_month = selected_month
 
     def _build_bodypart_df(self) -> pd.DataFrame:
         """Aggregate exercise metrics per body part.
@@ -54,21 +59,118 @@ class BodyPartsView:
         if not per_exercise:
             return pd.DataFrame()
 
-        df = pd.DataFrame(per_exercise).T.dropna(subset=["body_part"])
+        rows = []
+        session_dates_by_part: dict[str, set] = defaultdict(set)
 
-        return (
-            df.groupby("body_part")
+        for row in per_exercise.values():
+            muscle_targets = row.get("muscle_targets") or []
+            if not muscle_targets and row.get("body_part"):
+                muscle_targets = [
+                    {
+                        "muscle_group": row["body_part"],
+                        "muscle_name": row["body_part"],
+                        "role": "primary",
+                        "set_factor": 1.0,
+                    }
+                ]
+
+            for target in muscle_targets:
+                body_part = target.get("muscle_group")
+                if not body_part:
+                    continue
+                factor = float(target.get("set_factor", 1.0))
+                rows.append(
+                    {
+                        "Body Part": str(body_part),
+                        "Total_Sets": float(row["total_sets"]) * factor,
+                        "Total_Volume": float(row["total_volume"]) * factor,
+                        "Avg_1RM": row.get("estimated_1rm_avg"),
+                        "Weight": max(float(row["total_sets"]) * factor, 0.0),
+                    }
+                )
+
+            for point in row.get("per_session_1rm", []):
+                date = point.get("date")
+                if date is not None:
+                    for target in muscle_targets:
+                        body_part = target.get("muscle_group")
+                        if body_part:
+                            session_dates_by_part[str(body_part)].add(pd.to_datetime(date).date())
+
+        if not rows:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(rows)
+        weighted_1rm = (
+            df.dropna(subset=["Avg_1RM"])
+            .assign(Weighted_1RM=lambda x: x["Avg_1RM"] * x["Weight"])
+            .groupby("Body Part", dropna=True)
+            .agg(Weighted_1RM=("Weighted_1RM", "sum"), Weight=("Weight", "sum"))
+        )
+
+        body_df = (
+            df.groupby("Body Part", dropna=True)
             .agg(
-                Total_Sets=("total_sets", "sum"),
-                Total_Volume=("total_volume", "sum"),
-                Sessions=("sessions_count", "sum"),
-                Avg_1RM=("estimated_1rm_avg", "mean"),
+                Total_Sets=("Total_Sets", "sum"),
+                Total_Volume=("Total_Volume", "sum"),
+                Avg_1RM=("Avg_1RM", "mean"),
             )
             .reset_index()
-            .rename(columns={"body_part": "Body Part"})
-            .sort_values("Total_Volume", ascending=False)
+        )
+        if not weighted_1rm.empty:
+            body_df = body_df.drop(columns=["Avg_1RM"]).merge(
+                weighted_1rm.reset_index(),
+                on="Body Part",
+                how="left",
+            )
+            body_df["Avg_1RM"] = body_df.apply(
+                lambda row: row["Weighted_1RM"] / row["Weight"] if row["Weight"] else None,
+                axis=1,
+            )
+            body_df = body_df.drop(columns=["Weighted_1RM", "Weight"])
+
+        body_df["Sessions"] = body_df["Body Part"].map(
+            lambda part: len(session_dates_by_part.get(str(part), set()))
+        )
+
+        return (
+            body_df.sort_values("Total_Volume", ascending=False)
             .reset_index(drop=True)
         )
+
+    def _training_period(self) -> tuple[float, str]:
+        """Return the filtered period length in weeks and a display label."""
+        selected_month = self.selected_month
+        if selected_month and selected_month != "All time":
+            year, month = map(int, selected_month.split("-"))
+            days_in_month = monthrange(year, month)[1]
+            start = pd.Timestamp(year=year, month=month, day=1)
+            end = pd.Timestamp(year=year, month=month, day=days_in_month)
+            today = pd.Timestamp.today().normalize()
+
+            if today.year == year and today.month == month:
+                end = min(end, today)
+
+            days = max((end - start).days + 1, 1)
+            return max(days / 7, 1.0), selected_month
+
+        dates = self._metric_dates()
+        if not dates:
+            return 1.0, "All time"
+
+        start = min(dates)
+        end = max(dates)
+        days = max((end - start).days + 1, 1)
+        return max(days / 7, 1.0), f"All time ({start:%Y-%m-%d} - {end:%Y-%m-%d})"
+
+    def _metric_dates(self) -> list[pd.Timestamp]:
+        dates = []
+        for row in self.exercises_metrics.get("per_exercise", {}).values():
+            for point in row.get("per_session_1rm", []):
+                date = point.get("date")
+                if date is not None:
+                    dates.append(pd.to_datetime(date).normalize())
+        return dates
 
     def render(self) -> None:
         """Render the complete body parts view."""
@@ -81,6 +183,7 @@ class BodyPartsView:
             return
 
         self._render_kpis(body_df)
+        self._render_heatmap(body_df)
         self._render_charts(body_df)
         self._render_table(body_df)
 
@@ -104,13 +207,29 @@ class BodyPartsView:
             chart_label("Volume per Body Part")
             data_records = body_df.to_dict(orient="records")
             spec = _bar_spec(y_field="Total_Volume", y_title="Volume (kg)")
-            st.vega_lite_chart(data=data_records, spec=spec, width="stretch")
+            st.vega_lite_chart(
+                data=data_records,
+                spec=spec,
+                width="stretch",
+                key=f"body_parts_volume_{_data_signature(body_df, 'Total_Volume')}",
+            )
 
         with col2:
             chart_label("Avg 1RM per Body Part")
             data_records = body_df.to_dict(orient="records")
             spec2 = _bar_spec(y_field="Avg_1RM", y_title="Avg 1RM (kg)")
-            st.vega_lite_chart(data=data_records, spec=spec2, width="stretch")
+            st.vega_lite_chart(
+                data=data_records,
+                spec=spec2,
+                width="stretch",
+                key=f"body_parts_1rm_{_data_signature(body_df, 'Avg_1RM')}",
+            )
+
+    def _render_heatmap(self, body_df: pd.DataFrame) -> None:
+        """Render training target heatmap for the active filter period."""
+        section_header("Training Heatmap")
+        period_weeks, period_label = self._training_period()
+        render_body_heatmap(body_df, period_weeks, period_label)
 
     def _render_table(self, body_df: pd.DataFrame) -> None:
         """Render detailed body part comparison table."""
@@ -166,3 +285,8 @@ def _bar_spec(y_field: str, y_title: str) -> dict:
             ],
         },
     }
+
+
+def _data_signature(df: pd.DataFrame, value_col: str) -> int:
+    chart_df = df[["Body Part", value_col]].copy()
+    return int(pd.util.hash_pandas_object(chart_df, index=True).sum())

@@ -46,6 +46,7 @@ def filter_data_by_month(input_data: MetricsInput, sets_df: pd.DataFrame, month:
             workout_exercises=filtered_workout_exercises,
             sets=filtered_sets,
             exercises=input_data.exercises,
+            exercise_muscle_targets=input_data.exercise_muscle_targets,
             muscle_groups=input_data.muscle_groups,
             body_measurements=input_data.body_measurements,
             body_composition=input_data.body_composition,

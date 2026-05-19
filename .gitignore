@@ -95,3 +95,4 @@ backup_db.py
 
 # folders
 backups/
+user_settings/
