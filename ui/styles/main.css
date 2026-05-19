@@ -167,6 +167,27 @@ section[data-testid="stSidebar"] .stButton > button:focus:not(:active) {
     outline: none !important;
 }
 
+section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+    color: #111518 !important;
+    background-color: var(--accent) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 4px 14px var(--accent-glow) !important;
+    transform: translateX(3px) !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button[kind="primary"]::before {
+    background: #111518 !important;
+    transform: translateY(-50%) scaleY(1) !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover,
+section[data-testid="stSidebar"] .stButton > button[kind="primary"]:focus:not(:active) {
+    color: #111518 !important;
+    background-color: var(--accent) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 4px 14px var(--accent-glow) !important;
+}
+
 
 /* ============================================================
    Sidebar — Form Inputs (selectbox, date, text)

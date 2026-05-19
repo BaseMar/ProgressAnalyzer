@@ -97,8 +97,15 @@ class SidebarView:
 
         # render buttons vertically inside sidebar
         for opt in options:
-            if st.sidebar.button(opt, key=f"nav_{opt}", icon=icons[opt]):
-                st.session_state.nav_selected = opt
+            button_type = "primary" if st.session_state.nav_selected == opt else "secondary"
+            st.sidebar.button(
+                opt,
+                key=f"nav_{opt}",
+                icon=icons[opt],
+                type=button_type,
+                on_click=_set_selected_nav,
+                args=(opt,),
+            )
 
         return st.session_state.nav_selected
 
@@ -110,3 +117,6 @@ class SidebarView:
         
         SidebarUpload().render()
         
+
+def _set_selected_nav(option: str) -> None:
+    st.session_state.nav_selected = option

@@ -15,14 +15,16 @@ from __future__ import annotations
 
 from collections import defaultdict
 from calendar import monthrange
+import hashlib
 from typing import Dict
 
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 from ui.utils.body_heatmap import render_body_heatmap
 from ui.utils.body_parts_table import render_body_parts_table
-from ui.utils.ui_helpers import ACCENT, VEGA_CONFIG, chart_label, format_number, page_title, section_header
+from ui.utils.ui_helpers import ACCENT, PLOTLY_LAYOUT, chart_label, format_number, page_title, section_header
 
 
 class BodyPartsView:
@@ -205,25 +207,22 @@ class BodyPartsView:
 
         with col1:
             chart_label("Volume per Body Part")
-            data_records = body_df.to_dict(orient="records")
-            spec = _bar_spec(y_field="Total_Volume", y_title="Volume (kg)")
-            st.vega_lite_chart(
-                data=data_records,
-                spec=spec,
+            st.plotly_chart(
+                _bar_fig(body_df, y_field="Total_Volume", y_title="Volume (kg)"),
                 width="stretch",
-                key=f"body_parts_volume_{_data_signature(body_df, 'Total_Volume')}",
+                key=self._chart_key(body_df, "Total_Volume"),
             )
 
         with col2:
             chart_label("Avg 1RM per Body Part")
-            data_records = body_df.to_dict(orient="records")
-            spec2 = _bar_spec(y_field="Avg_1RM", y_title="Avg 1RM (kg)")
-            st.vega_lite_chart(
-                data=data_records,
-                spec=spec2,
+            st.plotly_chart(
+                _bar_fig(body_df, y_field="Avg_1RM", y_title="Avg 1RM (kg)"),
                 width="stretch",
-                key=f"body_parts_1rm_{_data_signature(body_df, 'Avg_1RM')}",
+                key=self._chart_key(body_df, "Avg_1RM"),
             )
+
+    def _chart_key(self, body_df: pd.DataFrame, value_col: str) -> str:
+        return f"body_parts_{value_col}_{self.selected_month or 'all'}_{_data_signature(body_df)}"
 
     def _render_heatmap(self, body_df: pd.DataFrame) -> None:
         """Render training target heatmap for the active filter period."""
@@ -237,56 +236,43 @@ class BodyPartsView:
         render_body_parts_table(body_df)
 
 
-def _bar_spec(y_field: str, y_title: str) -> dict:
-    """Generate themed horizontal bar chart spec.
-    
-    Horizontal layout presents categorical body-part labels better than vertical bars.
-    Uses AccentColor from the design tokens and responsive sizing.
-    
-    Args:
-        y_field: Column name for the y-axis (e.g., 'Total_Volume')
-        y_title: Display title for the x-axis (e.g., 'Volume (kg)')
-    
-    Returns:
-        Vega-Lite specification dictionary for st.vega_lite_chart()
-    """
-    return {
-        "config": VEGA_CONFIG,
-        "width": "container",
-        "height": 280,
-        "mark": {
-            "type": "bar",
-            "color": ACCENT,
-            "opacity": 0.85,
-            "cornerRadiusEnd": 3,
-        },
-        "encoding": {
-            "y": {
-                "field": "Body Part",
-                "type": "nominal",
-                "sort": "-x",
-                "axis": {"labelFontSize": 11},
-                "title": None,
-            },
-            "x": {
-                "field": y_field,
-                "type": "quantitative",
-                "axis": {"tickCount": 5},
-                "title": y_title,
-            },
-            "tooltip": [
-                {"field": "Body Part", "type": "nominal"},
-                {
-                    "field": y_field,
-                    "type": "quantitative",
-                    "title": y_title,
-                    "format": ".0f",
-                },
-            ],
-        },
+def _bar_fig(body_df: pd.DataFrame, y_field: str, y_title: str):
+    chart_df = body_df.sort_values(y_field, ascending=False).copy()
+    fig = px.bar(
+        chart_df,
+        x=y_field,
+        y="Body Part",
+        orientation="h",
+        custom_data=["Total_Sets", "Total_Volume", "Sessions", "Avg_1RM"],
+    )
+    fig.update_traces(
+        marker_color=ACCENT,
+        opacity=0.85,
+        hovertemplate=(
+            "<b>%{y}</b><br>"
+            f"{y_title}: " + "%{x:,.0f}<br>"
+            "Sets: %{customdata[0]:,.1f}<br>"
+            "Volume: %{customdata[1]:,.0f} kg<br>"
+            "Sessions: %{customdata[2]:.0f}<br>"
+            "Avg 1RM: %{customdata[3]:,.1f} kg"
+            "<extra></extra>"
+        ),
+    )
+    layout = {
+        **PLOTLY_LAYOUT,
+        "height": 320,
+        "margin": dict(l=8, r=8, t=8, b=8),
+        "xaxis_title": y_title,
+        "yaxis_title": None,
+        "bargap": 0.28,
     }
+    fig.update_layout(**layout)
+    fig.update_yaxes(autorange="reversed")
+    return fig
 
 
-def _data_signature(df: pd.DataFrame, value_col: str) -> int:
-    chart_df = df[["Body Part", value_col]].copy()
-    return int(pd.util.hash_pandas_object(chart_df, index=True).sum())
+def _data_signature(df: pd.DataFrame) -> str:
+    chart_df = df[["Body Part", "Total_Sets", "Total_Volume", "Sessions", "Avg_1RM"]].copy()
+    chart_df = chart_df.sort_values("Body Part").reset_index(drop=True)
+    payload = chart_df.to_json(orient="split", date_format="iso", double_precision=6)
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]

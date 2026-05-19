@@ -89,6 +89,7 @@ The application follows a **clean architecture** with clear separation of concer
 - Uses `ui/wzorzec/human_body.png` as the anatomical body reference
 - Generates a transparent overlay from the body image mask, so highlights stay inside the model contours
 - Highlights trained, undertrained, and overtrained areas with distinct status colors
+- Training distribution charts use Plotly rendering so they refresh reliably when the global month filter changes
 - Tracks broad and smaller muscle groups:
   - Chest, Back, Lower Back, Glutes, Legs, Shoulders
   - Biceps, Triceps, Forearms, Abs, Obliques, Calves
@@ -105,6 +106,7 @@ The application follows a **clean architecture** with clear separation of concer
 - Dark UI
 - KPI-first layout (current / average / best)
 - Dropdown-based metric selection to avoid chart overload
+- Persistent sidebar navigation highlight for the active section
 - Clean visual hierarchy
 
 ---
@@ -178,6 +180,7 @@ High-level training overview:
 - Training balance overview
 - Heatmap-based weekly volume status
 - Muscle-group analysis based on detailed exercise mappings instead of a single body-part label
+- Plotly-based training distribution charts that update immediately after changing the month filter
 
 ### Analytics
 - Fatigue & recovery analysis
