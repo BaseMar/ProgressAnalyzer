@@ -26,7 +26,7 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
     sets_by_session = defaultdict(list)
     for s in input.sets:
         session_id = we_to_session.get(s.workout_exercise_id)
-        if session_id:
+        if session_id is not None:
             sets_by_session[session_id].append(s)
 
     # ---PER SESSION METRICS

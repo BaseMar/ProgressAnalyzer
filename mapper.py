@@ -9,6 +9,8 @@ from models import (
     WorkoutSet,
 )
 
+MEASUREMENT_COLUMNS = ("chest", "waist", "abdomen", "hips", "thigh", "calf", "biceps")
+
 
 def map_workout_session(row: dict) -> WorkoutSession:
     return WorkoutSession(
@@ -42,7 +44,7 @@ def map_exercise(row: dict) -> Exercise:
         exercise_id=row["exercise_id"],
         name=row["exercise_name"],
         primary_muscle_group_id=None,
-        body_part=row.get("body_part")
+        body_part=row.get("body_part"),
     )
 
 
@@ -68,13 +70,14 @@ def map_body_measurement(row: dict) -> list[BodyMeasurement]:
     measurements = []
     date = row["measurement_date"]
     
-    for col in ["chest", "waist", "abdomen", "hips", "thigh", "calf", "biceps"]:
-        if row[col] is not None:
+    for col in MEASUREMENT_COLUMNS:
+        value = row.get(col)
+        if value is not None:
             measurements.append(
                 BodyMeasurement(
                     date=date,
                     measurement_type=col,
-                    value=row[col]
+                    value=value,
                 )
             )
     return measurements
@@ -84,9 +87,9 @@ def map_body_composition(row: dict) -> BodyComposition:
     return BodyComposition(
         date=row["measurement_date"],
         weight=row["weight"],
-        muscle_mass = row["muscle_mass"], 
-        fat_mass = row["fat_mass"], 
-        water_mass = row["water_mass"],
+        muscle_mass=row["muscle_mass"],
+        fat_mass=row["fat_mass"],
+        water_mass=row["water_mass"],
         fat_percentage=row["body_fat_percentage"],
-        method = row["method"]
+        method=row["method"],
     )

@@ -6,6 +6,7 @@ from sqlalchemy import text
 
 from db.connection import get_engine
 from db.queries import (
+    delete_workout_session,
     get_all_sets,
     get_body_composition,
     get_body_measurements,
@@ -15,7 +16,6 @@ from db.queries import (
     insert_body_composition,
     insert_body_measurements,
     insert_exercise,
-    delete_workout_session
 )
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,15 @@ class DataManager:
             logger.exception("add_exercise failed: %s", e)
             return False
 
-    def add_full_session(self, session_date: Any, notes: str, exercise_name: str, sets_data: List[Dict[str, Any]], session_start: time, session_end: time ) -> bool:
+    def add_full_session(
+        self,
+        session_date: Any,
+        notes: str,
+        exercise_name: str,
+        sets_data: List[Dict[str, Any]],
+        session_start: time,
+        session_end: time,
+    ) -> bool:
         """Insert a complete workout session including exercise and sets.
 
         Returns True on success or re-raises the exception if the operation fails.
@@ -107,7 +115,13 @@ class DataManager:
                            RETURNING session_id"""
                     )
                     session_id = conn.execute(
-                        insert_q, {"date": session_date, "notes": notes, "start_time": session_start, "end_time": session_end}
+                        insert_q,
+                        {
+                            "date": session_date,
+                            "notes": notes,
+                            "start_time": session_start,
+                            "end_time": session_end,
+                        },
                     ).scalar()
 
                 # get exercise id
@@ -138,7 +152,7 @@ class DataManager:
                             "num": idx,
                             "reps": s["reps"],
                             "weight": s["weight"],
-                            "rir": s["rir"]
+                            "rir": s["rir"],
                         },
                     )
             return True
@@ -197,8 +211,8 @@ class DataManager:
     def delete_session(self, session_id: int) -> bool:
         """Delete session from ui"""
         try:
-            from db.queries import delete_workout_session
             return delete_workout_session(self.engine, session_id)
         except Exception:
+            logger.exception("delete_session failed")
             return False
         

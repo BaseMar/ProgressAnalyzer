@@ -13,7 +13,15 @@ import pandas as pd
 import streamlit as st
 
 from data_manager import DataManager
-from mapper import *
+from mapper import (
+    map_body_composition,
+    map_body_measurement,
+    map_exercise,
+    map_exercise_muscle_target,
+    map_workout_exercise,
+    map_workout_session,
+    map_workout_set,
+)
 from metrics.input import MetricsInput
 
 
@@ -42,7 +50,11 @@ def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
     ]
     muscle_groups = list({ex.body_part for ex in exercises if ex.body_part})
     body = dm.load_body_data()
-    body_measurements = [map_body_measurement(row) for row in body["measurements"].to_dict("records")]
+    body_measurements = [
+        measurement
+        for row in body["measurements"].to_dict("records")
+        for measurement in map_body_measurement(row)
+    ]
     body_composition = [map_body_composition(row) for row in body["composition"].to_dict("records")]
 
     metrics_input = MetricsInput(

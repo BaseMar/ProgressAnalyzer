@@ -58,7 +58,7 @@ def compute_set_metrics(input: MetricsInput) -> Dict[str, Any]:
     failure_ratio = sets_to_failure / total_sets
 
     # --- Strength estimation ---
-    one_rms = [estimate_1rm(s.weight, s.repetitions)for s in sets]
+    one_rms = [estimate_1rm(s.weight, s.repetitions) for s in sets]
     avg_estimated_1rm = mean(one_rms)
     max_estimated_1rm = max(one_rms)
 

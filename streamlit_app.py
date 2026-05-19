@@ -41,11 +41,7 @@ import streamlit as st
 from data_loader import load_data
 from metrics.input import MetricsInput
 
-from metrics.body_metrics import compute_body_metrics
-from metrics.exercise_metrics import compute_exercise_metrics
-from metrics.fatigue_metrics import compute_fatigue_metrics
-from metrics.progress_metrics import compute_progress_metrics
-from metrics.session_metrics import compute_session_metrics
+from metrics.metrics_engine import compute_all_metrics
 
 from ui.sidebar_view import SidebarView
 from ui.dashboard_view import DashboardView
@@ -93,13 +89,7 @@ def _compute_metrics(input_data: MetricsInput) -> dict:
         - fatigue: Fatigue and recovery metrics
         - body: Body composition and measurement metrics
     """
-    return {
-        "sessions": compute_session_metrics(input_data),
-        "exercises": compute_exercise_metrics(input_data),
-        "progress": compute_progress_metrics(input_data),
-        "fatigue": compute_fatigue_metrics(input_data),
-        "body": compute_body_metrics(input_data),
-    }
+    return compute_all_metrics(input_data)
 
 def main() -> None:
     """

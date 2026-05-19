@@ -336,7 +336,10 @@ class SidebarUpload:
         Returns:
             tuple: (start_time, end_time) or (None, None) if not found
         """
-        match = re.search(r"Godzina:\s*(\d{2}:\d{2})\s*[-–—]\s*(\d{2}:\d{2})", text)
+        match = re.search(
+            r"Godzina:\s*(\d{2}:\d{2})\s*[-\u2013\u2014]\s*(\d{2}:\d{2})",
+            text,
+        )
 
         if not match:
             return None, None

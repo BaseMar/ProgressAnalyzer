@@ -11,9 +11,7 @@ via MetricsInput. No database or UI dependencies are allowed here.
 from collections import defaultdict
 from datetime import datetime, timedelta
 from statistics import mean
-from typing import Dict, Any
-
-import streamlit
+from typing import Any, Dict
 
 from metrics.input import MetricsInput
 
@@ -55,29 +53,30 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         - "global": dict[str, float | None]
     """
 
-    # Map sessions by ID for fast lookup
     sessions = {s.session_id: s for s in input.sessions}
 
-    # Group sets and exercises per session
-    sets_by_session = defaultdict(list)
-    exercises_by_session = defaultdict(set)
-
-    # WorkoutExercise -> Session mapping
-    workout_exercise_to_session = {we.workout_exercise_id: we.session_id for we in input.workout_exercises}
+    sets_by_session: dict[int, list] = defaultdict(list)
+    exercises_by_session: dict[int, set[int]] = defaultdict(set)
+    workout_exercise_to_session = {
+        we.workout_exercise_id: we.session_id
+        for we in input.workout_exercises
+    }
 
     # Assign sets to sessions
     for workout_set in input.sets:
         session_id = workout_exercise_to_session.get(workout_set.workout_exercise_id)
         if session_id is None:
             continue
-        
+
         sets_by_session[session_id].append(workout_set)
         exercises_by_session[session_id].add(workout_set.workout_exercise_id)
 
     per_session: Dict[int, Dict[str, Any]] = {}
 
     for session_id, sets in sets_by_session.items():
-        session = sessions[session_id]
+        session = sessions.get(session_id)
+        if session is None:
+            continue
 
         # Session duration in minutes
         duration_minutes = None
@@ -119,13 +118,19 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
             "exercises_count": len(exercises_by_session[session_id]),
         }
 
-
     # -------- Global aggregates --------
-    durations = [s["duration_minutes"] for s in per_session.values() if s["duration_minutes"] is not None]
+    durations = [
+        s["duration_minutes"]
+        for s in per_session.values()
+        if s["duration_minutes"] is not None
+    ]
     volumes = [s["total_volume"] for s in per_session.values()]
     sets_counts = [s["total_sets"] for s in per_session.values()]
-    intensities = [s["avg_intensity"] for s in per_session.values() if s["avg_intensity"] is not None]
-    # ISO year-week pairs
+    intensities = [
+        s["avg_intensity"]
+        for s in per_session.values()
+        if s["avg_intensity"] is not None
+    ]
     weeks = {session.session_date.isocalendar()[:2] for session in input.sessions}
 
     global_metrics = {
@@ -134,8 +139,8 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         "avg_sets_per_session": mean(sets_counts) if sets_counts else None,
         "avg_sessions_per_week": (len(input.sessions) / len(weeks) if weeks else None),
         "avg_intensity": mean(intensities) if intensities else None,
-        }
-    
+    }
+
     return {
         "per_session": per_session,
         "global": global_metrics,

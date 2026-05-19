@@ -1,259 +1,178 @@
-# Gym Progress Dashboard
+# Analizator progresu na silowni
 
-A personal strength training & body composition analytics dashboard built with **Streamlit**.   Designed for lifters who want data-driven insights, not just workout logs.
+Dashboard analityczny do monitorowania treningu silowego, progresu cwiczen,
+zmeczenia treningowego oraz zmian w skladzie i pomiarach ciala. Aplikacja jest
+zbudowana w Streamlit, a logika obliczen jest wydzielona do testowalnej warstwy
+metryk.
 
-The app tracks training volume, intensity, exercise progress, fatigue, and body metrics — with a strong focus on long-term trends, recomposition quality, and proportions.
+Wersja online: <https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app>
 
----
+## Glowne funkcje
 
-## Website
-https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app
+- przeglad sesji treningowych: objetosc, liczba serii, intensywnosc, czas trwania,
+- metryki cwiczen: laczna objetosc, szacowane 1RM, trendy sily, ekspozycja,
+- analiza partii miesniowych z uwzglednieniem mapowania cwiczenie-miesien,
+- heatmapa partii miesniowych na podstawie tygodniowej objetosci,
+- monitoring zmeczenia na podstawie RIR, serii do upadku i objetosci,
+- analiza progresu: cwiczenia poprawiajace sie, stagnujace i regresujace,
+- metryki ciala: masa, masa miesniowa, tkanka tluszczowa, obwody, proporcje,
+- import treningow z plikow TXT przez panel boczny.
 
-## Architecture
+## Architektura
 
-### Layered Design
+Projekt jest podzielony na warstwy:
 
-The application follows a **clean architecture** with clear separation of concerns:
-
-```
-┌─────────────────────────────────────────┐
-│         UI Layer (ui/*.py)              │  ← Presentation only
-│    DashboardView, ExerciseView, etc     │
-└──────────────┬──────────────────────────┘
-               │ uses pre-computed
-               ↓
-┌─────────────────────────────────────────┐
-│       Metrics Layer (metrics/*.py)      │  ← Business logic
-│   Computes all KPIs and analytics      │
-└──────────────┬──────────────────────────┘
-               │ consumes
-               ↓
-┌─────────────────────────────────────────┐
-│      Data Layer (data_*.py, db/)        │  ← Persistence
-│    Database queries & transformations   │
-└─────────────────────────────────────────┘
+```text
+streamlit_app.py
+  -> ui/                 # widoki Streamlit i helpery prezentacyjne
+  -> metrics/            # czysta logika obliczania metryk
+  -> data_loader.py      # mapowanie danych z bazy do modeli domenowych
+  -> data_manager.py     # operacje wysokiego poziomu na danych
+  -> db/                 # polaczenie i zapytania SQL
+  -> models/             # niemutowalne modele domenowe
 ```
 
-### Directory Structure
+Najwazniejsza zasada: widoki nie licza metryk. Dane sa ladowane, mapowane do
+`MetricsInput`, przetwarzane przez `metrics.metrics_engine.compute_all_metrics`,
+a dopiero potem renderowane w UI.
 
-- **`ui/`** — Streamlit presentation layer
-  - View classes that render pre-computed metrics
-  - No business logic (no calculations, filtering, or data manipulation)
-  - Communicates via styled components to the metrics layer
-  - Utilities for formatting and helpers (`ui_helpers.py`)
+## Struktura danych
 
-- **`metrics/`** — Business logic & analytics engine
-  - Pure functions that compute KPIs from raw data
-  - Each domain has dedicated metrics modules:
-    - `session_metrics.py` — Training volume, intensity, consistency
-    - `exercise_metrics.py` — Per-exercise progress and volume distribution
-    - `progress_metrics.py` — Strength progress, plateaus, regressions
-    - `fatigue_metrics.py` — Fatigue and recovery monitoring
-    - `body_metrics.py` — Body composition, measurements, proportions, insights
-  - All calculations are **stateless** and **testable**
+Warstwa treningowa korzysta z tabel:
 
-- **`data_loader.py`** — Data orchestration
-  - Loads all data from database
-  - Transforms database records into MetricsInput domain objects
-  - Handles caching
-
-- **`data_manager.py`** — Database abstraction
-  - Wraps SQL queries and database operations
-  - Returns Pandas DataFrames for convenience
-
-- **`db/`** — Database layer
-  - Connection management
-  - Raw SQL queries and mutations
-
----
-
-## Features
-
-### Training & Progress
-- Workout session overview (volume, intensity, duration)
-- Exercise-level strength progress
-- Per-body-part training distribution
-- Anatomical muscle heatmap with front/back body reference image
-- Detailed exercise-to-muscle mapping, including primary, secondary, and stabilizer roles
-- Estimated 1RM trends
-- Consistency & exposure-based progress tracking
-
-### Advanced Analytics
-- Fatigue & recovery monitoring
-- Progress vs exposure insights
-- Plateau and regression detection
-- Training balance across major and smaller muscle groups
-- Weighted set and volume attribution for muscles used as secondary movers or stabilizers
-
-### Muscle Heatmap
-- Uses `ui/wzorzec/human_body.png` as the anatomical body reference
-- Generates a transparent overlay from the body image mask, so highlights stay inside the model contours
-- Highlights trained, undertrained, and overtrained areas with distinct status colors
-- Training distribution charts use Plotly rendering so they refresh reliably when the global month filter changes
-- Tracks broad and smaller muscle groups:
-  - Chest, Back, Lower Back, Glutes, Legs, Shoulders
-  - Biceps, Triceps, Forearms, Abs, Obliques, Calves
-- Weekly volume ranges are editable in the app and persisted locally in `user_settings/body_heatmap_ranges.json`
-
-### Body Metrics
-- Body composition tracking (weight, muscle mass, fat mass, water mass)
-- Body measurements tracking (waist, chest, hips, thighs, arms, calves)
-- Trend-based analysis instead of single measurements
-- Proportion ratios (e.g. chest/waist, thigh/waist)
-- Recomposition quality insights (lean mass vs total weight change)
-
-### UX & Design
-- Dark UI
-- KPI-first layout (current / average / best)
-- Dropdown-based metric selection to avoid chart overload
-- Persistent sidebar navigation highlight for the active section
-- Clean visual hierarchy
-
----
-
-## Development Principles
-
-### Views Don't Calculate
-- Views are **presentation-only**
-- All metrics are pre-computed by the metrics layer
-- Views receive structured data and render it
-- This keeps views testable and simple
-
-### Metrics Are Pure
-- Metrics functions are pure functions with no side effects
-- All calculations happen in the metrics layer
-- Easy to test independently without Streamlit context
-
-### Type Safety
-- All functions have type hints
-- MetricsInput is a structured dataclass
-- Views receive strongly-typed metric dictionaries
-
----
-
-## Screenshots
-
-### Main Dashboard
-![Dashboard 1](screenshots/Dashboard_1.png)
-![Dashboard 2](screenshots/Dashboard_2.png)
-![Dashboard 3](screenshots/Dashboard_3.png)
-
-### Exercises
-![Exercise View 1](screenshots/Exercise_1.png)
-![Exercise View 2](screenshots/Exercise_2.png)
-
-### Body Parts
-![Body Parts 1](screenshots/Body_Parts_1.png)
-![Body Parts 2](screenshots/Body_Parts_2.png)
-
-### Analytics View
-![Analytics Tab Part 1](screenshots/Analytics_1.png)
-![Analytics Tab Part 2](screenshots/Analytics_2.png)
-![Analytics Tab Part 3](screenshots/Analytics_3.png)
-
-### Body Metrics View
-![Body Metrics Part 1](screenshots/Body_Metrics_1.png)
-![Body Metrics Part 2](screenshots/Body_Metrics_2.png)
-![Body Metrics Part 3](screenshots/Body_Metrics_3.png)
-![Body Metrics Part 4](screenshots/Body_Metrics_4.png)
-![Body Metrics Part 5](screenshots/Body_Metrics_5.png)
-
----
-
-## Application Sections
-
-### Main Dashboard
-High-level training overview:
-- Avg intensity
-- Sessions per week
-- Volume & duration trends
-- Session history
-
-### Exercises
-- Strength progress per exercise
-- Volume and exposure tracking
-- Exercise-specific trends
-
-### Body Parts
-- Volume distribution per body part
-- Avg estimated 1RM per body part
-- Training balance overview
-- Heatmap-based weekly volume status
-- Muscle-group analysis based on detailed exercise mappings instead of a single body-part label
-- Plotly-based training distribution charts that update immediately after changing the month filter
-
-### Analytics
-- Fatigue & recovery analysis
-- Strength progress quality
-- Plateaus vs improving lifts
-- Basic insights
-
-### Body Metrics
-- Body composition trends
-- Body measurements trends
-- Proportion analysis
-- Recomposition quality
-- Manual measurement input
-
----
-
-## Tech Stack
-
-- **Python** — Language
-- **Streamlit** — UI & app framework
-- **Pandas** — data processing
-- **Pillow** — image mask generation for heatmap overlays
-- **Plotly** — interactive charts
-- **SQLAlchemy** — database access
-- **SQL (MS SQL / SQLite)** — persistent storage
-
----
-
-## Data Model
-
-### Training
 - `workout_sessions`
 - `workout_exercises`
 - `workout_sets`
-- `Exercises`
+- `exercises`
 - `exercise_muscle_map`
 
-### Muscle Mapping
-The app supports multiple muscle targets per exercise through `exercise_muscle_map`.
-Each row stores:
+Warstwa pomiarow ciala korzysta z tabel:
+
+- `body_composition`
+- `body_measurements`
+
+Tabela `exercise_muscle_map` pozwala przypisac cwiczenie do wielu miesni:
+
 - `exercise_id`
-- `muscle_group` used by the heatmap and body-part analytics
-- `muscle_name` with the more specific anatomical target
-- `role`: `primary`, `secondary`, or `stabilizer`
-- `set_factor`, used to weight set and volume contribution
+- `muscle_group`
+- `muscle_name`
+- `role` (`primary`, `secondary`, `stabilizer`)
+- `set_factor`
 
-Default weighting:
-- `primary`: 1.0
-- `secondary`: 0.5
-- `stabilizer`: 0.25
+Domyslne wagi uzywane w analizie objetosci:
 
-The mapping for existing exercises can be seeded with:
+- `primary`: `1.0`
+- `secondary`: `0.5`
+- `stabilizer`: `0.25`
+
+Seed mapowania miesni:
 
 ```bash
 python -m db.seed_exercise_muscle_map
 ```
 
-The seed data is based on exercise anatomy references such as ExRx, Mayo Clinic, and peer-reviewed EMG literature for hinge and hip-extension movements.
+## Wymagania
 
-### Body Tracking
-- `BodyComposition`  
-  *(weight, muscle mass, fat mass, water mass, body fat %)*
-- `body_measurements`  
-  *(waist, chest, abdomen, hips, thighs, arms, calves)*
+- Python 3.12 lub nowszy
+- baza danych dostepna przez `DATABASE_URL`
+- zaleznosci z `requirements.txt`
 
----
+Minimalny plik `.env`:
 
-## How to Run
+```env
+DATABASE_URL=postgresql+psycopg2://user:password@host:5432/database
+```
 
-### Clone repository
+## Instalacja
+
 ```bash
 git clone https://github.com/BaseMar/ProgressAnalyzer.git
-cd gym-progress-dashboard
+cd "Analizator progresu na silowni"
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+## Uruchomienie
+
+```bash
 streamlit run streamlit_app.py
 ```
 
+Po starcie aplikacja laduje dane z bazy, buduje `MetricsInput`, liczy metryki i
+udostepnia widoki:
+
+- Main Dashboard
+- Exercises
+- Body Parts
+- Analytics
+- Body Metrics
+
+## Testy
+
+Testy sa oparte o `pytest` i pokrywaja modele, mappery, warstwe metryk,
+filtrowanie danych oraz czyste helpery UI.
+
+```bash
+python -m pytest
+python -m compileall -q db metrics models ui streamlit_app.py data_loader.py data_manager.py mapper.py
+```
+
+## Import treningu TXT
+
+Importer oczekuje formatu:
+
+```text
+Godzina: 10:30 - 12:45
+
+1. Bench Press
+10x100 / 8x110 / 6x115
+RIR: 2 / 1 / 0
+
+2. Row
+12x60 / 10x65
+RIR: 3 / 2
+```
+
+Jezeli cwiczenie nie istnieje w bazie, aplikacja pokazuje podobne nazwy i pozwala
+wybrac istniejace cwiczenie albo dodac nowe.
+
+## Zasady projektowe
+
+- metryki sa funkcjami bez zaleznosci od Streamlit,
+- modele domenowe sa niemutowalne (`dataclass(frozen=True)`),
+- dostep do bazy jest odseparowany od obliczen,
+- UI renderuje gotowe dane i nie wykonuje logiki biznesowej,
+- testy sprawdzaja zachowanie, a nie szczegoly implementacyjne.
+
+## Zrzuty ekranu
+
+### Main Dashboard
+
+![Dashboard 1](screenshots/Dashboard_1.png)
+![Dashboard 2](screenshots/Dashboard_2.png)
+![Dashboard 3](screenshots/Dashboard_3.png)
+
+### Exercises
+
+![Exercise View 1](screenshots/Exercise_1.png)
+![Exercise View 2](screenshots/Exercise_2.png)
+
+### Body Parts
+
+![Body Parts 1](screenshots/Body_Parts_1.png)
+![Body Parts 2](screenshots/Body_Parts_2.png)
+
+### Analytics
+
+![Analytics 1](screenshots/Analytics_1.png)
+![Analytics 2](screenshots/Analytics_2.png)
+![Analytics 3](screenshots/Analytics_3.png)
+
+### Body Metrics
+
+![Body Metrics 1](screenshots/Body_Metrics_1.png)
+![Body Metrics 2](screenshots/Body_Metrics_2.png)
+![Body Metrics 3](screenshots/Body_Metrics_3.png)
+![Body Metrics 4](screenshots/Body_Metrics_4.png)
+![Body Metrics 5](screenshots/Body_Metrics_5.png)

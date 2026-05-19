@@ -1,5 +1,6 @@
 from collections import defaultdict
 from statistics import mean
+
 from metrics.input import MetricsInput
 from metrics.utils import estimate_1rm
 
@@ -45,7 +46,7 @@ def compute_progress_metrics(input: MetricsInput) -> dict:
         progress_values.append(progress_pct)
 
         per_exercise[ex_id] = {
-            "exercise_name": exercise_name_map[ex_id],
+            "exercise_name": exercise_name_map.get(ex_id, f"Exercise {ex_id}"),
             "start_1rm": round(start, 2),
             "end_1rm": round(end, 2),
             "progress_pct": progress_pct,

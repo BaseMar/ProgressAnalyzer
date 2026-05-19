@@ -5,7 +5,6 @@ from models.workout_exercise import WorkoutExercise
 from models.workout_set import WorkoutSet
 from models.exercise import Exercise
 from models.exercise_muscle_target import ExerciseMuscleTarget
-from models.muscle_group import MuscleGroup
 from models.body_measurement import BodyMeasurement
 from models.body_composition import BodyComposition
 
@@ -23,7 +22,7 @@ class MetricsInput:
 
     exercises: list[Exercise]
     exercise_muscle_targets: list[ExerciseMuscleTarget]
-    muscle_groups: list[MuscleGroup]
+    muscle_groups: list[str]
 
     body_measurements: list[BodyMeasurement]
     body_composition: list[BodyComposition]

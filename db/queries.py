@@ -169,8 +169,8 @@ def insert_workout_exercise(engine, session_id: int, exercise_id: int):
     query = text(
         """
         INSERT INTO workout_exercises (session_id, exercise_id)
-        RETURNING workout_exercise_id
         VALUES (:session_id, :exercise_id)
+        RETURNING workout_exercise_id
     """
     )
     with engine.begin() as conn:
@@ -292,6 +292,6 @@ def delete_workout_session(engine, session_id):
         with engine.begin() as conn:
             conn.execute(query, {"sid": safe_session_id})
         return True
-    except Exception as e:
-        logging.getLogger(__name__).error(f"SQL Error: {e}")
-        raise e
+    except Exception:
+        logging.getLogger(__name__).exception("SQL error deleting session")
+        raise

@@ -6,8 +6,9 @@ intensity, and progress for each exercise across all sessions.
 """
 
 from collections import defaultdict
+from datetime import date
 from statistics import mean
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 from metrics.input import MetricsInput
 from metrics.utils import estimate_1rm
@@ -38,7 +39,10 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
     
     # workout_exercise_id -> session_date
     session_id_to_date = {s.session_id: s.session_date for s in input.sessions}
-    workout_to_date = {we.workout_exercise_id: session_id_to_date.get(we.session_id)for we in input.workout_exercises}
+    workout_to_date = {
+        we.workout_exercise_id: session_id_to_date.get(we.session_id)
+        for we in input.workout_exercises
+    }
     sets_by_exercise: Dict[int, List] = defaultdict(list)
     exercise_id_to_name = {e.exercise_id: e.name for e in input.exercises}
     exercise_id_to_bodypart = {e.exercise_id: e.body_part for e in input.exercises}
@@ -82,19 +86,28 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         estimated_1rm_avg = mean(one_rms)
 
         # --- Progression (ordered by session date) ---
-        sets_sorted = sorted(sets, key=lambda s: workout_to_date[s.workout_exercise_id])
+        sets_sorted = sorted(
+            sets,
+            key=lambda s: workout_to_date.get(s.workout_exercise_id) or date.max,
+        )
 
         first_volume = (sets_sorted[0].repetitions * sets_sorted[0].weight)
         last_volume = (sets_sorted[-1].repetitions * sets_sorted[-1].weight)
         volume_trend = last_volume - first_volume
 
-        first_1rm = estimate_1rm(sets_sorted[0].weight, sets_sorted[0].repetitions,)
-        last_1rm = estimate_1rm(sets_sorted[-1].weight, sets_sorted[-1].repetitions,)
+        first_1rm = estimate_1rm(sets_sorted[0].weight, sets_sorted[0].repetitions)
+        last_1rm = estimate_1rm(sets_sorted[-1].weight, sets_sorted[-1].repetitions)
         strength_trend_1rm = last_1rm - first_1rm
 
         # --- Consistency ---
-        sessions_count = len({workout_to_date[s.workout_exercise_id] for s in sets})
-        avg_sets_per_session = total_sets / sessions_count
+        sessions_count = len(
+            {
+                workout_to_date.get(s.workout_exercise_id)
+                for s in sets
+                if workout_to_date.get(s.workout_exercise_id) is not None
+            }
+        )
+        avg_sets_per_session = total_sets / sessions_count if sessions_count else None
 
         # --- Per-session series (estimated 1RM and per-session volume) ---
         per_session_map = defaultdict(list)
@@ -145,9 +158,18 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
 
     if per_exercise:
         global_metrics = {
-            "most_trained_exercise": max(per_exercise.items(),key=lambda x: x[1]["total_sets"],)[0],
-            "highest_volume_exercise": max(per_exercise.items(),key=lambda x: x[1]["total_volume"],)[0],
-            "strongest_exercise_1rm": max(per_exercise.items(),key=lambda x: x[1]["estimated_1rm_max"],)[0],
+            "most_trained_exercise": max(
+                per_exercise.items(),
+                key=lambda x: x[1]["total_sets"],
+            )[0],
+            "highest_volume_exercise": max(
+                per_exercise.items(),
+                key=lambda x: x[1]["total_volume"],
+            )[0],
+            "strongest_exercise_1rm": max(
+                per_exercise.items(),
+                key=lambda x: x[1]["estimated_1rm_max"],
+            )[0],
         }
 
     return {
