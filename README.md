@@ -83,6 +83,13 @@ Minimal `.env` example:
 DATABASE_URL=postgresql+psycopg2://user:password@host:5432/database
 ```
 
+Do not commit `.env` or database credentials. For Streamlit Cloud, set the same
+value in app settings under **Secrets**:
+
+```toml
+DATABASE_URL = "postgresql+psycopg2://user:password@host:5432/database"
+```
+
 ## Installation
 
 ```bash

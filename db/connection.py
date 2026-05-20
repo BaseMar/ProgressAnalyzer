@@ -2,13 +2,25 @@ import logging
 import os
 
 import streamlit as st
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
-load_dotenv()
+env_path = find_dotenv(usecwd=True)
+load_dotenv(env_path or None)
 
 logger = logging.getLogger(__name__)
+
+
+def _get_database_url() -> str | None:
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        return database_url
+
+    try:
+        return st.secrets.get("DATABASE_URL")
+    except Exception:
+        return None
 
 
 @st.cache_resource
@@ -19,10 +31,13 @@ def get_engine() -> Engine:
     Raises RuntimeError if `DATABASE_URL` is not configured.
     """
 
-    database_url = os.getenv("DATABASE_URL")
+    database_url = _get_database_url()
     if not database_url:
-        logger.error("DATABASE_URL not set in environment")
-        raise RuntimeError("DATABASE_URL is not set")
+        logger.error("DATABASE_URL not set")
+        raise RuntimeError(
+            "DATABASE_URL is not set. Set it in your local .env file, "
+            "as an environment variable, or in Streamlit secrets."
+        )
 
     try:
         engine = create_engine(database_url)
