@@ -20,18 +20,18 @@ BODY_IMAGE_PATH = Path(__file__).resolve().parents[1] / "wzorzec" / "human_body.
 VOLUME_RANGES_PATH = Path(__file__).resolve().parents[2] / "user_settings" / "body_heatmap_ranges.json"
 
 DEFAULT_VOLUME_RANGES = {
-    "Chest": {"MEV": 10.0, "Target": 12.0, "MRV": 16.0},
-    "Back": {"MEV": 14.0, "Target": 20.0, "MRV": 26.0},
+    "Chest": {"MEV": 6.0, "Target": 12.0, "MRV": 16.0},
+    "Back": {"MEV": 10.0, "Target": 16.0, "MRV": 24.0},
     "Lower Back": {"MEV": 4.0, "Target": 6.0, "MRV": 10.0},
-    "Glutes": {"MEV": 8.0, "Target": 12.0, "MRV": 18.0},
-    "Legs": {"MEV": 10.0, "Target": 14.0, "MRV": 20.0},
-    "Shoulders": {"MEV": 8.0, "Target": 10.0, "MRV": 16.0},
-    "Biceps": {"MEV": 6.0, "Target": 8.0, "MRV": 14.0},
-    "Triceps": {"MEV": 6.0, "Target": 8.0, "MRV": 14.0},
-    "Forearms": {"MEV": 4.0, "Target": 6.0, "MRV": 10.0},
-    "Abs": {"MEV": 4.0, "Target": 6.0, "MRV": 12.0},
-    "Obliques": {"MEV": 4.0, "Target": 6.0, "MRV": 12.0},
-    "Calves": {"MEV": 4.0, "Target": 6.0, "MRV": 12.0},
+    "Glutes": {"MEV": 8.0, "Target": 12.0, "MRV": 20.0},
+    "Legs": {"MEV": 8.0, "Target": 14.0, "MRV": 24.0},
+    "Shoulders": {"MEV": 6.0, "Target": 12.0, "MRV": 20.0},
+    "Biceps": {"MEV": 8.0, "Target": 12.0, "MRV": 20.0},
+    "Triceps": {"MEV": 6.0, "Target": 12.0, "MRV": 20.0},
+    "Forearms": {"MEV": 4.0, "Target": 8.0, "MRV": 14.0},
+    "Abs": {"MEV": 6.0, "Target": 10.0, "MRV": 16.0},
+    "Obliques": {"MEV": 4.0, "Target": 8.0, "MRV": 14.0},
+    "Calves": {"MEV": 6.0, "Target": 12.0, "MRV": 20.0},
 }
 
 BODY_PART_ORDER = list(DEFAULT_VOLUME_RANGES.keys())

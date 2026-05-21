@@ -73,7 +73,12 @@ class DataManager:
             "composition": get_body_composition(self.engine),
         }
 
-    def add_exercise(self, name: str, category: str, body_part: str) -> bool:
+    def add_exercise(
+        self,
+        name: str,
+        category: str | None = None,
+        body_part: str | None = None,
+    ) -> bool:
         """Insert a new exercise into the database.
 
         Returns True on success, False on database error.

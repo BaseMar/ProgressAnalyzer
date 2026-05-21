@@ -3,6 +3,7 @@ from datetime import datetime
 import streamlit as st
 
 from data_manager import DataManager
+from db.exercise_muscle_resolver import resolve_exercise
 from ui.utils.exercise_matcher import normalize
 
 
@@ -173,34 +174,27 @@ class SidebarUpload:
         
         st.sidebar.subheader("Add new exercise")
         name = st.sidebar.text_input("Exercise name", value=suggested_name, key="new_exercise_name")
-        category = st.sidebar.selectbox("Category", ["Push", "Pull", "Legs"], key="exercise_category")
-        body = st.sidebar.selectbox(
-            "Body Part",
-            [
-                "Chest",
-                "Back",
-                "Lower Back",
-                "Glutes",
-                "Shoulders",
-                "Biceps",
-                "Triceps",
-                "Forearms",
-                "Abs",
-                "Obliques",
-                "Legs",
-                "Calves",
-            ],
-            key="exercise_body"
-        )
+        resolution = resolve_exercise(name.strip(), allow_web=False) if name and name.strip() else None
+        if resolution:
+            target_summary = ", ".join(
+                f"{target.muscle_group} ({target.role})"
+                for target in resolution.targets
+            )
+            st.sidebar.caption(
+                f"Detected: {resolution.category} / {resolution.body_part} | {target_summary}"
+            )
+        elif name and name.strip():
+            st.sidebar.caption(
+                "No local match yet. The app will try an internet lookup when you add it."
+            )
 
         if st.sidebar.button("Add exercise", icon=":material/add:", width="stretch"):
             if not name or not name.strip():
                 st.sidebar.error("Exercise name cannot be empty")
                 return
-            
             try:
-                if not self.dm.add_exercise(name.strip(), category, body):
-                    st.sidebar.error("Failed to add exercise.")
+                if not self.dm.add_exercise(name.strip()):
+                    st.sidebar.error("Failed to add exercise or detect muscle targets.")
                     return
 
                 st.sidebar.success("Exercise added!")

@@ -2,6 +2,8 @@ import logging
 import pandas as pd
 from sqlalchemy import text
 
+from db.exercise_muscle_resolver import MuscleTarget, resolve_exercise
+
 
 def get_workout_sessions(engine) -> pd.DataFrame:
     query = text("""
@@ -95,23 +97,60 @@ def get_body_composition(engine) -> pd.DataFrame:
         df = pd.read_sql(query, conn)
     return df
 
-def insert_exercise(engine, name: str, category: str, body_part: str) -> bool:
+def insert_exercise(
+    engine,
+    name: str,
+    category: str | None = None,
+    body_part: str | None = None,
+    muscle_targets: list[MuscleTarget] | None = None,
+) -> bool:
     """Insert a new exercise into the database.
 
     Returns True on successful insert, otherwise False.
     """
-    query = text(
+    resolution = resolve_exercise(name, allow_web=True)
+    if muscle_targets is None:
+        if resolution is None:
+            raise ValueError(f"Could not resolve muscle targets for exercise: {name}")
+        muscle_targets = resolution.targets
+    if category is None:
+        category = resolution.category if resolution else "Pull"
+    if body_part is None:
+        body_part = resolution.body_part if resolution else muscle_targets[0].muscle_group
+
+    exercise_query = text(
         """
-        WITH next_exercise AS (
-            SELECT COALESCE(MAX(exercise_id), 0) + 1 AS exercise_id
-            FROM exercises
-        ),
-        inserted_exercise AS (
-            INSERT INTO exercises (exercise_id, exercise_name, category, body_part)
-            SELECT exercise_id, :name, :category, :body_part
-            FROM next_exercise
-            RETURNING exercise_id
+        INSERT INTO exercises (exercise_id, exercise_name, category, body_part)
+        VALUES (
+            (SELECT COALESCE(MAX(exercise_id), 0) + 1 FROM exercises),
+            :name,
+            :category,
+            :body_part
         )
+        RETURNING exercise_id
+    """
+    )
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("LOCK TABLE exercises IN EXCLUSIVE MODE"))
+            exercise_id = conn.execute(
+                exercise_query,
+                {"name": name, "category": category, "body_part": body_part},
+            ).scalar()
+            upsert_exercise_muscle_targets(conn, exercise_id, muscle_targets)
+        return True
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.exception("SQL error when adding exercise: %s", e)
+        return False
+
+
+def upsert_exercise_muscle_targets(conn, exercise_id: int, muscle_targets: list[MuscleTarget]) -> None:
+    if not muscle_targets:
+        return
+
+    muscle_query = text(
+        """
         INSERT INTO exercise_muscle_map (
             exercise_id,
             muscle_group,
@@ -120,14 +159,14 @@ def insert_exercise(engine, name: str, category: str, body_part: str) -> bool:
             set_factor,
             source_note
         )
-        SELECT
-            exercise_id,
-            :body_part,
-            :body_part,
-            'primary',
-            1.0,
-            'Added from app exercise form'
-        FROM inserted_exercise
+        VALUES (
+            :exercise_id,
+            :muscle_group,
+            :muscle_name,
+            :role,
+            :set_factor,
+            :source_note
+        )
         ON CONFLICT (exercise_id, muscle_group) DO UPDATE
         SET
             muscle_name = EXCLUDED.muscle_name,
@@ -137,17 +176,20 @@ def insert_exercise(engine, name: str, category: str, body_part: str) -> bool:
             updated_at = now()
     """
     )
-    try:
-        with engine.begin() as conn:
-            conn.execute(text("LOCK TABLE exercises IN EXCLUSIVE MODE"))
-            conn.execute(
-                query, {"name": name, "category": category, "body_part": body_part}
-            )
-        return True
-    except Exception as e:
-        logger = logging.getLogger(__name__)
-        logger.exception("SQL error when adding exercise: %s", e)
-        return False
+    conn.execute(
+        muscle_query,
+        [
+            {
+                "exercise_id": exercise_id,
+                "muscle_group": target.muscle_group,
+                "muscle_name": target.muscle_name,
+                "role": target.role,
+                "set_factor": target.set_factor,
+                "source_note": target.source_note,
+            }
+            for target in muscle_targets
+        ],
+    )
 
 def insert_body_measurements(engine, data):
     """Insert a body measurements record into the body_measurements table.
