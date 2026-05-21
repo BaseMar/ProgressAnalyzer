@@ -102,12 +102,44 @@ def insert_exercise(engine, name: str, category: str, body_part: str) -> bool:
     """
     query = text(
         """
-        INSERT INTO exercises (exercise_name, Category, body_part)
-        VALUES (:name, :category, :body_part)
+        WITH next_exercise AS (
+            SELECT COALESCE(MAX(exercise_id), 0) + 1 AS exercise_id
+            FROM exercises
+        ),
+        inserted_exercise AS (
+            INSERT INTO exercises (exercise_id, exercise_name, category, body_part)
+            SELECT exercise_id, :name, :category, :body_part
+            FROM next_exercise
+            RETURNING exercise_id
+        )
+        INSERT INTO exercise_muscle_map (
+            exercise_id,
+            muscle_group,
+            muscle_name,
+            role,
+            set_factor,
+            source_note
+        )
+        SELECT
+            exercise_id,
+            :body_part,
+            :body_part,
+            'primary',
+            1.0,
+            'Added from app exercise form'
+        FROM inserted_exercise
+        ON CONFLICT (exercise_id, muscle_group) DO UPDATE
+        SET
+            muscle_name = EXCLUDED.muscle_name,
+            role = EXCLUDED.role,
+            set_factor = EXCLUDED.set_factor,
+            source_note = EXCLUDED.source_note,
+            updated_at = now()
     """
     )
     try:
         with engine.begin() as conn:
+            conn.execute(text("LOCK TABLE exercises IN EXCLUSIVE MODE"))
             conn.execute(
                 query, {"name": name, "category": category, "body_part": body_part}
             )

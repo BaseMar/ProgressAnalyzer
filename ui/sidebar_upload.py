@@ -199,7 +199,10 @@ class SidebarUpload:
                 return
             
             try:
-                self.dm.add_exercise(name.strip(), category, body)
+                if not self.dm.add_exercise(name.strip(), category, body):
+                    st.sidebar.error("Failed to add exercise.")
+                    return
+
                 st.sidebar.success("Exercise added!")
                 
                 st.cache_data.clear()

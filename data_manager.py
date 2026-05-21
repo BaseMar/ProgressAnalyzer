@@ -79,8 +79,7 @@ class DataManager:
         Returns True on success, False on database error.
         """
         try:
-            insert_exercise(self.engine, name, category, body_part)
-            return True
+            return insert_exercise(self.engine, name, category, body_part)
         except Exception as e:
             logger.exception("add_exercise failed: %s", e)
             return False
