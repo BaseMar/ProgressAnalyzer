@@ -38,8 +38,10 @@ BODY_PART_ORDER = list(DEFAULT_VOLUME_RANGES.keys())
 
 STATUS_META = {
     "under": {"label": "Undertrained", "color": "#3B82F6"},
-    "on_target": {"label": "Trained", "color": "#22C55E"},
-    "over": {"label": "Overtrained", "color": "#F97316"},
+    "minimum": {"label": "Minimum", "color": "#06B6D4"},
+    "on_target": {"label": "Target", "color": "#22C55E"},
+    "high": {"label": "High", "color": "#F59E0B"},
+    "over": {"label": "Overtrained", "color": "#EF4444"},
     "no_range": {"label": "No range", "color": MUTED},
 }
 
@@ -322,6 +324,7 @@ def _build_heatmap_df(
         target = float(body_range.get("Target", 0.0))
         mrv = float(body_range.get("MRV", 0.0))
         sets_per_week = trained_sets / safe_weeks
+        target_pct = (sets_per_week / target * 100) if target > 0 else None
 
         rows.append(
             {
@@ -331,20 +334,32 @@ def _build_heatmap_df(
                 "MEV": mev,
                 "Target": target,
                 "MRV": mrv,
-                "Status": _status_from_range(sets_per_week, mev, mrv),
+                "Target %": target_pct,
+                "Status": _status_from_range(sets_per_week, mev, target, mrv),
             }
         )
 
     return pd.DataFrame(rows)
 
 
-def _status_from_range(sets_per_week: float, mev: float, mrv: float) -> str:
-    if mev <= 0 and mrv <= 0:
+def _status_from_range(sets_per_week: float, mev: float, target: float, mrv: float) -> str:
+    if mev <= 0 and target <= 0 and mrv <= 0:
         return "no_range"
     if sets_per_week < mev:
         return "under"
     if mrv > 0 and sets_per_week > mrv:
         return "over"
+    if target <= 0:
+        return "on_target"
+
+    target_floor = max(mev, target * 0.9)
+    target_ceiling = min(mrv, target * 1.1) if mrv > 0 else target * 1.1
+    if sets_per_week < target_floor:
+        return "minimum"
+    if sets_per_week <= target_ceiling:
+        return "on_target"
+    if mrv > 0 and sets_per_week <= mrv:
+        return "high"
     return "on_target"
 
 
@@ -621,10 +636,12 @@ def _body_image_data_uri(mtime_ns: int) -> str:
 
 def _status_row(row: pd.Series) -> str:
     meta = STATUS_META[row["Status"]]
+    target_pct = row.get("Target %")
+    target_text = "n/a" if pd.isna(target_pct) else f"{target_pct:.0f}%"
     return f"""
     <div class="status-row">
       <span class="dot" style="background:{meta["color"]}"></span>
       <span class="part">{escape(str(row["Body Part"]))}</span>
-      <span class="dose">{row["Sets / Week"]:.1f} | {row["MEV"]:.0f}-{row["MRV"]:.0f}</span>
+      <span class="dose">{row["Sets / Week"]:.1f}/wk | {target_text}</span>
     </div>
     """

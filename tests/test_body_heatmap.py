@@ -1,9 +1,13 @@
+import pandas as pd
+
 from ui.utils.body_heatmap import (
     BODY_IMAGE_PATH,
     MUSCLE_GROUP_SEEDS,
+    _build_heatmap_df,
     _body_fill_mask,
     _excluded_overlay_mask,
     _mask_from_seeds,
+    _status_from_range,
 )
 
 
@@ -61,3 +65,31 @@ def test_heatmap_seeds_cover_front_thigh_and_upper_oblique_panels():
 
     assert all(legs_mask[y, x] for x, y in front_thigh_points)
     assert all(obliques_mask[y, x] for x, y in upper_oblique_points)
+
+
+def test_status_uses_target_band_inside_mev_mrv_range():
+    assert _status_from_range(8.0, mev=10.0, target=12.0, mrv=16.0) == "under"
+    assert _status_from_range(10.5, mev=10.0, target=12.0, mrv=16.0) == "minimum"
+    assert _status_from_range(12.5, mev=10.0, target=12.0, mrv=16.0) == "on_target"
+    assert _status_from_range(14.0, mev=10.0, target=12.0, mrv=16.0) == "high"
+    assert _status_from_range(17.0, mev=10.0, target=12.0, mrv=16.0) == "over"
+
+
+def test_build_heatmap_df_reports_target_percentage():
+    body_df = pd.DataFrame(
+        [
+            {"Body Part": "Back", "Total_Sets": 21.0},
+        ]
+    )
+
+    result = _build_heatmap_df(
+        body_df,
+        ["Back"],
+        {"Back": {"MEV": 14.0, "Target": 20.0, "MRV": 26.0}},
+        period_weeks=3.0,
+    )
+
+    row = result.iloc[0]
+    assert row["Sets / Week"] == 7.0
+    assert row["Target %"] == 35.0
+    assert row["Status"] == "under"
