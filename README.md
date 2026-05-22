@@ -36,13 +36,34 @@ I designed and implemented the full application, including:
 
 Live app: <https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app>
 
-The deployed version runs against a hosted Supabase database and displays my
-workout and body-measurement data for demonstration purposes. Local development
-uses the same application code, but requires a PostgreSQL-compatible database
-configured through `DATABASE_URL`.
+The deployed version uses anonymized personal training and body-measurement data
+prepared for demonstration purposes and stored in a hosted Supabase database.
+Local development uses the same application code, but requires a
+PostgreSQL-compatible database configured through `DATABASE_URL`.
 
 This is a public single-user demo, not a multi-user product with private
 per-user data isolation.
+
+## Preview
+
+![Main Dashboard overview](screenshots/Main_Dashboard_1.png)
+
+![Analytics overview](screenshots/Analytics_1.png)
+
+![Body parts heatmap](screenshots/Body_Parts_2.png)
+
+## Tech Stack
+
+- **Python 3.11+**
+- **Streamlit** for the interactive dashboard UI
+- **Pandas** and **NumPy** for data processing and aggregation
+- **PostgreSQL** hosted on **Supabase** for persistent workout and body-tracking data
+- **SQLAlchemy** with **psycopg2** for database access
+- **Plotly** for interactive charts
+- **Pillow** for body heatmap image processing
+- **Pytest** for automated tests
+- **python-dotenv** for local environment configuration
+- **Streamlit Community Cloud** for deployment
 
 ## What It Does
 
@@ -75,21 +96,41 @@ The dashboard can answer questions such as:
 
 ## Features
 
+### Training Analytics
+
 - Session overview: volume, set count, intensity, duration, and workload.
 - Exercise analytics: total volume, estimated 1RM, average RIR, exposure, and
   progress trends.
 - Progress classification: improving, stagnating, and regressing exercises.
-- Fatigue monitoring: RIR distribution, sets to failure, volume load, intensity
-  load, and fatigue score.
-- Body-part analysis: weekly set volume, muscle-group exposure, and volume
-  distribution.
-- Body-part heatmap: visual comparison of training volume against target ranges.
-- Body metrics: body weight, muscle mass, fat mass, body fat percentage,
-  measurements, and proportions.
-- TXT workout import: parses workout notes from the sidebar and supports
-  flexible set and RIR formats.
-- Exercise matching: helps map imported exercise names to existing database
-  exercises or add missing exercises.
+- Training frequency: sessions per week and average days between sessions.
+
+### Fatigue & Recovery
+
+- RIR distribution and average RIR.
+- Sets to failure and failure-set ratio.
+- Volume load and intensity load.
+- Per-session fatigue score and high-fatigue session indicators.
+
+### Body-Part Analysis
+
+- Weekly set volume by body part.
+- Muscle-group exposure through exercise-to-muscle mappings.
+- Volume distribution across trained body parts.
+- Heatmap against editable target volume ranges.
+
+### Body Metrics
+
+- Body weight, muscle mass, fat mass, water mass, and body fat percentage.
+- Measurement trends for chest, waist, abdomen, hips, thigh, calf, and biceps.
+- Body proportion ratios such as chest-to-waist and thigh-to-waist.
+- Recomposition quality based on weight and lean-mass change.
+
+### Data Import
+
+- TXT workout import from sidebar notes.
+- Flexible parsing for common set, RIR, and time-range formats.
+- Exercise matching for imported exercise names.
+- Option to add missing exercises with inferred muscle targets.
 
 ## App Sections
 
@@ -285,6 +326,11 @@ python -m db.seed_exercise_muscle_map
 - PostgreSQL-compatible database available through `DATABASE_URL`
 - dependencies from `requirements.txt`
 
+> Note: Local setup currently requires an existing PostgreSQL-compatible
+> database with the expected schema. The repository does not yet include full
+> database migrations or an anonymized seed dataset. For quick review, use the
+> live demo.
+
 Minimal `.env` example:
 
 ```env
@@ -309,6 +355,9 @@ streamlit run streamlit_app.py
 
 On startup, the app loads data from the database, builds `MetricsInput`,
 computes all metrics, and renders the dashboard sections.
+
+If `DATABASE_URL` is missing or points to a database without the expected
+tables, the app will fail during startup data loading.
 
 ## Tests
 
