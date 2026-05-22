@@ -238,67 +238,224 @@ class SidebarUpload:
         return matches / max_len if max_len > 0 else 0.0
 
     def _parse_txt(self, text: str):
-        """Parse workout data from text format.
-        
-        Expected format:
-        1. Exercise Name
-        5x50 / 4x55 / 3x60
+        """Parse workout data from a TXT workout log.
+
+        Supported examples:
+        1. Bench Press
+        10x100 / 8x110 / 6x115
         RIR: 2 / 1 / 0
+
+        1) Bench Press
+        Serie: 10 x 100 kg, 8x110, 6x115
+        RIR 2/1/0
         """
+        text = self._normalize_txt(text)
+        blocks = self._extract_exercise_blocks(text)
         exercises = []
 
-        pattern = r"\d+\.\s(.+?)\n(.+?)\nRIR[:\s]*(.+?)(?:\n|$)"
-        matches = re.findall(pattern, text, re.S)
-
-        if not matches:
-            return None
-
-        for name, sets_line, rir_line in matches:
-            name = name.strip()
-            
-            if not name:
-                continue
-            
-            sets = [s.strip() for s in sets_line.split("/")]
-            rirs = [r.strip() for r in rir_line.split("/")]
-
-            if len(sets) != len(rirs):
-                st.sidebar.warning(f"Exercise '{name}': set count != RIR count. Skipping.")
-                continue
-
-            sets_data = []
-
-            for set_str, rir_str in zip(sets, rirs):
-                try:
-                    if 'x' not in set_str:
-                        st.sidebar.warning(f"Exercise '{name}': Invalid set format '{set_str}'. Expected 'reps x weight'")
-                        continue
-                    
-                    reps_str, weight_str = set_str.split("x", 1)
-                    reps = int(reps_str.strip())
-                    weight = float(weight_str.strip())
-                    rir = int(rir_str.strip())
-                    
-                    if reps <= 0 or weight < 0 or rir < 0:
-                        st.sidebar.warning(f"Exercise '{name}': Negative values not allowed. Set skipped.")
-                        continue
-                    
-                    sets_data.append({
-                        "reps": reps,
-                        "weight": weight,
-                        "rir": rir
-                    })
-                except ValueError as e:
-                    st.sidebar.warning(f"Exercise '{name}': Failed to parse set '{set_str}' - {str(e)}")
-                    continue
-
+        for name, block_lines in blocks:
+            sets_data = self._parse_exercise_block(name, block_lines)
             if sets_data:
-                exercises.append({
-                    "name": name,
-                    "sets": sets_data
-                })
+                exercises.append({"name": name, "sets": sets_data})
 
         return exercises if exercises else None
+
+    def _normalize_txt(self, text: str) -> str:
+        """Normalize common text variants before parsing."""
+        return (
+            text.replace("\r\n", "\n")
+            .replace("\r", "\n")
+            .replace("\u00d7", "x")
+            .replace("\u2715", "x")
+            .replace("\u2013", "-")
+            .replace("\u2014", "-")
+        )
+
+    def _extract_exercise_blocks(self, text: str) -> list[tuple[str, list[str]]]:
+        """Split normalized text into exercise blocks."""
+        lines = [line.strip() for line in text.splitlines()]
+        header_pattern = re.compile(r"^\s*\d+\s*[\.\)\-]\s*(?P<name>.+?)\s*$")
+        blocks = []
+        current_name = None
+        current_lines = []
+
+        for line in lines:
+            header_match = header_pattern.match(line)
+            if header_match:
+                if current_name:
+                    blocks.append((current_name, current_lines))
+                current_name, inline_data = self._split_name_and_inline_data(
+                    header_match.group("name")
+                )
+                current_lines = [inline_data] if inline_data else []
+                continue
+
+            if current_name:
+                current_lines.append(line)
+
+        if current_name:
+            blocks.append((current_name, current_lines))
+
+        if blocks:
+            return [(name, lines) for name, lines in blocks if name]
+
+        return self._extract_unnumbered_blocks(lines)
+
+    def _extract_unnumbered_blocks(self, lines: list[str]) -> list[tuple[str, list[str]]]:
+        """Fallback for logs where exercise names are not numbered."""
+        blocks = []
+        index = 0
+
+        while index < len(lines):
+            line = lines[index].strip()
+            next_line = lines[index + 1].strip() if index + 1 < len(lines) else ""
+            inline_name, inline_data = self._split_name_and_inline_data(line)
+
+            if (
+                inline_name
+                and inline_data
+                and not self._is_metadata_line(line)
+            ):
+                blocks.append((inline_name, [inline_data]))
+                index += 1
+                continue
+
+            if (
+                line
+                and not self._is_metadata_line(line)
+                and not self._contains_set_token(line)
+                and self._contains_set_token(next_line)
+            ):
+                name = self._clean_exercise_name(line)
+                block_lines = []
+                index += 1
+
+                while index < len(lines):
+                    candidate = lines[index].strip()
+                    following = lines[index + 1].strip() if index + 1 < len(lines) else ""
+                    if (
+                        candidate
+                        and not self._is_metadata_line(candidate)
+                        and not self._contains_set_token(candidate)
+                        and self._contains_set_token(following)
+                    ):
+                        break
+                    block_lines.append(candidate)
+                    index += 1
+
+                if name:
+                    blocks.append((name, block_lines))
+                continue
+
+            index += 1
+
+        return blocks
+
+    def _split_name_and_inline_data(self, line: str) -> tuple[str, str]:
+        """Split a line that contains both exercise name and set data."""
+        matches = self._set_token_matches(line)
+        if not matches:
+            return self._clean_exercise_name(line), ""
+
+        first_match = matches[0]
+        name = self._clean_exercise_name(line[: first_match.start()])
+        if not name:
+            return "", line
+
+        return name, line[first_match.start() :].strip()
+
+    def _parse_exercise_block(self, name: str, lines: list[str]) -> list[dict]:
+        """Parse one exercise block into set dictionaries."""
+        set_tokens = []
+        rir_values = []
+
+        for line in lines:
+            if not line:
+                continue
+            set_tokens.extend(self._parse_set_tokens(line))
+            if self._is_rir_line(line):
+                rir_values.extend(self._parse_rir_values(line))
+
+        if not set_tokens:
+            st.sidebar.warning(f"Exercise '{name}': no valid sets found.")
+            return []
+
+        if rir_values and len(rir_values) != len(set_tokens):
+            st.sidebar.warning(
+                f"Exercise '{name}': set count != RIR count. Missing RIR values will be imported as empty."
+            )
+
+        sets_data = []
+        for idx, token in enumerate(set_tokens):
+            reps = token["reps"]
+            weight = token["weight"]
+            rir = rir_values[idx] if idx < len(rir_values) else None
+
+            if reps <= 0 or weight < 0 or (rir is not None and rir < 0):
+                st.sidebar.warning(f"Exercise '{name}': negative values not allowed. Set skipped.")
+                continue
+
+            sets_data.append({"reps": reps, "weight": weight, "rir": rir})
+
+        return sets_data
+
+    def _parse_set_tokens(self, line: str) -> list[dict]:
+        """Find all reps x weight tokens in a line."""
+        tokens = []
+        for match in self._set_token_matches(line):
+            try:
+                tokens.append(
+                    {
+                        "reps": int(match.group("reps")),
+                        "weight": float(match.group("weight").replace(",", ".")),
+                    }
+                )
+            except ValueError:
+                continue
+
+        return tokens
+
+    def _set_token_matches(self, line: str):
+        """Find reps/weight token regex matches in source order."""
+        pattern = re.compile(
+            r"(?<![\dA-Za-z])(?P<reps>\d{1,3})\s*(?:x|\*)\s*(?P<weight>\d+(?:[\.,]\d+)?)\s*(?:kg)?",
+            re.IGNORECASE,
+        )
+        at_pattern = re.compile(
+            r"(?<![\dA-Za-z])(?P<reps>\d{1,3})\s*@\s*(?P<weight>\d+(?:[\.,]\d+)?)\s*(?:kg)?",
+            re.IGNORECASE,
+        )
+
+        return sorted(
+            [*pattern.finditer(line), *at_pattern.finditer(line)],
+            key=lambda match: match.start(),
+        )
+
+    def _parse_rir_values(self, line: str) -> list[int]:
+        """Parse RIR values from a line that contains the RIR label."""
+        inline_values = re.findall(
+            r"\bRIR\b\s*[:=]?\s*(-?\d+)\b",
+            line,
+            flags=re.IGNORECASE,
+        )
+        if len(inline_values) > 1:
+            return [int(value) for value in inline_values]
+
+        parts = re.split(r"\bRIR\b", line, maxsplit=1, flags=re.IGNORECASE)
+        values = parts[1] if len(parts) > 1 else ""
+        return [int(value) for value in re.findall(r"-?\d+", values)]
+
+    def _contains_set_token(self, line: str) -> bool:
+        return bool(self._parse_set_tokens(line))
+
+    def _is_rir_line(self, line: str) -> bool:
+        return bool(re.search(r"\bRIR\b", line, re.IGNORECASE))
+
+    def _is_metadata_line(self, line: str) -> bool:
+        return bool(re.match(r"^\s*(godzina|czas|date|data)\b", line, re.IGNORECASE))
+
+    def _clean_exercise_name(self, name: str) -> str:
+        return re.sub(r"\s+", " ", name).strip(" :-")
 
     def _parse_time_range(self, text: str):
         """Parse workout time range from text.
@@ -309,17 +466,24 @@ class SidebarUpload:
         Returns:
             tuple: (start_time, end_time) or (None, None) if not found
         """
+        text = self._normalize_txt(text)
         match = re.search(
-            r"Godzina:\s*(\d{2}:\d{2})\s*[-\u2013\u2014]\s*(\d{2}:\d{2})",
+            r"(?:\b(?:Godzina|Godz\.?|Czas)\b\s*:?\s*)?(\d{1,2}[:\.]\d{2})\s*(?:-|do)\s*(\d{1,2}[:\.]\d{2})",
             text,
+            re.IGNORECASE,
         )
 
         if not match:
             return None, None
 
         try:
-            start = datetime.strptime(match.group(1), "%H:%M").time()
-            end = datetime.strptime(match.group(2), "%H:%M").time()
+            start = datetime.strptime(self._pad_time(match.group(1)), "%H:%M").time()
+            end = datetime.strptime(self._pad_time(match.group(2)), "%H:%M").time()
             return start, end
         except ValueError:
             return None, None
+
+    def _pad_time(self, value: str) -> str:
+        value = value.replace(".", ":")
+        hour, minute = value.split(":", 1)
+        return f"{int(hour):02d}:{minute}"
