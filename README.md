@@ -1,22 +1,159 @@
 # Workout Progress Analyzer
 
-A Streamlit analytics dashboard for tracking strength training, exercise
-progress, training fatigue, body composition, and body measurements. The app is
-structured around a testable metrics layer so the UI renders precomputed data
-instead of owning business logic.
+## Project Goal
+
+Workout logs usually show raw training history, but they rarely explain whether
+a user is actually progressing, accumulating fatigue, or training muscle groups
+in a balanced way.
+
+This project turns raw workout and body-measurement data into an analytical
+dashboard that helps identify:
+
+- strength progress and regressions,
+- training consistency,
+- fatigue patterns,
+- body-part volume distribution,
+- body recomposition trends.
+
+It also connects exercise-level performance with muscle-group exposure, so a
+training log can answer not only "what did I lift?", but also "what parts of
+the body am I actually training, how hard, and with what trend over time?".
+
+## My Role
+
+I designed and implemented the full application, including:
+
+- relational data model for workout and body-tracking data,
+- metric calculation layer for sessions, exercises, fatigue, progress, body
+  parts, and body measurements,
+- Streamlit dashboard UI,
+- TXT workout importer with flexible parsing and exercise matching,
+- automated tests for core metric logic, mappers, filters, and import helpers,
+- visual analytics for progress, fatigue, muscle-group volume, and body
+  composition.
+
+## Live Demo
 
 Live app: <https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app>
 
+The deployed version runs against a hosted Supabase database and displays my
+workout and body-measurement data for demonstration purposes. Local development
+uses the same application code, but requires a PostgreSQL-compatible database
+configured through `DATABASE_URL`.
+
+This is a public single-user demo, not a multi-user product with private
+per-user data isolation.
+
+## What It Does
+
+Workout Progress Analyzer is a Streamlit dashboard for tracking strength
+training, recovery pressure, exercise trends, body measurements, and body
+composition. It imports workout data from a database, maps it into a small
+domain model, computes core metrics in a separate calculation layer, and renders
+the results as focused dashboard views.
+
+The app is built for lifters who want more than a list of completed workouts.
+It highlights whether performance is moving up or down, whether volume is
+distributed sensibly across body parts, and whether body composition is changing
+alongside training.
+
+## Example Insights
+
+The dashboard can answer questions such as:
+
+- Which exercises are improving, stagnating, or regressing?
+- Which exercises generate the highest training volume or estimated 1RM?
+- Which muscle groups receive the most weekly volume, and which may be
+  undertrained?
+- Is training fatigue increasing through more failure sets, lower RIR, or higher
+  workload?
+- Are high-volume sessions concentrated in specific periods or body parts?
+- Is body weight changing together with muscle mass, fat mass, or body fat
+  percentage?
+- Are body measurements and proportions moving in the expected direction over
+  time?
+
 ## Features
 
-- workout session overview: volume, set count, intensity, and duration,
-- exercise metrics: total volume, estimated 1RM, strength trends, and exposure,
-- body-part analysis using detailed exercise-to-muscle mappings,
-- body-part heatmap based on weekly training volume,
-- fatigue monitoring based on RIR, failure sets, intensity, and volume,
-- progress analysis for improving, stagnating, and regressing exercises,
-- body metrics: weight, muscle mass, body fat, measurements, and proportions,
-- TXT workout import from the sidebar.
+- Session overview: volume, set count, intensity, duration, and workload.
+- Exercise analytics: total volume, estimated 1RM, average RIR, exposure, and
+  progress trends.
+- Progress classification: improving, stagnating, and regressing exercises.
+- Fatigue monitoring: RIR distribution, sets to failure, volume load, intensity
+  load, and fatigue score.
+- Body-part analysis: weekly set volume, muscle-group exposure, and volume
+  distribution.
+- Body-part heatmap: visual comparison of training volume against target ranges.
+- Body metrics: body weight, muscle mass, fat mass, body fat percentage,
+  measurements, and proportions.
+- TXT workout import: parses workout notes from the sidebar and supports
+  flexible set and RIR formats.
+- Exercise matching: helps map imported exercise names to existing database
+  exercises or add missing exercises.
+
+## App Sections
+
+- `Main Dashboard` - high-level training summary and recent session history.
+- `Exercises` - exercise-specific performance and trend analysis.
+- `Body Parts` - muscle-group volume distribution and heatmap.
+- `Analytics` - progress and fatigue analysis.
+- `Body Metrics` - body composition and measurement trends.
+
+## TXT Workout Import
+
+The sidebar importer accepts structured workout notes such as:
+
+```text
+Godzina 15:35-16:50
+
+1. Incline Dumbbell Press
+10x24/10x24/6x26
+RIR 2/2/0
+
+2. Lat Pulldown
+12x70 / 10x70 / 11x70
+RIR: 1 / 0 / 0
+```
+
+It also supports common variants:
+
+- time ranges like `Godzina: 10:30 - 12:45`, `Godz. 15.35 do 16.50`, or
+  `15:35-16:50`,
+- numbered exercises written as `1.`, `1)`, or `1 -`,
+- inline exercise entries like `Bench Press: 10x100/8x110 RIR 2/1`,
+- set formats such as `10x100`, `10 x 100 kg`, `10*100`, and `10 @ 100`,
+- comma decimal weights such as `67,5`,
+- missing RIR values, which are imported as empty instead of dropping the whole
+  exercise.
+
+If an imported exercise is not found in the database, the app suggests similar
+existing exercise names and allows the user to select one or add a new exercise.
+
+## Key Technical Decisions
+
+- Separated metric calculation from the Streamlit UI to keep business logic
+  testable.
+- Used immutable domain models to make data flow predictable.
+- Built a central metrics engine to compute all dashboard metrics from one
+  structured input.
+- Kept database access isolated in the `db/` and `data_manager.py` layers.
+- Added tests for metric calculations, filtering logic, data mapping, and TXT
+  import parsing.
+
+## Data Flow
+
+```text
+Database
+  -> DataManager / SQL queries
+  -> Data Loader
+  -> Domain Models / MetricsInput
+  -> Metrics Engine
+  -> Streamlit Views
+```
+
+Workout and body-tracking records are read from the database, normalized into
+domain models, passed through one structured `MetricsInput`, and then consumed
+by the dashboard views as precomputed metrics.
 
 ## Architecture
 
@@ -32,9 +169,11 @@ streamlit_app.py
   -> models/             # immutable domain models
 ```
 
-Core rule: views do not calculate metrics. Data is loaded, mapped into
-`MetricsInput`, processed by `metrics.metrics_engine.compute_all_metrics`, and
-then rendered by the UI.
+Core rule: the main metric formulas live outside the UI. Data is loaded from the
+database, mapped into `MetricsInput`, processed by
+`metrics.metrics_engine.compute_all_metrics`, and then rendered by the UI. Views
+may still perform presentation-level reshaping, filtering, or aggregation needed
+for a specific chart or table.
 
 ## Data Model
 
@@ -50,6 +189,75 @@ Body tracking data uses:
 
 - `body_composition`
 - `body_measurements`
+
+## Data Model Diagram
+
+```mermaid
+erDiagram
+    workout_sessions ||--o{ workout_exercises : contains
+    exercises ||--o{ workout_exercises : is_performed_as
+    workout_exercises ||--o{ workout_sets : has
+    exercises ||--o{ exercise_muscle_map : targets
+
+    workout_sessions {
+        int session_id PK
+        date session_date
+        time start_time
+        time end_time
+    }
+
+    workout_exercises {
+        int workout_exercise_id PK
+        int session_id FK
+        int exercise_id FK
+    }
+
+    workout_sets {
+        int set_id PK
+        int workout_exercise_id FK
+        int set_number
+        int repetitions
+        float weight
+        int rir
+    }
+
+    exercises {
+        int exercise_id PK
+        string exercise_name
+        string category
+        string body_part
+    }
+
+    exercise_muscle_map {
+        int exercise_id FK
+        string muscle_group
+        string muscle_name
+        string role
+        float set_factor
+    }
+
+    body_composition {
+        date measurement_date
+        float weight
+        float muscle_mass
+        float fat_mass
+        float body_fat_percentage
+    }
+
+    body_measurements {
+        date measurement_date
+        float chest
+        float waist
+        float hips
+        float thigh
+        float calf
+        float biceps
+    }
+```
+
+`body_composition` and `body_measurements` are independent time-series tables.
+They are analyzed alongside workout sessions, but they do not need a direct
+foreign-key relationship to a specific training session.
 
 `exercise_muscle_map` supports multiple muscle targets per exercise:
 
@@ -73,8 +281,8 @@ python -m db.seed_exercise_muscle_map
 
 ## Requirements
 
-- Python 3.12 or newer
-- a database available through `DATABASE_URL`
+- Python 3.11 or newer
+- PostgreSQL-compatible database available through `DATABASE_URL`
 - dependencies from `requirements.txt`
 
 Minimal `.env` example:
@@ -100,50 +308,42 @@ streamlit run streamlit_app.py
 ```
 
 On startup, the app loads data from the database, builds `MetricsInput`,
-computes all metrics, and exposes these sections:
-
-- Main Dashboard
-- Exercises
-- Body Parts
-- Analytics
-- Body Metrics
+computes all metrics, and renders the dashboard sections.
 
 ## Tests
 
 The test suite uses `pytest` and covers mappers, domain models, the metrics
-layer, month filtering, and pure UI helpers.
+layer, month filtering, parser behavior, and pure UI helpers.
 
 ```bash
 python -m pytest
 python -m compileall -q db metrics models ui streamlit_app.py data_loader.py data_manager.py mapper.py
 ```
 
-## TXT Workout Import
-
-The importer expects this format:
-
-```text
-Godzina: 10:30 - 12:45
-
-1. Bench Press
-10x100 / 8x110 / 6x115
-RIR: 2 / 1 / 0
-
-2. Row
-12x60 / 10x65
-RIR: 3 / 2
-```
-
-If an exercise is missing from the database, the app shows similar exercise
-names and lets the user select an existing exercise or add a new one.
-
 ## Design Principles
 
-- metrics are pure functions without Streamlit dependencies,
-- domain models are immutable (`dataclass(frozen=True)`),
-- database access is separated from calculation logic,
-- the UI renders prepared data and does not own business rules,
-- tests verify behavior instead of implementation details.
+- Metrics are pure functions without Streamlit dependencies.
+- Domain models are immutable (`dataclass(frozen=True)`).
+- Database access is separated from calculation logic.
+- The UI renders prepared data and keeps business rules out of view classes.
+- Tests verify behavior instead of implementation details.
+
+## Limitations & Future Work
+
+- The current live deployment is a public single-user demo backed by one hosted
+  database, not a production multi-user SaaS application.
+- Add an anonymized seed dataset for local development, tests, and screenshots
+  without relying on the hosted Supabase database.
+- Add a Docker Compose setup for repeatable local development with a database.
+- Add a CI pipeline for automated tests, linting, and import-parser regression
+  checks.
+- Improve database setup documentation with migrations or schema bootstrap
+  scripts.
+- Extend analytics with prediction-oriented features, such as estimated progress
+  trajectory or fatigue-risk signals.
+- Add user authentication and data isolation before treating the app as a
+  multi-user product.
+- Continue improving TXT import coverage for more free-form workout note styles.
 
 ## Screenshots
 
