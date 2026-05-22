@@ -1,5 +1,29 @@
 # Workout Progress Analyzer
 
+A full-stack data analytics dashboard for strength training progress, fatigue,
+muscle-group volume, and body composition tracking.
+
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
+![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red)
+![Tests](https://img.shields.io/badge/tests-pytest-green)
+![Database](https://img.shields.io/badge/database-PostgreSQL%20%2F%20Supabase-blue)
+![Deployment](https://img.shields.io/badge/deployment-Streamlit%20Cloud-orange)
+
+## Table of Contents
+
+- [Project Goal](#project-goal)
+- [My Role](#my-role)
+- [Live Demo](#live-demo)
+- [Project Status](#project-status)
+- [Preview](#preview)
+- [Tech Stack](#tech-stack)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Data Model](#data-model)
+- [Installation](#installation)
+- [Tests](#tests)
+- [Limitations & Future Work](#limitations--future-work)
+
 ## Project Goal
 
 Workout logs usually show raw training history, but they rarely explain whether
@@ -43,6 +67,13 @@ PostgreSQL-compatible database configured through `DATABASE_URL`.
 
 This is a public single-user demo, not a multi-user product with private
 per-user data isolation.
+
+## Project Status
+
+The application is functional and deployed as a public single-user demo. Core
+analytics, TXT import, database integration, and tests are implemented. The next
+major improvements are database migrations, anonymized seed data, Docker Compose
+setup, and CI.
 
 ## Preview
 
