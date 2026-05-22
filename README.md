@@ -1,6 +1,6 @@
 # Workout Progress Analyzer
 
-A full-stack data analytics dashboard for strength training progress, fatigue,
+An end-to-end data analytics dashboard for strength training progress, fatigue,
 muscle-group volume, and body composition tracking.
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
@@ -17,6 +17,8 @@ muscle-group volume, and body composition tracking.
 - [Project Status](#project-status)
 - [Preview](#preview)
 - [Tech Stack](#tech-stack)
+- [What It Does](#what-it-does)
+- [Example Insights](#example-insights)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Data Model](#data-model)
