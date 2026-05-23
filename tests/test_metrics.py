@@ -1,11 +1,19 @@
+from datetime import date
+
 import pytest
 
+from metrics.input import MetricsInput
 from metrics.body_metrics import (
     _calculate_metric_deltas,
     _calculate_proportion_ratios,
     _calculate_recomposition_quality,
     compute_body_metrics,
 )
+from models.exercise import Exercise
+from models.exercise_muscle_target import ExerciseMuscleTarget
+from models.workout_exercise import WorkoutExercise
+from models.workout_session import WorkoutSession
+from models.workout_set import WorkoutSet
 from metrics.exercise_metrics import compute_exercise_metrics
 from metrics.fatigue_metrics import compute_fatigue_metrics
 from metrics.frequency_metrics import compute_frequency_metrics
@@ -55,6 +63,41 @@ def test_compute_exercise_metrics_aggregates_targets_and_progress(sample_input):
     assert bench["volume_trend"] == -80
     assert "Chest (primary): Pectoralis" in bench["muscle_target_summary"]
     assert result["global"]["most_trained_exercise"] == 1
+
+
+def test_compute_exercise_metrics_handles_duration_exercises():
+    sample_sessions = [
+        WorkoutSession(1, date(2026, 5, 1), None, None),
+        WorkoutSession(2, date(2026, 5, 8), None, None),
+    ]
+    input_data = MetricsInput(
+        sessions=sample_sessions,
+        workout_exercises=[
+            WorkoutExercise(101, 1, 1),
+            WorkoutExercise(102, 2, 1),
+        ],
+        sets=[
+            WorkoutSet(101, 1, 45, 0.0, 2, duration_seconds=45),
+            WorkoutSet(102, 1, 75, 0.0, 1, duration_seconds=75),
+        ],
+        exercises=[Exercise(1, "Plank", None, "Abs")],
+        exercise_muscle_targets=[
+            ExerciseMuscleTarget(1, "Abs", "Rectus abdominis", "primary", 1.0),
+        ],
+        muscle_groups=["Abs"],
+        body_measurements=[],
+        body_composition=[],
+    )
+
+    result = compute_exercise_metrics(input_data)
+    plank = result["per_exercise"][1]
+
+    assert plank["total_reps"] == 0
+    assert plank["total_volume"] == 0
+    assert plank["total_duration_seconds"] == 120
+    assert plank["best_duration_seconds"] == 75
+    assert plank["effective_sets"] == pytest.approx(4.0)
+    assert plank["estimated_1rm_max"] is None
 
 
 def test_compute_progress_metrics_classifies_strength_direction(sample_input):

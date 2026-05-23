@@ -29,6 +29,7 @@ def test_training_row_mappers_return_domain_models():
             "set_number": 1,
             "repetitions": 8,
             "weight": 100.0,
+            "duration_seconds": None,
             "rir": 1,
         }
     )
@@ -36,6 +37,7 @@ def test_training_row_mappers_return_domain_models():
     assert session.session_id == 1
     assert workout_exercise.exercise_id == 2
     assert workout_set.weight == 100.0
+    assert workout_set.duration_seconds is None
 
 
 def test_exercise_and_muscle_mappers_return_expected_values():

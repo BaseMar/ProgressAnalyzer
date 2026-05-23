@@ -8,3 +8,4 @@ class WorkoutSet:
     repetitions: int
     weight: float
     rir: int | None
+    duration_seconds: int | None = None

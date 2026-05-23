@@ -35,6 +35,7 @@ def map_workout_set(row: dict) -> WorkoutSet:
         repetitions=row["repetitions"],
         weight=row["weight"],
         rir=row.get("rir"),
+        duration_seconds=row.get("duration_seconds"),
     )
 
 

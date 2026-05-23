@@ -72,12 +72,18 @@ class ExerciseView:
         """Render per-exercise performance snapshot."""
         section_header("Performance Overview")
 
+        is_duration_exercise = bool(exercise.get("total_duration_seconds"))
         cols = st.columns(5)
         cols[0].metric("Total Sets", exercise["total_sets"])
         cols[1].metric("Sessions", exercise["sessions_count"])
-        cols[2].metric("Total Volume", f"{format_number(exercise['total_volume'], 0)} kg")
-        cols[3].metric("Max Weight", f"{format_number(exercise['max_weight'], 1)} kg")
-        cols[4].metric("Est. 1RM", f"{format_number(exercise['estimated_1rm_max'], 1)} kg")
+        if is_duration_exercise:
+            cols[2].metric("Total Time", _format_seconds(exercise.get("total_duration_seconds")))
+            cols[3].metric("Best Set", _format_seconds(exercise.get("best_duration_seconds")))
+            cols[4].metric("Effective Sets", format_number(exercise.get("effective_sets"), 1))
+        else:
+            cols[2].metric("Total Volume", f"{format_number(exercise['total_volume'], 0)} kg")
+            cols[3].metric("Max Weight", f"{format_number(exercise['max_weight'], 1)} kg")
+            cols[4].metric("Est. 1RM", f"{format_number(exercise['estimated_1rm_max'], 1)} kg")
 
     def _render_trends(self, exercise_name: str) -> None:
         """Render strength trend charts (volume and 1RM over time)."""
@@ -90,6 +96,35 @@ class ExerciseView:
             return
 
         exercise_sets["session_date"] = pd.to_datetime(exercise_sets["session_date"])
+        is_duration_exercise = (
+            "duration_seconds" in exercise_sets.columns
+            and exercise_sets["duration_seconds"].fillna(0).gt(0).any()
+        )
+        if is_duration_exercise:
+            trend_df = (
+                exercise_sets
+                .groupby("session_date")
+                .agg(
+                    **{
+                        "Duration (s)": ("duration_seconds", "sum"),
+                        "Best Set (s)": ("duration_seconds", "max"),
+                    }
+                )
+                .reset_index()
+                .sort_values("session_date")
+                .rename(columns={"session_date": "Date"})
+                .set_index("Date")
+            )
+
+            col1, col2 = st.columns(2)
+            with col1:
+                chart_label("Session Duration")
+                line_chart(trend_df, "Duration (s)")
+            with col2:
+                chart_label("Best Set")
+                line_chart(trend_df, "Best Set (s)")
+            return
+
         exercise_sets["Estimated1RM"] = exercise_sets.apply(lambda r: estimate_1rm(r["weight"], r["repetitions"]), axis=1)
 
         trend_df = (
@@ -147,3 +182,14 @@ class ExerciseView:
         )
 
         render_exercise_table(compare_df, selected=exercise_name)
+
+
+def _format_seconds(value: int | float | None) -> str:
+    if value is None:
+        return "-"
+
+    seconds = int(value)
+    minutes, remaining_seconds = divmod(seconds, 60)
+    if minutes:
+        return f"{minutes}:{remaining_seconds:02d}"
+    return f"{seconds}s"

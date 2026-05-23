@@ -279,6 +279,13 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Abs", "Rectus abdominis", "primary", None, "ExRx cable crunch"),
         ("Obliques", "Internal and external obliques", "secondary", None, "ExRx cable crunch"),
     ],
+    "Plank": [
+        ("Abs", "Rectus abdominis, transverse abdominis", "primary", None, "Front plank anti-extension hold"),
+        ("Obliques", "Internal and external obliques", "secondary", None, "Front plank lateral trunk stabilization"),
+        ("Shoulders", "Shoulder stabilizers, serratus anterior", "stabilizer", None, "Front plank shoulder support"),
+        ("Glutes", "Gluteus maximus", "stabilizer", None, "Front plank hip extension stabilization"),
+        ("Lower Back", "Erector spinae", "stabilizer", None, "Front plank spinal stabilization"),
+    ],
 }
 
 
@@ -299,6 +306,24 @@ def main() -> None:
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                     UNIQUE (exercise_id, muscle_group)
+                )
+                """
+            )
+        )
+
+        conn.execute(
+            text(
+                """
+                INSERT INTO exercises (exercise_id, exercise_name, category, body_part)
+                SELECT
+                    (SELECT COALESCE(MAX(exercise_id), 0) + 1 FROM exercises),
+                    'Plank',
+                    'Push',
+                    'Abs'
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM exercises
+                    WHERE lower(exercise_name) = lower('Plank')
                 )
                 """
             )

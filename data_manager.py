@@ -143,7 +143,12 @@ class DataManager:
 
                 for idx, s in enumerate(sets_data, start=1):
                     ins_set = text(
-                        "INSERT INTO workout_sets (workout_exercise_id, set_number, repetitions, weight, RIR) VALUES (:weid, :num, :reps, :weight, :rir)"
+                        """
+                        INSERT INTO workout_sets
+                            (workout_exercise_id, set_number, repetitions, weight, duration_seconds, RIR)
+                        VALUES
+                            (:weid, :num, :reps, :weight, :duration_seconds, :rir)
+                        """
                     )
                     conn.execute(
                         ins_set,
@@ -152,6 +157,7 @@ class DataManager:
                             "num": idx,
                             "reps": s["reps"],
                             "weight": s["weight"],
+                            "duration_seconds": s.get("duration_seconds"),
                             "rir": s["rir"],
                         },
                     )

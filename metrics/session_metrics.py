@@ -14,6 +14,7 @@ from statistics import mean
 from typing import Any, Dict
 
 from metrics.input import MetricsInput
+from metrics.utils import is_duration_set, set_duration_seconds, set_intensity, set_reps, set_volume
 
 
 def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
@@ -90,10 +91,16 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
                 duration_minutes = None
 
         total_sets = len(sets)
-        total_reps = sum(s.repetitions for s in sets)
-        total_volume = sum(s.repetitions * s.weight for s in sets)
+        strength_sets = [s for s in sets if not is_duration_set(s)]
+        total_reps = sum(set_reps(s) for s in strength_sets)
+        total_volume = sum(set_volume(s) for s in sets)
+        total_duration_seconds = sum(set_duration_seconds(s) for s in sets)
 
-        intensities = [s.weight * (1 + s.repetitions / 30) for s in sets]
+        intensities = [
+            intensity
+            for s in strength_sets
+            if (intensity := set_intensity(s)) is not None
+        ]
         avg_intensity = mean(intensities) if intensities else None
         rir_values = [s.rir for s in sets if s.rir is not None]
 
@@ -109,6 +116,7 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
             "total_sets": total_sets,
             "total_reps": total_reps,
             "total_volume": total_volume,
+            "total_duration_seconds": total_duration_seconds,
             "avg_intensity": avg_intensity,
             "avg_rir": avg_rir,
             "sets_to_failure": sets_to_failure,

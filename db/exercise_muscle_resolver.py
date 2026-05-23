@@ -312,6 +312,20 @@ def _abs(value: str) -> ExerciseResolution:
     )
 
 
+def _plank(value: str) -> ExerciseResolution:
+    source = "Auto-resolved plank pattern: front plank is an anti-extension core hold with rectus abdominis primary, obliques assisting and shoulder/hip stabilizers."
+    return _resolution(
+        "Push",
+        [
+            _target("Abs", "Rectus abdominis, transverse abdominis", "primary", source),
+            _target("Obliques", "Internal and external obliques", "secondary", source),
+            _target("Shoulders", "Shoulder stabilizers, serratus anterior", "stabilizer", source),
+            _target("Glutes", "Gluteus maximus", "stabilizer", source),
+            _target("Lower Back", "Erector spinae", "stabilizer", source),
+        ],
+    )
+
+
 _RULES: list[tuple[Callable[[str], bool], Callable[[str], ExerciseResolution]]] = [
     (_has_all("t", "bar", "row"), _row),
     (_has_any("row"), _row),
@@ -330,7 +344,8 @@ _RULES: list[tuple[Callable[[str], bool], Callable[[str], ExerciseResolution]]] 
     (_has_any("triceps", "tricep", "pushdown", "extension", "french press", "skull"), _triceps),
     (_has_any("calf", "calves"), _calf_raise),
     (_has_any("squat", "leg press", "hack", "lunge", "split squat"), _squat_or_leg_press),
-    (_has_any("crunch", "sit up", "leg raise", "knee raise", "plank"), _abs),
+    (_has_any("plank"), _plank),
+    (_has_any("crunch", "sit up", "leg raise", "knee raise"), _abs),
 ]
 
 

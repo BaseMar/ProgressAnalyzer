@@ -47,6 +47,7 @@ def get_all_sets(engine) -> pd.DataFrame:
             ws2.set_number, 
             ws2.repetitions, 
             ws2.weight, 
+            ws2.duration_seconds,
             (ws2.repetitions * ws2.weight) AS volume, 
             ws2.rir
         FROM workout_sets ws2
@@ -230,6 +231,7 @@ def get_sets_raw(engine) -> pd.DataFrame:
             ws2.set_number,
             ws2.repetitions,
             ws2.weight,
+            ws2.duration_seconds,
             ws2.rir
         FROM workout_sets ws2
         ORDER BY ws2.workout_exercise_id, ws2.set_number

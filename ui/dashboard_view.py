@@ -150,3 +150,24 @@ class DashboardView:
                             st.cache_data.clear()
                             st.toast(f"Session deleted successfully!")
                             st.rerun()
+
+
+def _legacy_set_pills(ex_df: pd.DataFrame) -> str:
+    pills = []
+    for _, row in ex_df.sort_values("set_number").iterrows():
+        duration_seconds = row.get("duration_seconds")
+        if pd.notna(duration_seconds) and int(duration_seconds) > 0:
+            pills.append(f'<span class="set-pill">{_format_seconds(duration_seconds)}</span>')
+        else:
+            pills.append(
+                f'<span class="set-pill">{row["repetitions"]} x {row["weight"]:g} kg</span>'
+            )
+    return "".join(pills)
+
+
+def _format_seconds(value: int | float) -> str:
+    seconds = int(value)
+    minutes, remaining_seconds = divmod(seconds, 60)
+    if minutes:
+        return f"{minutes}:{remaining_seconds:02d}"
+    return f"{seconds}s"

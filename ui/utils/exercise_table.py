@@ -168,6 +168,10 @@ def _vol_bar(vol: float, max_vol: float) -> str:
 
 
 def _rm_bar(rm: float, max_rm: float) -> str:
+    if pd.isna(rm):
+        return '<div class="rm-val" style="color:var(--text-muted)">-</div>'
+
+    max_rm = 0 if pd.isna(max_rm) else max_rm
     pct = round(rm / max_rm * 100, 1) if max_rm else 0
     if rm >= max_rm * 0.75:
         color = "var(--accent)"

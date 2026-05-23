@@ -353,7 +353,7 @@ class SidebarUpload:
 
     def _split_name_and_inline_data(self, line: str) -> tuple[str, str]:
         """Split a line that contains both exercise name and set data."""
-        matches = self._set_token_matches(line)
+        matches = self._work_token_matches(line)
         if not matches:
             return self._clean_exercise_name(line), ""
 
@@ -372,7 +372,7 @@ class SidebarUpload:
         for line in lines:
             if not line:
                 continue
-            set_tokens.extend(self._parse_set_tokens(line))
+            set_tokens.extend(self._parse_work_tokens(line))
             if self._is_rir_line(line):
                 rir_values.extend(self._parse_rir_values(line))
 
@@ -390,14 +390,59 @@ class SidebarUpload:
             reps = token["reps"]
             weight = token["weight"]
             rir = rir_values[idx] if idx < len(rir_values) else None
+            duration_seconds = token.get("duration_seconds")
 
             if reps <= 0 or weight < 0 or (rir is not None and rir < 0):
                 st.sidebar.warning(f"Exercise '{name}': negative values not allowed. Set skipped.")
                 continue
 
-            sets_data.append({"reps": reps, "weight": weight, "rir": rir})
+            sets_data.append(
+                {
+                    "reps": reps,
+                    "weight": weight,
+                    "rir": rir,
+                    **({"duration_seconds": duration_seconds} if duration_seconds else {}),
+                }
+            )
 
         return sets_data
+
+    def _parse_work_tokens(self, line: str) -> list[dict]:
+        """Find weighted or duration-based set tokens in source order."""
+        tokens = []
+        for match in self._work_token_matches(line):
+            try:
+                if match.re.pattern == self._duration_colon_pattern().pattern:
+                    minutes = int(match.group("minutes"))
+                    seconds = int(match.group("seconds"))
+                    duration_seconds = minutes * 60 + seconds
+                    tokens.append(
+                        {
+                            "reps": duration_seconds,
+                            "weight": 0.0,
+                            "duration_seconds": duration_seconds,
+                        }
+                    )
+                elif "duration_seconds" in match.groupdict():
+                    duration_seconds = int(match.group("duration_seconds"))
+                    tokens.append(
+                        {
+                            "reps": duration_seconds,
+                            "weight": 0.0,
+                            "duration_seconds": duration_seconds,
+                        }
+                    )
+                else:
+                    tokens.append(
+                        {
+                            "reps": int(match.group("reps")),
+                            "weight": float(match.group("weight").replace(",", ".")),
+                        }
+                    )
+            except ValueError:
+                continue
+
+        return tokens
 
     def _parse_set_tokens(self, line: str) -> list[dict]:
         """Find all reps x weight tokens in a line."""
@@ -431,6 +476,29 @@ class SidebarUpload:
             key=lambda match: match.start(),
         )
 
+    def _work_token_matches(self, line: str):
+        """Find weighted and timed set token regex matches in source order."""
+        return sorted(
+            [
+                *self._set_token_matches(line),
+                *self._duration_unit_pattern().finditer(line),
+                *self._duration_colon_pattern().finditer(line),
+            ],
+            key=lambda match: match.start(),
+        )
+
+    def _duration_unit_pattern(self):
+        return re.compile(
+            r"(?<![\dA-Za-z])(?P<duration_seconds>\d{1,4})\s*(?:s|sec|secs|sek|sekund|seconds)\b",
+            re.IGNORECASE,
+        )
+
+    def _duration_colon_pattern(self):
+        return re.compile(
+            r"(?<![\d:])(?P<minutes>\d{1,2}):(?P<seconds>[0-5]\d)(?![\d:])",
+            re.IGNORECASE,
+        )
+
     def _parse_rir_values(self, line: str) -> list[int]:
         """Parse RIR values from a line that contains the RIR label."""
         inline_values = re.findall(
@@ -446,7 +514,7 @@ class SidebarUpload:
         return [int(value) for value in re.findall(r"-?\d+", values)]
 
     def _contains_set_token(self, line: str) -> bool:
-        return bool(self._parse_set_tokens(line))
+        return bool(self._parse_work_tokens(line))
 
     def _is_rir_line(self, line: str) -> bool:
         return bool(re.search(r"\bRIR\b", line, re.IGNORECASE))

@@ -81,17 +81,22 @@ class BodyPartsView:
                 if not body_part:
                     continue
                 factor = float(target.get("set_factor", 1.0))
+                set_exposure = float(row.get("effective_sets") or row["total_sets"])
                 rows.append(
                     {
                         "Body Part": str(body_part),
-                        "Total_Sets": float(row["total_sets"]) * factor,
+                        "Total_Sets": set_exposure * factor,
                         "Total_Volume": float(row["total_volume"]) * factor,
                         "Avg_1RM": row.get("estimated_1rm_avg"),
-                        "Weight": max(float(row["total_sets"]) * factor, 0.0),
+                        "Weight": max(set_exposure * factor, 0.0),
                     }
                 )
 
-            for point in row.get("per_session_1rm", []):
+            session_points = [
+                *row.get("per_session_1rm", []),
+                *row.get("per_session_duration", []),
+            ]
+            for point in session_points:
                 date = point.get("date")
                 if date is not None:
                     for target in muscle_targets:

@@ -48,6 +48,7 @@ class MetricsInputBuilder:
                 repetitions=row.repetitions,
                 weight=row.weight,
                 rir=getattr(row, "rir", None),
+                duration_seconds=getattr(row, "duration_seconds", None),
             )
             for row in sets_df.itertuples()
         ]

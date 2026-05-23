@@ -2,7 +2,7 @@ from collections import defaultdict
 from statistics import mean
 
 from metrics.input import MetricsInput
-from metrics.utils import estimate_1rm
+from metrics.utils import is_duration_set, set_duration_seconds, set_estimated_1rm
 
 
 def compute_progress_metrics(input: MetricsInput) -> dict:
@@ -27,13 +27,25 @@ def compute_progress_metrics(input: MetricsInput) -> dict:
 
     for ex_id, entries in exercise_sets.items():
         entries.sort(key=lambda x: x[0])
-        one_rms = [estimate_1rm(s.weight, s.repetitions) for _, s in entries]
-        if len(one_rms) < 2:
+        one_rms = [
+            estimated_1rm
+            for _, s in entries
+            if (estimated_1rm := set_estimated_1rm(s)) is not None
+        ]
+        durations = [
+            set_duration_seconds(s)
+            for _, s in entries
+            if is_duration_set(s)
+        ]
+        values = one_rms if one_rms else durations
+        metric_type = "estimated_1rm" if one_rms else "duration_seconds"
+
+        if len(values) < 2:
             continue
         
-        n = min(3, len(one_rms)//2)
-        start = mean(one_rms[:n])
-        end = mean(one_rms[-n:])
+        n = min(3, len(values)//2)
+        start = mean(values[:n])
+        end = mean(values[-n:])
         progress_pct = round(((end - start) / start) * 100, 2) if start else 0
 
         if progress_pct > 2:
@@ -45,13 +57,20 @@ def compute_progress_metrics(input: MetricsInput) -> dict:
 
         progress_values.append(progress_pct)
 
-        per_exercise[ex_id] = {
+        row = {
             "exercise_name": exercise_name_map.get(ex_id, f"Exercise {ex_id}"),
-            "start_1rm": round(start, 2),
-            "end_1rm": round(end, 2),
+            "metric_type": metric_type,
             "progress_pct": progress_pct,
             "exposure_count": len(entries),
         }
+        if metric_type == "estimated_1rm":
+            row["start_1rm"] = round(start, 2)
+            row["end_1rm"] = round(end, 2)
+        else:
+            row["start_duration_seconds"] = round(start, 2)
+            row["end_duration_seconds"] = round(end, 2)
+
+        per_exercise[ex_id] = row
 
     global_metrics = {
         "avg_strength_progress_pct": round(mean(progress_values), 2)

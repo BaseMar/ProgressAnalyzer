@@ -84,7 +84,7 @@ class AnalyticsView:
         total_sets = sum(s["total_sets"] for s in self.session_metrics.get("per_session", {}).values())
         failure_sets = sum(s["sets_to_failure"] for s in self.session_metrics.get("per_session", {}).values())
         failure_pct = (failure_sets / total_sets * 100) if total_sets else 0
-        avg_intensity = self.session_metrics.get("global", {}).get("avg_intensity", 0)
+        avg_intensity = self.session_metrics.get("global", {}).get("avg_intensity") or 0
 
         cols = st.columns(5)
         cols[0].metric("Avg Fatigue Score", global_f.get("avg_fatigue_score", "—"))

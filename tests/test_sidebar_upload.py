@@ -64,6 +64,34 @@ def test_parse_txt_reads_sets_and_rir_values(monkeypatch):
     assert warnings == []
 
 
+def test_parse_txt_reads_duration_sets_for_plank(monkeypatch):
+    upload = _upload()
+    warnings = []
+
+    monkeypatch.setattr(
+        "ui.sidebar_upload.st.sidebar",
+        SimpleNamespace(warning=warnings.append),
+    )
+
+    parsed = upload._parse_txt(
+        "1. Plank\n"
+        "45s / 1:00 / 75 sekund\n"
+        "RIR: 2 / 1 / 0\n"
+    )
+
+    assert parsed == [
+        {
+            "name": "Plank",
+            "sets": [
+                {"reps": 45, "weight": 0.0, "rir": 2, "duration_seconds": 45},
+                {"reps": 60, "weight": 0.0, "rir": 1, "duration_seconds": 60},
+                {"reps": 75, "weight": 0.0, "rir": 0, "duration_seconds": 75},
+            ],
+        }
+    ]
+    assert warnings == []
+
+
 def test_parse_txt_reads_compact_numbered_workout(monkeypatch):
     upload = _upload()
     warnings = []
