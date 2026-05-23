@@ -1,20 +1,34 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from metrics.utils.strength import estimate_1rm
 
 
+def _number_or_default(value: Any, default: int | float = 0) -> Any:
+    if value is None:
+        return default
+
+    try:
+        if math.isnan(float(value)):
+            return default
+    except (TypeError, ValueError):
+        pass
+
+    return value
+
+
 def set_reps(workout_set: Any) -> int:
-    return int(workout_set.repetitions or 0)
+    return int(_number_or_default(getattr(workout_set, "repetitions", None), 0))
 
 
 def set_weight(workout_set: Any) -> float:
-    return float(workout_set.weight or 0)
+    return float(_number_or_default(getattr(workout_set, "weight", None), 0))
 
 
 def set_duration_seconds(workout_set: Any) -> int:
-    return int(getattr(workout_set, "duration_seconds", None) or 0)
+    return int(_number_or_default(getattr(workout_set, "duration_seconds", None), 0))
 
 
 def is_duration_set(workout_set: Any) -> bool:

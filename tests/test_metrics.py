@@ -100,6 +100,27 @@ def test_compute_exercise_metrics_handles_duration_exercises():
     assert plank["estimated_1rm_max"] is None
 
 
+def test_compute_exercise_metrics_treats_nan_duration_as_strength_set():
+    input_data = MetricsInput(
+        sessions=[WorkoutSession(1, date(2026, 5, 1), None, None)],
+        workout_exercises=[WorkoutExercise(101, 1, 1)],
+        sets=[WorkoutSet(101, 1, 10, 100.0, 2, duration_seconds=float("nan"))],
+        exercises=[Exercise(1, "Bench Press", None, "Chest")],
+        exercise_muscle_targets=[],
+        muscle_groups=["Chest"],
+        body_measurements=[],
+        body_composition=[],
+    )
+
+    result = compute_exercise_metrics(input_data)
+    bench = result["per_exercise"][1]
+
+    assert bench["total_reps"] == 10
+    assert bench["total_volume"] == 1000
+    assert bench["total_duration_seconds"] == 0
+    assert bench["estimated_1rm_max"] == pytest.approx(133.333333)
+
+
 def test_compute_progress_metrics_classifies_strength_direction(sample_input):
     result = compute_progress_metrics(sample_input)
 
