@@ -95,7 +95,6 @@ setup, and CI.
 - **Plotly** for interactive charts
 - **Pillow** for body heatmap image processing
 - **Pytest** for automated tests
-- **python-dotenv** for local environment configuration
 - **Streamlit Community Cloud** for deployment
 
 ## What It Does
