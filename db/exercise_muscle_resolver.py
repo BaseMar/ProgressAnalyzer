@@ -7,6 +7,8 @@ from typing import Callable
 from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
 
+from db.specific_exercise_rules import SPECIFIC_EXERCISE_RULES, SpecificExerciseRule
+
 
 ROLE_FACTOR = {
     "primary": 1.0,
@@ -85,6 +87,40 @@ def _target(
 def _resolution(category: str, targets: list[MuscleTarget]) -> ExerciseResolution:
     primary = next((target for target in targets if target.role == "primary"), targets[0])
     return ExerciseResolution(category=category, body_part=primary.muscle_group, targets=targets)
+
+
+def _specific_exercise_rule(value: str) -> ExerciseResolution | None:
+    for rule in SPECIFIC_EXERCISE_RULES:
+        if _matches_specific_rule(value, rule):
+            return _resolution(
+                rule.category,
+                [
+                    _target(
+                        spec.muscle_group,
+                        spec.muscle_name,
+                        spec.role,
+                        rule.source_note,
+                        spec.set_factor,
+                    )
+                    for spec in rule.targets
+                ],
+            )
+    return None
+
+
+def _matches_specific_rule(value: str, rule: SpecificExerciseRule) -> bool:
+    return all(token in value for token in rule.required_tokens)
+
+
+def _has_specific_rule(value: str) -> bool:
+    return _specific_exercise_rule(value) is not None
+
+
+def _resolve_specific_rule(value: str) -> ExerciseResolution:
+    resolution = _specific_exercise_rule(value)
+    if resolution is None:
+        raise ValueError(f"No specific exercise rule matched: {value}")
+    return resolution
 
 
 def _row(value: str) -> ExerciseResolution:
@@ -327,6 +363,7 @@ def _plank(value: str) -> ExerciseResolution:
 
 
 _RULES: list[tuple[Callable[[str], bool], Callable[[str], ExerciseResolution]]] = [
+    (_has_specific_rule, _resolve_specific_rule),
     (_has_all("t", "bar", "row"), _row),
     (_has_any("row"), _row),
     (_has_any("shrug"), _shrug),

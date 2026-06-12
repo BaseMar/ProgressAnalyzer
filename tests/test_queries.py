@@ -87,3 +87,26 @@ def test_insert_exercise_resolves_t_bar_row_as_compound_pull():
     }
     assert next(row for row in muscle_params if row["muscle_group"] == "Back")["role"] == "primary"
     assert next(row for row in muscle_params if row["muscle_group"] == "Biceps")["role"] == "secondary"
+
+
+def test_insert_exercise_resolves_hanging_leg_raise_specific_targets():
+    engine = _Engine()
+
+    assert insert_exercise(engine, "Hanging Leg Raise") is True
+
+    exercise_params = engine.conn.executed[1][1]
+    muscle_params = engine.conn.executed[2][1]
+    assert exercise_params == {
+        "name": "Hanging Leg Raise",
+        "category": "Push",
+        "body_part": "Abs",
+    }
+    assert {row["muscle_group"] for row in muscle_params} == {
+        "Abs",
+        "Obliques",
+        "Forearms",
+        "Shoulders",
+        "Back",
+    }
+    assert next(row for row in muscle_params if row["muscle_group"] == "Abs")["role"] == "primary"
+    assert next(row for row in muscle_params if row["muscle_group"] == "Forearms")["role"] == "stabilizer"
