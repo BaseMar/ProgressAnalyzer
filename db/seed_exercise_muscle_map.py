@@ -13,7 +13,7 @@ ROLE_FACTOR = {
 
 
 MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
-    "Incline Dumbell Press": [
+    "Incline Dumbbell Press": [
         ("Chest", "Pectoralis major, clavicular and sternal fibers", "primary", None, "ExRx incline bench press"),
         ("Shoulders", "Anterior deltoid", "secondary", None, "ExRx incline bench press"),
         ("Triceps", "Triceps brachii", "secondary", None, "ExRx incline bench press"),
@@ -23,12 +23,12 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Shoulders", "Anterior deltoid", "secondary", 0.4, "ExRx dumbbell fly"),
         ("Biceps", "Biceps brachii, short head", "stabilizer", None, "ExRx dumbbell fly"),
     ],
-    "Dips": [
+    "Chest Dip": [
         ("Chest", "Pectoralis major, sternal fibers", "primary", None, "ExRx chest dip pattern"),
         ("Triceps", "Triceps brachii", "secondary", None, "ExRx chest dip pattern"),
         ("Shoulders", "Anterior deltoid", "secondary", 0.4, "ExRx chest dip pattern"),
     ],
-    "Pull-Up (Overhand)": [
+    "Pronated-Grip Pull-Up": [
         ("Back", "Latissimus dorsi, teres major", "primary", None, "ExRx pull-up"),
         ("Biceps", "Biceps brachii", "secondary", None, "ExRx pull-up"),
         ("Forearms", "Brachialis, brachioradialis", "secondary", 0.4, "ExRx pull-up"),
@@ -45,11 +45,11 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Back", "Trapezius, rhomboids", "secondary", None, "ExRx face pull pattern"),
         ("Forearms", "Wrist flexors", "stabilizer", None, "Cable pulling grip"),
     ],
-    "Lateral Raise (Dumbbell)": [
+    "Dumbbell Lateral Raise": [
         ("Shoulders", "Lateral deltoid", "primary", None, "Lateral raise references"),
         ("Back", "Trapezius, serratus anterior", "stabilizer", None, "Lateral raise references"),
     ],
-    "Cable Curl (Low Pulley)": [
+    "Low-Pulley Cable Curl": [
         ("Biceps", "Biceps brachii", "primary", None, "ExRx barbell curl / cable curl pattern"),
         ("Forearms", "Brachialis, brachioradialis, wrist flexors", "secondary", None, "ExRx barbell curl"),
     ],
@@ -81,17 +81,17 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
     "Seated Calf Raise": [
         ("Calves", "Soleus, gastrocnemius", "primary", None, "Calf raise anatomy"),
     ],
-    "Flat Barbell Bench Press": [
+    "Barbell Bench Press": [
         ("Chest", "Pectoralis major, sternal fibers", "primary", None, "Bench press references"),
         ("Shoulders", "Anterior deltoid", "secondary", None, "Bench press references"),
         ("Triceps", "Triceps brachii", "secondary", None, "Bench press references"),
     ],
-    "Chest Press - machine": [
+    "Machine Chest Press": [
         ("Chest", "Pectoralis major", "primary", None, "Bench/chest press pattern"),
         ("Shoulders", "Anterior deltoid", "secondary", None, "Bench/chest press pattern"),
         ("Triceps", "Triceps brachii", "secondary", None, "Bench/chest press pattern"),
     ],
-    "Dumbell Pullover": [
+    "Dumbbell Pullover": [
         ("Back", "Latissimus dorsi, teres major", "primary", None, "Pullover pattern"),
         ("Chest", "Pectoralis major", "secondary", 0.5, "Pullover pattern"),
         ("Triceps", "Triceps brachii, long head", "stabilizer", None, "Pullover pattern"),
@@ -102,7 +102,7 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Biceps", "Biceps brachii, brachialis", "secondary", None, "ExRx row pattern"),
         ("Forearms", "Brachioradialis, wrist flexors", "secondary", 0.4, "ExRx row pattern"),
     ],
-    "Shrugs": [
+    "Barbell Shrug": [
         ("Back", "Trapezius, upper fibers", "primary", None, "Shrug pattern"),
         ("Forearms", "Grip and wrist flexors", "stabilizer", None, "Free-weight grip"),
     ],
@@ -115,7 +115,7 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Triceps", "Triceps brachii", "primary", None, "Triceps extension references"),
         ("Shoulders", "Shoulder stabilizers", "stabilizer", None, "Overhead/lying triceps extension setup"),
     ],
-    "Barbell Biceps Curl": [
+    "Barbell Curl": [
         ("Biceps", "Biceps brachii", "primary", None, "ExRx barbell curl"),
         ("Forearms", "Brachialis, brachioradialis, wrist flexors", "secondary", None, "ExRx barbell curl"),
         ("Shoulders", "Anterior deltoid", "stabilizer", None, "ExRx barbell curl"),
@@ -125,12 +125,12 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Shoulders", "Anterior deltoid", "secondary", None, "ExRx incline bench press"),
         ("Triceps", "Triceps brachii", "secondary", None, "ExRx incline bench press"),
     ],
-    "Incline Machine Press": [
+    "Incline Machine Chest Press": [
         ("Chest", "Pectoralis major, clavicular and sternal fibers", "primary", None, "ExRx incline bench press"),
         ("Shoulders", "Anterior deltoid", "secondary", None, "ExRx incline bench press"),
         ("Triceps", "Triceps brachii", "secondary", None, "ExRx incline bench press"),
     ],
-    "Cable Crossover (high-to-low)": [
+    "High-to-Low Cable Fly": [
         ("Chest", "Pectoralis major, sternal fibers", "primary", None, "ExRx fly pattern"),
         ("Shoulders", "Anterior deltoid", "secondary", 0.4, "ExRx fly pattern"),
         ("Biceps", "Biceps brachii, short head", "stabilizer", None, "ExRx fly pattern"),
@@ -147,7 +147,7 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Forearms", "Brachioradialis, wrist flexors", "secondary", 0.4, "ExRx bent-over row"),
         ("Lower Back", "Erector spinae", "stabilizer", 0.5, "ExRx bent-over row"),
     ],
-    "Reverse Pec Deck": [
+    "Reverse Pec Deck Fly": [
         ("Shoulders", "Posterior deltoid", "primary", None, "Rear delt fly pattern"),
         ("Back", "Trapezius, rhomboids, infraspinatus, teres minor", "secondary", None, "Rear delt fly pattern"),
     ],
@@ -159,11 +159,11 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Forearms", "Brachioradialis", "primary", None, "Curl grip EMG / hammer curl pattern"),
         ("Biceps", "Biceps brachii, brachialis", "secondary", 0.75, "Curl grip EMG / hammer curl pattern"),
     ],
-    "Overhead Extension": [
+    "Overhead Triceps Extension": [
         ("Triceps", "Triceps brachii, long head emphasis", "primary", None, "Overhead triceps extension references"),
         ("Shoulders", "Shoulder stabilizers", "stabilizer", None, "Overhead triceps extension references"),
     ],
-    "Hack Machine": [
+    "Hack Squat": [
         ("Legs", "Quadriceps, hamstrings", "primary", None, "ExRx hack squat"),
         ("Glutes", "Gluteus maximus", "secondary", None, "ExRx hack squat"),
         ("Calves", "Soleus, gastrocnemius", "secondary", 0.4, "ExRx hack squat"),
@@ -185,17 +185,17 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Back", "Trapezius, latissimus dorsi", "stabilizer", 0.4, "ExRx deadlift"),
         ("Forearms", "Grip and wrist flexors", "stabilizer", None, "Free-weight grip"),
     ],
-    "Narrow Barbell Bench Press": [
+    "Close-Grip Barbell Bench Press": [
         ("Triceps", "Triceps brachii", "primary", None, "ExRx close-grip bench press"),
         ("Chest", "Pectoralis major, sternal fibers", "secondary", None, "ExRx close-grip bench press"),
         ("Shoulders", "Anterior deltoid", "secondary", None, "ExRx close-grip bench press"),
     ],
-    "Flat Dumbell Bench Press": [
+    "Flat Dumbbell Bench Press": [
         ("Chest", "Pectoralis major, sternal fibers", "primary", None, "Bench press references"),
         ("Shoulders", "Anterior deltoid", "secondary", None, "Bench press references"),
         ("Triceps", "Triceps brachii", "secondary", None, "Bench press references"),
     ],
-    "Pec Dec": [
+    "Pec Deck": [
         ("Chest", "Pectoralis major, sternal fibers", "primary", None, "Machine fly references"),
         ("Shoulders", "Anterior deltoid", "secondary", 0.35, "Machine fly references"),
     ],
@@ -205,23 +205,18 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Biceps", "Biceps brachii, brachialis", "secondary", None, "ExRx row pattern"),
         ("Forearms", "Brachioradialis, wrist flexors", "secondary", 0.4, "ExRx row pattern"),
     ],
-    "Preacher Curls": [
+    "Preacher Curl": [
         ("Biceps", "Biceps brachii, brachialis", "primary", None, "Curl references"),
         ("Forearms", "Brachioradialis, wrist flexors", "secondary", 0.5, "Curl references"),
     ],
-    "MIlitary Press": [
+    "Military Press": [
         ("Shoulders", "Anterior and lateral deltoid", "primary", None, "Overhead press pattern"),
         ("Triceps", "Triceps brachii", "secondary", None, "Overhead press pattern"),
         ("Chest", "Pectoralis major, clavicular fibers", "stabilizer", None, "Overhead press pattern"),
         ("Abs", "Rectus abdominis", "stabilizer", None, "Standing overhead stabilization"),
         ("Lower Back", "Erector spinae", "stabilizer", None, "Standing overhead stabilization"),
     ],
-    "Low to High Cable Fly": [
-        ("Chest", "Pectoralis major, clavicular fibers", "primary", None, "ExRx fly pattern"),
-        ("Shoulders", "Anterior deltoid", "secondary", 0.4, "ExRx fly pattern"),
-        ("Biceps", "Biceps brachii, short head", "stabilizer", None, "ExRx fly pattern"),
-    ],
-    "Dumbbell Walking Lunges": [
+    "Dumbbell Walking Lunge": [
         ("Legs", "Quadriceps, hamstrings", "primary", None, "Lunge pattern"),
         ("Glutes", "Gluteus maximus", "primary", 0.8, "Lunge pattern"),
         ("Calves", "Gastrocnemius, soleus", "secondary", 0.4, "Lunge pattern"),
@@ -229,17 +224,17 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Obliques", "Internal and external obliques", "stabilizer", None, "Loaded carry/lunge stabilization"),
         ("Forearms", "Grip and wrist flexors", "stabilizer", None, "Dumbbell grip"),
     ],
-    "Standed Calf Raises": [
+    "Standing Calf Raise": [
         ("Calves", "Gastrocnemius, soleus", "primary", None, "Standing calf raise pattern"),
     ],
-    "Hip thrust": [
+    "Hip Thrust": [
         ("Glutes", "Gluteus maximus", "primary", None, "ExRx hip thrust"),
         ("Legs", "Hamstrings, quadriceps", "secondary", None, "ExRx hip thrust"),
         ("Lower Back", "Erector spinae", "stabilizer", None, "ExRx hip thrust"),
         ("Abs", "Rectus abdominis", "stabilizer", None, "ExRx hip thrust"),
         ("Obliques", "Internal and external obliques", "stabilizer", None, "ExRx hip thrust"),
     ],
-    "Barbell Squats": [
+    "Barbell Squat": [
         ("Legs", "Quadriceps, hamstrings, adductor magnus", "primary", None, "Squat pattern"),
         ("Glutes", "Gluteus maximus", "primary", 0.8, "Squat pattern"),
         ("Lower Back", "Erector spinae", "stabilizer", 0.5, "Squat stabilization"),
@@ -247,35 +242,35 @@ MAPPINGS: dict[str, list[tuple[str, str, str, float | None, str]]] = {
         ("Obliques", "Internal and external obliques", "stabilizer", None, "Squat stabilization"),
         ("Calves", "Gastrocnemius, soleus", "secondary", 0.35, "Squat pattern"),
     ],
-    "Hammer Grip Dumbbell Press": [
+    "Neutral-Grip Dumbbell Press": [
         ("Chest", "Pectoralis major", "primary", None, "Dumbbell press pattern"),
         ("Triceps", "Triceps brachii", "secondary", None, "Dumbbell press pattern"),
         ("Shoulders", "Anterior deltoid", "secondary", None, "Dumbbell press pattern"),
         ("Forearms", "Grip and wrist flexors", "stabilizer", None, "Dumbbell grip"),
     ],
-    "Dumbell Shoulder Press": [
+    "Dumbbell Shoulder Press": [
         ("Shoulders", "Anterior and lateral deltoid", "primary", None, "Shoulder press pattern"),
         ("Triceps", "Triceps brachii", "secondary", None, "Shoulder press pattern"),
         ("Chest", "Pectoralis major, clavicular fibers", "stabilizer", None, "Shoulder press pattern"),
         ("Abs", "Rectus abdominis", "stabilizer", None, "Dumbbell overhead stabilization"),
         ("Lower Back", "Erector spinae", "stabilizer", None, "Dumbbell overhead stabilization"),
     ],
-    "Rear Delt Row": [
+    "Rear-Delt Row": [
         ("Shoulders", "Posterior deltoid", "primary", None, "Rear delt row pattern"),
         ("Back", "Trapezius, rhomboids", "secondary", None, "Rear delt row pattern"),
         ("Biceps", "Biceps brachii, brachialis", "secondary", 0.35, "Rear delt row pattern"),
         ("Forearms", "Brachioradialis, wrist flexors", "secondary", 0.35, "Rear delt row pattern"),
     ],
-    "Incline Dumbell Curl": [
+    "Incline Dumbbell Curl": [
         ("Biceps", "Biceps brachii", "primary", None, "Curl references"),
         ("Forearms", "Brachialis, brachioradialis", "secondary", 0.5, "Curl references"),
     ],
-    "Incline Barbell Press": [
+    "Incline Barbell Bench Press": [
         ("Chest", "Pectoralis major, clavicular and sternal fibers", "primary", None, "ExRx incline bench press"),
         ("Shoulders", "Anterior deltoid", "secondary", None, "ExRx incline bench press"),
         ("Triceps", "Triceps brachii", "secondary", None, "ExRx incline bench press"),
     ],
-    "Cable Crunches": [
+    "Cable Crunch": [
         ("Abs", "Rectus abdominis", "primary", None, "ExRx cable crunch"),
         ("Obliques", "Internal and external obliques", "secondary", None, "ExRx cable crunch"),
     ],
