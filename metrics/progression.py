@@ -15,9 +15,18 @@ def _evidence_problem(latest, planned, scheduled_date, policy):
     if (scheduled_date - latest["performed_on"]).days > policy.max_history_gap_days:
         return "history_gap", "The latest execution is outside the policy's history-gap limit."
     if latest["missing_sets"] or not sets:
+        excluded = latest.get("excluded_set_kinds", ())
+        if "invalid" in excluded:
+            return "invalid_values", "Review invalid recorded loads or RIR values in the latest execution."
+        if "light" in excluded:
+            return "light_sets", "The latest execution contains light RIR 4–5 sets instead of every planned ordinary working set."
+        if "low_effort" in excluded:
+            return "low_effort_sets", "The latest execution contains RIR above 5; these sets stay in history but do not support ordinary progression."
         return "incomplete_sets", "The latest linked session does not contain every planned set."
-    if any(item["is_warmup"] is not False for item in sets):
-        return "unknown_set_type", "Mark the credited sets as working sets before using them for progression."
+    if any(not isfinite(item["weight"]) or item["weight"] < 0 for item in sets):
+        return "invalid_values", "Recorded loads are invalid."
+    if planned.target_unit == "seconds":
+        return None
     if planned.target_rir is None:
         return "missing_target_rir", "Set a target RIR before generating progression goals."
     if any(item["rir"] is None for item in sets):
@@ -66,7 +75,7 @@ def recommend_normal_workout(
         def decision(action, code, reason, goals=(), evidence=()):
             return ExerciseRecommendation(
                 target.plan_exercise_id, planned.exercise_id, actual_id, upcoming.slot.scheduled_date,
-                action, tuple(goals), planned.target_rir, code, reason,
+                action, tuple(goals), planned.target_rir if planned.target_unit == "reps" else None, code, reason,
                 tuple(row["session_id"] for row in evidence), tuple(row["performed_on"] for row in evidence),
             )
         if block_start is None:
@@ -89,11 +98,11 @@ def recommend_normal_workout(
             output.append(decision("insufficient_data", *problem, evidence=evidence))
             continue
         hold = tuple(SetGoal(item["weight"], planned.target_min, planned.target_max, planned.target_unit) for item in sets)
+        if planned.target_unit == "seconds":
+            output.append(decision("maintain", "timed_exercise", "Keep the recorded loads and time range; timed work does not require repetition-based RIR and automatic timed progression is not supported.", hold, evidence))
+            continue
         if any(item["rir"] < planned.target_rir for item in sets):
             output.append(decision("maintain", "rir_below_target", "Keep the logged loads and planned range: at least one set had less reserve than the target.", hold, evidence))
-            continue
-        if planned.target_unit == "seconds":
-            output.append(decision("maintain", "timed_exercise", "Keep the recorded loads and time range; this stage does not prescribe timed progression.", hold, evidence))
             continue
         if any(item["reps"] < planned.target_min for item in sets):
             output.append(decision("maintain", "below_range", "Keep the loads and planned range; not every set reached the lower repetition bound.", hold, evidence))
@@ -118,7 +127,7 @@ def recommend_normal_workout(
         qualifies = qualifies and len({row["performed_on"] for row in confirmed}) == policy.confirmations_required
         for row in confirmed:
             qualifies = qualifies and not row["missing_sets"] and len(row["sets"]) == planned.set_count
-            qualifies = qualifies and all(item["is_warmup"] is False and item["rir"] is not None
+            qualifies = qualifies and all(item["progression_eligible"] and item["rir"] is not None
                 and isfinite(item["rir"]) and item["rir"] >= planned.target_rir
                 and item["reps"] >= planned.target_max
                 and isclose(item["weight"], weight, rel_tol=0, abs_tol=1e-6) for item in row["sets"])

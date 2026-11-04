@@ -26,3 +26,4 @@ class MetricsInput:
 
     body_measurements: list[BodyMeasurement]
     body_composition: list[BodyComposition]
+    deload_exercise_ids: frozenset[int] = frozenset()

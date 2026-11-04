@@ -62,6 +62,7 @@ def filter_data_by_month(
         muscle_groups=input_data.muscle_groups,
         body_measurements=input_data.body_measurements,
         body_composition=input_data.body_composition,
+        deload_exercise_ids=input_data.deload_exercise_ids.intersection(workout_exercise_ids),
     )
 
     filtered_sets_df = sets_df.copy()

@@ -1,4 +1,4 @@
-"""Auditable, explicit set labels without guessing historical warm-ups."""
+"""Optional explicit corrections; inferred meanings are never written here."""
 import pandas as pd
 from sqlalchemy import Column, Integer, MetaData, Table, inspect, select, text
 from db.migrations.v004_set_classifications import define_table
@@ -17,8 +17,8 @@ def classification_storage_ready(engine):
 def load_session_sets(engine, session_id):
     with engine.connect() as connection:
         return pd.read_sql(text('''
-            SELECT s.set_id, e.exercise_name, s.set_number, s.repetitions, s.weight,
-                   s.duration_seconds, c.is_warmup
+            SELECT s.set_id, s.workout_exercise_id, e.exercise_name, s.set_number, s.repetitions, s.weight,
+                   s.rir, s.duration_seconds, c.is_warmup
             FROM workout_sets s JOIN workout_exercises we ON we.workout_exercise_id=s.workout_exercise_id
             JOIN exercises e ON e.exercise_id=we.exercise_id
             LEFT JOIN workout_set_classifications c ON c.set_id=s.set_id

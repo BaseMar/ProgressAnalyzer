@@ -18,7 +18,6 @@ from typing import Dict
 import pandas as pd
 import streamlit as st
 
-from metrics.utils.strength import estimate_1rm
 from ui.utils.exercise_table import render_exercise_table
 from ui.utils.ui_helpers import chart_label, format_number, line_chart, page_title, section_header
 
@@ -28,12 +27,12 @@ class ExerciseView:
     
     Displays:
     - Exercise-level KPIs (total sets, sessions, volume, max weight, estimated 1RM)
-    - Strength trends over time (volume per session, average 1RM per session)
+    - Descriptive workload and eligible performance trends by session
     - Comparative table of all exercises ranked by total volume
     
     Data Sources:
     - exercises_metrics: Pre-computed metrics per exercise
-    - sets_df: Raw set-level data for calculating time-series trends
+    - sets_df: Raw set-level data retained for source/history compatibility
     """
 
     def __init__(self, exercises_metrics: Dict, sets_df: pd.DataFrame) -> None:
@@ -86,70 +85,34 @@ class ExerciseView:
             cols[4].metric("Est. 1RM", f"{format_number(exercise['estimated_1rm_max'], 1)} kg")
 
     def _render_trends(self, exercise_name: str) -> None:
-        """Render strength trend charts (volume and 1RM over time)."""
+        """Render prepared series with the same effort policy as the metrics."""
         section_header("Trends")
-
-        exercise_sets = self.sets_df[self.sets_df["exercise_name"] == exercise_name].copy()
-
-        if exercise_sets.empty:
+        exercise = next((row for row in self.exercises_metrics.get("per_exercise", {}).values()
+                         if row["exercise_name"] == exercise_name), None)
+        if exercise is None:
             st.info("No time-series data available for this exercise.")
             return
-
-        exercise_sets["session_date"] = pd.to_datetime(exercise_sets["session_date"])
-        is_duration_exercise = (
-            "duration_seconds" in exercise_sets.columns
-            and exercise_sets["duration_seconds"].fillna(0).gt(0).any()
-        )
-        if is_duration_exercise:
-            trend_df = (
-                exercise_sets
-                .groupby("session_date")
-                .agg(
-                    **{
-                        "Duration (s)": ("duration_seconds", "sum"),
-                        "Best Set (s)": ("duration_seconds", "max"),
-                    }
-                )
-                .reset_index()
-                .sort_values("session_date")
-                .rename(columns={"session_date": "Date"})
-                .set_index("Date")
-            )
-
-            col1, col2 = st.columns(2)
-            with col1:
-                chart_label("Session Duration")
-                line_chart(trend_df, "Duration (s)")
-            with col2:
-                chart_label("Best Set")
-                line_chart(trend_df, "Best Set (s)")
-            return
-
-        exercise_sets["Estimated1RM"] = exercise_sets.apply(lambda r: estimate_1rm(r["weight"], r["repetitions"]), axis=1)
-
-        trend_df = (
-            exercise_sets
-            .groupby("session_date")
-            .agg(
-                **{
-                    "Volume (kg)": ("volume", "sum"),
-                    "Avg 1RM (kg)": ("Estimated1RM", "mean"),
-                }
-            )
-            .reset_index()
-            .sort_values("session_date")
-            .rename(columns={"session_date": "Date"})
-            .set_index("Date")
-        )
-        trend_df["Avg 1RM (kg)"] = trend_df["Avg 1RM (kg)"].round(2)
-
+        timed = bool(exercise.get("total_duration_seconds"))
         col1, col2 = st.columns(2)
         with col1:
-            chart_label("Session Volume")
-            line_chart(trend_df, "Volume (kg)")
+            chart_label("Session Duration" if timed else "Session Volume")
+            self._series(exercise.get("per_session_duration" if timed else "per_session_volume", []),
+                         "duration_seconds" if timed else "volume", "Duration (s)" if timed else "Volume (kg)")
         with col2:
-            chart_label("Average 1RM")
-            line_chart(trend_df, "Avg 1RM (kg)")
+            chart_label("Best Set" if timed else "Best eligible e1RM")
+            self._series(exercise.get("per_session_best_duration" if timed else "per_session_1rm", []),
+                         "duration_seconds" if timed else "estimated_1rm", "Best Set (s)" if timed else "Best e1RM (kg)")
+        st.caption("Workload preserves light and unknown-effort logs. Performance trends use eligible ordinary sets or timed work, excluding planned deloads. Sessions on the same day remain separate.")
+
+    @staticmethod
+    def _series(points, field, label):
+        if not points:
+            st.caption("No eligible results for this series yet.")
+            return
+        frame = pd.DataFrame(points).rename(columns={"date": "Date", field: label})
+        frame["Date"] = pd.to_datetime(frame["Date"])
+        frame = frame.sort_values(["Date", "session_id"]).set_index("Date")
+        line_chart(frame[[label]], label)
 
     def _render_comparison(self, exercises_df: pd.DataFrame, exercise_name: str) -> None:
         """Render comparative table of all exercises ranked by volume."""

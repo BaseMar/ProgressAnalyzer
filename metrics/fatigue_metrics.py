@@ -29,7 +29,7 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
     }
 
     sets_by_session = defaultdict(list)
-    for s in analysis_sets(input.sets):
+    for s in analysis_sets(input.sets, deload_exercise_ids=input.deload_exercise_ids):
         session_id = we_to_session.get(s.workout_exercise_id)
         if session_id is not None:
             sets_by_session[session_id].append(s)

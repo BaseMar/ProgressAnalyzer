@@ -25,7 +25,7 @@ from mapper import (
 from metrics.input import MetricsInput
 
 
-@st.cache_data
+@st.cache_data(ttl=300)
 def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
     """Load all application data from database.
     
@@ -66,6 +66,7 @@ def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
         muscle_groups=muscle_groups,
         body_measurements=body_measurements,
         body_composition=body_composition,
+        deload_exercise_ids=dm.load_deload_exercise_ids(),
     )
     
     return metrics_input, sets_df

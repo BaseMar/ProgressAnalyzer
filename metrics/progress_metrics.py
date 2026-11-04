@@ -12,7 +12,8 @@ def compute_progress_metrics(input: MetricsInput) -> dict:
 
     Each session contributes its best estimated 1RM (or longest timed set),
     regardless of set order/count. At least two comparable sessions are needed.
-    This describes recorded performance; it does not assess technique or RIR.
+    Ordinary comparisons require eligible working sets; timed work needs no RIR.
+    Deload, light and unknown-effort work remain in descriptive history.
     """
     if not input.sets or not input.workout_exercises or not input.sessions:
         return {}
@@ -23,7 +24,7 @@ def compute_progress_metrics(input: MetricsInput) -> dict:
     exercise_sets = defaultdict(lambda: defaultdict(list))
     exercise_name_map = {e.exercise_id: e.name for e in input.exercises}
 
-    for s in analysis_sets(input.sets):
+    for s in analysis_sets(input.sets, progression=True, deload_exercise_ids=input.deload_exercise_ids):
         ex_id = we_to_exercise.get(s.workout_exercise_id)
         session_id = we_to_session.get(s.workout_exercise_id)
         if ex_id is not None and session_id in sessions:

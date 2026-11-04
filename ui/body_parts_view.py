@@ -93,7 +93,7 @@ class BodyPartsView:
                 )
 
             session_points = [
-                *row.get("per_session_1rm", []),
+                *row.get("per_session_volume", row.get("per_session_1rm", [])),
                 *row.get("per_session_duration", []),
             ]
             for point in session_points:
@@ -173,7 +173,7 @@ class BodyPartsView:
     def _metric_dates(self) -> list[pd.Timestamp]:
         dates = []
         for row in self.exercises_metrics.get("per_exercise", {}).values():
-            for point in row.get("per_session_1rm", []):
+            for point in row.get("per_session_volume", row.get("per_session_1rm", [])):
                 date = point.get("date")
                 if date is not None:
                     dates.append(pd.to_datetime(date).normalize())

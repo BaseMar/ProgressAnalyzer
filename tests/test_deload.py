@@ -105,7 +105,7 @@ def test_policy_can_change_reduction_and_preserve_decimal_equipment_steps():
 @pytest.mark.parametrize("problem, code", [
     ("missing_step", "missing_weight_step"), ("large_step", "deload_load_not_supported"),
     ("zero_load", "deload_load_not_supported"), ("partial", "incomplete_sets"),
-    ("unknown_type", "unknown_set_type"), ("missing_rir", "missing_rir"),
+    ("missing_rir", "missing_rir"),
     ("missing_target", "missing_target_rir"),
 ])
 def test_deload_does_not_invent_loads_or_use_incomplete_data(problem, code):
@@ -113,8 +113,6 @@ def test_deload_does_not_invent_loads_or_use_incomplete_data(problem, code):
                       target_rir=None if problem == "missing_target" else 2)
     entry = working(1, date(2026, 6, 8), (8, 8) if problem == "partial" else (8, 8, 8),
                     weight=0. if problem == "zero_load" else 60., rir=None if problem == "missing_rir" else 2, planned=planned)
-    if problem == "unknown_type":
-        entry = (entry[0], replace(entry[1], sets=tuple(replace(item, is_warmup=None) for item in entry[1].sets)), entry[2])
     result = recommend(entry, planned=planned).exercises[0]
     assert (result.action, result.reason_code, result.goals) == ("insufficient_data", code, ())
 

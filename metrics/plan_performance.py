@@ -16,7 +16,7 @@ def comparison_context(slot, position, planned, actual_id):
             actual_id, planned.target_unit, planned.set_count, planned.target_min, planned.target_max, planned.target_rir)
 
 
-def _target_result(sets, planned):
+def _target_result(sets, planned, interpretations):
     values = [set_duration_seconds(item) if planned.target_unit == "seconds" else set_reps(item) for item in sets]
     in_range = sum(planned.target_min <= value <= planned.target_max for value in values)
     below = sum(value < planned.target_min for value in values)
@@ -43,20 +43,28 @@ def _target_result(sets, planned):
         "range_met": not missing and in_range == planned.set_count,
         "rir_status": rir_status, "rir_known_sets": len(known),
         "avg_rir": sum(known) / len(known) if known and len(known) == len(sets) else None,
+        "progression_eligible": bool(sets) and all(meaning.progression_eligible for meaning in interpretations),
         "sets": tuple({"reps": set_reps(item), "weight": set_weight(item),
                        "seconds": set_duration_seconds(item), "rir": item.rir,
-                       "is_warmup": item.is_warmup} for item in sets),
+                       "is_warmup": item.is_warmup, "set_kind": meaning.kind,
+                       "classification_source": meaning.source, "classification_reason": meaning.reason,
+                       "progression_eligible": meaning.progression_eligible}
+                      for item, meaning in zip(sets, interpretations)),
     }
 
 
 def _comparison(current, previous):
     result = {"previous": previous, "reps_delta": None, "seconds_delta": None, "rir_delta": None}
     if not current["sets"]:
-        result["comparison"] = "No recorded sets"
+        excluded = current.get("excluded_set_kinds", ())
+        result["comparison"] = ("Light/low-effort work: outside ordinary progression assessment"
+                                if any(kind in excluded for kind in ("light", "low_effort")) else "No recorded sets")
     elif previous is None:
         result["comparison"] = "No previous comparable workout"
     elif current["missing_sets"] or previous["missing_sets"]:
         result["comparison"] = "Not comparable: incomplete set count"
+    elif not current["progression_eligible"] or not previous["progression_eligible"]:
+        result["comparison"] = "Not comparable: missing or insufficient ordinary effort evidence"
     else:
         same_load = all(isclose(now["weight"], old["weight"], rel_tol=0, abs_tol=1e-6)
                         for now, old in zip(current["sets"], previous["sets"]))
@@ -85,7 +93,7 @@ def compute_plan_performance(data: PlanAdherenceInput, *, as_of: date, start: da
     settings_by_version = settings_by_version or {}
     adjusted = deload_adjusted_input(data, settings_by_version, deload_policy, as_of=as_of)
     effective = {(item.slot.day_id, item.slot.scheduled_date): item for item in adjusted.workouts}
-    adherence = compute_plan_adherence(adjusted, as_of=as_of)
+    adherence = compute_plan_adherence(adjusted, as_of=as_of, settings_by_version=settings_by_version)
     rows = {(row["day_id"], row["scheduled_date"]): row for row in adherence["workouts"]}
     session_order = {sid: index for index, sid in enumerate(data.session_order)}
     ordered = sorted(data.workouts, key=lambda item: (
@@ -113,7 +121,8 @@ def compute_plan_performance(data: PlanAdherenceInput, *, as_of: date, start: da
                 "unit": expected.target_unit, "planned_sets": expected.set_count,
                 "target_min": expected.target_min, "target_max": expected.target_max,
                 "target_rir": expected.target_rir,
-                **_target_result(detail["credited_sets"], expected),
+                "excluded_set_kinds": detail["excluded_set_kinds"],
+                **_target_result(detail["credited_sets"], expected, detail["set_interpretations"]),
             }
             previous = history.get(context) if current["sets"] else None
             comparison = _comparison(current, previous)

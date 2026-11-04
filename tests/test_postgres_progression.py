@@ -119,6 +119,7 @@ def test_normal_goals_use_postgres_dates_labels_and_cross_month_history(postgres
     log(postgres, saved, 1, FIRST, values)
     log(postgres, saved, 2, SECOND, values)
     with postgres.connect() as connection:
+        connection.execute(classifications.delete())
         before = connection.execute(select(actual_sets).order_by(actual_sets.c.set_id)).mappings().all()
     item = recommend(postgres, saved, NEXT).exercises[0]
     assert item.action == action
@@ -126,6 +127,7 @@ def test_normal_goals_use_postgres_dates_labels_and_cross_month_history(postgres
     assert item.evidence_dates[-1] == SECOND
     with postgres.connect() as connection:
         assert connection.execute(select(actual_sets).order_by(actual_sets.c.set_id)).mappings().all() == before
+        assert connection.execute(select(classifications)).all() == []
 
 
 def test_deload_return_and_analytical_coverage_on_postgres(postgres):
@@ -136,6 +138,8 @@ def test_deload_return_and_analytical_coverage_on_postgres(postgres):
     assert (lighter.action, lighter.target_rir) == ("deload", 4)
     assert [(goal.weight, goal.minimum) for goal in lighter.goals] == [(52.5, 6)] * 2
     log(postgres, saved, 4, DELOAD, (6, 6), weight=52.5, rir=4)
+    with postgres.connect() as connection:
+        connection.execute(classifications.delete())
     resumed = recommend(postgres, saved, RETURN)
     item = resumed.exercises[0]
     assert resumed.block.cycle == 2
@@ -145,6 +149,8 @@ def test_deload_return_and_analytical_coverage_on_postgres(postgres):
         as_of=RETURN, start=DELOAD, end=RETURN, settings_by_version={saved.version_id: saved.draft.progression})
     observed = next(row for row in rows if row["session_id"] == 4)
     assert (observed["training_phase"], observed["missing_sets"], observed["reps_delta"]) == ("deload", 0, None)
+    from db.training_context import load_deload_exercise_ids
+    assert load_deload_exercise_ids(postgres, as_of=RETURN) == frozenset({400})
 
 
 def test_confirmed_substitute_keeps_own_load_step_and_never_edits_plan_on_postgres(postgres):

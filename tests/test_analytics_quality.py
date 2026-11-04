@@ -136,6 +136,8 @@ render_set_classification(st.session_state["manager"])
     app.session_state["classify_session"] = sid
     app.run()
     assert not app.exception
+    assert not app.dataframe
+    app.toggle(key="set_exception_picker").set_value(True).run()
     app.session_state[f"set_types_{sid}"] = {"edited_rows": {0: {"Type": "Working"}}, "added_rows": [], "deleted_rows": []}
     app.button(key=f"save_set_types_{sid}").click().run()
     assert not app.exception

@@ -54,7 +54,8 @@ class PlanAdherenceView:
         block_settings = {version.version_id: version.draft.progression for version in versions}
         NextWorkoutView(self.dm, self.names).render(plan_id, versions, history=history)
         section_header("Recorded plan execution")
-        report = compute_plan_adherence(deload_adjusted_input(data, block_settings, as_of=date.today()), as_of=date.today())
+        report = compute_plan_adherence(deload_adjusted_input(data, block_settings, as_of=date.today()),
+                                        as_of=date.today(), settings_by_version=block_settings)
         performance = compute_plan_performance(history, as_of=date.today(), start=start, end=end,
                                              settings_by_version=block_settings)
         overview, summary = summarize_plan(report, performance), report["summary"]
@@ -82,7 +83,7 @@ class PlanAdherenceView:
             self._render_matches(data)
         with st.expander("Definitions & source data"):
             st.caption(f'On the planned day: {summary["on_time_workouts"]}/{summary["linked_workouts"]} linked workouts. RIR missing: {overview["missing_rir"]}/{overview["recorded_sets"]} logged sets.')
-            st.caption("Coverage is capped at planned counts. Range success uses logged sets. Labelled warm-ups are excluded; unknown set types stay included. These indicators do not measure technique or muscle growth.")
+            st.caption("Coverage uses inferred or explicitly marked working sets, plus unknown-effort and timed logs; deload uses its own targets. Light/low-effort work stays in history. Missing RIR is not zero. These indicators do not measure technique or muscle growth.")
             if report["workouts"]:
                 st.dataframe(pd.DataFrame([{"Planned date": row["scheduled_date"], "Workout": row["name"], "Recorded date": row["performed_on"], "Status": row["status"], "Sets logged": row["covered_sets"], "Sets planned": row["planned_sets"]} for row in report["workouts"]]), hide_index=True, width="stretch")
 

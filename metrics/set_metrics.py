@@ -34,7 +34,7 @@ def compute_set_metrics(input: MetricsInput) -> Dict[str, Any]:
         Dictionary with aggregated set-level metrics.
     """
 
-    sets = analysis_sets(input.sets)
+    sets = analysis_sets(input.sets, deload_exercise_ids=input.deload_exercise_ids)
     if not sets:
         return {}
 

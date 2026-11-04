@@ -4,11 +4,15 @@ import math
 from typing import Any
 
 from metrics.utils.strength import estimate_1rm
+from metrics.set_interpretation import interpret_sets
 
 
-def analysis_sets(sets):
-    """Exclude only explicitly labelled warm-ups; keep unknown history visible."""
-    return [item for item in sets if getattr(item, "is_warmup", None) is not True]
+def analysis_sets(sets, *, progression=False, deload_exercise_ids=frozenset()):
+    """Separate descriptive workload from eligible ordinary/timed progression."""
+    sets = tuple(sets)
+    interpretations = interpret_sets(sets, deload_exercise_ids=deload_exercise_ids)
+    return [item for item, meaning in zip(sets, interpretations)
+            if meaning.descriptive and (not progression or meaning.progression_eligible)]
 
 
 def _number_or_default(value: Any, default: int | float = 0) -> Any:

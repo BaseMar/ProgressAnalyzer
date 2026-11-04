@@ -89,7 +89,7 @@ def test_invalid_policy_is_rejected(values):
 
 
 @pytest.mark.parametrize("problem, code", [
-    ("partial", "incomplete_sets"), ("unknown_type", "unknown_set_type"),
+    ("partial", "incomplete_sets"),
     ("missing_rir", "missing_rir"), ("target_rir", "missing_target_rir"),
 ])
 def test_incomplete_or_unknown_evidence_does_not_produce_numeric_increases(problem, code):
@@ -97,8 +97,8 @@ def test_incomplete_or_unknown_evidence_does_not_produce_numeric_increases(probl
     entry = working(1, date(2026, 5, 18), planned=planned)
     if problem == "partial":
         entry = (entry[0], replace(entry[1], sets=entry[1].sets[:2]), entry[2])
-    if problem in ("unknown_type", "missing_rir"):
-        change = {"is_warmup": None} if problem == "unknown_type" else {"rir": None}
+    if problem == "missing_rir":
+        change = {"rir": None}
         entry = (entry[0], replace(entry[1], sets=(replace(entry[1].sets[0], **change), *entry[1].sets[1:])), entry[2])
     result = recommend(entry, target=upcoming(planned))
     assert result.action == "insufficient_data"

@@ -20,6 +20,42 @@ class SpecificExerciseRule:
 
 
 SPECIFIC_EXERCISE_RULES: tuple[SpecificExerciseRule, ...] = (
+    # The reverse variant must precede the broader wrist-curl rule.
+    SpecificExerciseRule(
+        required_tokens=("reverse", "wrist", "curl"),
+        category="Pull",
+        source_note=(
+            "Wrist extension targets the forearm wrist extensors, not elbow flexors. "
+            "ACE wrist curl - extension: "
+            "https://www.acefitness.org/resources/everyone/exercise-library/29/wrist-curl-extension/"
+        ),
+        targets=(TargetSpec("Forearms", "Wrist extensors (extensor carpi radialis longus/brevis, extensor carpi ulnaris)", "primary"),),
+    ),
+    SpecificExerciseRule(
+        required_tokens=("wrist", "curl"),
+        category="Pull",
+        source_note=(
+            "Wrist flexion targets the forearm wrist flexors, not elbow flexors. "
+            "ACE wrist curl - flexion: "
+            "https://www.acefitness.org/resources/everyone/exercise-library/30/wrist-curl-flexion/"
+        ),
+        targets=(TargetSpec("Forearms", "Wrist flexors (flexor carpi radialis, flexor carpi ulnaris, palmaris longus)", "primary"),),
+    ),
+    SpecificExerciseRule(
+        required_tokens=("dead", "hang"),
+        category="Pull",
+        source_note=(
+            "Standard straight-arm dead hang: sustained grip primarily loads the forearm finger flexors; "
+            "shoulder/scapular support is modeled as stabilization, without crediting biceps as a training target. "
+            "Role factors are application conventions, not measured activation percentages. "
+            "Finger-hang/arm-lock-off study: https://pmc.ncbi.nlm.nih.gov/articles/PMC10623130/"
+        ),
+        targets=(
+            TargetSpec("Forearms", "Finger flexors (flexor digitorum superficialis/profundus), grip", "primary"),
+            TargetSpec("Shoulders", "Shoulder girdle and rotator cuff stabilizers", "stabilizer"),
+            TargetSpec("Back", "Scapular stabilizers, latissimus dorsi", "stabilizer"),
+        ),
+    ),
     SpecificExerciseRule(
         required_tokens=("pallof", "press", "rotation"),
         category="Push",

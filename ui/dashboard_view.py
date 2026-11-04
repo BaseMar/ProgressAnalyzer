@@ -252,8 +252,9 @@ class DashboardView:
 
     def _render_day_sessions(self, df: pd.DataFrame) -> None:
         """Render the existing session cards for the chosen day."""
+        from ui.set_classification_view import render_set_classification
         if "is_warmup" in df and df["is_warmup"].eq(True).any():
-            st.caption("Log totals include warm-ups (WU). Analysis excludes explicitly labelled warm-ups.")
+            st.caption("Log totals preserve all recorded sets. Analysis interprets effort and warm-ups automatically.")
         grouped = df.groupby(["session_id", "session_date"], sort=False)
 
         for (session_id, session_date), session_df in grouped:
@@ -276,6 +277,7 @@ class DashboardView:
                         f'<div class="set-pills">{_set_pills(ex_df)}</div>',
                         unsafe_allow_html=True,
                     )
+                render_set_classification(self.dm, session_id=int(session_id))
                 
                 st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
                 

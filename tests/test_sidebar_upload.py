@@ -10,6 +10,17 @@ def _upload() -> SidebarUpload:
     return object.__new__(SidebarUpload)
 
 
+def test_dead_hang_log_keeps_seconds_working_labels_and_missing_rir(monkeypatch):
+    warnings = []
+    monkeypatch.setattr("ui.sidebar_upload.st.sidebar", SimpleNamespace(warning=warnings.append))
+    parsed = _upload()._parse_txt("1. Dead hang\nWorking: 30s / 45s / 1:00\n")
+    assert parsed == [{"name": "Dead hang", "sets": [
+        {"reps": seconds, "weight": 0., "duration_seconds": seconds, "rir": None, "is_warmup": False}
+        for seconds in (30, 45, 60)
+    ]}]
+    assert warnings == []
+
+
 def test_similarity_score_handles_equal_empty_and_partial_strings():
     upload = _upload()
 

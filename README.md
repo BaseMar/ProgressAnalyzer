@@ -266,8 +266,9 @@ and evidence session IDs/dates:
 
 - Compare only the same exercise and workout context within the current cycle,
   using actual session chronology and excluding data recorded after `as_of`.
-- Require complete, explicitly classified working sets, a target RIR and recorded
-  RIR. Unknown set labels/RIR do not support increases; labelled warm-ups are excluded.
+- Require complete working sets, recognized automatically or explicitly corrected,
+  a target RIR and recorded RIR for repetition-based increases. Missing RIR does
+  not support an increase; timed comparisons do not require repetition-based RIR.
 - Treat target RIR as a minimum reserve in every set. Below-target reserve or reps
   below the lower bound keeps the logged load and original range.
 - At one common working load and within the range, add one total rep to the
@@ -375,8 +376,8 @@ dates. Each exercise has one compact target and decision: `Add a rep`,
 `Increase load`, `Keep load`, `Deload`, or `Return after deload`. Uniform sets
 are grouped, for example **62.5 kg · 3 x 6 reps · RIR >= 2**. Unequal reps and
 loads retain their individual set targets instead of being averaged. Missing
-evidence shows `More data needed` and the specific reason, such as unknown set
-classification, missing RIR or an unavailable weight step; no numeric load is
+evidence shows `More data needed` and the specific reason, such as incomplete
+ordinary work, missing RIR or an unavailable weight step; no numeric load is
 invented. Unsupported deload prescriptions are labelled `Manual target`.
 
 `Why these targets?` contains the full engine explanation, evidence session
@@ -439,7 +440,8 @@ and future slots neither lower nor inflate them. A moved workout counts as
 recorded, but not on the planned day. Unlinked workouts are not proof of absence.
 Timing, data quality and auditable source rows live under `Definitions & source
 data`, rather than expanding the main overview.
-Coverage excludes explicitly labelled warm-ups and caps credit at
+Coverage excludes inferred/explicit warm-ups and uncorrected ordinary light or
+low-effort sets, retains unknown-effort logs, and caps credit at
 the planned count per position. Coverage alone does not indicate success against
 the repetition/time range or RIR; these are checked separately below. Technique
 and muscle growth are not assessed.
@@ -484,23 +486,42 @@ At equal per-set loads, the app reports the change in total repetitions or time.
 Changed loads or incomplete executions show both results without an automatic
 improvement/regression label. Mean RIR changes require complete RIR data in both
 executions. These are observed comparisons, not weight recommendations or a
-judgment that training was physiologically effective. Unknown set types remain
-included until classified; labelled warm-ups are excluded from these checks.
+judgment that training was physiologically effective. Unknown effort remains
+visible in descriptive coverage but cannot produce a progress delta. Timed
+performance uses duration without requiring RIR.
 
 ## Working sets and warm-ups
 
-Apply migration 004 to enable set classification. Existing sets remain `Unknown`;
-no type is inferred from load, exercise order or date. In `Analytics` → `Fatigue`,
-expand `Working sets & warm-up labels`, select a session and edit its set types:
+Series are interpreted automatically in the metrics layer, without modifying
+stored set values or writing inferred labels. Ordinary RIR 0–3 is working;
+RIR 4–5 is light; RIR above 5 is low effort. A light set is a likely warm-up only
+if it precedes the first known working set in the **same logged exercise** and
+has a lower load. A later back-off set is not automatically a warm-up.
 
-- `Working` — explicitly included in analysis.
-- `Warm-up` — preserved in history but excluded from set, session, exercise,
-  strength-progress, fatigue and plan-coverage calculations and exercise charts.
-- `Unknown` — included for historical continuity, with its uncertainty disclosed.
+Light and low-effort work remain in descriptive workload, but do not establish
+ordinary progression or fill planned working-set counts. Missing RIR stays
+unknown: its logged work remains visible, while ordinary progress comparisons
+and numeric increases require sufficient effort evidence. Timed work is evaluated
+using duration and requires no repetition-based RIR. Linked planned deload work
+uses the historical version's block settings, retains its lighter prescribed
+sets, and never establishes an ordinary progression baseline. Month filtering
+preserves this context, and global/exercise progress excludes deload exposures.
 
-Save the labels to recalculate analyses. Changing a label back to `Unknown` removes
-the explicit classification. Calendar log totals still include all recorded sets;
-warm-ups carry a `WU` badge. Training-visit frequency still counts recorded sessions.
+Explicit user corrections take priority over inferred purpose. `Working` can
+override a light/low-effort interpretation, but it does not invent missing RIR.
+`Warm-up` always excludes that set from analysis, including during deload.
+These thresholds are application policy, not a diagnosis of a set's training
+value. Derived results carry their kind, source and reason separately from the
+original `is_warmup` value.
+
+Migration 004 stores optional exceptions only. In the dashboard's recorded-session
+details, open `Set interpretation · optional correction` and switch on `Correct a
+set` only when needed. The editor shows the derived interpretation and its source.
+`Auto` removes an explicit correction; `Working` and `Warm-up` save exceptions.
+The former mandatory labelling control is removed from Analytics/Fatigue.
+Calendar log totals still preserve recorded sets; explicit warm-ups carry a `WU`
+badge. Training-visit frequency still counts recorded sessions. Source data are
+cached for up to five minutes; imports and corrections invalidate the cache.
 
 TXT import accepts explicit markers, including mixed markers on one line:
 
@@ -511,8 +532,9 @@ Working: 8x60 / 8x60
 RIR: 4 / 3 / 2 / 1
 ```
 
-`Rozgrzewka:` and `Robocze:` are also supported. Unmarked tokens stay unknown.
-Classification is stored separately from the original set values.
+`Rozgrzewka:` and `Robocze:` are also supported. Unmarked tokens retain an empty
+stored label and are interpreted automatically at analysis time. Exceptions
+remain stored separately from original set values; no new migration is needed.
 
 ## TXT Workout Import
 
@@ -543,6 +565,30 @@ It also supports common variants:
 
 If an imported exercise is not found in the database, the app suggests similar
 existing exercise names and allows the user to select one or add a new exercise.
+
+For a bodyweight dead hang, record each hold separately as a duration:
+
+```text
+1. Dead hang
+Working: 30s / 45s / 1:00
+```
+
+This example imports three working sets lasting 30, 45 and 60 seconds, with no
+added weight. RIR may be omitted and stays unknown; seconds of reserve are not
+repetitions in reserve. In Training Plan, choose `Measure = seconds` and the
+desired time range. Timed sets use `duration_seconds`, contribute no tonnage or
+estimated 1RM, and do not receive automatic timed progression recommendations.
+The current TXT duration format does not capture additional hanging weight.
+
+Wrist Curl and Reverse Wrist Curl use explicit forearm rules (wrist flexors and
+wrist extensors, respectively), before the generic elbow-curl rule. Standard
+straight-arm Dead hang uses forearm finger flexors/grip as primary, with shoulder
+and scapular stabilization; biceps are not credited as a training target. These
+are movement-based analytical labels and application role factors, not measured
+muscle activation percentages. References:
+[ACE wrist flexion](https://www.acefitness.org/resources/everyone/exercise-library/30/wrist-curl-flexion/),
+[ACE wrist extension](https://www.acefitness.org/resources/everyone/exercise-library/29/wrist-curl-extension/),
+[finger-hang/arm-lock-off study](https://pmc.ncbi.nlm.nih.gov/articles/PMC10623130/).
 
 ## Key Technical Decisions
 
@@ -822,8 +868,8 @@ python -m pytest
 ```
 
 The test role needs schema-creation permission. Without this variable, the five
-PostgreSQL cases are skipped and the 230 unit/SQLite/Streamlit tests still run.
-The [Tests workflow](.github/workflows/tests.yml) runs all 235 cases with Python
+PostgreSQL cases are skipped and the unit/SQLite/Streamlit tests still run.
+The [Tests workflow](.github/workflows/tests.yml) runs the full suite with Python
 3.12 and a disposable PostgreSQL 16 service on pushes to `main` and pull requests,
 without application database secrets. The final update verification is recorded
 in [release-validation.md](docs/release-validation.md).

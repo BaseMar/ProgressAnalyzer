@@ -5,6 +5,8 @@ from datetime import date
 
 from metrics.utils import is_duration_set, set_reps
 from models.plan_adherence import PlanAdherenceInput
+from metrics.set_interpretation import interpret_sets
+from metrics.training_block import is_deload_workout
 
 
 def compatible_set(workout_set, unit):
@@ -13,7 +15,7 @@ def compatible_set(workout_set, unit):
     return is_duration_set(workout_set) if unit == "seconds" else not is_duration_set(workout_set) and set_reps(workout_set) > 0
 
 
-def compute_plan_adherence(data: PlanAdherenceInput, *, as_of: date) -> dict:
+def compute_plan_adherence(data: PlanAdherenceInput, *, as_of: date, settings_by_version=None) -> dict:
     """Count each recorded set at most once, capped at the planned set count.
 
     Explicit matches reserve the entire recorded exercise; remaining exact-ID
@@ -26,6 +28,7 @@ def compute_plan_adherence(data: PlanAdherenceInput, *, as_of: date) -> dict:
         recorded_by_session[item.session_id].append(item)
     matches = {(item.session_id, item.plan_exercise_id): item.workout_exercise_id for item in data.matches}
     rows = []
+    settings_by_version = settings_by_version or {}
     for workout in data.workouts:
         slot = workout.slot
         linked = slot.session_id is not None and slot.performed_on is not None and slot.performed_on <= as_of
@@ -33,11 +36,18 @@ def compute_plan_adherence(data: PlanAdherenceInput, *, as_of: date) -> dict:
         reserved = {matches[(slot.session_id, target.plan_exercise_id)] for target in workout.targets
                     if (slot.session_id, target.plan_exercise_id) in matches}
         by_id = {item.workout_exercise_id: item for item in actual}
+        deload = is_deload_workout(slot, settings_by_version.get(slot.version_id), as_of=as_of)
+        candidates_by_id = {}
+        for item in actual:
+            ordered = sorted(item.sets, key=lambda value: value.set_number)
+            meanings = interpret_sets(ordered, deload_exercise_ids={item.workout_exercise_id} if deload else frozenset())
+            candidates_by_id[item.workout_exercise_id] = [
+                (item.workout_exercise_id, index, recorded_set, meaning)
+                for index, (recorded_set, meaning) in enumerate(zip(ordered, meanings))]
         pools = defaultdict(list)
         for item in actual:
             if item.workout_exercise_id not in reserved:
-                for index, recorded_set in enumerate(sorted(item.sets, key=lambda value: value.set_number)):
-                    pools[item.exercise_id].append((item.workout_exercise_id, index, recorded_set))
+                pools[item.exercise_id].extend(candidates_by_id[item.workout_exercise_id])
         used = set()
         details = []
         for target in workout.targets:
@@ -45,25 +55,33 @@ def compute_plan_adherence(data: PlanAdherenceInput, *, as_of: date) -> dict:
             explicit_id = matches.get((slot.session_id, target.plan_exercise_id))
             replacement = by_id.get(explicit_id)
             if explicit_id is not None:
-                candidates = [(replacement.workout_exercise_id, index, item) for index, item in enumerate(
-                    sorted(replacement.sets, key=lambda value: value.set_number)
-                )] if replacement else []
+                candidates = candidates_by_id[replacement.workout_exercise_id] if replacement else []
             else:
                 candidates = pools[planned.exercise_id]
             credited = []
-            for we_id, index, item in candidates:
-                if (we_id, index) in used or not compatible_set(item, planned.target_unit):
+            meanings = []
+            excluded = set()
+            for we_id, index, item, meaning in candidates:
+                if (we_id, index) in used:
+                    continue
+                if not meaning.counts_for_plan:
+                    excluded.add(meaning.kind)
+                    continue
+                if not compatible_set(item, planned.target_unit):
                     continue
                 if len(credited) >= planned.set_count:
                     break
                 used.add((we_id, index))
                 credited.append(item)
+                meanings.append(meaning)
             details.append({
                 "plan_exercise_id": target.plan_exercise_id, "exercise_id": planned.exercise_id,
                 "planned_sets": planned.set_count, "covered_sets": len(credited),
                 "replacement_exercise_id": replacement.exercise_id if replacement and replacement.exercise_id != planned.exercise_id else None,
                 "matched_workout_exercise_id": explicit_id,
                 "credited_sets": tuple(credited),
+                "set_interpretations": tuple(meanings),
+                "excluded_set_kinds": tuple(sorted(excluded)),
             })
         planned_sets = sum(item["planned_sets"] for item in details)
         covered_sets = sum(item["covered_sets"] for item in details)

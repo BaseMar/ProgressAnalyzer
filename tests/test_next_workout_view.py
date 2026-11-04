@@ -115,7 +115,6 @@ def test_deload_and_return_render_as_different_decisions(schedule_data):
 
 @pytest.mark.parametrize("options, text_expected", [
     ({"rir": None}, "Complete the missing RIR"),
-    ({"classification": None}, "Mark source sets as Working"),
     ({"planned": replace(PLAN, target_rir=None)}, "Set target RIR"),
     ({"planned": replace(PLAN, weight_increment=None)}, "Set the available weight step"),
 ])
@@ -136,6 +135,16 @@ def test_legacy_plan_explains_setup_once_instead_of_listing_unknown_exercise_goa
     app = start_app(engine, plan)
     assert any("Configure a training block" in item.value for item in app.info)
     assert not any('class="recommendation-list"' in item.value for item in app.markdown)
+
+
+def test_automatic_working_sets_need_no_label_editor_before_recommendations(schedule_data):
+    engine, _, _, _ = schedule_data
+    plan = seed(schedule_data, classification=None)
+    app = start_app(engine, plan)
+    assert "Increase load" in exercise_html(app)
+    assert "62.5 kg · 3 × 6 reps" in exercise_html(app)
+    with engine.connect() as connection:
+        assert connection.execute(select(classifications)).all() == []
 
 
 def test_not_started_block_explains_date_and_offers_later_workouts(schedule_data):

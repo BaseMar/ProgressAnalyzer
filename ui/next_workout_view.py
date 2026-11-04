@@ -60,7 +60,8 @@ def recommendation_note(item):
         "no_history": "Log and link a comparable workout to establish a baseline.",
         "no_normal_baseline": "Log and link a normal workout for this exercise to establish a baseline.",
         "incomplete_sets": "Review the latest linked workout: its matching working-set count is incomplete.",
-        "unknown_set_type": "Mark source sets as Working in Analytics → Fatigue.",
+        "light_sets": "Light sets remain in history; log the planned ordinary work before increasing the target.",
+        "low_effort_sets": "Sets above RIR 5 remain in history and do not establish an ordinary progression target.",
         "missing_rir": "Complete the missing RIR values in the source workout.",
         "missing_target_rir": "Set target RIR in Training Plan → Progression & RIR.",
         "history_gap": "The last comparable workout is too old. Establish a new baseline.",
@@ -138,7 +139,7 @@ class NextWorkoutView:
                     as_of=as_of, substitutions=substitutions, replacement_weight_steps=steps)
             st.markdown('<div class="recommendation-list">' + ''.join(self._exercise(item) for item in result.exercises) + '</div>', unsafe_allow_html=True)
             with st.expander("Why these targets?"):
-                st.caption("RIR means repetitions in reserve. Targets use linked, explicitly classified working sets; warm-ups are excluded. These are rule-based suggestions, not a measurement of training effectiveness.")
+                st.caption("RIR means repetitions in reserve. Working sets are inferred automatically from RIR and sequence; explicit corrections take priority. Deload and timed work use their own context. Targets are rule-based suggestions.")
                 for item in result.exercises:
                     st.markdown(f"**{escape(self._name(item.actual_exercise_id))}**")
                     st.caption(item.reason)

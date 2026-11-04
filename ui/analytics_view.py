@@ -23,7 +23,6 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from ui.plan_adherence_view import PlanAdherenceView
-from ui.set_classification_view import render_set_classification
 
 from ui.utils.ui_helpers import (chart_label, page_title, section_header, ACCENT, DANGER, MUTED, PLOTLY_LAYOUT)
 
@@ -76,7 +75,6 @@ class AnalyticsView:
             self._progress_section()
         with fatigue:
             self._fatigue_section()
-            render_set_classification()
 
     def _fatigue_section(self) -> None:
         """Render fatigue and recovery insights with per-session fatigue trends."""
@@ -128,7 +126,7 @@ class AnalyticsView:
             fig.update_yaxes(range=[0, 1])
             st.plotly_chart(fig, width='stretch')
 
-        st.caption("Fatigue Score is an unvalidated 0–1 heuristic based on RIR, failure sets, volume and timed work. High score means ≥0.7; it does not measure physiological fatigue or recovery. Explicit warm-ups are excluded; unknown set types remain included.")
+        st.caption("Fatigue Score is an unvalidated 0–1 heuristic based on RIR, failure sets, volume and timed work. High score means ≥0.7; it does not measure physiological fatigue or recovery. Inferred and explicit warm-ups are excluded; unknown effort remains in descriptive workload.")
 
     def _progress_section(self) -> None:
         """Render strength progress analysis with top/bottom improving exercises."""
@@ -138,6 +136,7 @@ class AnalyticsView:
             "using the best estimated 1RM per session (longest set for timed exercises). "
             "At least 2 comparable sessions are required."
         )
+        st.caption("Ordinary progress uses eligible working sets; light work, missing effort and planned deloads are excluded. Timed progress uses duration without requiring RIR.")
 
         per_ex = self.progress_metrics.get("per_exercise", {})
         if not per_ex:

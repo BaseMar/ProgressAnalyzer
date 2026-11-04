@@ -65,7 +65,7 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         for we in input.workout_exercises
     }
 
-    for workout_set in analysis_sets(input.sets):
+    for workout_set in analysis_sets(input.sets, deload_exercise_ids=input.deload_exercise_ids):
         session_id = workout_exercise_to_session.get(workout_set.workout_exercise_id)
         if session_id is None:
             continue
