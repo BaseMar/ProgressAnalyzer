@@ -5,7 +5,8 @@ from datetime import date
 from sqlalchemy import Column, Integer, MetaData, Table, func, inspect, select
 
 from db.migrations.v001_training_plans import define_tables
-from models.training_plan import PlannedExercise, TrainingDay, TrainingPlanDraft, TrainingPlanVersion
+from db.migrations.v005_progression_settings import define_table
+from models.training_plan import PlannedExercise, ProgressionSettings, TrainingDay, TrainingPlanDraft, TrainingPlanVersion
 
 metadata = MetaData()
 Table("exercises", metadata, Column("exercise_id", Integer, primary_key=True))
@@ -14,12 +15,20 @@ plans = tables["training_plans"]
 versions = tables["training_plan_versions"]
 days = tables["training_plan_days"]
 exercises = tables["training_plan_exercises"]
+progression_settings = define_table(metadata)
 
 
 def training_plan_storage_ready(engine) -> bool:
     """Check availability without creating or modifying tables."""
     with engine.connect() as connection:
-        return set(tables).issubset(inspect(connection).get_table_names())
+        return (set(tables) | {progression_settings.name}).issubset(inspect(connection).get_table_names())
+
+
+def _load_progression(connection, version_id):
+    row = connection.execute(select(progression_settings).where(
+        progression_settings.c.version_id == version_id,
+    )).mappings().one_or_none()
+    return ProgressionSettings(row["block_start"], row["block_weeks"]) if row else None
 
 
 def save_training_plan(engine, draft: TrainingPlanDraft, *, plan_id: int | None = None) -> TrainingPlanVersion:
@@ -28,11 +37,14 @@ def save_training_plan(engine, draft: TrainingPlanDraft, *, plan_id: int | None 
     Revision dates must follow the latest saved version and cannot be in the
     past. The next effective date implicitly ends the previous version.
     Existing workouts are never assigned to a plan by this operation.
+    Omitted progression settings on a revision inherit the previous snapshot;
+    only explicit settings change a configured block's start date or length.
     """
     if not isinstance(draft, TrainingPlanDraft):
         raise ValueError("A validated TrainingPlanDraft is required")
     with engine.begin() as connection:
         version_number = 1
+        settings = draft.progression
         if plan_id is None:
             plan_id = connection.execute(plans.insert().values()).inserted_primary_key[0]
         else:
@@ -45,6 +57,8 @@ def save_training_plan(engine, draft: TrainingPlanDraft, *, plan_id: int | None 
                 select(versions).where(versions.c.plan_id == plan_id)
                 .order_by(versions.c.version_number.desc()).limit(1)
             ).mappings().one()
+            if settings is None:
+                settings = _load_progression(connection, latest["version_id"])
             if draft.effective_from <= latest["effective_from"] or draft.effective_from < date.today():
                 raise ValueError("New version must start after the previous version and cannot be backdated")
             from db.plan_schedule import links
@@ -62,6 +76,10 @@ def save_training_plan(engine, draft: TrainingPlanDraft, *, plan_id: int | None 
             plan_id=plan_id, version_number=version_number,
             name=draft.name.strip(), effective_from=draft.effective_from,
         )).inserted_primary_key[0]
+        if settings is not None:
+            connection.execute(progression_settings.insert().values(
+                version_id=version_id, block_start=settings.block_start, block_weeks=settings.block_weeks,
+            ))
         for position, day in enumerate(draft.days, start=1):
             day_id = connection.execute(days.insert().values(
                 version_id=version_id, name=day.name.strip(), weekday=day.weekday, position=position,
@@ -102,7 +120,7 @@ def _load_version(connection, version_id: int) -> TrainingPlanVersion | None:
         draft=TrainingPlanDraft(version["name"], version["effective_from"], tuple(
             TrainingDay(day["name"], day["weekday"], tuple(items_by_day[day["day_id"]]))
             for day in day_rows
-        )),
+        ), progression=_load_progression(connection, version_id)),
     )
 
 

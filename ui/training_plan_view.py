@@ -6,7 +6,7 @@ import logging
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 from data_manager import DataManager
-from models.training_plan import PlannedExercise, TrainingDay, TrainingPlanDraft
+from models.training_plan import PlannedExercise, ProgressionSettings, TrainingDay, TrainingPlanDraft
 from ui.utils.plan_editor import WEEKDAYS
 from ui.utils.ui_helpers import page_title, section_header
 
@@ -51,6 +51,8 @@ class TrainingPlanView:
             self._render_history(source.plan_id)
 
     def _overview(self, draft, version_id):
+        if draft.progression:
+            st.caption(f'Training block: from {draft.progression.block_start:%d %b %Y} · {draft.progression.block_weeks} weeks · final week reserved for deload')
         cards = []
         for day in sorted(draft.days, key=lambda item: item.weekday):
             cards.append('<div class="plan-week-card">'
@@ -62,9 +64,10 @@ class TrainingPlanView:
                                  format_func=lambda value: f'{WEEKDAYS[draft.days[value].weekday]} · {draft.days[value].name}')
             for position, item in enumerate(draft.days[index].exercises, start=1):
                 rir = f" · RIR {item.target_rir}" if item.target_rir is not None else ""
+                weight_step = f" · step {item.weight_increment:g} kg" if item.weight_increment is not None else ""
                 st.markdown('<div class="plan-reference-row">'
                             f'<span>{position:02d} · {escape(self.labels.get(item.exercise_id, "Unknown exercise"))}</span>'
-                            f'<strong>{item.set_count} × {item.target_min}–{item.target_max} {item.target_unit}{rir}</strong></div>', unsafe_allow_html=True)
+                            f'<strong>{item.set_count} × {item.target_min}–{item.target_max} {item.target_unit}{rir}{weight_step}</strong></div>', unsafe_allow_html=True)
 
     @staticmethod
     def _exercise(item=None, uid=0):
@@ -110,6 +113,24 @@ class TrainingPlanView:
             if source:
                 st.caption("Saving creates a new version; previous targets remain in history.")
         store["name"], store["start"] = name, start
+        saved_settings = source.draft.progression if source else None
+        with st.expander("Progression & training block"):
+            enabled = True if saved_settings else st.checkbox(
+                "Configure training block", value=store.get("progression_enabled", source is None),
+                key=f"{scope}_progression_enabled",
+            )
+            store["progression_enabled"] = enabled
+            if enabled:
+                left, right = st.columns(2)
+                block_start = left.date_input(
+                    "Block starts on", value=store.get("block_start", saved_settings.block_start if saved_settings else source.draft.effective_from if source else start),
+                    key=f"{scope}_block_start",
+                )
+                weeks = store.get("block_weeks", saved_settings.block_weeks if saved_settings else 7)
+                block_weeks = right.selectbox("Block length (weeks)", [6, 7, 8], index=[6, 7, 8].index(weeks), key=f"{scope}_block_weeks")
+                store["block_start"], store["block_weeks"] = block_start, block_weeks
+                st.caption("The final week is reserved for deload. A new plan version keeps this start date; change it explicitly to configure a different block.")
+            st.caption("Settings only: next-session recommendations and deload adjustments are not calculated yet.")
         action = None
         if store["days"]:
             ids = [day["uid"] for day in store["days"]]
@@ -142,8 +163,12 @@ class TrainingPlanView:
                         lower.number_input("Minimum", min_value=1, value=item["minimum"], step=1, key=f"{ex_prefix}_minimum")
                         upper.number_input("Maximum", min_value=1, value=item["maximum"], step=1, key=f"{ex_prefix}_maximum")
                         unit.selectbox("Measure", ["reps", "seconds"], index=0 if item["unit"] == "reps" else 1, key=f"{ex_prefix}_unit")
-                        with st.expander("Optional RIR target"):
-                            st.number_input("Target RIR", min_value=0, value=item["rir"], step=1, key=f"{ex_prefix}_rir")
+                        with st.expander("Progression & RIR"):
+                            left, right = st.columns(2)
+                            left.number_input("Target RIR", min_value=0, value=item["rir"], step=1, key=f"{ex_prefix}_rir")
+                            increment = float(item["increment"]) if item["increment"] is not None else None
+                            right.number_input("Available weight step (kg)", min_value=0.01, value=increment, step=0.25, format="%.2f",
+                                               key=f"{ex_prefix}_increment", help="Use the same weight convention as your workout log, including per-dumbbell weights if applicable. Leave blank if unknown.")
                 add, remove = st.columns(2)
                 if add.button("Add exercise", key=f"{prefix}_add_exercise", icon=":material/add:"):
                     action = ("add_exercise", day_id)
@@ -182,7 +207,8 @@ class TrainingPlanView:
                             raise ValueError(f'{day["name"] or "Workout"}: choose an exercise')
                         exercises.append(PlannedExercise(item["exercise_id"], item["sets"], item["minimum"], item["maximum"], item["unit"], item["rir"], item["increment"]))
                     days.append(TrainingDay(day["name"].strip(), day["weekday"], tuple(exercises)))
-                saved = self.dm.save_training_plan(TrainingPlanDraft(name.strip(), start, tuple(days)), plan_id=source.plan_id if source else None)
+                progression = ProgressionSettings(store["block_start"], store["block_weeks"]) if store["progression_enabled"] else None
+                saved = self.dm.save_training_plan(TrainingPlanDraft(name.strip(), start, tuple(days), progression), plan_id=source.plan_id if source else None)
             except ValueError as exc:
                 st.error(str(exc))
                 return

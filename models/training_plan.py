@@ -54,10 +54,23 @@ class TrainingDay:
 
 
 @dataclass(frozen=True)
+class ProgressionSettings:
+    block_start: date
+    block_weeks: int = 7
+
+    def __post_init__(self):
+        if type(self.block_start) is not date:
+            raise ValueError("Block start must be a date")
+        if type(self.block_weeks) is not int or self.block_weeks not in (6, 7, 8):
+            raise ValueError("Block length must be 6, 7 or 8 weeks")
+
+
+@dataclass(frozen=True)
 class TrainingPlanDraft:
     name: str
     effective_from: date
     days: tuple[TrainingDay, ...]
+    progression: ProgressionSettings | None = None
 
     def __post_init__(self):
         if not self.name.strip() or len(self.name) > 120:
@@ -68,6 +81,8 @@ class TrainingPlanDraft:
             raise ValueError("A plan must contain a non-empty tuple of training days")
         if not all(isinstance(day, TrainingDay) for day in self.days):
             raise ValueError("Invalid training day")
+        if self.progression is not None and not isinstance(self.progression, ProgressionSettings):
+            raise ValueError("Invalid progression settings")
 
 
 @dataclass(frozen=True)

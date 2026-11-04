@@ -214,7 +214,8 @@ Saved plans open as weekly reference cards, with exercises available under
 2. Add named workouts and choose their weekdays. Select one `Workout to edit`.
 3. Add exercise cards from the catalog. Set the number of sets, minimum/maximum,
    and measurement unit. For example, 3 sets with 6–10 reps.
-4. Use the arrow buttons to reorder exercises. Target RIR is optional and collapsed.
+4. Use the arrow buttons to reorder exercises. Target RIR and the available weight
+   step are in the collapsed `Progression & RIR` section of each exercise card.
 5. Save the plan. All workout cards are saved together; editing an existing plan
    appends a version with a later start date. Previous versions remain available.
 
@@ -222,6 +223,25 @@ The plan editor requires migration 001 described below. Calendar assignments
 require migration 002; execution analysis and confirmed replacements require
 migration 003. Progression recommendations are not yet calculated.
 Native tables and inputs use the shared dark/teal theme in `.streamlit/config.toml`.
+
+### Progression configuration (settings only)
+
+Migration 005 adds versioned block settings. Under `Progression & training block`,
+set the block start date and choose 6, 7 or 8 total weeks. The final week is reserved
+for deload: for example, a 7-week block means 6 ordinary weeks followed by a deload
+week. This step stores the configuration; it does not yet adjust scheduled targets
+or generate next-session recommendations.
+
+The block start is separate from the plan version's effective date. Edits inherit
+the existing start and length, so saving a revision does not restart the block.
+An explicit change to either field is stored in the new snapshot; older snapshots
+keep their configuration. Missing settings in revision API calls also preserve
+the previous configuration. Existing plans remain unconfigured after migration
+until the user explicitly enables `Configure training block` in the editor.
+
+Each exercise keeps its own optional weight step in kg and target RIR. Use the
+same weight convention as the workout log (including per-dumbbell weights if
+applicable). Blank values remain unknown; a weight step must be finite and positive.
 
 ## Planned workouts in the calendar
 
@@ -433,6 +453,8 @@ Training-plan snapshots use:
 - `training_plan_days` — named workouts, weekdays (Monday = 0), and order.
 - `training_plan_exercises` — catalog exercise IDs, order, sets, target range,
   target unit (`reps` or `seconds`), optional RIR and weight increment.
+- `training_plan_progression` — block start and length for a configured plan
+  version; no row means not configured.
 - `training_plan_session_links` — a recorded session assigned to one dated
   workout template; uniqueness prevents counting a session or planned slot twice.
 - `training_plan_exercise_matches` — explicit session-scoped approval connecting
@@ -586,7 +608,8 @@ creates the new plan tables and a `schema_migrations` ledger; it requires the
 existing `exercises` table. Migration 002 adds session links and requires
 `workout_sessions`. Migration 003 adds confirmed exercise matches and requires
 `workout_exercises`. Migration 004 adds explicit set classifications and requires
-`workout_sets`. These migrations do not change existing workout records.
+`workout_sets`. Migration 005 adds versioned progression/block settings without
+assigning defaults to legacy plans. These migrations do not change workout records.
 Migrations are never run automatically at application startup.
 
 Preview pending migrations (read-only):
