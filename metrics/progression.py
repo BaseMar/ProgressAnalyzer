@@ -1,15 +1,31 @@
-"""Deterministic double progression for NORMAL sessions only.
-
-Deload classification/adjustments belong to the next stage. This engine returns
-derived targets, never writes them into a plan, and does not guarantee outcomes.
-"""
-from datetime import date
-from decimal import Decimal
+"""Deterministic progression, calendar deloads and post-deload return targets."""
+from dataclasses import replace
+from datetime import date, timedelta
+from decimal import Decimal, ROUND_CEILING
 from math import isclose, isfinite
 
 from metrics.plan_performance import comparison_context, compute_plan_performance
+from metrics.training_block import deload_exercise_target, is_deload_workout, training_block_phase
 from models.plan_adherence import PlanAdherenceInput, PlannedWorkout
-from models.progression import ExerciseRecommendation, ProgressionPolicy, SetGoal
+from models.progression import DeloadPolicy, ExerciseRecommendation, ProgressionPolicy, SetGoal, WorkoutRecommendation
+
+
+def _evidence_problem(latest, planned, scheduled_date, policy):
+    sets = latest["sets"]
+    if (scheduled_date - latest["performed_on"]).days > policy.max_history_gap_days:
+        return "history_gap", "The latest execution is outside the policy's history-gap limit."
+    if latest["missing_sets"] or not sets:
+        return "incomplete_sets", "The latest linked session does not contain every planned set."
+    if any(item["is_warmup"] is not False for item in sets):
+        return "unknown_set_type", "Mark the credited sets as working sets before using them for progression."
+    if planned.target_rir is None:
+        return "missing_target_rir", "Set a target RIR before generating progression goals."
+    if any(item["rir"] is None for item in sets):
+        return "missing_rir", "The latest execution has missing RIR data; missing is not zero."
+    if any(not isfinite(item["weight"]) or item["weight"] < 0
+           or not isfinite(item["rir"]) or item["rir"] < 0 for item in sets):
+        return "invalid_values", "Recorded loads or RIR values are invalid."
+    return None
 
 
 def recommend_normal_workout(
@@ -68,24 +84,9 @@ def recommend_normal_workout(
         latest = history[-1]
         evidence = (latest,)
         sets = latest["sets"]
-        if (upcoming.slot.scheduled_date - latest["performed_on"]).days > policy.max_history_gap_days:
-            output.append(decision("insufficient_data", "history_gap", "The latest execution is outside the policy's history-gap limit.", evidence=evidence))
-            continue
-        if latest["missing_sets"] or not sets:
-            output.append(decision("insufficient_data", "incomplete_sets", "The latest linked session does not contain every planned set.", evidence=evidence))
-            continue
-        if any(item["is_warmup"] is not False for item in sets):
-            output.append(decision("insufficient_data", "unknown_set_type", "Mark the credited sets as working sets before using them for progression.", evidence=evidence))
-            continue
-        if planned.target_rir is None:
-            output.append(decision("insufficient_data", "missing_target_rir", "Set a target RIR before generating progression goals.", evidence=evidence))
-            continue
-        if any(item["rir"] is None for item in sets):
-            output.append(decision("insufficient_data", "missing_rir", "The latest execution has missing RIR data; missing is not zero.", evidence=evidence))
-            continue
-        if any(not isfinite(item["weight"]) or item["weight"] < 0
-               or not isfinite(item["rir"]) or item["rir"] < 0 for item in sets):
-            output.append(decision("insufficient_data", "invalid_values", "Recorded loads or RIR values are invalid.", evidence=evidence))
+        problem = _evidence_problem(latest, planned, upcoming.slot.scheduled_date, policy)
+        if problem:
+            output.append(decision("insufficient_data", *problem, evidence=evidence))
             continue
         hold = tuple(SetGoal(item["weight"], planned.target_min, planned.target_max, planned.target_unit) for item in sets)
         if any(item["rir"] < planned.target_rir for item in sets):
@@ -144,3 +145,99 @@ def recommend_normal_workout(
         goals = tuple(SetGoal(next_weight, planned.target_min, planned.target_min, "reps") for _ in sets)
         output.append(decision("increase_weight", "upper_range_confirmed", "The required consecutive executions reached the upper bound with enough reserve; add one available weight step and target the lower bound.", goals, confirmed))
     return tuple(output)
+
+
+def _reduced_load(weight, step, policy):
+    """Subtract whole hardware steps from the logged load, never invent a step."""
+    if weight <= 0:
+        return None
+    load, increment = Decimal(str(weight)), Decimal(str(step))
+    steps = (load * Decimal(str(policy.load_reduction)) / increment).to_integral_value(rounding=ROUND_CEILING)
+    reduction = steps * increment
+    if reduction / load > Decimal(str(policy.max_load_reduction)) or reduction >= load:
+        return None
+    return float(load - reduction)
+
+
+def recommend_workout(
+    data: PlanAdherenceInput, upcoming: PlannedWorkout, *, as_of: date, settings,
+    policy: ProgressionPolicy = ProgressionPolicy(), deload_policy: DeloadPolicy = DeloadPolicy(),
+    substitutions=None, replacement_weight_steps=None, settings_by_version=None,
+) -> WorkoutRecommendation:
+    """General entry point: ordinary progression, deload or return baseline.
+
+    Configured blocks repeat from their anchor. Deload executions never establish
+    ordinary baselines/confirmations. The first ordinary exposure in a new cycle
+    may reuse the last normal load from the preceding cycle, without increasing it.
+    Historical versions use their own settings when a mapping is supplied.
+    """
+    phase = training_block_phase(upcoming.slot.scheduled_date, settings)
+    version_settings = settings_by_version if settings_by_version is not None else {
+        item.slot.version_id: settings for item in data.workouts}
+    # A manual change of anchor/length starts a fresh history. Revisions with the
+    # same block settings preserve it. Both scheduled and actual dates matter.
+    ordinary = replace(data, workouts=tuple(item for item in data.workouts
+        if settings is not None and version_settings.get(item.slot.version_id) == settings
+        and item.slot.scheduled_date >= settings.block_start
+        and item.slot.performed_on is not None and item.slot.performed_on >= settings.block_start
+        and not is_deload_workout(item.slot, settings)))
+    current = replace(ordinary, workouts=tuple(item for item in ordinary.workouts
+        if phase.cycle_start is not None and item.slot.scheduled_date >= phase.cycle_start))
+    results = recommend_normal_workout(current, upcoming, as_of=as_of,
+        block_start=phase.cycle_start if phase.cycle_start else settings.block_start if settings else None,
+        policy=policy, substitutions=substitutions, replacement_weight_steps=replacement_weight_steps)
+    if phase.phase in ("unconfigured", "not_started") or upcoming.slot.session_id is not None:
+        return WorkoutRecommendation(phase, results)
+    performances = compute_plan_performance(ordinary, as_of=as_of)
+    output = []
+    for position, (target, result) in enumerate(zip(upcoming.targets, results), start=1):
+        planned = target.exercise
+        if phase.phase == "normal" and result.reason_code != "no_history":
+            output.append(result)
+            continue
+        context = comparison_context(upcoming.slot, position, planned, result.actual_exercise_id)
+        history = [row for row in performances if row["context"] == context
+                   and row["performed_on"] is not None and row["performed_on"] <= as_of]
+        if phase.phase == "deload":
+            history = [row for row in history if row["scheduled_date"] >= phase.cycle_start
+                       and row["performed_on"] >= phase.cycle_start
+                       and row["scheduled_date"] < phase.deload_start and row["performed_on"] < phase.deload_start]
+        else:
+            # Only the immediately preceding cycle may supply the return load.
+            previous_start = phase.cycle_start - timedelta(weeks=settings.block_weeks)
+            history = [row for row in history if previous_start <= row["scheduled_date"] < phase.cycle_start
+                       and previous_start <= row["performed_on"] < phase.cycle_start]
+        if not history:
+            output.append(replace(result, action="insufficient_data", goals=(), reason_code="no_normal_baseline",
+                                  reason="No linked ordinary execution in the relevant cycle; deload results are not used as a baseline."))
+            continue
+        latest = history[-1]
+        result = replace(result, evidence_session_ids=(latest["session_id"],), evidence_dates=(latest["performed_on"],))
+        problem = _evidence_problem(latest, planned, upcoming.slot.scheduled_date, policy)
+        if problem:
+            output.append(replace(result, action="insufficient_data", goals=(), reason_code=problem[0], reason=problem[1]))
+            continue
+        if phase.phase == "normal":
+            goals = tuple(SetGoal(item["weight"], planned.target_min, planned.target_max, planned.target_unit) for item in latest["sets"])
+            output.append(replace(result, action="maintain", goals=goals, reason_code="resume_after_deload",
+                                  reason="Resume the last ordinary loads and planned range without an increase. New-cycle executions must establish progression again."))
+            continue
+        if planned.target_unit != "reps":
+            output.append(replace(result, action="insufficient_data", goals=(), reason_code="deload_timed_not_supported",
+                                  reason="This date is deload, but automatic targets for timed exercises are not supported."))
+            continue
+        step = planned.weight_increment if result.actual_exercise_id == planned.exercise_id else (replacement_weight_steps or {}).get(result.actual_exercise_id)
+        if step is None or isinstance(step, bool) or not isinstance(step, (int, float)) or not isfinite(step) or step <= 0:
+            output.append(replace(result, action="insufficient_data", goals=(), reason_code="missing_weight_step" if step is None else "invalid_weight_step",
+                                  reason="Deload needs the actual exercise's available positive weight step; the original exercise's step is not reused for a substitute."))
+            continue
+        reduced = deload_exercise_target(planned, deload_policy)
+        weights = [_reduced_load(item["weight"], step, deload_policy) for item in latest["sets"][:reduced.set_count]]
+        if any(weight is None for weight in weights):
+            output.append(replace(result, action="insufficient_data", goals=(), reason_code="deload_load_not_supported",
+                                  reason="No supported reduced positive load within the deload policy limit. Zero-load/bodyweight and assistance require manual load selection."))
+            continue
+        goals = tuple(SetGoal(weight, reduced.target_min, reduced.target_max, "reps") for weight in weights)
+        output.append(replace(result, action="deload", goals=goals, target_rir=reduced.target_rir,
+                              reason_code="scheduled_deload", reason="Scheduled deload: fewer working sets (rounded up, at least one), lower-bound reps, reduced loads in whole equipment steps and more reserve."))
+    return WorkoutRecommendation(phase, tuple(output))

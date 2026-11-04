@@ -5,7 +5,7 @@ import pandas as pd
 from sqlalchemy import text
 
 from db.connection import get_engine
-from db.progression import load_normal_workout_recommendations
+from db.progression import load_normal_workout_recommendations, load_workout_recommendations
 from db.training_plans import (
     load_effective_training_plan, load_training_plan_version, load_training_plan_versions, load_training_plans,
     save_training_plan, training_plan_storage_ready,
@@ -71,6 +71,9 @@ class DataManager:
 
     def load_normal_workout_recommendations(self, plan_id, day_id, scheduled_date, *, as_of, **options):
         return load_normal_workout_recommendations(self.engine, plan_id, day_id, scheduled_date, as_of=as_of, **options)
+
+    def load_workout_recommendations(self, plan_id, day_id, scheduled_date, *, as_of, **options):
+        return load_workout_recommendations(self.engine, plan_id, day_id, scheduled_date, as_of=as_of, **options)
 
     def save_exercise_match(self, session_id, plan_exercise_id, workout_exercise_id):
         return save_exercise_match(self.engine, session_id, plan_exercise_id, workout_exercise_id)

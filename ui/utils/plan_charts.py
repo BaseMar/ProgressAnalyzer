@@ -40,17 +40,22 @@ def exercise_history_chart(rows):
                         vertical_spacing=0.14 if with_load else 0)
     x = list(range(len(points)))
     labels = [f'{row["performed_on"]:%d %b}' for row in points]
-    custom = [[row["performed_on"].isoformat(), len(row["sets"]), row["planned_sets"], row["session_id"], row["in_range"]] for row in points]
+    phases = [row.get("training_phase", "normal") for row in points]
+    custom = [[row["performed_on"].isoformat(), len(row["sets"]), row["planned_sets"], row["session_id"], row["in_range"], phase] for row, phase in zip(points, phases)]
+    markers = dict(size=7, symbol=["diamond" if phase == "deload" else "circle" for phase in phases],
+                   color=[WARN if phase == "deload" else ACCENT for phase in phases])
     values = [sum(item[field] for item in row["sets"]) / len(row["sets"]) for row in points]
     fig.add_trace(go.Scatter(x=x, y=values, mode="lines+markers", line=dict(color=ACCENT),
-                            marker=dict(size=7), customdata=custom,
-                            hovertemplate="%{customdata[0]} · session #%{customdata[3]}<br>Mean: %{y:.1f}<br>Logged sets: %{customdata[1]}/%{customdata[2]}<br>In range: %{customdata[4]}/%{customdata[2]}<extra></extra>"), row=1, col=1)
-    fig.add_hrect(y0=points[-1]["target_min"], y1=points[-1]["target_max"],
-                  fillcolor="rgba(0,173,181,0.12)", line_width=0, row=1, col=1)
+                            marker=markers, customdata=custom,
+                            hovertemplate="%{customdata[0]} · session #%{customdata[3]} · %{customdata[5]}<br>Mean: %{y:.1f}<br>Logged sets: %{customdata[1]}/%{customdata[2]}<br>In range: %{customdata[4]}/%{customdata[2]}<extra></extra>"), row=1, col=1)
+    for index, point in enumerate(points):
+        fig.add_hrect(x0=index - 0.5, x1=index + 0.5, y0=point["target_min"], y1=point["target_max"],
+                      fillcolor="rgba(0,173,181,0.12)", line_color=ACCENT,
+                      line_width=1 if point["target_min"] == point["target_max"] else 0, row=1, col=1)
     fig.update_yaxes(title_text=f"Mean {field} / set", row=1, col=1)
     if with_load:
         fig.add_trace(go.Scatter(x=x, y=[sum(item["weight"] for item in row["sets"]) / len(row["sets"]) for row in points],
-                                mode="lines+markers", line=dict(color=MUTED),
+                                mode="lines+markers", line=dict(color=MUTED), marker=markers,
                                 hovertemplate="Mean load: %{y:g} kg<extra></extra>"), row=2, col=1)
         fig.update_yaxes(title_text="Mean load (kg)", row=2, col=1)
     fig.update_layout(**PLOTLY_LAYOUT)

@@ -12,6 +12,7 @@ from metrics.plan_performance import compute_plan_performance
 from metrics.plan_summary import summarize_plan
 from ui.utils.plan_charts import exercise_history_chart, weekly_execution_chart
 from ui.utils.ui_helpers import chart_label, section_header
+from metrics.training_block import deload_adjusted_input
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +50,10 @@ class PlanAdherenceView:
             logger.exception("Unable to load plan analysis")
             st.error("Plan analysis could not be loaded. Please try again.")
             return
-        report = compute_plan_adherence(data, as_of=date.today())
-        performance = compute_plan_performance(history, as_of=date.today(), start=start, end=end)
+        block_settings = {version.version_id: version.draft.progression for version in versions}
+        report = compute_plan_adherence(deload_adjusted_input(data, block_settings, as_of=date.today()), as_of=date.today())
+        performance = compute_plan_performance(history, as_of=date.today(), start=start, end=end,
+                                             settings_by_version=block_settings)
         overview, summary = summarize_plan(report, performance), report["summary"]
         cols = st.columns(3)
         for col, label, value, note in (
@@ -69,6 +72,8 @@ class PlanAdherenceView:
             chart_label("Weekly execution")
             st.plotly_chart(weekly_execution_chart(overview["weeks"]), width="stretch", key="weekly_plan_execution")
         st.caption("Completed calendar days only. An unlinked workout is not proof that it was skipped.")
+        if any(row["training_phase"] == "deload" for row in performance):
+            st.caption("Deload dates use reduced set/repetition targets for resistance exercises. Deload logs are excluded from exercise progress comparisons.")
         self.render_performance(performance)
         with st.expander("Exercise replacements & data corrections"):
             self._render_matches(data)
@@ -99,7 +104,7 @@ class PlanAdherenceView:
         fig = exercise_history_chart(selected_rows)
         if fig is not None:
             st.plotly_chart(fig, width="stretch", key="plan_exercise_history")
-        st.caption("Shaded band = target range. Means describe logged sets, including partial sessions. Read load alongside reps/time; substitutes keep separate histories.")
+        st.caption("Shaded band = target range at each date; amber diamonds = deload. Means describe logged sets, including partial sessions. Read load alongside reps/time; substitutes keep separate histories.")
         with st.expander("Previous vs current · set breakdown"):
             previous = latest["previous"]
             if previous:

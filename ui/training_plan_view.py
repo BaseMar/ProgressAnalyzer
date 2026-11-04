@@ -129,8 +129,8 @@ class TrainingPlanView:
                 weeks = store.get("block_weeks", saved_settings.block_weeks if saved_settings else 7)
                 block_weeks = right.selectbox("Block length (weeks)", [6, 7, 8], index=[6, 7, 8].index(weeks), key=f"{scope}_block_weeks")
                 store["block_start"], store["block_weeks"] = block_start, block_weeks
-                st.caption("The final week is reserved for deload. A new plan version keeps this start date; change it explicitly to configure a different block.")
-            st.caption("Settings only: next-session recommendations and deload adjustments are not calculated yet.")
+                st.caption("Blocks repeat from this date; the final week of each block is deload. A new plan version keeps this anchor; change it explicitly to restart the schedule.")
+            st.caption("Recommendations are available through the backend. The Analytics recommendation card will be added in the next step.")
         action = None
         if store["days"]:
             ids = [day["uid"] for day in store["days"]]

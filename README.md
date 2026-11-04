@@ -221,8 +221,8 @@ Saved plans open as weekly reference cards, with exercises available under
 
 The plan editor requires migration 001 described below. Calendar assignments
 require migration 002; execution analysis and confirmed replacements require
-migration 003. Normal-session recommendation calculations are available through
-the backend API; the recommendation card and deload integration are not yet added.
+migration 003. Progression and deload recommendations are available through
+the backend API; the recommendation card is the next step.
 Native tables and inputs use the shared dark/teal theme in `.streamlit/config.toml`.
 
 ### Progression configuration
@@ -230,8 +230,9 @@ Native tables and inputs use the shared dark/teal theme in `.streamlit/config.to
 Migration 005 adds versioned block settings. Under `Progression & training block`,
 set the block start date and choose 6, 7 or 8 total weeks. The final week is reserved
 for deload: for example, a 7-week block means 6 ordinary weeks followed by a deload
-week. The normal-session engine uses the block start and per-exercise settings.
-Block timing does not yet adjust scheduled targets or activate deload prescriptions.
+week. Blocks repeat automatically from the saved start date, so deload returns
+every 6, 7 or 8 weeks. Weeks are seven-day intervals from that date, including
+midweek starts. Missed workouts do not shift the calendar or prove fatigue.
 
 The block start is separate from the plan version's effective date. Edits inherit
 the existing start and length, so saving a revision does not restart the block.
@@ -246,20 +247,23 @@ applicable). Blank values remain unknown; a weight step must be finite and posit
 
 ### Normal-session progression engine (step 2)
 
-`DataManager.load_normal_workout_recommendations(plan_id, day_id, scheduled_date,
-as_of=...)` returns immutable derived goals for an explicitly ordinary workout.
+`DataManager.load_workout_recommendations(plan_id, day_id, scheduled_date,
+as_of=...)` is the general entry point. It returns a `WorkoutRecommendation`
+with block phase/cycle/week/dates and immutable per-exercise recommendations.
 It reads linked history across month filters and does not write recommendations
 to the database or change plan targets. No new migration is required.
 
-The caller must identify an ordinary workout. Deload classification, adjustments,
-post-deload baselines and the final Analytics card belong to subsequent steps;
-this method is not yet a general-purpose recommendation for arbitrary plan dates.
+`load_normal_workout_recommendations` remains a compatibility wrapper returning
+only the exercise tuple; it rejects deload dates. The pure
+`metrics.progression.recommend_normal_workout` remains the low-level normal-only
+engine. Use `recommend_workout` or the general database API for arbitrary dates
+so that deload classification and cycle boundaries cannot be bypassed.
 
 Rules are deterministic and return `increase_reps`, `increase_weight`, `maintain`
 or `insufficient_data`, plus per-set goals, target RIR, a reason code/explanation
 and evidence session IDs/dates:
 
-- Compare only the same exercise and workout context within the configured block,
+- Compare only the same exercise and workout context within the current cycle,
   using actual session chronology and excluding data recorded after `as_of`.
 - Require complete, explicitly classified working sets, a target RIR and recorded
   RIR. Unknown set labels/RIR do not support increases; labelled warm-ups are excluded.
@@ -292,6 +296,66 @@ The general idea is progressive adjustment of the training stimulus, discussed i
 the [2026 ACSM overview](https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/).
 The exact one-rep rule, confirmation count, reset target and guards above are the
 application's transparent policy, not an algorithm validated by that paper.
+
+### Scheduled deload and return (step 3)
+
+The general engine classifies the planned workout as `unconfigured`,
+`not_started`, `normal` or `deload`. The final seven days of each configured
+cycle use the following default `DeloadPolicy` for resistance exercises:
+
+- Keep `ceil(planned sets * 0.5)` working sets, with at least one set. Three sets
+  become two; four become two. A single-set exercise retains one set.
+- Target the original lower repetition bound in every remaining set.
+- Reduce each retained set's last normal load by at least 10%, subtracting whole
+  available equipment steps from the logged load. Stop if the required reduction
+  exceeds 20% or would make the load zero/negative; return `insufficient_data`
+  with a reason rather than inventing a different step or available weight.
+- Set the target reserve to `max(4, original target RIR + 2)`.
+
+For example, a plan with 3 x 6-10, RIR 2, a 2.5 kg step and a complete normal
+log of 60 kg x 10/10/10 gives **2 x 6 at 52.5 kg, target RIR 4** during deload.
+The 7.5 kg reduction is three available steps (12.5%), not a fabricated 54 kg.
+These are derived targets, not a guarantee of the RIR a user will achieve.
+
+The latest comparable normal execution in the same cycle supplies evidence.
+It must pass the same completeness, working-set classification, RIR and
+21-day default history-gap checks as ordinary recommendations. Deload sessions
+are never reused as a baseline, so multiple sessions in the deload week do not
+compound the reduction. An explicit substitute uses its own history and supplied
+weight step. Timed exercises, zero-load/bodyweight and assistance-machine load
+selection are outside the automatic deload prescription; select loads manually.
+
+On the first normal exposure after deload, use the last comparable normal loads
+and original range from the immediately preceding cycle, without an increase.
+This is `maintain` / `resume_after_deload`. It needs no weight step because it
+does not change loads. Old upper-bound confirmations do not carry forward:
+new-cycle executions establish progression again. Missing/partial latest evidence,
+long gaps, a changed context or a manual change of block settings prevents reuse.
+The calendar continues even if no deload session was logged; the rule does not
+claim that the user recovered or completed a deload.
+
+Historical plan versions retain their own block settings. Saving a revision with
+the same settings preserves the schedule/history. A manually changed anchor or
+length starts a separate recommendation history. A moved planned deload remains
+deload; a normal slot actually performed during deload is also excluded from normal
+baselines and confirmations. Results after `as_of` never supply evidence.
+
+In **Analytics -> Plan execution**, resistance-exercise deload dates use reduced
+set counts and repetition/RIR targets for coverage and range checks. Their
+comparisons are labelled deload and have no progress/regression delta; the next
+normal execution compares against the previous normal execution. Amber diamonds
+identify deload logs on the exercise chart, whose target band follows each date.
+Raw history, saved plan versions, and the descriptive Overall strength/Fatigue
+metrics are unchanged. Those descriptive metrics still include logged deload work.
+No recommendation card is displayed yet; that is step 4.
+
+The general reduction of training demand is supported as a design approach by
+the [deload Delphi consensus](https://pmc.ncbi.nlm.nih.gov/articles/PMC10511399/).
+It does not establish one optimal schedule or algorithm. The repeating 6-8 week
+schedule, exact reductions, RIR targets and return rule above are explicit,
+configurable application policy, not a physiological fatigue diagnosis or a
+validated individual prescription. Analytics uses the default policy; alternative
+policies are currently backend options and are not persisted as plan settings.
 
 ## Planned workouts in the calendar
 
