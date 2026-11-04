@@ -77,6 +77,7 @@ class SidebarView:
 
         options = [
             "Main Dashboard",
+            "Training Plan",
             "Exercises",
             "Body Parts",
             "Analytics",
@@ -85,6 +86,7 @@ class SidebarView:
 
         icons = {
             "Main Dashboard": ":material/dashboard:",
+            "Training Plan":  ":material/calendar_month:",
             "Exercises":      ":material/fitness_center:",
             "Body Parts":     ":material/accessibility_new:",
             "Analytics":      ":material/bar_chart:",

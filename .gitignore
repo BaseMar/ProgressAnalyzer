@@ -55,7 +55,8 @@ Desktop.ini
 .mypy_cache/
 
 # Streamlit
-.streamlit/
+.streamlit/*
+!.streamlit/config.toml
 
 # Logs
 *.log

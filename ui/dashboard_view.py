@@ -13,13 +13,14 @@ All metrics are pre-computed; this view only handles presentation.
 
 from __future__ import annotations
 
-from calendar import Calendar
-from datetime import date
+from calendar import Calendar, monthrange
+from datetime import date, timedelta
 from html import escape
 
 import pandas as pd
 import streamlit as st
 from data_manager import DataManager
+from ui.plan_schedule_view import PlanScheduleView
 
 from ui.utils.ui_helpers import chart_label, format_number, line_chart, page_title, section_header
 
@@ -57,7 +58,7 @@ class DashboardView:
     - sets_df: Raw set data for detailed session rendering
     """
 
-    def __init__(self, metrics: dict, sets_df: pd.DataFrame, selected_month: str | None = None) -> None:
+    def __init__(self, metrics: dict, sets_df: pd.DataFrame, selected_month: str | None = None, *, exercise_names=None, data_manager=None) -> None:
         """Initialize with pre-computed metrics and raw set data.
         
         Args:
@@ -67,7 +68,9 @@ class DashboardView:
         self.metrics = metrics
         self.sets_df = sets_df
         self.selected_month = selected_month
-        self.dm = DataManager()
+        self.dm = data_manager if data_manager is not None else DataManager()
+        self.schedule = PlanScheduleView(self.dm, exercise_names)
+        self.scheduled_workouts = []
 
 
     def render(self) -> None:
@@ -128,14 +131,18 @@ class DashboardView:
         section_header("Session History")
 
         df = self.sets_df.copy()
-        if df.empty and self.selected_month in (None, "All time"):
+        self.schedule.render_picker()
+        if df.empty and self.selected_month in (None, "All time") and self.schedule.plan_id is None:
             st.info("No workout history yet.")
             return
 
+        df = df.reindex(columns=list(dict.fromkeys([*df.columns, "session_date", "session_id"])))
         df["session_date"] = pd.to_datetime(df["session_date"])
         session_counts = df.groupby(df["session_date"].dt.date)["session_id"].nunique()
         with st.container(key="workout_calendar"):
             selected_day = self._render_calendar(session_counts)
+
+        self.schedule.render_day(selected_day, self.scheduled_workouts)
 
         selected_count = session_counts.get(selected_day, 0)
         st.markdown(
@@ -165,14 +172,26 @@ class DashboardView:
             if self.selected_month not in (None, "All time"):
                 month = date.fromisoformat(f"{self.selected_month}-01")
             else:
-                months = pd.period_range(min(training_dates), max(training_dates), freq="M")
+                bounds = training_dates | set(self.schedule.version_dates)
+                if self.schedule.plan_id is not None:
+                    bounds |= {date.today(), date.today() + timedelta(days=365)}
+                months = pd.period_range(min(bounds), max(bounds), freq="M")
+                default = str(pd.Period(date.today(), freq="M")) if self.schedule.plan_id is not None else str(months[-1])
                 month_label = st.selectbox(
                     "History month", [str(value) for value in months],
-                    index=len(months) - 1, key="history_month",
+                    index=[str(value) for value in months].index(default), key="history_month",
                     format_func=lambda value: date.fromisoformat(f"{value}-01").strftime("%B %Y"),
                     label_visibility="collapsed",
                 )
                 month = date.fromisoformat(f"{month_label}-01")
+
+        self.scheduled_workouts = self.schedule.load_month(month, month.replace(day=monthrange(month.year, month.month)[1]))
+        planned_counts = {}
+        linked_counts = {}
+        for slot in self.scheduled_workouts:
+            planned_counts[slot.scheduled_date] = planned_counts.get(slot.scheduled_date, 0) + 1
+            if slot.session_id is not None:
+                linked_counts[slot.scheduled_date] = linked_counts.get(slot.scheduled_date, 0) + 1
 
         month_dates = sorted(day for day in training_dates if (day.year, day.month) == (month.year, month.month))
         month_sessions = sum(session_counts[day] for day in month_dates)
@@ -182,6 +201,7 @@ class DashboardView:
             '<div class="calendar-summary">'
             f'<span><strong>{len(month_dates)}</strong> training days</span>'
             f'<span><strong>{month_sessions}</strong> sessions</span>'
+            + (f'<span><strong>{len(self.scheduled_workouts)}</strong> planned</span>' if self.schedule.plan_id is not None else '') +
             '</div></div>',
             unsafe_allow_html=True,
         )
@@ -199,14 +219,21 @@ class DashboardView:
                         continue
                     day = month.replace(day=day_number)
                     count = session_counts.get(day, 0)
+                    planned = planned_counts.get(day, 0)
                     state = "trained" if count else "rest"
+                    if planned:
+                        state = "trained_planned" if count else "planned"
+                        if linked_counts.get(day, 0) == planned:
+                            state += "_linked"
                     today = "_today" if day == date.today() else ""
                     with col.container(key=f"calendar_cell_{state}_{day.isoformat()}{today}"):
                         st.button(
                             str(day_number), key=f"history_date_{day.isoformat()}",
                             type="primary" if day == st.session_state[selection_key] else "secondary",
                             use_container_width=True,
-                            help=f"{day:%d %b %Y}: {count} session(s)" + (" · Today" if today else ""),
+                            help=f"{day:%d %b %Y}: {count} session(s)"
+                            + (f" · {planned} planned · {linked_counts.get(day, 0)} linked" if planned else "")
+                            + (" · Today" if today else ""),
                             on_click=st.session_state.__setitem__, args=(selection_key, day),
                         )
         st.markdown(
@@ -214,6 +241,8 @@ class DashboardView:
             '<div class="calendar-legend">'
             '<span><i class="calendar-legend-dot"></i> Workout</span>'
             '<span><i class="calendar-legend-selected"></i> Selected</span>'
+            + ('<span><i class="calendar-legend-planned"></i> Planned</span>'
+               '<span><i class="calendar-legend-linked"></i> Linked</span>' if self.schedule.plan_id is not None else '') +
             '</div><span>Select a day to explore your sessions</span></div>',
             unsafe_allow_html=True,
         )

@@ -879,6 +879,53 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
     background: var(--accent);
 }
 
+/* Top-right ring marks planned work; a filled ring means every slot is linked.
+   The bottom dot continues to mark the actual day of recorded training. */
+.st-key-calendar_grid [class*="st-key-calendar_cell_"][class*="planned"] button::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 7px;
+    height: 7px;
+    border: 1px solid #ffc947;
+    border-radius: 50%;
+}
+
+.st-key-calendar_grid [class*="st-key-calendar_cell_"][class*="planned_linked"] button::before {
+    border-color: var(--accent);
+    background: var(--accent);
+}
+
+.st-key-calendar_grid [class*="st-key-calendar_cell_"][class*="planned_linked"] button[kind="primary"]::before {
+    border-color: var(--bg-base);
+    background: var(--bg-base);
+}
+
+.calendar-legend-planned {
+    width: 8px;
+    height: 8px;
+    border: 1px solid #ffc947;
+    border-radius: 50%;
+}
+
+.calendar-legend-linked {
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+}
+
+.calendar-legend { flex-wrap: wrap; }
+
+[class*="st-key-planned_workout_"] {
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: rgba(57, 62, 70, 0.22);
+}
+
 .calendar-detail-heading {
     display: flex;
     align-items: center;
@@ -908,4 +955,57 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
     .calendar-blank { height: 48px; }
     .st-key-calendar_grid [class*="st-key-calendar_cell_trained_"] button::after { bottom: 7px; }
     .calendar-weekday { font-size: 9px; letter-spacing: 0; }
+}
+
+/* Training-plan editor: use the same surfaces as the calendar and KPI cards. */
+.st-key-training_plan_details,
+[class*="st-key-training_workout_"] {
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: rgba(57, 62, 70, 0.22);
+}
+
+.plan-workout-heading {
+    padding-top: 8px;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+}
+
+[class*="st-key-training_workout_"] [data-testid="stTextInput"] input,
+.st-key-training_plan_details [data-testid="stTextInput"] input {
+    color: var(--text-primary);
+    background: var(--bg-base);
+}
+
+[class*="st-key-training_workout_"] button[kind="secondary"] {
+    color: var(--text-muted);
+    background: transparent;
+    border-color: var(--border);
+    border-radius: var(--radius-sm);
+}
+
+[class*="st-key-training_workout_"] button[kind="secondary"]:hover {
+    color: var(--accent);
+    border-color: var(--accent-border);
+    background: var(--accent-dim);
+}
+
+[class*="st-key-plan_editor_"][class*="_save"] button[kind="primary"] {
+    color: var(--bg-base);
+    border-color: var(--accent);
+    background: var(--accent);
+    border-radius: var(--radius-sm);
+}
+
+[class*="st-key-plan_editor_"][class*="_save"] button[kind="primary"] p {
+    color: inherit;
+}
+
+@media (max-width: 640px) {
+    .st-key-training_plan_details,
+    [class*="st-key-training_workout_"] { padding: 14px; }
 }

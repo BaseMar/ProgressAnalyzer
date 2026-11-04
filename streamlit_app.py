@@ -49,6 +49,7 @@ from ui.exercise_view import ExerciseView
 from ui.body_parts_view import BodyPartsView
 from ui.analytics_view import AnalyticsView
 from ui.body_metrics_view import BodyMetricsView
+from ui.training_plan_view import TrainingPlanView
 from ui.utils.data_filter import filter_data_by_month
 
 
@@ -127,10 +128,13 @@ def main() -> None:
     selected_page = sidebar.render_navigation()
 
     views = {
-        "Main Dashboard": DashboardView(metrics, filtered_sets_dataframe, selected_month),
+        "Main Dashboard": DashboardView(metrics, filtered_sets_dataframe, selected_month,
+            exercise_names={exercise.exercise_id: exercise.name for exercise in raw_input_data.exercises}),
+        "Training Plan": TrainingPlanView(raw_input_data.exercises),
         "Exercises": ExerciseView(metrics["exercises"], filtered_sets_dataframe),
         "Body Parts": BodyPartsView(metrics["exercises"], selected_month),
-        "Analytics": AnalyticsView(metrics),
+        "Analytics": AnalyticsView(metrics, selected_month=selected_month,
+            exercise_names={exercise.exercise_id: exercise.name for exercise in raw_input_data.exercises}),
         "Body Metrics": BodyMetricsView(metrics["body"]),
     }
 

@@ -74,8 +74,9 @@ per-user data isolation.
 
 The application is functional and deployed as a public single-user demo. Core
 analytics, TXT import, database integration, and tests are implemented. The next
-major improvements are database migrations, anonymized seed data, Docker Compose
-setup, and CI.
+major improvements are progression recommendations, a complete database
+bootstrap, anonymized seed data, Docker Compose setup, and CI. Versioned plan
+storage, its additive migration, and the Training Plan editor are implemented.
 
 ## Preview
 
@@ -187,9 +188,82 @@ A single session has no between-session trend.
   sessions, exercises, and sets. The calendar follows the sidebar month filter;
   with `All time`, use the history month selector to browse between workouts.
 - `Exercises` - exercise-specific performance and trend analysis.
+- `Training Plan` - build weekly routines from catalog exercises, set working
+  sets and repetition/time ranges, and save successive versions with history.
 - `Body Parts` - muscle-group volume distribution and heatmap.
 - `Analytics` - progress and fatigue analysis.
 - `Body Metrics` - body composition and measurement trends.
+
+## Training Plan editor
+
+Select `Training Plan` in the sidebar, then choose `Create a new plan` or an
+existing plan. Plans are independent of the sidebar history month filter.
+
+1. Enter the plan name and start date.
+2. Add named workouts, such as Upper A, and choose their weekdays.
+3. Choose catalog exercises in each workout's table. Add/delete rows as needed.
+   Use unique positive `Order` values to arrange exercises, then set `Sets`,
+   `From`, `To`, and `Unit` (`reps` or `seconds`). For example, 3 / 6 / 10 / reps
+   means three working sets of 6–10 repetitions.
+4. Optionally set target RIR and the available weight step in kg.
+5. Save the plan. When editing an existing plan, saving appends a version with
+   a later start date. Expand version history to inspect earlier targets.
+
+The plan editor requires migration 001 described below. Calendar assignments
+require migration 002; execution analysis and confirmed replacements require
+migration 003. Progression recommendations are not yet calculated.
+Native tables and inputs use the shared dark/teal theme in `.streamlit/config.toml`.
+
+## Planned workouts in the calendar
+
+In `Main Dashboard`, select a `Calendar plan` to overlay its weekly schedule.
+Choose `Workout history only` to hide the overlay. With the sidebar set to
+`All time`, the calendar also lets you browse future months. Each date uses the
+version effective on that date, so old workouts retain their original targets.
+
+- A bottom dot marks the actual day of recorded training.
+- A top-right amber ring marks a planned workout. The ring becomes filled teal
+  when all planned slots on that date have a session linked to them.
+- Select a planned day to inspect its exercises and link a recorded session.
+  Sessions from other dates/months are available for workouts moved to another day.
+- One recorded session can be linked to one planned slot across all plans. A slot
+  accepts one session. Remove the existing link before correcting an assignment.
+- Removing a link preserves the workout log. Deleting a recorded session removes
+  its link and leaves its planned slot unlinked.
+
+Linking identifies which workout was performed; it does not mark every planned
+exercise/set as completed. Future unlinked slots are simply planned, not missed.
+New plan versions cannot supersede already linked slots: remove those links or
+choose a later effective date. Calendar slots are generated when viewed rather
+than materializing an unlimited recurring schedule in the database.
+
+## Plan execution and exercise replacements
+
+`Analytics` now includes Plan Execution in place of Plateau Zone Analysis.
+Select a plan; the sidebar month filter sets the scheduled date range. Actual
+sessions linked from other dates/months are still loaded in full.
+
+Summary ratios include only scheduled dates before today, so today's open
+workouts and future slots neither lower nor inflate the results. Recorded
+workouts, completed set targets, timing, exercise coverage and set coverage are
+shown separately. A moved workout counts as recorded, but not on the planned day.
+Coverage uses every logged set, including unmarked warm-ups, and caps credit at
+the planned count per position. It does not assess technique, RIR or whether each
+set achieved its target repetition/time range.
+
+For a linked workout in the calendar, expand `Confirm exercise replacements`,
+select an actual exercise from that session, and explicitly confirm it. For
+example, Machine Chest Press can cover the planned Barbell Bench Press position.
+This approval applies to that session only; the plan and actual exercise identity
+remain unchanged. Their strength histories are never combined.
+
+Only matching catalog IDs are automatic. Muscle-group similarity does not imply
+approval. A confirmed replacement reserves that recorded exercise for one plan
+position; its sets cannot also cover another position. Repeated exact-ID plan
+positions share the remaining logged sets without double counting. Replacements
+must use the same measurement unit (repetitions or seconds) as the planned target.
+Removing a replacement restores exact matching. Unlinking/deleting the session
+also removes its approvals, while unlinking preserves the workout log.
 
 ## TXT Workout Import
 
@@ -276,6 +350,26 @@ Training data uses:
 - `workout_sets`
 - `exercises`
 - `exercise_muscle_map`
+
+Training-plan snapshots use:
+
+- `training_plans` — stable identity of a plan.
+- `training_plan_versions` — name, version number, and effective date.
+- `training_plan_days` — named workouts, weekdays (Monday = 0), and order.
+- `training_plan_exercises` — catalog exercise IDs, order, sets, target range,
+  target unit (`reps` or `seconds`), optional RIR and weight increment.
+- `training_plan_session_links` — a recorded session assigned to one dated
+  workout template; uniqueness prevents counting a session or planned slot twice.
+- `training_plan_exercise_matches` — explicit session-scoped approval connecting
+  a planned exercise position to a recorded exercise entry.
+
+Edits through the storage API append a complete snapshot. Each new version starts
+after the previous version's start date and cannot be backdated. Its effective
+date ends the previous version's interval. Future versions do not affect the plan
+resolved for earlier dates. Multiple workouts may share a weekday, and an exercise
+may have different targets in different workouts. Existing sessions are not
+automatically assigned to a plan. Plans currently follow the single-user data
+model of this project.
 
 Body tracking data uses:
 
@@ -378,9 +472,9 @@ python -m db.seed_exercise_muscle_map
 - dependencies from `requirements.txt`
 
 > Note: Local setup currently requires an existing PostgreSQL-compatible
-> database with the expected schema. The repository does not yet include full
-> database migrations or an anonymized seed dataset. For quick review, use the
-> live demo.
+> database with the expected workout/body-tracking schema. The repository includes
+> an additive migration for training plans, but not a full bootstrap of the legacy
+> schema or an anonymized seed dataset. For quick review, use the live demo.
 
 Minimal `.env` example:
 
@@ -410,10 +504,46 @@ computes all metrics, and renders the dashboard sections.
 If `DATABASE_URL` is missing or points to a database without the expected
 tables, the app will fail during startup data loading.
 
+## Training-plan database setup
+
+Use the existing PostgreSQL database configured by `DATABASE_URL`. Migration 001
+creates the new plan tables and a `schema_migrations` ledger; it requires the
+existing `exercises` table. Migration 002 adds session links and requires
+`workout_sessions`. Migration 003 adds confirmed exercise matches and requires
+`workout_exercises`. These migrations do not change existing workout records.
+Migrations are never run automatically at application startup.
+
+Preview pending migrations (read-only):
+
+```bash
+python -m db.migrate
+```
+
+Apply pending migrations explicitly:
+
+```bash
+python -m db.migrate --apply
+```
+
+Successful revisions are recorded and skipped on subsequent runs. PostgreSQL
+applies each run in a transaction with a migration lock. An untracked conflicting
+table causes an error rather than being silently adopted.
+
+The storage API is available through `DataManager.save_training_plan(draft)`;
+pass `plan_id` to append a revision. `load_training_plans()` lists the latest saved
+version of each plan (including future versions). Use
+`load_effective_training_plan(plan_id, on_date)` to resolve the version applicable
+on a specific date. Drafts use immutable types from `models/training_plan.py`.
+
 ## Tests
 
 The test suite uses `pytest` and covers mappers, domain models, the metrics
 layer, month filtering, parser behavior, and pure UI helpers.
+
+Plan tests use an isolated SQLite database with foreign keys and transactional DDL
+enabled. They cover migration repeatability, snapshot roundtrips, effective-date
+boundaries, database constraints, and atomic rollback. PostgreSQL DDL compilation
+is checked, but these tests do not replace validation on a PostgreSQL test database.
 
 ```bash
 python -m pytest
@@ -437,8 +567,7 @@ python -m compileall -q db metrics models ui streamlit_app.py data_loader.py dat
 - Add a Docker Compose setup for repeatable local development with a database.
 - Add a CI pipeline for automated tests, linting, and import-parser regression
   checks.
-- Improve database setup documentation with migrations or schema bootstrap
-  scripts.
+- Extend the additive plan migrations into a complete legacy database bootstrap.
 - Extend analytics with prediction-oriented features, such as estimated progress
   trajectory or fatigue-risk signals.
 - Add user authentication and data isolation before treating the app as a

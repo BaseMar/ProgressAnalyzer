@@ -1,10 +1,20 @@
 import logging
 from typing import Any, Dict, List
-from datetime import time
+from datetime import date, time
 import pandas as pd
 from sqlalchemy import text
 
 from db.connection import get_engine
+from db.training_plans import (
+    load_effective_training_plan, load_training_plan_version, load_training_plan_versions, load_training_plans,
+    save_training_plan, training_plan_storage_ready,
+)
+from models.training_plan import TrainingPlanDraft, TrainingPlanVersion
+from db.plan_adherence import adherence_storage_ready, load_plan_adherence, save_exercise_match, remove_exercise_match
+from db.plan_schedule import (
+    plan_schedule_storage_ready, load_scheduled_workouts, load_scheduled_workout_targets,
+    load_plan_session_links, assign_scheduled_session, unassign_scheduled_session,
+)
 from db.queries import (
     delete_workout_session,
     get_all_sets,
@@ -35,6 +45,54 @@ class DataManager:
     def load_sessions(self) -> pd.DataFrame:
         """Load all workout sessions from the database."""
         return get_workout_sessions(self.engine)
+
+    def plan_schedule_storage_ready(self):
+        return plan_schedule_storage_ready(self.engine)
+
+    def adherence_storage_ready(self):
+        return adherence_storage_ready(self.engine)
+
+    def load_plan_adherence(self, plan_id, start, end):
+        return load_plan_adherence(self.engine, plan_id, start, end)
+
+    def save_exercise_match(self, session_id, plan_exercise_id, workout_exercise_id):
+        return save_exercise_match(self.engine, session_id, plan_exercise_id, workout_exercise_id)
+
+    def remove_exercise_match(self, session_id, plan_exercise_id):
+        return remove_exercise_match(self.engine, session_id, plan_exercise_id)
+
+    def load_scheduled_workouts(self, plan_id, start, end):
+        return load_scheduled_workouts(self.engine, plan_id, start, end)
+
+    def load_scheduled_workout_targets(self, day_id):
+        return load_scheduled_workout_targets(self.engine, day_id)
+
+    def load_plan_session_links(self):
+        return load_plan_session_links(self.engine)
+
+    def assign_scheduled_session(self, day_id, scheduled_date, session_id):
+        return assign_scheduled_session(self.engine, day_id, scheduled_date, session_id)
+
+    def unassign_scheduled_session(self, day_id, scheduled_date, session_id):
+        return unassign_scheduled_session(self.engine, day_id, scheduled_date, session_id)
+
+    def save_training_plan(self, draft: TrainingPlanDraft, *, plan_id: int | None = None) -> TrainingPlanVersion:
+        return save_training_plan(self.engine, draft, plan_id=plan_id)
+
+    def training_plan_storage_ready(self) -> bool:
+        return training_plan_storage_ready(self.engine)
+
+    def load_training_plans(self) -> list[TrainingPlanVersion]:
+        return load_training_plans(self.engine)
+
+    def load_training_plan_versions(self, plan_id: int) -> list[TrainingPlanVersion]:
+        return load_training_plan_versions(self.engine, plan_id)
+
+    def load_training_plan_version(self, version_id: int) -> TrainingPlanVersion | None:
+        return load_training_plan_version(self.engine, version_id)
+
+    def load_effective_training_plan(self, plan_id: int, on_date: date) -> TrainingPlanVersion | None:
+        return load_effective_training_plan(self.engine, plan_id, on_date)
 
     def load_exercises(self) -> pd.DataFrame:
         """Load all exercises from the database."""

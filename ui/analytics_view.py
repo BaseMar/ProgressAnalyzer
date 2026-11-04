@@ -1,29 +1,28 @@
 """
 Analytics View
 
-Advanced training analytics including fatigue monitoring, strength progress analysis, and plateau detection.
+Advanced training analytics including fatigue, strength progress, and plan execution.
 
 Responsibilities:
   - Render fatigue and recovery metrics with time-series visualization
   - Display strength progress analysis with top/bottom exercises
-  - Identify and analyze plateaus and regressed exercises
+  - Compare planned training with recorded sessions
   
 All calculations are performed in the metrics layer; this view handles presentation only.
 Styling strategy:
   - page_title / section_header / chart_label  → main.css handles rendering
   - st.metric                                  → main.css handles styling
   - Plotly charts                              → themed via PLOTLY_LAYOUT from ui_helpers
-  - Plateau expanders                          → main.css stExpander styles apply
 """
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Dict
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from ui.plan_adherence_view import PlanAdherenceView
 
 from ui.utils.ui_helpers import (chart_label, page_title, section_header, ACCENT, DANGER, MUTED, PLOTLY_LAYOUT)
 
@@ -44,7 +43,7 @@ class AnalyticsView:
     Displays:
     - Fatigue and recovery monitoring with per-session fatigue scores
     - Strength progress analysis identifying top/bottom improving exercises
-    - Plateau and regression zone analysis for stalled exercises
+    - Plan execution and exercise/set coverage
     
     Data Sources:
     - session_metrics: Per-session and global training metrics
@@ -53,7 +52,7 @@ class AnalyticsView:
     - fatigue_metrics: Fatigue scores and recovery trends
     """
 
-    def __init__(self, metrics: Dict) -> None:
+    def __init__(self, metrics: Dict, *, selected_month=None, exercise_names=None) -> None:
         """Initialize with pre-computed analytics metrics.
         
         Args:
@@ -63,10 +62,13 @@ class AnalyticsView:
         self.exercise_metrics = metrics.get("exercises", {})
         self.progress_metrics = metrics.get("progress", {})
         self.fatigue_metrics = metrics.get("fatigue", {})
+        self.selected_month = selected_month
+        self.exercise_names = exercise_names
 
     def render(self) -> None:
         """Render the complete analytics view."""
         page_title("Analytics", "Training Analytics")
+        PlanAdherenceView(selected_month=self.selected_month, exercise_names=self.exercise_names).render()
         self._fatigue_section()
         self._progress_section()
 
@@ -143,17 +145,15 @@ class AnalyticsView:
 
         median_progress = df["progress_pct"].median()
         improving = (df["progress_pct"] > 2).sum()
-        plateau_count = (df["progress_pct"].abs() < 2).sum()
         progress_ratio = improving / len(df) * 100 if len(df) else 0
         top_exercise = df.loc[df["progress_pct"].idxmax(), "exercise_name"]
         worst_exercise = df.loc[df["progress_pct"].idxmin(), "exercise_name"]
 
-        cols = st.columns(5)
+        cols = st.columns(4)
         cols[0].metric("Median Progress", f"{round(median_progress, 1)}%")
         cols[1].metric("Progress Ratio", f"{round(progress_ratio)}%")
-        cols[2].metric("Plateaus", int(plateau_count))
-        cols[3].metric("Top Improver", top_exercise)
-        cols[4].metric("Top Regressor", worst_exercise)
+        cols[2].metric("Top Improver", top_exercise)
+        cols[3].metric("Top Regressor", worst_exercise)
 
         top10 = df.sort_values("progress_pct", ascending=False).head(10)
         bottom10 = df.sort_values("progress_pct", ascending=True).head(10)
@@ -195,82 +195,3 @@ class AnalyticsView:
             fig_bottom.update_layout(bargap=0.35)
             _apply_theme(fig_bottom)
             st.plotly_chart(fig_bottom, width='stretch')
-
-        self._plateau_section(per_ex)
-
-    def _plateau_section(self, per_ex: dict) -> None:
-        """Render plateau and regression analysis for stalled exercises."""
-        section_header("Plateau Zone Analysis")
-
-        exercise_per = self.exercise_metrics.get("per_exercise", {})
-        today = datetime.now().date()
-        recency_threshold = 28
-
-        plateau_data = []
-        abandoned_data = []
-
-        for ex_id, row in per_ex.items():
-            if abs(row["progress_pct"]) >= 2:
-                continue
-
-            ex_info = exercise_per.get(ex_id, {})
-            per_session_1rm = ex_info.get("per_session_1rm", [])
-            last_date = pd.to_datetime(per_session_1rm[-1]["date"]).date() if per_session_1rm else None
-
-            if last_date is None:
-                continue
-
-            days_since = (today - last_date).days
-            entry = {
-                "exercise_name": row["exercise_name"],
-                "progress_pct": row["progress_pct"],
-                "exposure_count": row["exposure_count"],
-                "last_date":     last_date,
-                "days_since":    days_since,
-            }
-
-            if days_since <= recency_threshold:
-                plateau_data.append(entry)
-            else:
-                abandoned_data.append(entry)
-
-        plateau_data = sorted(plateau_data,   key=lambda x: x["exposure_count"], reverse=True)
-        abandoned_data = sorted(abandoned_data, key=lambda x: x["days_since"], reverse=True)
-
-        if not plateau_data:
-            st.success("No active exercises in plateau zone — all recently trained exercises are progressing.")
-        else:
-            st.info(f"{len(plateau_data)} active exercise(s) stuck in plateau (trained in last {recency_threshold} days)")
-
-            for i, item in enumerate(plateau_data):
-                recs = []
-                if item["exposure_count"] < 5:
-                    recs.append("**Increase Frequency** — Less than 5 sessions; aim for 2–3×/week for a stronger adaptation signal.")
-                elif item["exposure_count"] >= 12:
-                    recs.append("**Boost Volume or Intensity** — 12+ exposures; try +10% weight, change rep range, or add drop sets.")
-                else:
-                    recs.append("**Change Stimulus** — Try a new angle, tempo (3-0-1), pause reps, or a variation.")
-
-                if item["progress_pct"] < -0.5:
-                    recs.append("**Form Check** — Slight regression detected; review technique or consider a deload week.")
-                else:
-                    recs.append("**Stabilising** — Minor fluctuations; maintain current approach or progress incrementally.")
-
-                label = (
-                    f"{item['exercise_name']}   ·   "
-                    f"Progress: {item['progress_pct']:.1f}%   ·   "
-                    f"Exposures: {int(item['exposure_count'])}   ·   "
-                    f"Last: {item['days_since']}d ago"
-                )
-                with st.expander(label, expanded=(i == 0)):
-                    for rec in recs:
-                        st.markdown(f"— {rec}")
-
-        if abandoned_data:
-            section_header("Abandoned Exercises")
-            for item in abandoned_data:
-                st.markdown(
-                    f"**{item['exercise_name']}** — "
-                    f"Progress: {item['progress_pct']:.1f}% · "
-                    f"Last trained: {item['days_since']} days ago"
-                )
