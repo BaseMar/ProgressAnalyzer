@@ -8,6 +8,12 @@ from metrics.utils import set_duration_seconds, set_reps, set_weight
 from models.plan_adherence import PlanAdherenceInput
 
 
+def comparison_context(slot, position, planned, actual_id):
+    """Shared identity used by both analytical comparisons and progression."""
+    return (slot.name, slot.scheduled_date.weekday(), slot.position, position, planned.exercise_id,
+            actual_id, planned.target_unit, planned.set_count, planned.target_min, planned.target_max, planned.target_rir)
+
+
 def _target_result(sets, planned):
     values = [set_duration_seconds(item) if planned.target_unit == "seconds" else set_reps(item) for item in sets]
     in_range = sum(planned.target_min <= value <= planned.target_max for value in values)
@@ -36,7 +42,8 @@ def _target_result(sets, planned):
         "rir_status": rir_status, "rir_known_sets": len(known),
         "avg_rir": sum(known) / len(known) if known and len(known) == len(sets) else None,
         "sets": tuple({"reps": set_reps(item), "weight": set_weight(item),
-                       "seconds": set_duration_seconds(item), "rir": item.rir} for item in sets),
+                       "seconds": set_duration_seconds(item), "rir": item.rir,
+                       "is_warmup": item.is_warmup} for item in sets),
     }
 
 
@@ -87,8 +94,7 @@ def compute_plan_performance(data: PlanAdherenceInput, *, as_of: date, start: da
         for position, (target, detail) in enumerate(zip(workout.targets, details), start=1):
             planned = target.exercise
             actual_id = detail["replacement_exercise_id"] or planned.exercise_id
-            context = (slot.name, slot.scheduled_date.weekday(), slot.position, position, planned.exercise_id,
-                       actual_id, planned.target_unit, planned.set_count, planned.target_min, planned.target_max, planned.target_rir)
+            context = comparison_context(slot, position, planned, actual_id)
             current = {
                 "context": context,
                 "day_id": slot.day_id, "plan_exercise_id": target.plan_exercise_id,

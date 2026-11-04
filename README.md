@@ -221,16 +221,17 @@ Saved plans open as weekly reference cards, with exercises available under
 
 The plan editor requires migration 001 described below. Calendar assignments
 require migration 002; execution analysis and confirmed replacements require
-migration 003. Progression recommendations are not yet calculated.
+migration 003. Normal-session recommendation calculations are available through
+the backend API; the recommendation card and deload integration are not yet added.
 Native tables and inputs use the shared dark/teal theme in `.streamlit/config.toml`.
 
-### Progression configuration (settings only)
+### Progression configuration
 
 Migration 005 adds versioned block settings. Under `Progression & training block`,
 set the block start date and choose 6, 7 or 8 total weeks. The final week is reserved
 for deload: for example, a 7-week block means 6 ordinary weeks followed by a deload
-week. This step stores the configuration; it does not yet adjust scheduled targets
-or generate next-session recommendations.
+week. The normal-session engine uses the block start and per-exercise settings.
+Block timing does not yet adjust scheduled targets or activate deload prescriptions.
 
 The block start is separate from the plan version's effective date. Edits inherit
 the existing start and length, so saving a revision does not restart the block.
@@ -242,6 +243,55 @@ until the user explicitly enables `Configure training block` in the editor.
 Each exercise keeps its own optional weight step in kg and target RIR. Use the
 same weight convention as the workout log (including per-dumbbell weights if
 applicable). Blank values remain unknown; a weight step must be finite and positive.
+
+### Normal-session progression engine (step 2)
+
+`DataManager.load_normal_workout_recommendations(plan_id, day_id, scheduled_date,
+as_of=...)` returns immutable derived goals for an explicitly ordinary workout.
+It reads linked history across month filters and does not write recommendations
+to the database or change plan targets. No new migration is required.
+
+The caller must identify an ordinary workout. Deload classification, adjustments,
+post-deload baselines and the final Analytics card belong to subsequent steps;
+this method is not yet a general-purpose recommendation for arbitrary plan dates.
+
+Rules are deterministic and return `increase_reps`, `increase_weight`, `maintain`
+or `insufficient_data`, plus per-set goals, target RIR, a reason code/explanation
+and evidence session IDs/dates:
+
+- Compare only the same exercise and workout context within the configured block,
+  using actual session chronology and excluding data recorded after `as_of`.
+- Require complete, explicitly classified working sets, a target RIR and recorded
+  RIR. Unknown set labels/RIR do not support increases; labelled warm-ups are excluded.
+- Treat target RIR as a minimum reserve in every set. Below-target reserve or reps
+  below the lower bound keeps the logged load and original range.
+- At one common working load and within the range, add one total rep to the
+  lowest-repetition set (first set breaks ties), without exceeding the upper bound.
+- At/above the upper bound, require two consecutive complete executions on different
+  recorded days, at the same load, with enough reserve. Then add exactly one
+  available weight step and target the lower repetition bound in every set.
+- Missing evidence, changed contexts or a new block do not manufacture confirmations.
+  A linked session with no matching work does not fall back to older successful work.
+- Mixed per-set loads retain their individual loads/ranges; timed exercise progression
+  and automatic transitions from zero-load/bodyweight to weighted work are not supported.
+
+Default `ProgressionPolicy` uses two confirmations, a 21-day history-gap limit
+and a 10% relative load-step cap. These are explicit, configurable application
+guards, not validated individual training prescriptions. Large steps are held,
+never replaced by an invented weight unavailable on the user's equipment.
+Decimal arithmetic avoids values such as `12.299999999...` in suggested loads.
+
+An old substitution approval does not automatically change the next workout's
+exercise. Pass explicit `substitutions={plan_exercise_id: actual_exercise_id}`
+to request a substitute; its own history is used. Its weight step must be supplied
+separately with `replacement_weight_steps`, never copied from the original exercise.
+The engine currently assumes ordinary positive resistance loads, not assistance
+machines whose load direction has a different meaning.
+
+The general idea is progressive adjustment of the training stimulus, discussed in
+the [2026 ACSM overview](https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/).
+The exact one-rep rule, confirmation count, reset target and guards above are the
+application's transparent policy, not an algorithm validated by that paper.
 
 ## Planned workouts in the calendar
 
