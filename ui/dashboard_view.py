@@ -41,6 +41,8 @@ def _set_pills(ex_df: pd.DataFrame) -> str:
             value = _format_seconds(duration_seconds)
         else:
             value = f'{row["repetitions"]} × {row["weight"]:g} kg'
+        if pd.notna(row.get("is_warmup")) and row.get("is_warmup") == True:
+            value = f"WU · {value}"
         pills.append(f'<span class="set-pill">{value}</span>')
     return "".join(pills)
 
@@ -91,7 +93,7 @@ class DashboardView:
         section_header("Performance Snapshot")
 
         cols = st.columns(5)
-        cols[0].metric("Avg Intensity", f"{format_number(g.get('avg_intensity'), 1)} %" if g.get("avg_intensity") is not None else "—")
+        cols[0].metric("Mean session e1RM", f"{format_number(g.get('avg_estimated_1rm'), 1)} kg" if g.get("avg_estimated_1rm") is not None else "—", help="Average of session mean estimated 1RM values, in kg.")
         cols[1].metric("Sessions / Week", format_number(g.get("avg_sessions_per_week"), 1) if g.get("avg_sessions_per_week") else "—")
         cols[2].metric("Avg Volume / Session", f"{format_number(g.get('avg_volume_per_session'), 0)} kg" if g.get("avg_volume_per_session") else "—")
         cols[3].metric("Avg Sets / Session",format_number(g.get("avg_sets_per_session"), 1) if g.get("avg_sets_per_session") else "—")
@@ -250,6 +252,8 @@ class DashboardView:
 
     def _render_day_sessions(self, df: pd.DataFrame) -> None:
         """Render the existing session cards for the chosen day."""
+        if "is_warmup" in df and df["is_warmup"].eq(True).any():
+            st.caption("Log totals include warm-ups (WU). Analysis excludes explicitly labelled warm-ups.")
         grouped = df.groupby(["session_id", "session_date"], sort=False)
 
         for (session_id, session_date), session_df in grouped:

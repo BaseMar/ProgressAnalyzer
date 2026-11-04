@@ -39,3 +39,4 @@ class PlanAdherenceInput:
     workouts: tuple[PlannedWorkout, ...]
     recorded: tuple[RecordedExercise, ...]
     matches: tuple[ExerciseMatch, ...]
+    session_order: tuple[int, ...] = ()

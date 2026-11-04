@@ -9,3 +9,4 @@ class WorkoutSet:
     weight: float
     rir: int | None
     duration_seconds: int | None = None
+    is_warmup: bool | None = None

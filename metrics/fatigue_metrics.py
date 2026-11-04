@@ -1,8 +1,10 @@
 from collections import defaultdict
 from statistics import mean
+from datetime import datetime, time
 
 from metrics.input import MetricsInput
 from metrics.utils import set_duration_seconds, set_intensity, set_volume
+from metrics.utils.set_values import analysis_sets
 
 
 def compute_fatigue_metrics(input: MetricsInput) -> dict:
@@ -13,7 +15,7 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
     - Average RIR
     - Ratio of sets taken to failure
     - Volume load
-    - Intensity load
+    - Timed exercise load
 
     Returns per-session fatigue indicators and global fatigue trends.
     """
@@ -27,7 +29,7 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
     }
 
     sets_by_session = defaultdict(list)
-    for s in input.sets:
+    for s in analysis_sets(input.sets):
         session_id = we_to_session.get(s.workout_exercise_id)
         if session_id is not None:
             sets_by_session[session_id].append(s)
@@ -37,7 +39,7 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
     fatigue_scores = []
     high_fatigue_flags = []
 
-    for session in input.sessions:
+    for session in sorted(input.sessions, key=lambda item: (item.session_date, item.start_time or time.min, item.session_id)):
         sets = sets_by_session.get(session.session_id, [])
         if not sets:
             continue
@@ -70,6 +72,8 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
         high_fatigue_flags.append(fatigue_score >= 0.7)
 
         per_session[session.session_id] = {
+            "session_date": session.session_date,
+            "session_timestamp": datetime.combine(session.session_date, session.start_time or time.min),
             "avg_rir": round(avg_rir, 2) if avg_rir is not None else None,
             "sets_to_failure_ratio": round(sets_to_failure_ratio, 2),
             "volume_load": round(volume_load, 2),
@@ -92,7 +96,7 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
         "avg_fatigue_score": round(mean(fatigue_scores), 3)
         if fatigue_scores
         else None,
-        "high_fatigue_sessions_ratio": round(sum(high_fatigue_flags) / len(high_fatigue_flags), 2)
+        "high_fatigue_sessions_ratio": sum(high_fatigue_flags) / len(high_fatigue_flags)
         if high_fatigue_flags
         else None,
         "max_consecutive_high_fatigue_sessions": consecutive_max,

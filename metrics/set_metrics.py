@@ -9,6 +9,7 @@ from statistics import mean
 from typing import Dict, Any
 
 from metrics.input import MetricsInput
+from metrics.utils.set_values import analysis_sets
 from metrics.utils import (
     is_duration_set,
     set_duration_seconds,
@@ -33,7 +34,7 @@ def compute_set_metrics(input: MetricsInput) -> Dict[str, Any]:
         Dictionary with aggregated set-level metrics.
     """
 
-    sets = input.sets
+    sets = analysis_sets(input.sets)
     if not sets:
         return {}
 

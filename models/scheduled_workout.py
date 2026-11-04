@@ -12,3 +12,4 @@ class ScheduledWorkout:
     name: str
     session_id: int | None = None
     performed_on: date | None = None
+    position: int = 1

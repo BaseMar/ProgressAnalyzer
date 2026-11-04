@@ -16,6 +16,7 @@ from typing import Any, Dict
 from metrics.input import MetricsInput
 from metrics.utils import is_duration_set, set_duration_seconds, set_intensity, set_reps, set_volume
 from metrics.utils.calendar import observed_week_count
+from metrics.utils.set_values import analysis_sets
 
 
 def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
@@ -31,7 +32,7 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
     - total_sets
     - total_reps
     - total_volume
-    - avg_intensity (Epley-based)
+    - avg_intensity (legacy alias for mean estimated 1RM, in kg)
     - avg_rir
     - sets_to_failure (RIR == 0)
     - exercises_count
@@ -64,7 +65,7 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         for we in input.workout_exercises
     }
 
-    for workout_set in input.sets:
+    for workout_set in analysis_sets(input.sets):
         session_id = workout_exercise_to_session.get(workout_set.workout_exercise_id)
         if session_id is None:
             continue
@@ -108,7 +109,7 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         if rir_values:
             avg_rir = sum(rir_values) / len(rir_values)
         else:
-            avg_rir = 0
+            avg_rir = None
         sets_to_failure = sum(1 for s in sets if s.rir == 0)
 
         per_session[session_id] = {
@@ -144,6 +145,7 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         "avg_sets_per_session": mean(sets_counts) if sets_counts else None,
         "avg_sessions_per_week": (len(input.sessions) / weeks if weeks else None),
         "avg_intensity": mean(intensities) if intensities else None,
+        "avg_estimated_1rm": mean(intensities) if intensities else None,
     }
 
     return {

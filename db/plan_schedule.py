@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import Column, Date, Integer, MetaData, Table, inspect, select
+from sqlalchemy import Column, Date, Integer, MetaData, Table, Time, inspect, select
 from sqlalchemy.exc import IntegrityError
 
 from db.migrations.v002_plan_session_links import define_table
@@ -13,6 +13,7 @@ metadata = MetaData()
 Table("training_plan_days", metadata, Column("day_id", Integer, primary_key=True))
 sessions = Table("workout_sessions", metadata,
     Column("session_id", Integer, primary_key=True), Column("session_date", Date),
+    Column("start_time", Time),
 )
 links = define_table(metadata)
 
@@ -59,6 +60,7 @@ def load_scheduled_workouts(engine, plan_id: int, start: date, end: date) -> lis
                     performed_on=(assignment["session_date"].date()
                                   if isinstance(assignment["session_date"], datetime)
                                   else assignment["session_date"]) if assignment else None,
+                    position=day["position"],
                 ))
                 current += timedelta(days=7)
     return sorted(result, key=lambda item: item.scheduled_date)

@@ -27,16 +27,17 @@ def schedule_data():
         connection.execute("PRAGMA foreign_keys=ON")
 
     metadata = MetaData()
-    catalog = Table("exercises", metadata, Column("exercise_id", Integer, primary_key=True))
+    catalog = Table("exercises", metadata, Column("exercise_id", Integer, primary_key=True), Column("exercise_name", String))
     sessions = Table("workout_sessions", metadata,
         Column("session_id", Integer, primary_key=True), Column("session_date", Date),
         Column("start_time", Time), Column("end_time", Time),
+        Column("notes", String),
     )
     Table("workout_exercises", metadata,
         Column("workout_exercise_id", Integer, primary_key=True),
         Column("session_id", Integer), Column("exercise_id", Integer),
     )
-    Table("workout_sets", metadata, Column("workout_exercise_id", Integer),
+    Table("workout_sets", metadata, Column("set_id", Integer, primary_key=True), Column("workout_exercise_id", Integer),
         Column("set_number", Integer), Column("repetitions", Integer), Column("weight", Float),
         Column("rir", Integer), Column("duration_seconds", Integer),
     )
@@ -44,7 +45,7 @@ def schedule_data():
     next_month = (start.replace(day=1) + timedelta(days=32)).replace(day=1)
     with engine.begin() as connection:
         metadata.create_all(connection)
-        connection.execute(catalog.insert().values(exercise_id=1))
+        connection.execute(catalog.insert().values(exercise_id=1, exercise_name="Bench Press"))
         connection.execute(sessions.insert(), [
             {"session_id": 1, "session_date": next_month},
             {"session_id": 2, "session_date": start + timedelta(days=1)},
@@ -190,12 +191,22 @@ def test_calendar_links_session_from_another_month_and_removes_link(schedule_dat
     app.button(key=f"history_date_{start}").click().run()
     assert "1 planned" in app.button(key=f"history_date_{start}").help
     prefix = f"schedule_{slot.day_id}_{start}"
+    with engine.connect() as connection:
+        recorded_date = connection.execute(select(schedule_data[3].c.session_date).where(schedule_data[3].c.session_id == 1)).scalar_one()
+    app.selectbox(key=f"{prefix}_date").select(recorded_date).run()
+    app.selectbox(key=f"{prefix}_session").select(1).run()
+    app.selectbox(key=f"{prefix}_date").select(start + timedelta(days=1)).run()
+    assert app.selectbox(key=f"{prefix}_session").value is None
+    assert app.button(key=f"{prefix}_link").disabled
+    app.selectbox(key=f"{prefix}_date").select(recorded_date).run()
     app.selectbox(key=f"{prefix}_session").select(1).run()
     app.button(key=f"{prefix}_link").click().run()
     assert not app.exception
     assert not app.error
     assert "1 linked" in app.button(key=f"history_date_{start}").help
     assert any("different day" in message.value for message in app.success)
+    assert not app.dataframe
+    assert not app.get("plotly_chart")
     app.button(key=f"{prefix}_unlink").click().run()
     assert not app.exception
     assert load_plan_session_links(engine) == {}

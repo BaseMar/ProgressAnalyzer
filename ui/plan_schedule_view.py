@@ -9,7 +9,6 @@ import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
 from ui.utils.ui_helpers import section_header
-from ui.plan_adherence_view import PlanAdherenceView
 
 logger = logging.getLogger(__name__)
 
@@ -63,40 +62,42 @@ class PlanScheduleView:
             available = session_frame.loc[~session_frame["session_id"].isin(assigned)].sort_values(
                 ["session_date", "session_id"], ascending=False,
             )
-            labels = {int(row.session_id): f"{pd.Timestamp(row.session_date):%d %b %Y} · Session #{row.session_id}"
-                      for row in available.itertuples()}
             for slot in day_slots:
-                self._render_slot(slot, labels)
+                self._render_slot(slot, available)
         except SQLAlchemyError:
             logger.exception("Unable to load planned workout details")
             st.error("Planned workout details could not be loaded. Please try again.")
 
-    def _render_slot(self, slot, session_labels):
+    def _render_slot(self, slot, available):
         prefix = f"schedule_{slot.day_id}_{slot.scheduled_date.isoformat()}"
         with st.container(key=f"planned_workout_{slot.day_id}"):
             st.markdown(f'<div class="plan-workout-heading">{escape(slot.name)}</div>', unsafe_allow_html=True)
-            target = self.dm.load_scheduled_workout_targets(slot.day_id)
-            st.dataframe(pd.DataFrame([{
-                "Exercise": self.exercise_names.get(item.exercise_id, f"Exercise #{item.exercise_id}"),
-                "Sets": item.set_count,
-                "Target": f"{item.target_min}–{item.target_max} {item.target_unit}",
-                "Target RIR": item.target_rir,
-            } for item in target.exercises]), hide_index=True, width="stretch")
+            st.caption(f"Planned for {slot.scheduled_date:%A, %d %B}")
             if slot.session_id is not None:
                 moved = " · Performed on a different day" if slot.performed_on != slot.scheduled_date else ""
                 st.success(f"Linked to session #{slot.session_id} · {slot.performed_on:%d %b %Y}{moved}")
-                PlanAdherenceView(manager=self.dm, exercise_names=self.exercise_names).render_workout(slot, self.plan_id)
                 if st.button("Remove link", key=f"{prefix}_unlink"):
                     self._save_link(slot, unlink=True)
             else:
-                st.caption("Choose a recorded session from any date, including a workout moved to another day.")
-                session_id = st.selectbox(
-                    "Recorded session", [None, *session_labels], key=f"{prefix}_session",
-                    format_func=lambda value: "Choose a session" if value is None else session_labels[value],
-                )
-                if st.button("Link session", key=f"{prefix}_link", disabled=session_id is None):
+                if available.empty:
+                    st.caption("No unlinked sessions available. Import a workout log first.")
+                    return
+                dates = sorted(set(pd.to_datetime(available["session_date"]).dt.date), reverse=True)
+                default = min(dates, key=lambda value: abs((value - slot.scheduled_date).days))
+                left, right = st.columns(2)
+                recorded_date = left.selectbox("1 · Recorded on", dates, index=dates.index(default),
+                                               key=f"{prefix}_date", format_func=lambda value: value.strftime("%a, %d %b %Y"),
+                                               on_change=st.session_state.__setitem__, args=(f"{prefix}_session", None))
+                candidates = available.loc[pd.to_datetime(available["session_date"]).dt.date == recorded_date]
+                labels = {}
+                for index, row in enumerate(candidates.itertuples(), start=1):
+                    start = getattr(row, "start_time", None)
+                    labels[int(row.session_id)] = f"Session {index}" + (f" · {start:%H:%M}" if hasattr(start, "strftime") else "")
+                session_id = right.selectbox("2 · Recorded session", [None, *labels], key=f"{prefix}_session",
+                                              format_func=lambda value: "Choose a session" if value is None else labels[value])
+                if st.button("Link session", key=f"{prefix}_link", disabled=session_id is None, type="primary"):
                     self._save_link(slot, session_id=session_id)
-            st.caption("A link identifies the planned workout; it does not confirm completion of every planned set.")
+                st.caption("Choose another date above if this workout was moved.")
 
     def _save_link(self, slot, *, session_id=None, unlink=False):
         try:

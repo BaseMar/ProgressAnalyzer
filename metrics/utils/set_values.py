@@ -6,6 +6,11 @@ from typing import Any
 from metrics.utils.strength import estimate_1rm
 
 
+def analysis_sets(sets):
+    """Exclude only explicitly labelled warm-ups; keep unknown history visible."""
+    return [item for item in sets if getattr(item, "is_warmup", None) is not True]
+
+
 def _number_or_default(value: Any, default: int | float = 0) -> Any:
     if value is None:
         return default

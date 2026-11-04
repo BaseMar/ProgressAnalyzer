@@ -10,7 +10,8 @@ from db.training_plans import (
     save_training_plan, training_plan_storage_ready,
 )
 from models.training_plan import TrainingPlanDraft, TrainingPlanVersion
-from db.plan_adherence import adherence_storage_ready, load_plan_adherence, save_exercise_match, remove_exercise_match
+from db.set_classifications import classifications, classification_storage_ready, load_session_sets, save_set_classifications
+from db.plan_adherence import adherence_storage_ready, load_plan_adherence, load_plan_performance, save_exercise_match, remove_exercise_match
 from db.plan_schedule import (
     plan_schedule_storage_ready, load_scheduled_workouts, load_scheduled_workout_targets,
     load_plan_session_links, assign_scheduled_session, unassign_scheduled_session,
@@ -46,6 +47,15 @@ class DataManager:
         """Load all workout sessions from the database."""
         return get_workout_sessions(self.engine)
 
+    def classification_storage_ready(self):
+        return classification_storage_ready(self.engine)
+
+    def load_session_sets(self, session_id):
+        return load_session_sets(self.engine, session_id)
+
+    def save_set_classifications(self, session_id, values):
+        return save_set_classifications(self.engine, session_id, values)
+
     def plan_schedule_storage_ready(self):
         return plan_schedule_storage_ready(self.engine)
 
@@ -54,6 +64,9 @@ class DataManager:
 
     def load_plan_adherence(self, plan_id, start, end):
         return load_plan_adherence(self.engine, plan_id, start, end)
+
+    def load_plan_performance(self, plan_id, start, end):
+        return load_plan_performance(self.engine, plan_id, start, end)
 
     def save_exercise_match(self, session_id, plan_exercise_id, workout_exercise_id):
         return save_exercise_match(self.engine, session_id, plan_exercise_id, workout_exercise_id)
@@ -206,9 +219,10 @@ class DataManager:
                             (workout_exercise_id, set_number, repetitions, weight, duration_seconds, RIR)
                         VALUES
                             (:weid, :num, :reps, :weight, :duration_seconds, :rir)
+                        RETURNING set_id
                         """
                     )
-                    conn.execute(
+                    result = conn.execute(
                         ins_set,
                         {
                             "weid": workout_ex_id,
@@ -219,6 +233,11 @@ class DataManager:
                             "rir": s["rir"],
                         },
                     )
+                    set_id = result.scalar_one()
+                    if s.get("is_warmup") is not None:
+                        if type(s["is_warmup"]) is not bool:
+                            raise ValueError("Invalid set classification")
+                        conn.execute(classifications.insert().values(set_id=set_id, is_warmup=s["is_warmup"]))
             return True
         except Exception:
             logger.exception("add_full_session failed")

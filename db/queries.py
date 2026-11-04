@@ -49,7 +49,7 @@ def get_all_sets(engine) -> pd.DataFrame:
             ws2.weight, 
             ws2.duration_seconds,
             (ws2.repetitions * ws2.weight) AS volume, 
-            ws2.rir
+            ws2.rir, c.is_warmup
         FROM workout_sets ws2
         JOIN workout_exercises we 
             ON ws2.workout_exercise_id = we.workout_exercise_id
@@ -57,6 +57,7 @@ def get_all_sets(engine) -> pd.DataFrame:
             ON we.session_id = ws.session_id
         JOIN exercises e 
             ON we.exercise_id = e.exercise_id
+        LEFT JOIN workout_set_classifications c ON c.set_id = ws2.set_id
         ORDER BY ws.session_date DESC, e.exercise_name, ws2.set_number;
     """
     )
@@ -232,8 +233,9 @@ def get_sets_raw(engine) -> pd.DataFrame:
             ws2.repetitions,
             ws2.weight,
             ws2.duration_seconds,
-            ws2.rir
+            ws2.rir, c.is_warmup
         FROM workout_sets ws2
+        LEFT JOIN workout_set_classifications c ON c.set_id = ws2.set_id
         ORDER BY ws2.workout_exercise_id, ws2.set_number
         """
     )

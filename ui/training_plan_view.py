@@ -1,156 +1,209 @@
-"""Training-plan editor and version history, backed by snapshot storage."""
-
+"""Readable weekly reference plans with one workout edited at a time."""
+from collections import Counter
 from datetime import date, timedelta
 from html import escape
 import logging
-
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
-
 from data_manager import DataManager
-from models.exercise import Exercise
-from models.training_plan import TrainingPlanVersion
-from ui.utils.plan_editor import WEEKDAYS, draft_from_editor, exercise_rows
+from models.training_plan import PlannedExercise, TrainingDay, TrainingPlanDraft
+from ui.utils.plan_editor import WEEKDAYS
 from ui.utils.ui_helpers import page_title, section_header
 
 logger = logging.getLogger(__name__)
 
 
 class TrainingPlanView:
-    def __init__(self, exercises: list[Exercise], data_manager=None):
+    def __init__(self, exercises, data_manager=None):
         self.dm = data_manager if data_manager is not None else DataManager()
-        self.labels = {item.exercise_id: f"{item.name} · #{item.exercise_id}" for item in sorted(exercises, key=lambda item: item.name.casefold())}
-        self.catalog = {label: exercise_id for exercise_id, label in self.labels.items()}
+        counts = Counter(item.name for item in exercises)
+        self.labels = {item.exercise_id: item.name + (f" · #{item.exercise_id}" if counts[item.name] > 1 else "")
+                       for item in sorted(exercises, key=lambda item: item.name.casefold())}
 
     def render(self):
-        page_title("Your routine", "Training Plan")
-        st.caption("Build your weekly routine and set a clear target for every exercise.")
+        page_title("Reference data", "Training Plan")
+        st.caption("Define the weekly reference used to analyse your workout logs.")
         try:
             if not self.dm.training_plan_storage_ready():
                 st.info("Training plans are not available yet. Database setup needs to be completed.")
                 return
-            saved_plans = self.dm.load_training_plans()
+            plans = {plan.plan_id: plan for plan in self.dm.load_training_plans()}
         except SQLAlchemyError:
             logger.exception("Unable to load training plans")
             st.error("Training plans could not be loaded. Please try again.")
             return
-        if not self.catalog:
-            st.info("Add exercises to your exercise catalog before building a plan.")
+        if not self.labels:
+            st.info("Add exercises to the catalog before creating a plan.")
             return
-
         if "plan_saved_notice" in st.session_state:
             st.success(st.session_state.pop("plan_saved_notice"))
-        by_id = {plan.plan_id: plan for plan in saved_plans}
         if "plan_next_selection" in st.session_state:
             st.session_state["training_plan_picker"] = st.session_state.pop("plan_next_selection")
-        selected = st.selectbox(
-            "Your plans", [None, *by_id], key="training_plan_picker",
-            format_func=lambda value: "Create a new plan" if value is None else f"{by_id[value].draft.name} · v{by_id[value].version_number}",
-        )
-        source = by_id.get(selected)
-        self._render_editor(source)
+        selected = st.selectbox("Your plans", [None, *plans], index=1 if plans else 0, key="training_plan_picker",
+                                format_func=lambda value: "Create a new plan" if value is None else plans[value].draft.name)
+        source = plans.get(selected)
+        if source:
+            st.caption(f"Version {source.version_number} · from {source.draft.effective_from:%d %b %Y}")
+            self._overview(source.draft, source.version_id)
+        if source is None or st.toggle("Edit as a new version", key=f"plan_edit_{source.version_id}"):
+            self._render_editor(source)
         if source:
             self._render_history(source.plan_id)
 
-    def _render_editor(self, source: TrainingPlanVersion | None):
+    def _overview(self, draft, version_id):
+        cards = []
+        for day in sorted(draft.days, key=lambda item: item.weekday):
+            cards.append('<div class="plan-week-card">'
+                         f'<span>{WEEKDAYS[day.weekday]}</span><strong>{escape(day.name)}</strong>'
+                         f'<small>{len(day.exercises)} exercises · {sum(item.set_count for item in day.exercises)} sets</small></div>')
+        st.markdown('<div class="plan-week-grid">' + ''.join(cards) + '</div>', unsafe_allow_html=True)
+        with st.expander("Reference exercises"):
+            index = st.selectbox("Workout", range(len(draft.days)), key=f"reference_workout_{version_id}",
+                                 format_func=lambda value: f'{WEEKDAYS[draft.days[value].weekday]} · {draft.days[value].name}')
+            for position, item in enumerate(draft.days[index].exercises, start=1):
+                rir = f" · RIR {item.target_rir}" if item.target_rir is not None else ""
+                st.markdown('<div class="plan-reference-row">'
+                            f'<span>{position:02d} · {escape(self.labels.get(item.exercise_id, "Unknown exercise"))}</span>'
+                            f'<strong>{item.set_count} × {item.target_min}–{item.target_max} {item.target_unit}{rir}</strong></div>', unsafe_allow_html=True)
+
+    @staticmethod
+    def _exercise(item=None, uid=0):
+        return dict(uid=uid, exercise_id=item.exercise_id if item else None,
+                    sets=item.set_count if item else 3, minimum=item.target_min if item else 6,
+                    maximum=item.target_max if item else 10, unit=item.target_unit if item else "reps",
+                    rir=item.target_rir if item else None, increment=item.weight_increment if item else None)
+
+    def _day(self, day=None, uid=0):
+        exercises = [self._exercise(item, index) for index, item in enumerate(day.exercises)] if day else [self._exercise()]
+        return dict(uid=uid, name=day.name if day else "", weekday=day.weekday if day else 0,
+                    exercises=exercises, next_exercise=len(exercises))
+
+    @staticmethod
+    def _capture(scope, store):
+        # Capture before switching cards: Streamlit cleans up hidden widgets.
+        for day in store["days"]:
+            prefix = f'{scope}_day_{day["uid"]}'
+            for field in ("name", "weekday"):
+                if f"{prefix}_{field}" in st.session_state:
+                    day[field] = st.session_state[f"{prefix}_{field}"]
+            for exercise in day["exercises"]:
+                for field in ("exercise_id", "sets", "minimum", "maximum", "unit", "rir", "increment"):
+                    key = f'{prefix}_ex_{exercise["uid"]}_{field}'
+                    if key in st.session_state:
+                        exercise[field] = st.session_state[key]
+
+    def _render_editor(self, source):
         scope = f"plan_editor_{source.version_id if source else 'new'}"
-        seed_days = source.draft.days if source else ()
-        state_key = f"{scope}_days"
-        if state_key not in st.session_state:
-            st.session_state[state_key] = list(range(len(seed_days))) if seed_days else [0]
-            st.session_state[f"{scope}_next_day"] = len(st.session_state[state_key])
-
-        section_header("New version" if source else "New plan")
-        min_date = max(date.today(), source.draft.effective_from + timedelta(days=1)) if source else None
+        store_key = f"{scope}_draft"
+        if store_key not in st.session_state:
+            days = [self._day(day, index) for index, day in enumerate(source.draft.days)] if source else [self._day()]
+            st.session_state[store_key] = dict(days=days, next_day=len(days))
+        store = st.session_state[store_key]
+        self._capture(scope, store)
+        section_header("Edit reference plan" if source else "New reference plan")
+        minimum = max(date.today(), source.draft.effective_from + timedelta(days=1)) if source else None
         with st.container(key="training_plan_details"):
-            name_col, date_col = st.columns([2, 1])
-            name = name_col.text_input("Plan name", value=source.draft.name if source else "", max_chars=120, placeholder="e.g. Upper / Lower", key=f"{scope}_name")
-            start = date_col.date_input("Starts on", value=min_date or date.today(), min_value=min_date, key=f"{scope}_start")
+            left, right = st.columns([2, 1])
+            name = left.text_input("Plan name", value=store.get("name", source.draft.name if source else ""), max_chars=120,
+                                   placeholder="e.g. Upper / Lower", key=f"{scope}_name")
+            start = right.date_input("Applies from", value=store.get("start", minimum or date.today()), min_value=minimum, key=f"{scope}_start")
             if source:
-                st.caption(f"Saving creates version {source.version_number + 1}. Earlier versions remain available in history.")
-
-        workouts = []
-        frames = {}
-        remove_id = None
-        epoch = st.session_state.get(f"{scope}_table_epoch", 0)
-        suffix = f"_r{epoch}" if epoch else ""
-        for index, day_id in enumerate(st.session_state[state_key], start=1):
-            seed = seed_days[day_id] if day_id < len(seed_days) else None
+                st.caption("Saving creates a new version; previous targets remain in history.")
+        store["name"], store["start"] = name, start
+        action = None
+        if store["days"]:
+            ids = [day["uid"] for day in store["days"]]
+            if "select_next" in store:
+                st.session_state[f"{scope}_active_day"] = store.pop("select_next")
+            day_id = st.selectbox("Workout to edit", ids, key=f"{scope}_active_day",
+                                  format_func=lambda value: next(f'{WEEKDAYS[day["weekday"]]} · {day["name"] or "Untitled workout"}' for day in store["days"] if day["uid"] == value))
+            day = next(item for item in store["days"] if item["uid"] == day_id)
             prefix = f"{scope}_day_{day_id}"
-            with st.container(key=f"training_workout_{day_id}"):
-                title_col, remove_col = st.columns([5, 1])
-                title_col.markdown(f'<div class="plan-workout-heading">Workout {index:02d}</div>', unsafe_allow_html=True)
-                if remove_col.button("Remove", key=f"{prefix}_remove", use_container_width=True):
-                    remove_id = day_id
-                day_name_col, weekday_col = st.columns([2, 1])
-                day_name = day_name_col.text_input("Workout name", value=seed.name if seed else "", placeholder="e.g. Upper A", max_chars=120, key=f"{prefix}_name")
-                weekday = weekday_col.selectbox("Weekday", range(7), index=seed.weekday if seed else 0, format_func=lambda value: WEEKDAYS[value], key=f"{prefix}_weekday")
-                frame = st.data_editor(
-                    st.session_state.get(f"{prefix}_base_frame", exercise_rows(seed, self.labels)),
-                    key=f"{prefix}_exercises{suffix}",
-                    num_rows="dynamic", hide_index=True, width="stretch",
-                    column_config={
-                        "Order": st.column_config.NumberColumn("Order", min_value=1, step=1, required=True, help="Set a unique number to change exercise order."),
-                        "Exercise": st.column_config.SelectboxColumn("Exercise", options=list(self.catalog), required=True, width="large"),
-                        "Sets": st.column_config.NumberColumn("Sets", min_value=1, step=1, default=3, required=True),
-                        "From": st.column_config.NumberColumn("From", min_value=1, step=1, default=6, required=True),
-                        "To": st.column_config.NumberColumn("To", min_value=1, step=1, default=10, required=True),
-                        "Unit": st.column_config.SelectboxColumn("Unit", options=["reps", "seconds"], default="reps", required=True),
-                        "RIR": st.column_config.NumberColumn("Target RIR", min_value=0, step=1),
-                        "Increment": st.column_config.NumberColumn("Weight step (kg)", min_value=0.01, step=0.5, format="%.2f"),
-                    },
-                )
-                frames[day_id] = frame
-                workouts.append((day_name, weekday, frame))
-
-        # Finish rendering every input before rerunning; otherwise Streamlit
-        # discards widget state belonging to workouts below the removed card.
-        if remove_id is not None:
-            self._preserve_tables(scope, frames, epoch)
-            st.session_state[state_key].remove(remove_id)
+            with st.container(key="training_workout_editor"):
+                left, right = st.columns([2, 1])
+                left.text_input("Workout name", value=day["name"], placeholder="e.g. Upper A", max_chars=120, key=f"{prefix}_name")
+                right.selectbox("Planned weekday", range(7), index=day["weekday"], format_func=lambda value: WEEKDAYS[value], key=f"{prefix}_weekday")
+                for index, item in enumerate(day["exercises"]):
+                    ex_prefix = f'{prefix}_ex_{item["uid"]}'
+                    with st.container(key=f'plan_exercise_{day_id}_{item["uid"]}'):
+                        title, up, down, remove = st.columns([5, 1, 1, 1])
+                        title.markdown(f'<div class="plan-workout-heading">Exercise {index + 1:02d}</div>', unsafe_allow_html=True)
+                        if up.button("↑", key=f"{ex_prefix}_up", help="Move exercise up", disabled=index == 0):
+                            action = ("move", day_id, index, -1)
+                        if down.button("↓", key=f"{ex_prefix}_down", help="Move exercise down", disabled=index == len(day["exercises"]) - 1):
+                            action = ("move", day_id, index, 1)
+                        if remove.button("×", key=f"{ex_prefix}_remove", help="Remove exercise"):
+                            action = ("remove_exercise", day_id, item["uid"])
+                        options = [None, *self.labels]
+                        st.selectbox("Exercise", options, index=options.index(item["exercise_id"]),
+                                     format_func=lambda value: "Choose an exercise" if value is None else self.labels[value], key=f"{ex_prefix}_exercise_id")
+                        sets, lower, upper, unit = st.columns(4)
+                        sets.number_input("Sets", min_value=1, value=item["sets"], step=1, key=f"{ex_prefix}_sets")
+                        lower.number_input("Minimum", min_value=1, value=item["minimum"], step=1, key=f"{ex_prefix}_minimum")
+                        upper.number_input("Maximum", min_value=1, value=item["maximum"], step=1, key=f"{ex_prefix}_maximum")
+                        unit.selectbox("Measure", ["reps", "seconds"], index=0 if item["unit"] == "reps" else 1, key=f"{ex_prefix}_unit")
+                        with st.expander("Optional RIR target"):
+                            st.number_input("Target RIR", min_value=0, value=item["rir"], step=1, key=f"{ex_prefix}_rir")
+                add, remove = st.columns(2)
+                if add.button("Add exercise", key=f"{prefix}_add_exercise", icon=":material/add:"):
+                    action = ("add_exercise", day_id)
+                if remove.button("Remove workout", key=f"{prefix}_remove"):
+                    action = ("remove_day", day_id)
+        self._capture(scope, store)
+        if action:
+            day = next(item for item in store["days"] if item["uid"] == action[1])
+            if action[0] == "move":
+                a, b = action[2], action[2] + action[3]
+                day["exercises"][a], day["exercises"][b] = day["exercises"][b], day["exercises"][a]
+            elif action[0] == "remove_exercise":
+                day["exercises"] = [item for item in day["exercises"] if item["uid"] != action[2]]
+            elif action[0] == "add_exercise":
+                day["exercises"].append(self._exercise(uid=day["next_exercise"]))
+                day["next_exercise"] += 1
+            else:
+                store["days"].remove(day)
+                if store["days"]:
+                    store["select_next"] = store["days"][0]["uid"]
             st.rerun()
         if st.button("Add workout", key=f"{scope}_add", icon=":material/add:"):
-            self._preserve_tables(scope, frames, epoch)
-            next_id = st.session_state[f"{scope}_next_day"]
-            st.session_state[state_key].append(next_id)
-            st.session_state[f"{scope}_next_day"] += 1
+            uid = store["next_day"]
+            store["days"].append(self._day(uid=uid))
+            store["next_day"] += 1
+            store["select_next"] = uid
             st.rerun()
-        st.caption("Add or delete exercise rows in the table. Set From / To to your repetition range or seconds. RIR and weight step are optional.")
-        if st.button("Save new version" if source else "Save plan", type="primary", key=f"{scope}_save", icon=":material/save:"):
+        st.caption("Edit one workout at a time. All workouts are saved together below.")
+        if st.button("Save new version" if source else "Save plan", key=f"{scope}_save", type="primary"):
             try:
-                draft = draft_from_editor(name, start, workouts, self.catalog)
-                saved = self.dm.save_training_plan(draft, plan_id=source.plan_id if source else None)
+                days = []
+                for day in store["days"]:
+                    exercises = []
+                    for item in day["exercises"]:
+                        if item["exercise_id"] not in self.labels:
+                            raise ValueError(f'{day["name"] or "Workout"}: choose an exercise')
+                        exercises.append(PlannedExercise(item["exercise_id"], item["sets"], item["minimum"], item["maximum"], item["unit"], item["rir"], item["increment"]))
+                    days.append(TrainingDay(day["name"].strip(), day["weekday"], tuple(exercises)))
+                saved = self.dm.save_training_plan(TrainingPlanDraft(name.strip(), start, tuple(days)), plan_id=source.plan_id if source else None)
             except ValueError as exc:
                 st.error(str(exc))
                 return
             except SQLAlchemyError:
-                logger.exception("Unable to save training plan")
-                st.error("The plan could not be saved. Your draft is still here; please try again.")
+                logger.exception("Unable to save plan")
+                st.error("The plan could not be saved. Your draft is still here.")
                 return
             st.session_state["plan_saved_notice"] = f"Saved {saved.draft.name} · version {saved.version_number}."
             st.session_state["plan_next_selection"] = saved.plan_id
             st.rerun()
 
-    @staticmethod
-    def _preserve_tables(scope, frames, epoch):
-        # Rebase editor deltas on the visible table when changing card structure.
-        for day_id, frame in frames.items():
-            st.session_state[f"{scope}_day_{day_id}_base_frame"] = frame.copy()
-        st.session_state[f"{scope}_table_epoch"] = epoch + 1
-
-    def _render_history(self, plan_id: int):
-        section_header("Version history")
-        try:
-            history = self.dm.load_training_plan_versions(plan_id)
-        except SQLAlchemyError:
-            logger.exception("Unable to load plan history")
-            st.error("Version history could not be loaded. Please try again.")
-            return
-        for index in range(len(history) - 1, -1, -1):
-            version = history[index]
-            end = history[index + 1].draft.effective_from - timedelta(days=1) if index + 1 < len(history) else None
-            period = f"{version.draft.effective_from:%d %b %Y}" + (f" – {end:%d %b %Y}" if end else " onwards")
-            with st.expander(f"Version {version.version_number} · {version.draft.name} · {period}"):
-                for day in version.draft.days:
-                    st.markdown(f"**{escape(day.name)} · {WEEKDAYS[day.weekday]}**")
-                    st.dataframe(exercise_rows(day, self.labels), hide_index=True, width="stretch")
+    def _render_history(self, plan_id):
+        with st.expander("Version history"):
+            try:
+                history = self.dm.load_training_plan_versions(plan_id)
+            except SQLAlchemyError:
+                st.error("Version history could not be loaded.")
+                return
+            if len(history) < 2:
+                st.caption("No earlier versions.")
+                return
+            index = st.selectbox("Earlier version", range(len(history) - 2, -1, -1), key=f"plan_history_{plan_id}",
+                                 format_func=lambda value: f'Version {history[value].version_number} · from {history[value].draft.effective_from:%d %b %Y}')
+            self._overview(history[index].draft, history[index].version_id)

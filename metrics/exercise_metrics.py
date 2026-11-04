@@ -11,6 +11,7 @@ from statistics import mean
 from typing import Any, Dict, List
 
 from metrics.input import MetricsInput
+from metrics.utils.set_values import analysis_sets
 from metrics.utils import (
     is_duration_set,
     set_duration_seconds,
@@ -63,7 +64,7 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
             }
         )
 
-    for workout_set in input.sets:
+    for workout_set in analysis_sets(input.sets):
         exercise_id = workout_to_exercise.get(workout_set.workout_exercise_id)
         if exercise_id is None:
             continue

@@ -44,7 +44,7 @@ class ExerciseView:
             sets_df: DataFrame with columns: ExerciseName, session_date, Weight, repetitions, Volume
         """
         self.exercises_metrics = exercises_metrics
-        self.sets_df = sets_df
+        self.sets_df = sets_df.loc[~sets_df["is_warmup"].eq(True)].copy() if "is_warmup" in sets_df else sets_df
 
     def render(self) -> None:
         """Render the complete exercise analysis view."""

@@ -1005,6 +1005,66 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
     color: inherit;
 }
 
+.analysis-insight {
+    padding: 14px 18px;
+    margin: 4px 0 16px;
+    background: var(--accent-dim);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.plan-week-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 12px;
+    margin: 12px 0 20px;
+}
+
+.plan-week-card {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 16px;
+    background: rgba(57, 62, 70, 0.22);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent);
+    border-radius: var(--radius-md);
+}
+
+.plan-week-card > span {
+    color: var(--accent);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.plan-week-card > strong { color: var(--text-primary); font-size: 15px; }
+.plan-week-card > small { color: var(--text-muted); font-size: 11px; }
+
+.plan-reference-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+}
+.plan-reference-row > strong { color: var(--accent); font-size: 12px; font-weight: 500; }
+
+[class*="st-key-plan_exercise_"] {
+    padding: 16px;
+    margin: 4px 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-base);
+}
+
 @media (max-width: 640px) {
     .st-key-training_plan_details,
     [class*="st-key-training_workout_"] { padding: 14px; }

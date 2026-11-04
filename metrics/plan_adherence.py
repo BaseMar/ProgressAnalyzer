@@ -8,6 +8,8 @@ from models.plan_adherence import PlanAdherenceInput
 
 
 def compatible_set(workout_set, unit):
+    if workout_set.is_warmup is True:
+        return False
     return is_duration_set(workout_set) if unit == "seconds" else not is_duration_set(workout_set) and set_reps(workout_set) > 0
 
 
@@ -43,7 +45,9 @@ def compute_plan_adherence(data: PlanAdherenceInput, *, as_of: date) -> dict:
             explicit_id = matches.get((slot.session_id, target.plan_exercise_id))
             replacement = by_id.get(explicit_id)
             if explicit_id is not None:
-                candidates = [(replacement.workout_exercise_id, index, item) for index, item in enumerate(replacement.sets)] if replacement else []
+                candidates = [(replacement.workout_exercise_id, index, item) for index, item in enumerate(
+                    sorted(replacement.sets, key=lambda value: value.set_number)
+                )] if replacement else []
             else:
                 candidates = pools[planned.exercise_id]
             credited = []
@@ -59,6 +63,7 @@ def compute_plan_adherence(data: PlanAdherenceInput, *, as_of: date) -> dict:
                 "planned_sets": planned.set_count, "covered_sets": len(credited),
                 "replacement_exercise_id": replacement.exercise_id if replacement and replacement.exercise_id != planned.exercise_id else None,
                 "matched_workout_exercise_id": explicit_id,
+                "credited_sets": tuple(credited),
             })
         planned_sets = sum(item["planned_sets"] for item in details)
         covered_sets = sum(item["covered_sets"] for item in details)

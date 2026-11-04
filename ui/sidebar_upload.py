@@ -358,11 +358,13 @@ class SidebarUpload:
             return self._clean_exercise_name(line), ""
 
         first_match = matches[0]
-        name = self._clean_exercise_name(line[: first_match.start()])
+        marker = re.search(r"\b(warm[- ]?up|rozgrzewka|working|robocze)\s*:\s*$", line[:first_match.start()], re.IGNORECASE)
+        data_start = marker.start() if marker else first_match.start()
+        name = self._clean_exercise_name(line[:data_start])
         if not name:
             return "", line
 
-        return name, line[first_match.start() :].strip()
+        return name, line[data_start:].strip()
 
     def _parse_exercise_block(self, name: str, lines: list[str]) -> list[dict]:
         """Parse one exercise block into set dictionaries."""
@@ -402,6 +404,7 @@ class SidebarUpload:
                     "weight": weight,
                     "rir": rir,
                     **({"duration_seconds": duration_seconds} if duration_seconds else {}),
+                    **({"is_warmup": token["is_warmup"]} if "is_warmup" in token else {}),
                 }
             )
 
@@ -439,6 +442,9 @@ class SidebarUpload:
                             "weight": float(match.group("weight").replace(",", ".")),
                         }
                     )
+                labels = list(re.finditer(r"\b(warm[- ]?up|rozgrzewka|working|robocze)\s*:", line[:match.start()], re.IGNORECASE))
+                if labels:
+                    tokens[-1]["is_warmup"] = labels[-1].group(1).lower() not in ("working", "robocze")
             except ValueError:
                 continue
 

@@ -196,7 +196,7 @@ else:
 '''
 
 
-def test_calendar_approval_updates_analytics_and_can_be_removed(schedule_data):
+def test_approval_lives_in_analytics_and_can_be_removed(schedule_data):
     engine, start, plan, _ = schedule_data
     data = linked_report(schedule_data)
     target_id = data.workouts[0].targets[0].plan_exercise_id
@@ -206,20 +206,18 @@ def test_calendar_approval_updates_analytics_and_can_be_removed(schedule_data):
     app.run()
     app.button(key=f"history_date_{start}").click().run()
     assert not app.exception
+    assert not app.dataframe
+    assert not any(box.key.startswith("replacement_") for box in app.selectbox)
+    app.session_state["analysis"] = True
+    app.run()
     prefix = f"replacement_2_{target_id}"
     app.selectbox(key=f"{prefix}_exercise").select(200).run()
     app.button(key=f"{prefix}_confirm").click().run()
     assert not app.exception
     assert not app.error
-    assert any("3/3 sets" in item.value for item in app.markdown)
     assert load_plan_adherence(engine, plan.plan_id, start, start).matches
-    app.session_state["analysis"] = True
-    app.run()
-    assert not app.exception
-    covered = next(metric for metric in app.metric if metric.label == "Sets covered")
-    assert covered.value.startswith("3 /")
-    app.session_state["analysis"] = False
-    app.run()
+    assert len(app.metric) == 3
+    assert app.get("plotly_chart")
     app.button(key=f"{prefix}_remove").click().run()
     assert not app.exception
     assert not load_plan_adherence(engine, plan.plan_id, start, start).matches

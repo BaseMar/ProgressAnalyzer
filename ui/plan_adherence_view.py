@@ -1,16 +1,17 @@
-"""Plan execution summary and explicit, session-scoped exercise replacements."""
-
-from datetime import date, timedelta
+"""Analytical overview with optional drill-down and source corrections."""
 from calendar import monthrange
+from datetime import date, timedelta
+from html import escape
 import logging
-
 import pandas as pd
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
-
 from data_manager import DataManager
 from metrics.plan_adherence import compatible_set, compute_plan_adherence
-from ui.utils.ui_helpers import section_header
+from metrics.plan_performance import compute_plan_performance
+from metrics.plan_summary import summarize_plan
+from ui.utils.plan_charts import exercise_history_chart, weekly_execution_chart
+from ui.utils.ui_helpers import chart_label, section_header
 
 logger = logging.getLogger(__name__)
 
@@ -25,17 +26,16 @@ class PlanAdherenceView:
         return self.names.get(exercise_id, f"Exercise #{exercise_id}")
 
     def render(self):
-        section_header("Plan Execution")
+        section_header("Plan overview")
         try:
             if not self.dm.adherence_storage_ready():
-                st.info("Plan execution analysis is not available until database setup is complete.")
+                st.info("Plan analysis is not available until setup is complete.")
                 return
             plans = {item.plan_id: item for item in self.dm.load_training_plans()}
             if not plans:
-                st.info("Create a Training Plan and link recorded sessions in the dashboard calendar to track its execution.")
+                st.info("Add a Training Plan, then link sessions in the calendar to start the analysis.")
                 return
-            plan_id = st.selectbox("Analysis plan", list(plans), key="adherence_plan",
-                                   format_func=lambda value: plans[value].draft.name)
+            plan_id = st.selectbox("Plan to analyse", list(plans), key="adherence_plan", format_func=lambda value: plans[value].draft.name)
             versions = self.dm.load_training_plan_versions(plan_id)
             if self.selected_month not in (None, "All time"):
                 start = date.fromisoformat(f"{self.selected_month}-01")
@@ -44,73 +44,93 @@ class PlanAdherenceView:
                 start = min(item.draft.effective_from for item in versions)
                 end = max(date.today(), start) + timedelta(days=7)
             data = self.dm.load_plan_adherence(plan_id, start, end)
+            history = self.dm.load_plan_performance(plan_id, start, end)
         except SQLAlchemyError:
-            logger.exception("Unable to load adherence analysis")
-            st.error("Plan execution analysis could not be loaded. Please try again.")
+            logger.exception("Unable to load plan analysis")
+            st.error("Plan analysis could not be loaded. Please try again.")
             return
         report = compute_plan_adherence(data, as_of=date.today())
-        summary = report["summary"]
-        st.caption("Summary includes scheduled dates before today. Today and future dates do not lower your results. Sessions moved to another day still count as recorded.")
-        columns = st.columns(5)
-        for col, label, covered, total in (
-            (columns[0], "Workouts recorded", summary["linked_workouts"], summary["due_workouts"]),
-            (columns[1], "Fully completed", summary["complete_workouts"], summary["due_workouts"]),
-            (columns[2], "On planned day", summary["on_time_workouts"], summary["linked_workouts"]),
-            (columns[3], "Exercises covered", summary["covered_exercises"], summary["planned_exercises"]),
-            (columns[4], "Sets covered", summary["covered_sets"], summary["planned_sets"]),
+        performance = compute_plan_performance(history, as_of=date.today(), start=start, end=end)
+        overview, summary = summarize_plan(report, performance), report["summary"]
+        cols = st.columns(3)
+        for col, label, value, note in (
+            (cols[0], "Workouts recorded", overview["workout_pct"], f'{summary["linked_workouts"]} of {summary["due_workouts"]} planned workouts linked'),
+            (cols[1], "Planned sets logged", overview["set_pct"], f'{summary["covered_sets"]} of {summary["planned_sets"]} sets'),
+            (cols[2], "Sets within range", overview["range_pct"], f'{overview["in_range"]} of {overview["recorded_sets"]} logged sets'),
         ):
-            col.metric(label, f"{covered} / {total}" if total else "—")
-        st.caption("Coverage counts logged sets, capped at the plan target. A completed workout meets its planned set counts; this does not assess technique, RIR, target-range success or muscle growth. Unmarked warm-up sets are included.")
-        if report["workouts"]:
-            st.dataframe(pd.DataFrame([{
-                "Planned date": row["scheduled_date"], "Workout": row["name"],
-                "Recorded date": row["performed_on"], "Status": row["status"],
-                "Exercises": f'{row["covered_exercises"]}/{row["planned_exercises"]}',
-                "Sets": f'{row["covered_sets"]}/{row["planned_sets"]}',
-                "Included in summary": row["eligible"],
-            } for row in report["workouts"]]), hide_index=True, width="stretch")
+            col.metric(label, f"{value:.0f}%" if value is not None else "—")
+            col.caption(note)
+        if not summary["due_workouts"]:
+            st.info("No elapsed planned days in this period. Today and future dates are excluded.")
         else:
-            st.info("No workouts are scheduled in this period.")
+            gap = overview["largest_gap"]
+            message = f"Largest gap: {gap[0]} — {gap[1]} planned sets without a matching log." if gap else "All planned sets are covered by linked logs in this period."
+            st.markdown(f'<div class="analysis-insight">{escape(message)}</div>', unsafe_allow_html=True)
+            chart_label("Weekly execution")
+            st.plotly_chart(weekly_execution_chart(overview["weeks"]), width="stretch", key="weekly_plan_execution")
+        st.caption("Completed calendar days only. An unlinked workout is not proof that it was skipped.")
+        self.render_performance(performance)
+        with st.expander("Exercise replacements & data corrections"):
+            self._render_matches(data)
+        with st.expander("Definitions & source data"):
+            st.caption(f'On the planned day: {summary["on_time_workouts"]}/{summary["linked_workouts"]} linked workouts. RIR missing: {overview["missing_rir"]}/{overview["recorded_sets"]} logged sets.')
+            st.caption("Coverage is capped at planned counts. Range success uses logged sets. Labelled warm-ups are excluded; unknown set types stay included. These indicators do not measure technique or muscle growth.")
+            if report["workouts"]:
+                st.dataframe(pd.DataFrame([{"Planned date": row["scheduled_date"], "Workout": row["name"], "Recorded date": row["performed_on"], "Status": row["status"], "Sets logged": row["covered_sets"], "Sets planned": row["planned_sets"]} for row in report["workouts"]]), hide_index=True, width="stretch")
 
-    def render_workout(self, slot, plan_id):
-        try:
-            if not self.dm.adherence_storage_ready():
-                return
-            data = self.dm.load_plan_adherence(plan_id, slot.scheduled_date, slot.scheduled_date)
-            workout = next(item for item in data.workouts if item.slot.day_id == slot.day_id)
-            row = next(item for item in compute_plan_adherence(data, as_of=date.today())["workouts"]
-                       if item["day_id"] == slot.day_id)
-            st.markdown(f'**Plan coverage: {row["covered_sets"]}/{row["planned_sets"]} sets · {row["status"]}**')
-            st.dataframe(pd.DataFrame([{
-                "Planned exercise": self._name(item["exercise_id"]),
-                "Approved replacement": self._name(item["replacement_exercise_id"]) if item["replacement_exercise_id"] else "—",
-                "Recorded sets": item["covered_sets"], "Planned sets": item["planned_sets"],
-            } for item in row["details"]]), hide_index=True, width="stretch")
-            with st.expander("Confirm exercise replacements"):
-                st.caption("Approve a replacement from this session only. It counts toward plan coverage; its strength history remains separate. One recorded exercise cannot cover multiple planned positions.")
-                confirmations = {item.plan_exercise_id: item.workout_exercise_id for item in data.matches if item.session_id == slot.session_id}
-                for index, target in enumerate(workout.targets, start=1):
-                    current = confirmations.get(target.plan_exercise_id)
-                    reserved = {value for key, value in confirmations.items() if key != target.plan_exercise_id}
-                    candidates = {item.workout_exercise_id: item for item in data.recorded
-                                  if item.session_id == slot.session_id and item.workout_exercise_id not in reserved
-                                  and item.exercise_id != target.exercise.exercise_id
-                                  and any(compatible_set(recorded_set, target.exercise.target_unit) for recorded_set in item.sets)}
-                    prefix = f"replacement_{slot.session_id}_{target.plan_exercise_id}"
-                    selected = st.selectbox(
-                        f"Instead of {self._name(target.exercise.exercise_id)} · position {index}",
-                        [None, *candidates], index=list(candidates).index(current) + 1 if current in candidates else 0,
-                        key=f"{prefix}_exercise",
-                        format_func=lambda value: "Use the planned exercise" if value is None else f"{self._name(candidates[value].exercise_id)} · entry #{value}",
-                    )
-                    left, right = st.columns(2)
-                    if left.button("Confirm replacement", key=f"{prefix}_confirm", disabled=selected is None):
-                        self._change(slot.session_id, target.plan_exercise_id, selected)
-                    if current is not None and right.button("Remove replacement", key=f"{prefix}_remove"):
-                        self._change(slot.session_id, target.plan_exercise_id, None)
-        except SQLAlchemyError:
-            logger.exception("Unable to load workout coverage")
-            st.error("Workout coverage could not be loaded. Please try again.")
+    @staticmethod
+    def _set_label(item, unit):
+        quantity = f'{item["seconds"]}s' if unit == "seconds" else f'{item["reps"]} reps'
+        load = f' @ {item["weight"]:g} kg' if item["weight"] else ""
+        return f'{quantity}{load} · RIR {item["rir"] if item["rir"] is not None else "?"}'
+
+    def render_performance(self, rows):
+        section_header("Exercise trends")
+        observed = [row for row in rows if row["sets"]]
+        if not observed:
+            st.caption("No matching logs in this period. Link a session or confirm a replacement to see its trend.")
+            return
+        contexts = list(dict.fromkeys(row["context"] for row in observed))
+        selected = st.selectbox("Explore an exercise", contexts, key="performance_context", format_func=lambda key: f'{key[0]} · {self._name(key[5])} · {key[7]} × {key[8]}–{key[9]} {key[6]} · position {key[3]}')
+        selected_rows = [row for row in observed if row["context"] == selected]
+        latest = selected_rows[-1]
+        st.markdown(f'<div class="analysis-insight">{escape(latest["comparison"])}</div>', unsafe_allow_html=True)
+        st.caption(f'Last recorded {latest["performed_on"]:%d %b %Y} · {latest["in_range"]}/{latest["planned_sets"]} sets in range · {latest["rir_status"]}')
+        fig = exercise_history_chart(selected_rows)
+        if fig is not None:
+            st.plotly_chart(fig, width="stretch", key="plan_exercise_history")
+        st.caption("Shaded band = target range. Means describe logged sets, including partial sessions. Read load alongside reps/time; substitutes keep separate histories.")
+        with st.expander("Previous vs current · set breakdown"):
+            previous = latest["previous"]
+            if previous:
+                st.caption(f'Previous: {previous["performed_on"]:%d %b %Y} · Current: {latest["performed_on"]:%d %b %Y}. History may extend outside the selected month.')
+            else:
+                st.caption("No prior execution with the same workout context and targets.")
+            old_sets = previous["sets"] if previous else ()
+            st.dataframe(pd.DataFrame([{"Set": index + 1, "Previous": self._set_label(old_sets[index], latest["unit"]) if index < len(old_sets) else "—", "Current": self._set_label(latest["sets"][index], latest["unit"]) if index < len(latest["sets"]) else "—"} for index in range(latest["planned_sets"])]), hide_index=True, width="stretch")
+            st.caption("Changed loads and incomplete counts are not automatically graded. Missing RIR stays unknown. Context or target changes start a new history.")
+
+    def _render_matches(self, data):
+        linked = [item for item in data.workouts if item.slot.session_id is not None]
+        if not linked:
+            st.caption("Link a session in the calendar before confirming a replacement.")
+            return
+        index = st.selectbox("Linked workout", range(len(linked)), key="match_workout", format_func=lambda value: f'{linked[value].slot.scheduled_date:%d %b %Y} · {linked[value].slot.name}')
+        workout, slot = linked[index], linked[index].slot
+        index = st.selectbox("Planned exercise", range(len(workout.targets)), key=f"match_target_{slot.session_id}", format_func=lambda value: f'{value + 1}. {self._name(workout.targets[value].exercise.exercise_id)}')
+        target = workout.targets[index]
+        confirmations = {item.plan_exercise_id: item.workout_exercise_id for item in data.matches if item.session_id == slot.session_id}
+        current = confirmations.get(target.plan_exercise_id)
+        reserved = {value for key, value in confirmations.items() if key != target.plan_exercise_id}
+        candidates = {item.workout_exercise_id: item for item in data.recorded if item.session_id == slot.session_id and item.workout_exercise_id not in reserved and item.exercise_id != target.exercise.exercise_id and any(compatible_set(recorded, target.exercise.target_unit) for recorded in item.sets)}
+        prefix = f"replacement_{slot.session_id}_{target.plan_exercise_id}"
+        selected = st.selectbox("Exercise actually performed", [None, *candidates], index=list(candidates).index(current) + 1 if current in candidates else 0, key=f"{prefix}_exercise", format_func=lambda value: "Use the planned exercise" if value is None else f"{self._name(candidates[value].exercise_id)} · entry #{value}")
+        left, right = st.columns(2)
+        if left.button("Confirm replacement", key=f"{prefix}_confirm", disabled=selected is None):
+            self._change(slot.session_id, target.plan_exercise_id, selected)
+        if current is not None and right.button("Remove replacement", key=f"{prefix}_remove"):
+            self._change(slot.session_id, target.plan_exercise_id, None)
+        st.caption("Approval applies to this session only. It changes coverage, not the original plan or recorded exercise.")
 
     def _change(self, session_id, target_id, actual_id):
         try:

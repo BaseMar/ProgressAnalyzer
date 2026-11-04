@@ -23,6 +23,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from ui.plan_adherence_view import PlanAdherenceView
+from ui.set_classification_view import render_set_classification
 
 from ui.utils.ui_helpers import (chart_label, page_title, section_header, ACCENT, DANGER, MUTED, PLOTLY_LAYOUT)
 
@@ -68,9 +69,14 @@ class AnalyticsView:
     def render(self) -> None:
         """Render the complete analytics view."""
         page_title("Analytics", "Training Analytics")
-        PlanAdherenceView(selected_month=self.selected_month, exercise_names=self.exercise_names).render()
-        self._fatigue_section()
-        self._progress_section()
+        plan, strength, fatigue = st.tabs(["Plan execution", "Overall strength", "Fatigue"])
+        with plan:
+            PlanAdherenceView(selected_month=self.selected_month, exercise_names=self.exercise_names).render()
+        with strength:
+            self._progress_section()
+        with fatigue:
+            self._fatigue_section()
+            render_set_classification()
 
     def _fatigue_section(self) -> None:
         """Render fatigue and recovery insights with per-session fatigue trends."""
@@ -86,18 +92,19 @@ class AnalyticsView:
         total_sets = sum(s["total_sets"] for s in self.session_metrics.get("per_session", {}).values())
         failure_sets = sum(s["sets_to_failure"] for s in self.session_metrics.get("per_session", {}).values())
         failure_pct = (failure_sets / total_sets * 100) if total_sets else 0
-        avg_intensity = self.session_metrics.get("global", {}).get("avg_intensity") or 0
+        avg_1rm = self.session_metrics.get("global", {}).get("avg_estimated_1rm")
 
         cols = st.columns(5)
         cols[0].metric("Avg Fatigue Score", global_f.get("avg_fatigue_score", "—"))
-        cols[1].metric("High Fatigue Sessions", global_f.get("high_fatigue_sessions_ratio", "—"))
-        cols[2].metric("Max Consecutive High Fatigue", global_f.get("max_consecutive_high_fatigue_sessions", "—"))
-        cols[3].metric("Avg Session Intensity", f"{round(avg_intensity, 2)}%")
+        ratio = global_f.get("high_fatigue_sessions_ratio")
+        cols[1].metric("High-score sessions", f"{ratio * 100:.1f}%" if ratio is not None else "—")
+        cols[2].metric("Longest high-score run", global_f.get("max_consecutive_high_fatigue_sessions", "—"))
+        cols[3].metric("Mean session e1RM", f"{avg_1rm:.1f} kg" if avg_1rm is not None else "—", help="Average of session mean estimated 1RM values. This is not relative intensity.")
         cols[4].metric("Sets to Failure", f"{round(failure_pct, 1)}%")
 
         df = pd.DataFrame([
-            {"date": s.get("session_date"), "fatigue_score": s.get("fatigue_score", 0)}
-            for s in per_session.values()
+            {"date": s.get("session_timestamp", s.get("session_date")), "fatigue_score": s.get("fatigue_score", 0), "session_id": sid}
+            for sid, s in per_session.items()
         ]).dropna(subset=["date"])
 
         if not df.empty:
@@ -108,6 +115,7 @@ class AnalyticsView:
                 df, x="date", y="fatigue_score",
                 markers=True,
                 labels={"date": "Date", "fatigue_score": "Fatigue Score"},
+                hover_data=["session_id"],
             )
             fig.update_traces(
                 line_color=ACCENT,
@@ -117,13 +125,10 @@ class AnalyticsView:
             _apply_theme(fig)
 
             chart_label("Fatigue Score")
+            fig.update_yaxes(range=[0, 1])
             st.plotly_chart(fig, width='stretch')
 
-        ratio = global_f.get("high_fatigue_sessions_ratio", 0)
-        if ratio > 0.3:
-            st.warning("High frequency of fatigue-heavy sessions — monitor recovery.")
-        else:
-            st.success("Fatigue levels are balanced. Keep up the consistency.")
+        st.caption("Fatigue Score is an unvalidated 0–1 heuristic based on RIR, failure sets, volume and timed work. High score means ≥0.7; it does not measure physiological fatigue or recovery. Explicit warm-ups are excluded; unknown set types remain included.")
 
     def _progress_section(self) -> None:
         """Render strength progress analysis with top/bottom improving exercises."""
@@ -152,8 +157,8 @@ class AnalyticsView:
         cols = st.columns(4)
         cols[0].metric("Median Progress", f"{round(median_progress, 1)}%")
         cols[1].metric("Progress Ratio", f"{round(progress_ratio)}%")
-        cols[2].metric("Top Improver", top_exercise)
-        cols[3].metric("Top Regressor", worst_exercise)
+        cols[2].metric("Highest change", top_exercise)
+        cols[3].metric("Lowest change", worst_exercise)
 
         top10 = df.sort_values("progress_pct", ascending=False).head(10)
         bottom10 = df.sort_values("progress_pct", ascending=True).head(10)

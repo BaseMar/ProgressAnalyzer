@@ -3,6 +3,7 @@ from datetime import time
 from statistics import mean
 
 from metrics.input import MetricsInput
+from metrics.utils.set_values import analysis_sets
 from metrics.utils import is_duration_set, set_duration_seconds, set_estimated_1rm
 
 
@@ -22,7 +23,7 @@ def compute_progress_metrics(input: MetricsInput) -> dict:
     exercise_sets = defaultdict(lambda: defaultdict(list))
     exercise_name_map = {e.exercise_id: e.name for e in input.exercises}
 
-    for s in input.sets:
+    for s in analysis_sets(input.sets):
         ex_id = we_to_exercise.get(s.workout_exercise_id)
         session_id = we_to_session.get(s.workout_exercise_id)
         if ex_id is not None and session_id in sessions:

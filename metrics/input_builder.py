@@ -1,6 +1,6 @@
 from metrics.input import MetricsInput
 
-from mapper import map_body_composition, map_body_measurement
+from mapper import map_body_composition, map_body_measurement, map_workout_set
 from models.workout_session import WorkoutSession
 from models.workout_exercise import WorkoutExercise
 from models.workout_set import WorkoutSet
@@ -42,14 +42,7 @@ class MetricsInputBuilder:
         ]
 
         sets = [
-            WorkoutSet(
-                workout_exercise_id=row.workout_exercise_id,
-                set_number=row.set_number,
-                repetitions=row.repetitions,
-                weight=row.weight,
-                rir=getattr(row, "rir", None),
-                duration_seconds=getattr(row, "duration_seconds", None),
-            )
+            map_workout_set(row._asdict())
             for row in sets_df.itertuples()
         ]
 

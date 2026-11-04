@@ -1,3 +1,5 @@
+import pandas as pd
+
 from models import (
     BodyComposition,
     BodyMeasurement,
@@ -34,8 +36,9 @@ def map_workout_set(row: dict) -> WorkoutSet:
         set_number=row["set_number"],
         repetitions=row["repetitions"],
         weight=row["weight"],
-        rir=row.get("rir"),
+        rir=None if pd.isna(row.get("rir")) else int(row["rir"]),
         duration_seconds=row.get("duration_seconds"),
+        is_warmup=None if pd.isna(row.get("is_warmup")) else bool(row["is_warmup"]),
     )
 
 

@@ -74,7 +74,7 @@ per-user data isolation.
 
 The application is functional and deployed as a public single-user demo. Core
 analytics, TXT import, database integration, and tests are implemented. The next
-major improvements are progression recommendations, a complete database
+major improvements are a complete database
 bootstrap, anonymized seed data, Docker Compose setup, and CI. Versioned plan
 storage, its additive migration, and the Training Plan editor are implemented.
 
@@ -131,7 +131,7 @@ The dashboard can answer questions such as:
 
 ### Training Analytics
 
-- Session overview: volume, set count, intensity, duration, and workload.
+- Session overview: volume, set count, estimated strength, duration, and workload.
 - Exercise analytics: total volume, estimated 1RM, average RIR, exposure, and
   progress trends.
 - Progress classification: improving, stagnating, and regressing exercises.
@@ -157,8 +157,16 @@ A single session has no between-session trend.
 
 - RIR distribution and average RIR.
 - Sets to failure and failure-set ratio.
-- Volume load and intensity load.
-- Per-session fatigue score and high-fatigue session indicators.
+- Volume load and timed work.
+- Per-session heuristic score and high-score session indicators.
+
+`Mean session e1RM` is displayed in kg: it averages the session means of estimated
+1RM values, rather than representing relative intensity. The fatigue chart uses
+recorded dates/start times, and consecutive high-score runs follow chronological
+order. High-score session shares are displayed as percentages. The 0–1 score and
+its 0.7 threshold are unvalidated heuristics, not measurements of recovery.
+Strength rankings use neutral `Highest change` / `Lowest change` labels, even
+when every exercise improves or every exercise declines.
 
 ### Body-Part Analysis
 
@@ -199,15 +207,16 @@ A single session has no between-session trend.
 Select `Training Plan` in the sidebar, then choose `Create a new plan` or an
 existing plan. Plans are independent of the sidebar history month filter.
 
-1. Enter the plan name and start date.
-2. Add named workouts, such as Upper A, and choose their weekdays.
-3. Choose catalog exercises in each workout's table. Add/delete rows as needed.
-   Use unique positive `Order` values to arrange exercises, then set `Sets`,
-   `From`, `To`, and `Unit` (`reps` or `seconds`). For example, 3 / 6 / 10 / reps
-   means three working sets of 6–10 repetitions.
-4. Optionally set target RIR and the available weight step in kg.
-5. Save the plan. When editing an existing plan, saving appends a version with
-   a later start date. Expand version history to inspect earlier targets.
+Saved plans open as weekly reference cards, with exercises available under
+`Reference exercises`. Switch on `Edit as a new version` to change a saved plan.
+
+1. Enter the plan name and effective date.
+2. Add named workouts and choose their weekdays. Select one `Workout to edit`.
+3. Add exercise cards from the catalog. Set the number of sets, minimum/maximum,
+   and measurement unit. For example, 3 sets with 6–10 reps.
+4. Use the arrow buttons to reorder exercises. Target RIR is optional and collapsed.
+5. Save the plan. All workout cards are saved together; editing an existing plan
+   appends a version with a later start date. Previous versions remain available.
 
 The plan editor requires migration 001 described below. Calendar assignments
 require migration 002; execution analysis and confirmed replacements require
@@ -224,8 +233,9 @@ version effective on that date, so old workouts retain their original targets.
 - A bottom dot marks the actual day of recorded training.
 - A top-right amber ring marks a planned workout. The ring becomes filled teal
   when all planned slots on that date have a session linked to them.
-- Select a planned day to inspect its exercises and link a recorded session.
-  Sessions from other dates/months are available for workouts moved to another day.
+- Select a planned day, choose the actual recorded date, then choose and link its
+  session. Other dates/months remain available for moved workouts. The calendar
+  shows assignment status and workout history, without analysis tables.
 - One recorded session can be linked to one planned slot across all plans. A slot
   accepts one session. Remove the existing link before correcting an assignment.
 - Removing a link preserves the workout log. Deleting a recorded session removes
@@ -239,20 +249,29 @@ than materializing an unlimited recurring schedule in the database.
 
 ## Plan execution and exercise replacements
 
-`Analytics` now includes Plan Execution in place of Plateau Zone Analysis.
+`Analytics` has separate tabs for Plan execution, Overall strength and Fatigue.
+Plan execution replaces Plateau Zone Analysis.
 Select a plan; the sidebar month filter sets the scheduled date range. Actual
 sessions linked from other dates/months are still loaded in full.
 
-Summary ratios include only scheduled dates before today, so today's open
-workouts and future slots neither lower nor inflate the results. Recorded
-workouts, completed set targets, timing, exercise coverage and set coverage are
-shown separately. A moved workout counts as recorded, but not on the planned day.
-Coverage uses every logged set, including unmarked warm-ups, and caps credit at
-the planned count per position. It does not assess technique, RIR or whether each
-set achieved its target repetition/time range.
+The overview shows three percentages: workouts with linked logs, planned sets
+logged, and logged sets within the target range. The last indicator uses recorded
+sets as its denominator, rather than penalizing absent logs twice. A weekly
+stacked chart distinguishes full, partial, unmatched and unlinked workouts. One
+short observation highlights the largest gap in logged sets.
 
-For a linked workout in the calendar, expand `Confirm exercise replacements`,
-select an actual exercise from that session, and explicitly confirm it. For
+Summary ratios include only scheduled dates before today. Today's open workouts
+and future slots neither lower nor inflate them. A moved workout counts as
+recorded, but not on the planned day. Unlinked workouts are not proof of absence.
+Timing, data quality and auditable source rows live under `Definitions & source
+data`, rather than expanding the main overview.
+Coverage excludes explicitly labelled warm-ups and caps credit at
+the planned count per position. Coverage alone does not indicate success against
+the repetition/time range or RIR; these are checked separately below. Technique
+and muscle growth are not assessed.
+
+In Analytics, expand `Exercise replacements & data corrections`, choose the linked
+workout and planned exercise, then explicitly confirm the actual exercise. For
 example, Machine Chest Press can cover the planned Barbell Bench Press position.
 This approval applies to that session only; the plan and actual exercise identity
 remain unchanged. Their strength histories are never combined.
@@ -264,6 +283,62 @@ positions share the remaining logged sets without double counting. Replacements
 must use the same measurement unit (repetitions or seconds) as the planned target.
 Removing a replacement restores exact matching. Unlinking/deleting the session
 also removes its approvals, while unlinking preserves the workout log.
+
+## Exercise target checks and previous performance
+
+Exercise analysis lives only in Analytics. Select one workout/exercise context
+under `Exercise trends` to see its latest observation, range/RIR result and chart.
+Mean repetitions/time and mean load are shown separately. The shaded target band
+applies to the mean; the hover shows the number of individual sets within range,
+so the mean alone should not be read as proof that all sets met the target.
+Session points are equally spaced by execution order, not elapsed calendar time.
+Range boundaries are inclusive. Missing RIR stays unknown; logged zero stays zero.
+
+Expand `Previous vs current · set breakdown` for a compact three-column comparison
+of credited sets. Earlier history remains available outside the
+visible month. Ordering uses recorded session date, start time and session ID,
+not the planned date; unknown start times sort first and IDs break remaining ties.
+
+Comparisons require the same plan workout name, weekday and order, exercise
+position, planned and actual catalog IDs, measurement unit, set count, target
+range and target RIR. Identical targets can be compared across plan versions;
+context changes start a new history. Approved substitutes compare only with the
+same substitute previously used in that plan context, never with the original.
+Unlinked workouts and other plan contexts are not used as a fallback baseline.
+
+At equal per-set loads, the app reports the change in total repetitions or time.
+Changed loads or incomplete executions show both results without an automatic
+improvement/regression label. Mean RIR changes require complete RIR data in both
+executions. These are observed comparisons, not weight recommendations or a
+judgment that training was physiologically effective. Unknown set types remain
+included until classified; labelled warm-ups are excluded from these checks.
+
+## Working sets and warm-ups
+
+Apply migration 004 to enable set classification. Existing sets remain `Unknown`;
+no type is inferred from load, exercise order or date. In `Analytics` → `Fatigue`,
+expand `Working sets & warm-up labels`, select a session and edit its set types:
+
+- `Working` — explicitly included in analysis.
+- `Warm-up` — preserved in history but excluded from set, session, exercise,
+  strength-progress, fatigue and plan-coverage calculations and exercise charts.
+- `Unknown` — included for historical continuity, with its uncertainty disclosed.
+
+Save the labels to recalculate analyses. Changing a label back to `Unknown` removes
+the explicit classification. Calendar log totals still include all recorded sets;
+warm-ups carry a `WU` badge. Training-visit frequency still counts recorded sessions.
+
+TXT import accepts explicit markers, including mixed markers on one line:
+
+```text
+1. Bench Press
+Warm-up: 10x20 / 8x40
+Working: 8x60 / 8x60
+RIR: 4 / 3 / 2 / 1
+```
+
+`Rozgrzewka:` and `Robocze:` are also supported. Unmarked tokens stay unknown.
+Classification is stored separately from the original set values.
 
 ## TXT Workout Import
 
@@ -510,7 +585,8 @@ Use the existing PostgreSQL database configured by `DATABASE_URL`. Migration 001
 creates the new plan tables and a `schema_migrations` ledger; it requires the
 existing `exercises` table. Migration 002 adds session links and requires
 `workout_sessions`. Migration 003 adds confirmed exercise matches and requires
-`workout_exercises`. These migrations do not change existing workout records.
+`workout_exercises`. Migration 004 adds explicit set classifications and requires
+`workout_sets`. These migrations do not change existing workout records.
 Migrations are never run automatically at application startup.
 
 Preview pending migrations (read-only):
