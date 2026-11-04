@@ -13,6 +13,10 @@ All metrics are pre-computed; this view only handles presentation.
 
 from __future__ import annotations
 
+from calendar import Calendar
+from datetime import date
+from html import escape
+
 import pandas as pd
 import streamlit as st
 from data_manager import DataManager
@@ -29,9 +33,15 @@ def _set_pills(ex_df: pd.DataFrame) -> str:
     Returns:
         HTML string with set pill badges (reps × weight)
     """
-    return "".join(
-        f'<span class="set-pill">{row["repetitions"]} × {row["weight"]:g} kg</span>'
-        for _, row in ex_df.sort_values("set_number").iterrows())
+    pills = []
+    for _, row in ex_df.sort_values("set_number").iterrows():
+        duration_seconds = row.get("duration_seconds")
+        if pd.notna(duration_seconds) and int(duration_seconds) > 0:
+            value = _format_seconds(duration_seconds)
+        else:
+            value = f'{row["repetitions"]} × {row["weight"]:g} kg'
+        pills.append(f'<span class="set-pill">{value}</span>')
+    return "".join(pills)
 
 
 class DashboardView:
@@ -47,7 +57,7 @@ class DashboardView:
     - sets_df: Raw set data for detailed session rendering
     """
 
-    def __init__(self, metrics: dict, sets_df: pd.DataFrame) -> None:
+    def __init__(self, metrics: dict, sets_df: pd.DataFrame, selected_month: str | None = None) -> None:
         """Initialize with pre-computed metrics and raw set data.
         
         Args:
@@ -56,6 +66,7 @@ class DashboardView:
         """
         self.metrics = metrics
         self.sets_df = sets_df
+        self.selected_month = selected_month
         self.dm = DataManager()
 
 
@@ -117,7 +128,99 @@ class DashboardView:
         section_header("Session History")
 
         df = self.sets_df.copy()
+        if df.empty and self.selected_month in (None, "All time"):
+            st.info("No workout history yet.")
+            return
+
         df["session_date"] = pd.to_datetime(df["session_date"])
+        session_counts = df.groupby(df["session_date"].dt.date)["session_id"].nunique()
+        with st.container(key="workout_calendar"):
+            selected_day = self._render_calendar(session_counts)
+
+        selected_count = session_counts.get(selected_day, 0)
+        st.markdown(
+            '<div class="calendar-detail-heading">'
+            f'<span>Sessions on {selected_day:%d %b %Y}</span>'
+            f'<span class="calendar-count">{selected_count} '
+            f'{"session" if selected_count == 1 else "sessions"}</span></div>',
+            unsafe_allow_html=True,
+        )
+        df = df.loc[df["session_date"].dt.date == selected_day]
+        if df.empty:
+            st.info("No sessions recorded for this day.")
+            return
+
+        self._render_day_sessions(df)
+
+    def _render_calendar(self, session_counts: pd.Series) -> date:
+        """Render the month card and return its selected date."""
+        training_dates = set(session_counts.index)
+        title_col, month_col = st.columns([2, 1])
+        with title_col:
+            st.markdown(
+                '<div class="calendar-eyebrow">Training activity</div>',
+                unsafe_allow_html=True,
+            )
+        with month_col:
+            if self.selected_month not in (None, "All time"):
+                month = date.fromisoformat(f"{self.selected_month}-01")
+            else:
+                months = pd.period_range(min(training_dates), max(training_dates), freq="M")
+                month_label = st.selectbox(
+                    "History month", [str(value) for value in months],
+                    index=len(months) - 1, key="history_month",
+                    format_func=lambda value: date.fromisoformat(f"{value}-01").strftime("%B %Y"),
+                    label_visibility="collapsed",
+                )
+                month = date.fromisoformat(f"{month_label}-01")
+
+        month_dates = sorted(day for day in training_dates if (day.year, day.month) == (month.year, month.month))
+        month_sessions = sum(session_counts[day] for day in month_dates)
+        st.markdown(
+            '<div class="calendar-heading">'
+            f'<div class="calendar-month">{month:%B} <span>{month:%Y}</span></div>'
+            '<div class="calendar-summary">'
+            f'<span><strong>{len(month_dates)}</strong> training days</span>'
+            f'<span><strong>{month_sessions}</strong> sessions</span>'
+            '</div></div>',
+            unsafe_allow_html=True,
+        )
+        selection_key = f"history_day_{month:%Y-%m}"
+        if selection_key not in st.session_state:
+            st.session_state[selection_key] = month_dates[-1] if month_dates else month
+
+        with st.container(key="calendar_grid"):
+            for col, weekday in zip(st.columns(7, gap="small"), ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")):
+                col.markdown(f'<div class="calendar-weekday">{weekday}</div>', unsafe_allow_html=True)
+            for week in Calendar(firstweekday=0).monthdayscalendar(month.year, month.month):
+                for col, day_number in zip(st.columns(7, gap="small"), week):
+                    if not day_number:
+                        col.markdown('<div class="calendar-blank" aria-hidden="true"></div>', unsafe_allow_html=True)
+                        continue
+                    day = month.replace(day=day_number)
+                    count = session_counts.get(day, 0)
+                    state = "trained" if count else "rest"
+                    today = "_today" if day == date.today() else ""
+                    with col.container(key=f"calendar_cell_{state}_{day.isoformat()}{today}"):
+                        st.button(
+                            str(day_number), key=f"history_date_{day.isoformat()}",
+                            type="primary" if day == st.session_state[selection_key] else "secondary",
+                            use_container_width=True,
+                            help=f"{day:%d %b %Y}: {count} session(s)" + (" · Today" if today else ""),
+                            on_click=st.session_state.__setitem__, args=(selection_key, day),
+                        )
+        st.markdown(
+            '<div class="calendar-footer">'
+            '<div class="calendar-legend">'
+            '<span><i class="calendar-legend-dot"></i> Workout</span>'
+            '<span><i class="calendar-legend-selected"></i> Selected</span>'
+            '</div><span>Select a day to explore your sessions</span></div>',
+            unsafe_allow_html=True,
+        )
+        return st.session_state[selection_key]
+
+    def _render_day_sessions(self, df: pd.DataFrame) -> None:
+        """Render the existing session cards for the chosen day."""
         grouped = df.groupby(["session_id", "session_date"], sort=False)
 
         for (session_id, session_date), session_df in grouped:
@@ -133,10 +236,10 @@ class DashboardView:
                 f"{volume_str} kg"
             )
 
-            with st.expander(label, icon=":material/event:"):
+            with st.expander(label, icon=":material/event:", expanded=True):
                 for exercise, ex_df in session_df.groupby("exercise_name"):
                     st.markdown(
-                        f'<p class="exercise-label">{exercise}</p>'
+                        f'<p class="exercise-label">{escape(str(exercise))}</p>'
                         f'<div class="set-pills">{_set_pills(ex_df)}</div>',
                         unsafe_allow_html=True,
                     )
@@ -150,19 +253,6 @@ class DashboardView:
                             st.cache_data.clear()
                             st.toast(f"Session deleted successfully!")
                             st.rerun()
-
-
-def _legacy_set_pills(ex_df: pd.DataFrame) -> str:
-    pills = []
-    for _, row in ex_df.sort_values("set_number").iterrows():
-        duration_seconds = row.get("duration_seconds")
-        if pd.notna(duration_seconds) and int(duration_seconds) > 0:
-            pills.append(f'<span class="set-pill">{_format_seconds(duration_seconds)}</span>')
-        else:
-            pills.append(
-                f'<span class="set-pill">{row["repetitions"]} x {row["weight"]:g} kg</span>'
-            )
-    return "".join(pills)
 
 
 def _format_seconds(value: int | float) -> str:

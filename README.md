@@ -166,7 +166,10 @@ The dashboard can answer questions such as:
 
 ## App Sections
 
-- `Main Dashboard` - high-level training summary and recent session history.
+- `Main Dashboard` - high-level training summary and an interactive workout calendar.
+  Days with recorded workouts are marked with a dot. Select a day to see all its
+  sessions, exercises, and sets. The calendar follows the sidebar month filter;
+  with `All time`, use the history month selector to browse between workouts.
 - `Exercises` - exercise-specific performance and trend analysis.
 - `Body Parts` - muscle-group volume distribution and heatmap.
 - `Analytics` - progress and fatigue analysis.
