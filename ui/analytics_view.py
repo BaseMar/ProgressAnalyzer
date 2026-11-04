@@ -126,6 +126,11 @@ class AnalyticsView:
     def _progress_section(self) -> None:
         """Render strength progress analysis with top/bottom improving exercises."""
         section_header("Strength Progress")
+        st.caption(
+            "Compares the first and last windows of up to 3 sessions in the selected period, "
+            "using the best estimated 1RM per session (longest set for timed exercises). "
+            "At least 2 comparable sessions are required."
+        )
 
         per_ex = self.progress_metrics.get("per_exercise", {})
         if not per_ex:

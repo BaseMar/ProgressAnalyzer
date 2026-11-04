@@ -2,6 +2,7 @@ from collections import defaultdict
 from statistics import mean
 
 from metrics.input import MetricsInput
+from metrics.utils.calendar import observed_week_count
 
 
 def compute_frequency_metrics(input: MetricsInput) -> dict:
@@ -13,7 +14,9 @@ def compute_frequency_metrics(input: MetricsInput) -> dict:
     - Per-exercise session frequency
     - Per-muscle group session frequency
 
-    Frequency is calculated using ISO calendar weeks.
+    Frequency uses every ISO week between the first and last input session,
+    including empty weeks. Exercises and muscle groups share that same period.
+    Distinct sessions on the same date are counted separately.
     """
 
     if not input.sessions:
@@ -29,15 +32,15 @@ def compute_frequency_metrics(input: MetricsInput) -> dict:
     exercise_id_to_bodypart = {e.exercise_id: e.body_part for e in input.exercises if e.body_part}
 
     session_dates = [s.session_date for s in sessions]
-    iso_weeks = set(d.isocalendar()[:2] for d in session_dates)
-    sessions_per_week = len(session_dates) / len(iso_weeks) if iso_weeks else None
+    weeks = observed_week_count(session_dates)
+    sessions_per_week = len(session_dates) / weeks
     day_gaps = [(session_dates[i] - session_dates[i - 1]).days for i in range(1, len(session_dates))]
     avg_days_between_sessions = mean(day_gaps) if day_gaps else None
 
     global_metrics = {
         "sessions_per_week": round(sessions_per_week, 2) if sessions_per_week else None,
         "avg_days_between_sessions": round(avg_days_between_sessions, 2)
-        if avg_days_between_sessions
+        if avg_days_between_sessions is not None
         else None,
     }
 
@@ -45,20 +48,18 @@ def compute_frequency_metrics(input: MetricsInput) -> dict:
 
     for session in sessions:
         for we in workout_exercises_by_session.get(session.session_id, []):
-            exercise_sessions[we.exercise_id].add(session.session_date)
+            exercise_sessions[we.exercise_id].add(session.session_id)
 
     per_exercise = {}
 
-    for exercise_id, dates in exercise_sessions.items():
-        dates = sorted(dates)
-        weeks = set(d.isocalendar()[:2] for d in dates)
+    session_dates_by_id = {session.session_id: session.session_date for session in sessions}
+    for exercise_id, session_ids in exercise_sessions.items():
+        dates = sorted(session_dates_by_id[session_id] for session_id in session_ids)
 
         day_gaps = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
 
         per_exercise[exercise_id_to_name.get(exercise_id, str(exercise_id))] = {
-            "sessions_per_week": round(len(dates) / len(weeks), 2)
-            if weeks
-            else None,
+            "sessions_per_week": round(len(session_ids) / weeks, 2),
             "avg_days_between_sessions": round(mean(day_gaps), 2)
             if day_gaps
             else None,
@@ -71,18 +72,14 @@ def compute_frequency_metrics(input: MetricsInput) -> dict:
         for we in workout_exercises_by_session.get(session.session_id, []):
             bodypart = exercise_id_to_bodypart.get(we.exercise_id)
             if bodypart:
-                muscle_sessions[bodypart].add(session.session_date)
+                muscle_sessions[bodypart].add(session.session_id)
 
     per_muscle = {}
 
-    for muscle, dates in muscle_sessions.items():
-        weeks = set(d.isocalendar()[:2] for d in dates)
-
+    for muscle, session_ids in muscle_sessions.items():
         per_muscle[muscle] = {
-            "sessions_per_week": round(len(dates) / len(weeks), 2)
-            if weeks
-            else None,
-            "total_sessions": len(dates),
+            "sessions_per_week": round(len(session_ids) / weeks, 2),
+            "total_sessions": len(session_ids),
         }
 
     return {

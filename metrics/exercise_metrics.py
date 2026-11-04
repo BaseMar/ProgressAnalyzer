@@ -6,7 +6,7 @@ intensity, and progress for each exercise across all sessions.
 """
 
 from collections import defaultdict
-from datetime import date
+from datetime import time
 from statistics import mean
 from typing import Any, Dict, List
 
@@ -47,10 +47,8 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         for we in input.workout_exercises
     }
     session_id_to_date = {s.session_id: s.session_date for s in input.sessions}
-    workout_to_date = {
-        we.workout_exercise_id: session_id_to_date.get(we.session_id)
-        for we in input.workout_exercises
-    }
+    sessions = {s.session_id: s for s in input.sessions}
+    workout_to_session = {we.workout_exercise_id: we.session_id for we in input.workout_exercises}
     sets_by_exercise: Dict[int, List] = defaultdict(list)
     exercise_id_to_name = {e.exercise_id: e.name for e in input.exercises}
     exercise_id_to_bodypart = {e.exercise_id: e.body_part for e in input.exercises}
@@ -105,71 +103,57 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         estimated_1rm_max = max(one_rms) if one_rms else None
         estimated_1rm_avg = mean(one_rms) if one_rms else None
 
-        sets_sorted = sorted(
-            sets,
-            key=lambda s: workout_to_date.get(s.workout_exercise_id) or date.max,
-        )
-
-        first_volume = set_volume(sets_sorted[0])
-        last_volume = set_volume(sets_sorted[-1])
-        volume_trend = last_volume - first_volume
-
-        strength_sets_sorted = [s for s in sets_sorted if not is_duration_set(s)]
-        if strength_sets_sorted:
-            first_1rm = set_estimated_1rm(strength_sets_sorted[0])
-            last_1rm = set_estimated_1rm(strength_sets_sorted[-1])
-            strength_trend_1rm = (
-                last_1rm - first_1rm
-                if first_1rm is not None and last_1rm is not None
-                else None
-            )
-        else:
-            strength_trend_1rm = None
-
-        duration_sets_sorted = [s for s in sets_sorted if is_duration_set(s)]
-        if duration_sets_sorted:
-            duration_trend_seconds = (
-                set_duration_seconds(duration_sets_sorted[-1])
-                - set_duration_seconds(duration_sets_sorted[0])
-            )
-        else:
-            duration_trend_seconds = None
-
-        sessions_count = len(
-            {
-                workout_to_date.get(s.workout_exercise_id)
-                for s in sets
-                if workout_to_date.get(s.workout_exercise_id) is not None
-            }
-        )
-        avg_sets_per_session = total_sets / sessions_count if sessions_count else None
-
         per_session_map = defaultdict(list)
         per_session_volume = defaultdict(int)
         per_session_duration = defaultdict(int)
+        per_session_best_duration = defaultdict(int)
         for s in sets:
-            date = workout_to_date.get(s.workout_exercise_id)
-            if date is None:
+            session_id = workout_to_session.get(s.workout_exercise_id)
+            if session_id not in sessions:
                 continue
             estimated_1rm = set_estimated_1rm(s)
-            if estimated_1rm is not None:
-                per_session_map[date].append(estimated_1rm)
-            per_session_volume[date] += set_volume(s)
-            per_session_duration[date] += set_duration_seconds(s)
+            if estimated_1rm is not None and estimated_1rm > 0:
+                per_session_map[session_id].append(estimated_1rm)
+            per_session_volume[session_id] += set_volume(s)
+            per_session_duration[session_id] += set_duration_seconds(s)
+            per_session_best_duration[session_id] = max(
+                per_session_best_duration[session_id], set_duration_seconds(s),
+            )
+
+        session_order = sorted(per_session_volume, key=lambda sid: (
+            sessions[sid].session_date, sessions[sid].start_time or time.min, sid,
+        ))
+        sessions_count = len(session_order)
+        avg_sets_per_session = total_sets / sessions_count if sessions_count else None
 
         per_session_1rm = [
-            {"date": d, "estimated_1rm": round(mean(vals), 2)}
-            for d, vals in sorted(per_session_map.items())
+            {"session_id": sid, "date": session_id_to_date[sid],
+             "estimated_1rm": round(max(per_session_map[sid]), 2)}
+            for sid in session_order if per_session_map[sid]
         ]
 
         per_session_volume_series = [
-            {"date": d, "volume": v} for d, v in sorted(per_session_volume.items())
+            {"session_id": sid, "date": session_id_to_date[sid], "volume": per_session_volume[sid]}
+            for sid in session_order
         ]
         per_session_duration_series = [
-            {"date": d, "duration_seconds": v}
-            for d, v in sorted(per_session_duration.items())
-            if v
+            {"session_id": sid, "date": session_id_to_date[sid], "duration_seconds": per_session_duration[sid]}
+            for sid in session_order if per_session_duration[sid]
         ]
+        volume_trend = (
+            per_session_volume[session_order[-1]] - per_session_volume[session_order[0]]
+            if sessions_count >= 2 else None
+        )
+        strength_sessions = [sid for sid in session_order if per_session_map[sid]]
+        strength_trend_1rm = (
+            max(per_session_map[strength_sessions[-1]]) - max(per_session_map[strength_sessions[0]])
+            if len(strength_sessions) >= 2 else None
+        )
+        duration_sessions = [sid for sid in session_order if per_session_best_duration[sid]]
+        duration_trend_seconds = (
+            per_session_best_duration[duration_sessions[-1]] - per_session_best_duration[duration_sessions[0]]
+            if len(duration_sessions) >= 2 else None
+        )
         body_part = exercise_id_to_bodypart.get(exercise_id)
         muscle_targets = targets_by_exercise.get(exercise_id) or _fallback_muscle_targets(body_part)
 

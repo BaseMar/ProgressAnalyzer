@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import time
 from statistics import mean
 
 from metrics.input import MetricsInput
@@ -6,37 +7,47 @@ from metrics.utils import is_duration_set, set_duration_seconds, set_estimated_1
 
 
 def compute_progress_metrics(input: MetricsInput) -> dict:
+    """Compare early/late windows of up to three non-overlapping sessions.
+
+    Each session contributes its best estimated 1RM (or longest timed set),
+    regardless of set order/count. At least two comparable sessions are needed.
+    This describes recorded performance; it does not assess technique or RIR.
+    """
     if not input.sets or not input.workout_exercises or not input.sessions:
         return {}
 
     we_to_exercise = {we.workout_exercise_id: we.exercise_id for we in input.workout_exercises}
-    session_dates = {s.session_id: s.session_date for s in input.sessions}
-    we_to_date = {we.workout_exercise_id: session_dates.get(we.session_id) for we in input.workout_exercises}
-    exercise_sets = defaultdict(list)
+    sessions = {s.session_id: s for s in input.sessions}
+    we_to_session = {we.workout_exercise_id: we.session_id for we in input.workout_exercises}
+    exercise_sets = defaultdict(lambda: defaultdict(list))
     exercise_name_map = {e.exercise_id: e.name for e in input.exercises}
 
     for s in input.sets:
         ex_id = we_to_exercise.get(s.workout_exercise_id)
-        date = we_to_date.get(s.workout_exercise_id)
-        if ex_id and date:
-            exercise_sets[ex_id].append((date, s))
+        session_id = we_to_session.get(s.workout_exercise_id)
+        if ex_id is not None and session_id in sessions:
+            exercise_sets[ex_id][session_id].append(s)
 
     per_exercise = {}
     improving = stagnating = regressing = 0
     progress_values = []
 
-    for ex_id, entries in exercise_sets.items():
-        entries.sort(key=lambda x: x[0])
-        one_rms = [
-            estimated_1rm
-            for _, s in entries
-            if (estimated_1rm := set_estimated_1rm(s)) is not None
-        ]
-        durations = [
-            set_duration_seconds(s)
-            for _, s in entries
-            if is_duration_set(s)
-        ]
+    for ex_id, by_session in exercise_sets.items():
+        session_order = sorted(by_session, key=lambda sid: (
+            sessions[sid].session_date, sessions[sid].start_time or time.min, sid,
+        ))
+        one_rms, durations = [], []
+        for session_id in session_order:
+            sets = by_session[session_id]
+            strength_values = [
+                value for s in sets
+                if (value := set_estimated_1rm(s)) is not None and value > 0
+            ]
+            duration_values = [set_duration_seconds(s) for s in sets if is_duration_set(s)]
+            if strength_values:
+                one_rms.append(max(strength_values))
+            if duration_values:
+                durations.append(max(duration_values))
         values = one_rms if one_rms else durations
         metric_type = "estimated_1rm" if one_rms else "duration_seconds"
 
@@ -61,7 +72,7 @@ def compute_progress_metrics(input: MetricsInput) -> dict:
             "exercise_name": exercise_name_map.get(ex_id, f"Exercise {ex_id}"),
             "metric_type": metric_type,
             "progress_pct": progress_pct,
-            "exposure_count": len(entries),
+            "exposure_count": len(values),
         }
         if metric_type == "estimated_1rm":
             row["start_1rm"] = round(start, 2)

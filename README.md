@@ -136,6 +136,22 @@ The dashboard can answer questions such as:
 - Progress classification: improving, stagnating, and regressing exercises.
 - Training frequency: sessions per week and average days between sessions.
 
+Frequency includes all ISO calendar weeks between the first and last workout in
+the selected period, including weeks without workouts. Exercise and body-part
+frequencies use that same observation period. Separate sessions on the same day
+count separately. Dates outside that observed span are not treated as missed
+training without a plan.
+
+Progress compares the first and last non-overlapping windows of up to three
+sessions, using each session's best estimated 1RM (or longest set for timed
+exercises). At least two comparable sessions are required; exposures count
+sessions rather than sets. These metrics describe recorded performance, not
+technique, plan adherence, or muscle growth.
+
+Exercise histories also keep same-day sessions separate. Exercise volume trends
+compare total session volumes; strength and duration trends compare session bests.
+A single session has no between-session trend.
+
 ### Fatigue & Recovery
 
 - RIR distribution and average RIR.

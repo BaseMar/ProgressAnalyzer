@@ -15,6 +15,7 @@ from typing import Any, Dict
 
 from metrics.input import MetricsInput
 from metrics.utils import is_duration_set, set_duration_seconds, set_intensity, set_reps, set_volume
+from metrics.utils.calendar import observed_week_count
 
 
 def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
@@ -135,13 +136,13 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
         for s in per_session.values()
         if s["avg_intensity"] is not None
     ]
-    weeks = {session.session_date.isocalendar()[:2] for session in input.sessions}
+    weeks = observed_week_count(session.session_date for session in input.sessions)
 
     global_metrics = {
         "avg_session_duration": mean(durations) if durations else None,
         "avg_volume_per_session": mean(volumes) if volumes else None,
         "avg_sets_per_session": mean(sets_counts) if sets_counts else None,
-        "avg_sessions_per_week": (len(input.sessions) / len(weeks) if weeks else None),
+        "avg_sessions_per_week": (len(input.sessions) / weeks if weeks else None),
         "avg_intensity": mean(intensities) if intensities else None,
     }
 

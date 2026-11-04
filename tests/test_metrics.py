@@ -60,7 +60,8 @@ def test_compute_exercise_metrics_aggregates_targets_and_progress(sample_input):
     assert bench["total_sets"] == 4
     assert bench["sessions_count"] == 2
     assert bench["avg_sets_per_session"] == 2
-    assert bench["volume_trend"] == -80
+    # Total session volumes: 1880 kg -> 1970 kg, rather than individual sets.
+    assert bench["volume_trend"] == 90
     assert "Chest (primary): Pectoralis" in bench["muscle_target_summary"]
     assert result["global"]["most_trained_exercise"] == 1
 
