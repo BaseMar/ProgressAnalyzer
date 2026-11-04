@@ -13,6 +13,7 @@ from metrics.plan_summary import summarize_plan
 from ui.utils.plan_charts import exercise_history_chart, weekly_execution_chart
 from ui.utils.ui_helpers import chart_label, section_header
 from metrics.training_block import deload_adjusted_input
+from ui.next_workout_view import NextWorkoutView
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,8 @@ class PlanAdherenceView:
             st.error("Plan analysis could not be loaded. Please try again.")
             return
         block_settings = {version.version_id: version.draft.progression for version in versions}
+        NextWorkoutView(self.dm, self.names).render(plan_id, versions, history=history)
+        section_header("Recorded plan execution")
         report = compute_plan_adherence(deload_adjusted_input(data, block_settings, as_of=date.today()), as_of=date.today())
         performance = compute_plan_performance(history, as_of=date.today(), start=start, end=end,
                                              settings_by_version=block_settings)

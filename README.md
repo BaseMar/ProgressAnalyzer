@@ -221,8 +221,9 @@ Saved plans open as weekly reference cards, with exercises available under
 
 The plan editor requires migration 001 described below. Calendar assignments
 require migration 002; execution analysis and confirmed replacements require
-migration 003. Progression and deload recommendations are available through
-the backend API; the recommendation card is the next step.
+migration 003. Progression and deload recommendations are shown in
+`Analytics -> Plan execution -> Next workout` and are also available through
+the backend API.
 Native tables and inputs use the shared dark/teal theme in `.streamlit/config.toml`.
 
 ### Progression configuration
@@ -347,7 +348,8 @@ normal execution compares against the previous normal execution. Amber diamonds
 identify deload logs on the exercise chart, whose target band follows each date.
 Raw history, saved plan versions, and the descriptive Overall strength/Fatigue
 metrics are unchanged. Those descriptive metrics still include logged deload work.
-No recommendation card is displayed yet; that is step 4.
+The Next workout card presents these derived targets separately from historical
+analysis, as described below.
 
 The general reduction of training demand is supported as a design approach by
 the [deload Delphi consensus](https://pmc.ncbi.nlm.nih.gov/articles/PMC10511399/).
@@ -356,6 +358,44 @@ schedule, exact reductions, RIR targets and return rule above are explicit,
 configurable application policy, not a physiological fatigue diagnosis or a
 validated individual prescription. Analytics uses the default policy; alternative
 policies are currently backend options and are not persisted as plan settings.
+
+### Next workout card (step 4)
+
+Open **Analytics -> Plan execution**, choose a plan, and read the **Next workout**
+card above the recorded execution indicators. It defaults to the earliest
+unlinked planned workout from today onwards. `Upcoming workout` lets you preview
+other dates in the next four weeks; a future plan starts that window at its first
+effective date. Slots on the same day remain distinct and follow their plan order.
+The sidebar history month does not limit recommendations or their evidence.
+Linked workouts disappear from this selector; overdue slots are not silently
+rescheduled or treated as proof that a user skipped training.
+
+The card shows the workout/date, normal or deload phase, block/week and deload
+dates. Each exercise has one compact target and decision: `Add a rep`,
+`Increase load`, `Keep load`, `Deload`, or `Return after deload`. Uniform sets
+are grouped, for example **62.5 kg · 3 x 6 reps · RIR >= 2**. Unequal reps and
+loads retain their individual set targets instead of being averaged. Missing
+evidence shows `More data needed` and the specific reason, such as unknown set
+classification, missing RIR or an unavailable weight step; no numeric load is
+invented. Unsupported deload prescriptions are labelled `Manual target`.
+
+`Why these targets?` contains the full engine explanation, evidence session
+IDs/dates, and the default progression/deload rules. Historical source sessions
+remain in the dashboard, and the existing plan charts/KPIs describe the selected
+history period below the card. An unconfigured or not-yet-started block gets one
+setup message rather than repeated empty recommendations for every exercise.
+
+If an alternative was previously approved and logged in the same workout context,
+`Use a confirmed alternative` lets the user explicitly choose it for this preview.
+Its own history is used. Supply its available weight step in kg when required;
+the original exercise's step is never reused. Choices are specific to the plan,
+scheduled slot and date, so a choice for one workout does not silently carry into
+the next. Alternative choices and steps are temporary UI state: they do not edit
+the plan, save a session, or approve a future replacement. After logging the actual
+session, confirm replacements through the existing data-correction controls.
+
+No new schema or migration is needed. Recommendation failures are isolated from
+the historical plan overview; the card never writes derived targets to logs.
 
 ## Planned workouts in the calendar
 
@@ -702,6 +742,13 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
+Streamlit is pinned to **1.66.1** so local installs and Community Cloud use the
+same widget renderer. After pulling a dependency change, reinstall requirements
+inside the active project environment. Custom dropdown CSS supports both legacy
+Base Web lists and current React Aria options; it preserves virtualized row sizes
+and native scrolling. The plan editor numbers workout choices so that two unnamed
+workouts remain distinguishable to the renderer.
 
 ## Running The App
 

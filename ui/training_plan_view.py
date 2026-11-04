@@ -130,14 +130,14 @@ class TrainingPlanView:
                 block_weeks = right.selectbox("Block length (weeks)", [6, 7, 8], index=[6, 7, 8].index(weeks), key=f"{scope}_block_weeks")
                 store["block_start"], store["block_weeks"] = block_start, block_weeks
                 st.caption("Blocks repeat from this date; the final week of each block is deload. A new plan version keeps this anchor; change it explicitly to restart the schedule.")
-            st.caption("Recommendations are available through the backend. The Analytics recommendation card will be added in the next step.")
+            st.caption("See next-workout targets, deloads and their explanations in Analytics → Plan execution → Next workout.")
         action = None
         if store["days"]:
             ids = [day["uid"] for day in store["days"]]
             if "select_next" in store:
                 st.session_state[f"{scope}_active_day"] = store.pop("select_next")
             day_id = st.selectbox("Workout to edit", ids, key=f"{scope}_active_day",
-                                  format_func=lambda value: next(f'{WEEKDAYS[day["weekday"]]} · {day["name"] or "Untitled workout"}' for day in store["days"] if day["uid"] == value))
+                                  format_func=lambda value: next(f'{ids.index(value) + 1:02d} · {WEEKDAYS[day["weekday"]]} · {day["name"] or "Untitled workout"}' for day in store["days"] if day["uid"] == value))
             day = next(item for item in store["days"] if item["uid"] == day_id)
             prefix = f"{scope}_day_{day_id}"
             with st.container(key="training_workout_editor"):
