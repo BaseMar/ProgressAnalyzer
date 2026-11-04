@@ -802,13 +802,31 @@ layer, month filtering, parser behavior, and pure UI helpers.
 
 Plan tests use an isolated SQLite database with foreign keys and transactional DDL
 enabled. They cover migration repeatability, snapshot roundtrips, effective-date
-boundaries, database constraints, and atomic rollback. PostgreSQL DDL compilation
-is checked, but these tests do not replace validation on a PostgreSQL test database.
+boundaries, database constraints, and atomic rollback. Five additional integration
+cases run against PostgreSQL when `TEST_POSTGRES_URL` is set. Each case creates a
+unique schema, applies all five migrations, and rolls back its schema and synthetic
+logs afterwards. They verify normal goals, deload/return, confirmed alternatives,
+immutable versions and migration repeatability. They never fall back to the app's
+`DATABASE_URL`.
 
 ```bash
 python -m pytest
 python -m compileall -q db metrics models ui streamlit_app.py data_loader.py data_manager.py mapper.py
 ```
+
+For a PostgreSQL test database (PowerShell):
+
+```powershell
+$env:TEST_POSTGRES_URL = "postgresql+psycopg2://user:password@localhost:5432/progress_analyzer_test"
+python -m pytest
+```
+
+The test role needs schema-creation permission. Without this variable, the five
+PostgreSQL cases are skipped and the 230 unit/SQLite/Streamlit tests still run.
+The [Tests workflow](.github/workflows/tests.yml) runs all 235 cases with Python
+3.12 and a disposable PostgreSQL 16 service on pushes to `main` and pull requests,
+without application database secrets. The final update verification is recorded
+in [release-validation.md](docs/release-validation.md).
 
 ## Design Principles
 
@@ -825,8 +843,8 @@ python -m compileall -q db metrics models ui streamlit_app.py data_loader.py dat
 - Add an anonymized seed dataset for local development, tests, and screenshots
   without relying on the hosted Supabase database.
 - Add a Docker Compose setup for repeatable local development with a database.
-- Add a CI pipeline for automated tests, linting, and import-parser regression
-  checks.
+- Extend the existing test pipeline with linting and more import-parser regression
+  coverage.
 - Extend the additive plan migrations into a complete legacy database bootstrap.
 - Extend analytics with prediction-oriented features, such as estimated progress
   trajectory or fatigue-risk signals.
