@@ -1,7 +1,7 @@
 # Analytics-first layout proposal
 
-Status: approved, 5 November 2026. Steps 1–4 are implemented and verified.
-Step 5 is approved and in progress. The user requires explicit approval
+Status: completed, 5 November 2026. Steps 1–5 are implemented, verified and published.
+The user required and supplied explicit approval
 before moving from each completed step to the next.
 
 ## Product goal
@@ -208,5 +208,11 @@ Step 3 was committed and pushed as `7194ada` before starting the approved step 4
   import ownership and the single-exercise editor without writing demo records.
 - README and screenshots are refreshed for the four-page layout. Numerical
   evidence and operational limits are in `docs/release-validation.md`.
-- Next: publish to `main`, verify that commit's GitHub Actions run, and repeat
-  the read-only journey on Streamlit Cloud before marking this step complete.
+- Application release `6636442` is published on `main`; its GitHub Actions run
+  passed. Cloud initially kept old imported modules, so manifest commit `63051e4`
+  triggered a full environment rebuild. That commit's Actions run also passed.
+- Cloud acceptance passed on the public URL and app frame: all four pages,
+  analytical questions, on-demand import, desktop/mobile layout and native
+  dropdown styling/keyboard controls. No demo records were changed.
+- All five approved steps are complete. Final evidence and limits are recorded
+  in `docs/release-validation.md`.

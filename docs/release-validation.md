@@ -1,7 +1,7 @@
 # Analytics redesign: release verification
 
-Verification date: **5 November 2026**. Local verification is complete.
-Publication and the deployed Cloud check are pending for this release candidate.
+Verification date: **5 November 2026**. Verification and publication are complete.
+Application release: `6636442`; fresh Cloud rebuild: `63051e4`.
 Target: [existing Streamlit Cloud app](https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app),
 deployed from `main`. Streamlit is pinned to **1.66.1**.
 
@@ -21,7 +21,10 @@ deployed from `main`. Streamlit is pinned to **1.66.1**.
 | Dropdowns and alternatives | Native selectors work; substitutes retain their own history and equipment step |
 | Compilation and whitespace | Passed |
 | GitHub Actions for application commit 6636442 | Passed: [workflow run](https://github.com/BaseMar/ProgressAnalyzer/actions/runs/41952747874) |
-| Published Streamlit Cloud app | Checking a fresh environment rebuild |
+| GitHub Actions for rebuild commit 63051e4 | Passed: [workflow run](https://github.com/BaseMar/ProgressAnalyzer/actions/runs/41953847919) |
+| Published Streamlit Cloud app | All four pages and Analysis questions passed after rebuild; no application exceptions |
+| Public URL and embedded app frame | Loaded successfully through the normal Cloud wrapper |
+| Live dropdown styling and keyboard | Teal option text/selection; End, Home and Escape interaction passed |
 
 The browser journeys opened and closed import, previewed a plan revision and
 selected analytical questions. They did not save a workout, plan, classification,
@@ -58,11 +61,17 @@ compilation. It uses disposable service credentials and receives no application
 database secret. After pushing this candidate, verify its exact workflow SHA and
 repeat the read-only browser journey against the Cloud URL.
 
+That journey passed against both the deployed app frame and the normal public
+URL after the rebuild. It covered all four pages, each Analysis question, import
+opening/closing, the single-exercise editor and 390 px mobile layout. No demo
+records were saved or corrected during acceptance. The final documentation commit
+records these results and does not change application behavior.
+
 The first Cloud check exposed a mixed in-memory revision: the new entrypoint
 used an old six-page sidebar module and an old set-correction function. This
-caused a History error despite a healthy server. A deployment release marker in
-`requirements.txt` requests a fresh Cloud environment build; dependency versions
-are unchanged. [Community Cloud detects changes to the dependency manifest and
+caused a History error despite a healthy server. The deployment release marker in
+`requirements.txt` triggered a fresh Cloud environment build and resolved the
+mixed revision; dependency versions are unchanged. [Community Cloud detects changes to the dependency manifest and
 redeploys](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app).
 For future releases that move modules, refresh that marker or reboot the app
 from its management page rather than relying on the previous interpreter state.
