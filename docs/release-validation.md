@@ -20,8 +20,8 @@ deployed from `main`. Streamlit is pinned to **1.66.1**.
 | Mobile browser, 390 px | Overview stacks; editor controls remain compact; calendar has no horizontal overflow |
 | Dropdowns and alternatives | Native selectors work; substitutes retain their own history and equipment step |
 | Compilation and whitespace | Passed |
-| GitHub Actions for this release | Pending publication |
-| Published Streamlit Cloud app | Pending publication |
+| GitHub Actions for application commit 6636442 | Passed: [workflow run](https://github.com/BaseMar/ProgressAnalyzer/actions/runs/41952747874) |
+| Published Streamlit Cloud app | Checking a fresh environment rebuild |
 
 The browser journeys opened and closed import, previewed a plan revision and
 selected analytical questions. They did not save a workout, plan, classification,
@@ -57,6 +57,15 @@ on Python 3.12, starts disposable PostgreSQL 16 and runs the full suite plus
 compilation. It uses disposable service credentials and receives no application
 database secret. After pushing this candidate, verify its exact workflow SHA and
 repeat the read-only browser journey against the Cloud URL.
+
+The first Cloud check exposed a mixed in-memory revision: the new entrypoint
+used an old six-page sidebar module and an old set-correction function. This
+caused a History error despite a healthy server. A deployment release marker in
+`requirements.txt` requests a fresh Cloud environment build; dependency versions
+are unchanged. [Community Cloud detects changes to the dependency manifest and
+redeploys](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app).
+For future releases that move modules, refresh that marker or reboot the app
+from its management page rather than relying on the previous interpreter state.
 
 ## Scope and limits
 
