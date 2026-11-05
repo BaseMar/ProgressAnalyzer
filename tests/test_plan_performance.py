@@ -1,7 +1,7 @@
 """Comparable plan executions, target checks and history across month filters."""
 
 from dataclasses import replace
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from sqlalchemy import select
 from streamlit.testing.v1 import AppTest
@@ -13,7 +13,7 @@ from db.training_plans import save_training_plan
 from metrics.plan_performance import compute_plan_performance
 from models.plan_adherence import ExerciseMatch, PlanAdherenceInput, PlannedTarget, PlannedWorkout, RecordedExercise
 from models.scheduled_workout import ScheduledWorkout
-from models.training_plan import PlannedExercise
+from models.training_plan import PlannedExercise, TrainingDay
 from models.workout_set import WorkoutSet
 
 AS_OF = date(2026, 6, 1)
@@ -208,3 +208,43 @@ PlanAdherenceView(manager=manager, exercise_names={1: "Bench Press"}, selected_m
     assert "9 reps @ 60 kg" in comparison_table.iloc[0]["Current"]
     assert any("3/3 sets in range" in item.value for item in app.caption)
     assert any("More reps at the same load" in item.value for item in app.markdown)
+
+
+def test_consistency_displays_early_linked_workout_before_its_planned_day(schedule_data):
+    engine, _, source, sessions = schedule_data
+    today = date.today()
+    planned_date = today + timedelta(days=1)
+    recorded_date = today - timedelta(days=1)
+    plan = save_training_plan(engine, replace(source.draft, effective_from=recorded_date, days=(
+        TrainingDay("Arm Day", planned_date.weekday(), (PlannedExercise(1, 3, 6, 10),)),
+    )))
+    slot = load_scheduled_workouts(engine, plan.plan_id, planned_date, planned_date)[0]
+    with engine.begin() as connection:
+        connection.execute(sessions.update().where(sessions.c.session_id == 2).values(session_date=recorded_date))
+        connection.execute(actual_exercises.insert().values(workout_exercise_id=700, session_id=2, exercise_id=1))
+        connection.execute(actual_sets.insert(), [
+            dict(workout_exercise_id=700, set_number=number, repetitions=8, weight=60., rir=2)
+            for number in (1, 2, 3)
+        ])
+    assign_scheduled_session(engine, slot.day_id, planned_date, 2)
+    app = AppTest.from_string('''
+import streamlit as st
+from data_manager import DataManager
+from ui.plan_adherence_view import PlanAdherenceView
+manager = object.__new__(DataManager)
+manager.engine = st.session_state["test_engine"]
+PlanAdherenceView(manager=manager).render(mode="consistency")
+''', default_timeout=30)
+    app.session_state["test_engine"] = engine
+    app.session_state["active_plan_id"] = plan.plan_id
+    app.run()
+    assert not app.exception
+    assert not app.error
+    assert any("1 of 1 assessed workouts have linked logs" in item.value for item in app.markdown)
+    assert any("3 of 3 planned sets are logged; 3 of 3 logged sets are within range" in item.value
+               for item in app.markdown)
+    assert len(app.get("plotly_chart")) == 1
+    records = app.dataframe[0].value
+    linked = records.loc[records["Recorded date"] == recorded_date].iloc[0]
+    assert linked["Planned date"] == planned_date
+    assert linked["Status"] == "Completed"

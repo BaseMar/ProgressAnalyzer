@@ -78,18 +78,48 @@ def test_explicit_replacement_reserves_exercise_before_exact_matching():
     assert report["summary"]["covered_sets"] == 3
 
 
-def test_today_and_future_do_not_change_summary_denominators_or_numerators():
+def test_unperformed_today_and_future_do_not_change_summary_denominators_or_numerators():
     data = example()
     old = replace(data.workouts[0], slot=replace(data.workouts[0].slot, session_id=None, performed_on=None))
     today = replace(old, slot=replace(old.slot, scheduled_date=TODAY))
-    early = replace(data.workouts[0], slot=replace(data.workouts[0].slot, scheduled_date=TODAY + timedelta(days=7)))
-    report = compute_plan_adherence(replace(data, workouts=(old, today, early)), as_of=TODAY)
+    future = replace(old, slot=replace(old.slot, scheduled_date=TODAY + timedelta(days=7)))
+    report = compute_plan_adherence(replace(data, workouts=(old, today, future)), as_of=TODAY)
     assert report["summary"]["due_workouts"] == 1
     assert report["summary"]["linked_workouts"] == 0
     assert report["summary"]["covered_sets"] == 0
     assert report["workouts"][0]["status"] == "Not recorded"
     assert report["workouts"][1]["status"] == "Due today"
     assert not report["workouts"][2]["eligible"]
+
+
+@pytest.mark.parametrize("planned_date", [TODAY, TODAY + timedelta(days=3)])
+@pytest.mark.parametrize("count", [0, 2, 3])
+def test_early_execution_counts_completed_recorded_day_even_before_planned_date(planned_date, count):
+    data = example(count=count)
+    data = replace(data, workouts=(replace(data.workouts[0], slot=replace(
+        data.workouts[0].slot, scheduled_date=planned_date, performed_on=TODAY - timedelta(days=1),
+    )),))
+    before = compute_plan_adherence(data, as_of=TODAY)
+    after = compute_plan_adherence(data, as_of=planned_date + timedelta(days=1))
+    assert before["summary"] == after["summary"]
+    assert before["summary"]["due_workouts"] == 1
+    assert before["summary"]["linked_workouts"] == 1
+    assert before["summary"]["planned_sets"] == 3
+    assert before["summary"]["covered_sets"] == count
+    assert before["summary"]["on_time_workouts"] == 0
+    assert before["workouts"][0]["eligible"]
+
+
+@pytest.mark.parametrize("performed_on", [TODAY, TODAY + timedelta(days=1)])
+def test_early_execution_does_not_enter_summary_until_recorded_day_ends(performed_on):
+    data = example()
+    data = replace(data, workouts=(replace(data.workouts[0], slot=replace(
+        data.workouts[0].slot, scheduled_date=TODAY + timedelta(days=3), performed_on=performed_on,
+    )),))
+    report = compute_plan_adherence(data, as_of=TODAY)
+    assert report["summary"]["due_workouts"] == 0
+    assert report["summary"]["covered_sets"] == 0
+    assert not report["workouts"][0]["eligible"]
 
 
 def test_timed_sets_do_not_automatically_satisfy_repetition_targets():

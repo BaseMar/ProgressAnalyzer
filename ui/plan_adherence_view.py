@@ -63,15 +63,15 @@ class PlanAdherenceView:
             return
         overview, summary = summarize_plan(report, performance), report["summary"]
         st.markdown('<div class="analysis-insight">'
-                    f'<strong>{summary["linked_workouts"]} of {summary["due_workouts"]} elapsed workouts have linked logs.</strong><br>'
+                    f'<strong>{summary["linked_workouts"]} of {summary["due_workouts"]} assessed workouts have linked logs.</strong><br>'
                     f'{summary["covered_sets"]} of {summary["planned_sets"]} planned sets are logged; '
                     f'{overview["in_range"]} of {overview["recorded_sets"]} logged sets are within range.</div>', unsafe_allow_html=True)
         if not summary["due_workouts"]:
-            st.info("No elapsed planned days in this period. Today and future dates are excluded.")
+            st.info("No elapsed planned days or earlier completed workouts in this period yet.")
         else:
             chart_label("Weekly execution")
             st.plotly_chart(weekly_execution_chart(overview["weeks"]), width="stretch", key="weekly_plan_execution")
-        st.caption("Completed calendar days only. An unlinked workout is not proof that it was skipped.")
+        st.caption("Includes elapsed planned days and linked workouts performed before today, even when planned for later. Weeks follow planned dates. An unlinked workout is not proof that it was skipped.")
         if any(row["training_phase"] == "deload" for row in performance):
             st.caption("Deload dates use reduced set/repetition targets for resistance exercises. Deload logs are excluded from exercise progress comparisons.")
         with st.expander("Definitions & source data"):

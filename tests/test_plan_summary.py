@@ -27,9 +27,10 @@ def test_range_percentage_uses_logged_sets_while_coverage_uses_plan():
     assert summary["weeks"][0]["partial"] == 1
 
 
-def test_future_workout_is_not_added_to_weekly_chart_or_indicators():
+def test_unperformed_future_workout_is_not_added_to_weekly_chart_or_indicators():
     data = example()
-    future = replace(data.workouts[0], slot=replace(data.workouts[0].slot, scheduled_date=TODAY + timedelta(days=14)))
+    future = replace(data.workouts[0], slot=replace(data.workouts[0].slot,
+        scheduled_date=TODAY + timedelta(days=14), session_id=None, performed_on=None))
     data = replace(data, workouts=(*data.workouts, future))
     report = compute_plan_adherence(data, as_of=TODAY)
     performance = compute_plan_performance(data, as_of=TODAY)
@@ -39,6 +40,28 @@ def test_future_workout_is_not_added_to_weekly_chart_or_indicators():
     assert summary["weeks"][0]["complete"] == 1
     fig = weekly_execution_chart(summary["weeks"])
     assert sum(sum(trace.y) for trace in fig.data) == 1
+
+
+def test_saturday_arm_day_performed_on_wednesday_counts_on_friday_without_duplication():
+    friday = date(2026, 11, 6)
+    saturday = date(2026, 11, 7)
+    data = example()
+    data = replace(data, workouts=(replace(data.workouts[0], slot=replace(
+        data.workouts[0].slot, scheduled_date=saturday, performed_on=date(2026, 11, 4), name="Arm Day",
+    )),))
+    overview = None
+    for as_of in (friday, saturday, saturday + timedelta(days=1)):
+        report = compute_plan_adherence(data, as_of=as_of)
+        performance = compute_plan_performance(data, as_of=as_of)
+        current = summarize_plan(report, performance)
+        assert current["workout_pct"] == 100
+        assert current["set_pct"] == 100
+        assert current["recorded_sets"] == 3
+        assert current["in_range"] == 3
+        assert current["weeks"] == [dict(week=date(2026, 11, 2), complete=1, partial=0, unmatched=0, unlinked=0)]
+        if overview is not None:
+            assert current == overview
+        overview = current
 
 
 def test_empty_denominators_remain_unknown_not_zero_percent():

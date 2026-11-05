@@ -21,7 +21,9 @@ def compute_plan_adherence(data: PlanAdherenceInput, *, as_of: date, settings_by
     Explicit matches reserve the entire recorded exercise; remaining exact-ID
     sets are allocated in plan order. Set coverage tracks logged work, not
     technique, RIR or successful completion of the target repetition range.
-    Ratios include only scheduled dates before as_of (finished calendar days).
+    Ratios include elapsed scheduled dates and linked sessions performed before
+    as_of. Early executions count immediately after their recorded day ends,
+    while unperformed future slots and today's early logs remain excluded.
     """
     recorded_by_session = defaultdict(list)
     for item in data.recorded:
@@ -99,7 +101,7 @@ def compute_plan_adherence(data: PlanAdherenceInput, *, as_of: date, settings_by
         rows.append({
             "day_id": slot.day_id, "scheduled_date": slot.scheduled_date, "name": slot.name,
             "session_id": slot.session_id, "performed_on": slot.performed_on,
-            "eligible": slot.scheduled_date < as_of, "linked": linked,
+            "eligible": slot.scheduled_date < as_of or (linked and slot.performed_on < as_of), "linked": linked,
             "on_time": linked and slot.scheduled_date == slot.performed_on,
             "status": status, "complete": complete,
             "planned_sets": planned_sets, "covered_sets": covered_sets,

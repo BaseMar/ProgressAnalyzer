@@ -126,7 +126,7 @@ def test_plan_consistency_has_one_chart_and_no_editing_or_exercise_drilldown(sch
     assert len(app.get('plotly_chart')) == 1
     assert not app.metric and not app.text_input
     assert not any(item.label in ('Explore an exercise', 'Linked workout', 'Upcoming workout') for item in app.selectbox)
-    assert any('elapsed workouts have linked logs' in item.value for item in app.markdown)
+    assert any('assessed workouts have linked logs' in item.value for item in app.markdown)
 
 
 def test_recorded_exercise_analysis_preserves_unplanned_exercises_without_rankings(schedule_data, sample_input, sets_dataframe):
