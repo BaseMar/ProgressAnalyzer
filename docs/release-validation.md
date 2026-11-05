@@ -1,66 +1,75 @@
-# Progression update: final verification
+# Analytics redesign: release verification
 
-Verification date: **4 November 2026**. The update is published through `main` to
-the existing [Streamlit Cloud app](https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app).
-Streamlit is pinned to **1.66.1** in `requirements.txt`.
+Verification date: **5 November 2026**. Local verification is complete.
+Publication and the deployed Cloud check are pending for this release candidate.
+Target: [existing Streamlit Cloud app](https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app),
+deployed from `main`. Streamlit is pinned to **1.66.1**.
 
-## Verified behavior
+## Verification results
 
 | Check | Result |
 | --- | --- |
-| Unit, SQLite, parser and Streamlit interaction tests | 230 passing cases |
-| Isolated PostgreSQL integration | 5 passing cases, all fixture schemas rolled back |
-| Production schema migration preview | No pending migrations; revisions 001–005 already applied |
-| Main Dashboard, Training Plan, Exercises, Body Parts, Analytics and Body Metrics | All six pages loaded against the configured PostgreSQL database without exceptions or error messages |
-| Live Cloud version and dropdowns | Streamlit 1.66.1; correct option colors, hover/selection and body-level portal styles |
-| Long lists and keyboard interaction | Browser checks on Streamlit 1.51.0 and 1.66.1; native scrolling retained |
-| Published Analytics | Next workout card and recorded plan indicators loaded successfully |
-| Python compilation and whitespace validation | Passed |
+| Full suite on Python 3.12.2 / Streamlit 1.66.1 | 316 passed, including five PostgreSQL cases |
+| Production migration preview | No pending migrations; revisions 001-005 are already applied |
+| Navigation on configured PostgreSQL data | Overview, Analysis, Plan and History passed |
+| Analysis questions | Exercise progress, plan consistency, muscle distribution and body measurements passed |
+| Input ownership | Calendar, assignment, replacements, set corrections and import live in History |
+| Draft persistence | Exercise/workout switches and leaving/returning to Plan preserve unsaved values |
+| Dates and low-data behavior | Mixed dates, moved/early workouts, first measurements, missing RIR and partial logs verified |
+| Desktop browser, 1440 px | All pages and all four analysis questions passed |
+| Mobile browser, 390 px | Overview stacks; editor controls remain compact; calendar has no horizontal overflow |
+| Dropdowns and alternatives | Native selectors work; substitutes retain their own history and equipment step |
+| Compilation and whitespace | Passed |
+| GitHub Actions for this release | Pending publication |
+| Published Streamlit Cloud app | Pending publication |
 
-PostgreSQL checks create a unique schema in a transaction, define only the legacy
-tables needed by the plan services, apply migrations 001–005, and generate
-synthetic workouts there. The transaction is rolled back and schema removal is
-asserted even if the test fails. Existing application tables, plans, classifications
-and workout logs are outside the test schema.
+The browser journeys opened and closed import, previewed a plan revision and
+selected analytical questions. They did not save a workout, plan, classification,
+replacement or body measurement to the demonstration database. Screenshots in
+`screenshots/` were refreshed from the pinned local application and demo data.
 
-## Numerical examples checked
+The full suite ran with an explicit `TEST_POSTGRES_URL` supplied only inside the
+test process. Each PostgreSQL case creates a unique schema inside a transaction,
+defines synthetic legacy tables, applies migrations 001-005 and rolls back the
+schema and fixture records. Removal is asserted even if a test fails. Existing
+application tables and logs remain outside those schemas.
 
-These examples are test fixtures, not edits to personal training records.
+## Decisions reproduced from fixtures
 
-| Scenario | Expected and verified target |
+| Scenario | Verified result |
 | --- | --- |
-| Normal session, range 6–10, previous 60 kg × 10/10/9, adequate RIR | 60 kg × 10/10/10 |
-| Two complete ordinary executions at 60 kg × 10/10/10, adequate RIR, 2.5 kg step | 62.5 kg, 3 × 6, original target RIR |
-| Final week of a configured block, reference 60 kg, 3 × 6–10, RIR 2 | 52.5 kg, 2 × 6, target RIR 4 |
-| First normal exposure in the following cycle | Return to 60 kg, 3 × 6–10; old confirmations do not produce an immediate increase |
-| Approved Machine Chest Press alternative, its own 60 kg history and 5 kg step | 65 kg, 3 × 6; no original-exercise weight step is reused |
-| Deload log with two sets | Reduced expected coverage, no misleading progress/regression delta |
-| Missing labels/RIR, incompatible history or unsupported equipment step | Explain the missing evidence or manual decision; do not invent a load |
+| Normal 6-10 range; previous 60 kg x 10/10/9 with adequate reserve | Next target 60 kg x 10/10/10 |
+| Two complete 60 kg x 10/10/10 executions with reserve and a 2.5 kg step | Next target 62.5 kg, 3 x 6 |
+| Scheduled deload; reference 60 kg, 3 x 6-10, RIR 2 | 52.5 kg, 2 x 6, target RIR 4 |
+| First normal exposure after deload | Resume 60 kg, 3 x 6-10; no immediate increase from old confirmations |
+| Approved alternative with its own 60 kg history and 5 kg equipment step | 65 kg, 3 x 6; the original exercise step is not reused |
+| More reps at equal per-set load and RIR | Observable output increase, with source sessions/sets retained |
+| Heavier load with fewer reps, or changed per-set RIR | Context note, without an automatic regression/progress verdict |
+| Latest linked execution is incomplete, empty or lacks RIR | Evidence barrier; no fallback to an older successful result |
+| Deload with two prescribed sets | Reduced expected coverage; no ordinary regression delta |
+| Timed exercise without RIR | Duration remains usable; unsupported automatic timed increases are not invented |
+| One body measurement, without composition records | Recorded value is shown; no unsupported trend label |
 
-The live check also covered the initial **More data needed** state in a new block.
-Numeric recommendations require linked, comparable working sets and recorded RIR;
-publishing the update does not manufacture this evidence or classify old sets.
+## Publication procedure
 
-## Automated verification
-
-`.github/workflows/tests.yml` runs on pushes to `main`, pull requests and manual
-dispatch. It installs the project requirements on Python 3.12, starts a disposable
-PostgreSQL 16 service, runs the entire 235-case suite and compiles application
-modules. The workflow uses test credentials only and does not receive the live
-database URL. Its run is the ongoing publication check; this document records
-the verification performed for the update rather than guaranteeing future runs.
+The repository's Tests workflow runs on pushes to `main`. It installs requirements
+on Python 3.12, starts disposable PostgreSQL 16 and runs the full suite plus
+compilation. It uses disposable service credentials and receives no application
+database secret. After pushing this candidate, verify its exact workflow SHA and
+repeat the read-only browser journey against the Cloud URL.
 
 ## Scope and limits
 
-- The calendar contains recorded history and plan/session assignments; Analytics
-  contains the derived targets and observed plan comparisons.
-- Recommendations are read-only. Selecting an alternative in the preview neither
-  edits the plan nor approves a future replacement.
-- The final week of each repeating 6-, 7- or 8-week block is deload. The schedule
-  does not diagnose fatigue or prove recovery.
-- Timed progression, bodyweight-to-loaded transitions and assistance-machine load
-  selection require manual decisions where the engine cannot support a target.
-- Overall strength and fatigue remain descriptive metrics that include logged
-  deload work; deload-specific comparison handling applies to Plan execution.
-- This release does not add authentication, multiple-user data isolation or a
-  full bootstrap of the legacy production schema.
+- Overview contains current decisions and the only next-workout preview.
+- Analysis renders one question at a time with its own historical period.
+- Plan appends immutable revisions; History owns source input and corrections.
+- The active plan is shared; a historical filter never changes future targets.
+- RIR thresholds, the 21-day evidence limit and repeating 6/7/8-week deload schedule
+  are explicit application rules. They do not measure technique, muscle growth,
+  physiological fatigue, recovery or overall training effectiveness.
+- Numeric preview targets do not edit plans or logs. A preview alternative does
+  not approve a future replacement.
+- Timed progression, assistance-machine loads and transitions to external load
+  still require manual decisions where evidence cannot support a target.
+- The deployment remains a public single-user demo; this release adds no
+  authentication, data isolation or complete legacy-schema bootstrap.

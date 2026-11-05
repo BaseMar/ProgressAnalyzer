@@ -10,11 +10,17 @@ from ui.utils.exercise_matcher import normalize
 class SidebarUpload:
     """Sidebar module for importing workouts from TXT files."""
 
-    def __init__(self):
-        self.dm = DataManager()
+    def __init__(self, *, manager=None, sidebar=False):
+        self.dm = manager if manager is not None else DataManager()
+        self._sidebar = sidebar
+
+    @property
+    def ui(self):
+        # Old parser-only callers can still provide a sidebar warning sink.
+        return st.sidebar if getattr(self, "_sidebar", True) else st
 
     def render(self):
-        st.sidebar.subheader("Import workout")
+        self.ui.subheader("Import workout")
 
         if "adding_exercise" not in st.session_state:
             st.session_state.adding_exercise = False
@@ -28,7 +34,7 @@ class SidebarUpload:
         if "exercise_mapping" not in st.session_state:
             st.session_state.exercise_mapping = {}
 
-        file = st.sidebar.file_uploader("Upload .txt workout", type=["txt"])
+        file = self.ui.file_uploader("Upload .txt workout", type=["txt"])
 
         if not file:
             if st.session_state.uploaded_file_name is not None:
@@ -45,18 +51,18 @@ class SidebarUpload:
             st.session_state.exercise_mapping = {}
 
         content = file.read().decode("utf-8")
-        workout_date = st.sidebar.date_input("Workout date", value=datetime.today())
+        workout_date = self.ui.date_input("Workout date", value=datetime.today())
         parsed = self._parse_txt(content)
         start_time, end_time = self._parse_time_range(content)
         if not parsed:
-            st.sidebar.error("Could not parse file.")
+            self.ui.error("Could not parse file.")
             return
 
         if st.session_state.adding_exercise:
             self._new_exercise_form(st.session_state.pending_exercise)
             return
 
-        if st.sidebar.button("Import workout", icon=":material/upload:"):
+        if self.ui.button("Import workout", icon=":material/upload:"):
             self._process(parsed, workout_date, start_time, end_time)
 
     def _process(self, parsed, workout_date, start_time, end_time):
@@ -64,7 +70,7 @@ class SidebarUpload:
         exercises_db = self.dm.load_exercises()
 
         if exercises_db.empty:
-            st.sidebar.error("No exercises in database. Add exercises first.")
+            self.ui.error("No exercises in database. Add exercises first.")
             return
 
         normalized_map = {}
@@ -92,11 +98,11 @@ class SidebarUpload:
             return
 
         if not all(ex["sets"] for ex in parsed):
-            st.sidebar.error("Some exercises have no valid sets.")
+            self.ui.error("Some exercises have no valid sets.")
             return
 
         if start_time is None or end_time is None:
-            st.sidebar.warning("Time range not found in file. Importing without time data.")
+            self.ui.warning("Time range not found in file. Importing without time data.")
 
         try:
             for ex in parsed:
@@ -112,7 +118,7 @@ class SidebarUpload:
                     session_end=end_time
                 )
 
-            st.sidebar.success("Workout imported successfully!")
+            self.ui.success("Workout imported successfully!")
 
             st.cache_data.clear()
             st.session_state.adding_exercise = False
@@ -121,29 +127,29 @@ class SidebarUpload:
             st.session_state.exercise_mapping = {}
             st.rerun()
         except Exception as e:
-            st.sidebar.error(f"Import failed: {str(e)}")
+            self.ui.error(f"Import failed: {str(e)}")
 
     def _new_exercise_form(self, suggested_name):
         """Form to handle exercise that doesn't exist in database.
         
         First shows similar exercises, then all exercises from database, then allows creating new one.
         """
-        st.sidebar.warning(f"Exercise '{suggested_name}' not found in database")
+        self.ui.warning(f"Exercise '{suggested_name}' not found in database")
 
         exercises_db = self.dm.load_exercises()
         
         similar = self._find_similar_exercises(suggested_name, exercises_db)
         
         if similar:
-            st.sidebar.info("Did you mean? (showing similar exercises)")
+            self.ui.info("Did you mean? (showing similar exercises)")
             suggested_names = [row.exercise_name for row in similar]
-            selected_exercise = st.sidebar.selectbox(
+            selected_exercise = self.ui.selectbox(
                 "Select existing exercise:",
                 options=suggested_names,
                 key="similar_exercise_select"
             )
             
-            if st.sidebar.button("Use selected exercise", icon=":material/check:"):
+            if self.ui.button("Use selected exercise", icon=":material/check:"):
                 st.session_state.exercise_mapping[suggested_name] = selected_exercise
                 st.session_state.adding_exercise = False
                 st.session_state.pending_exercise = None
@@ -151,17 +157,17 @@ class SidebarUpload:
                 st.rerun()
                 return
             
-            st.sidebar.divider()
+            self.ui.divider()
         
-        st.sidebar.subheader("Or choose from all exercises")
+        self.ui.subheader("Or choose from all exercises")
         all_exercise_names = sorted([row.exercise_name for row in exercises_db.itertuples()])
-        selected_exercise_all = st.sidebar.selectbox(
+        selected_exercise_all = self.ui.selectbox(
             "Select exercise from database:",
             options=all_exercise_names,
             key="all_exercises_select"
         )
         
-        if st.sidebar.button("Use this exercise", icon=":material/check:"):
+        if self.ui.button("Use this exercise", icon=":material/check:"):
             st.session_state.exercise_mapping[suggested_name] = selected_exercise_all
             st.session_state.adding_exercise = False
             st.session_state.pending_exercise = None
@@ -169,44 +175,44 @@ class SidebarUpload:
             st.rerun()
             return
         
-        st.sidebar.divider()
-        st.sidebar.caption("Or add new exercise below")
+        self.ui.divider()
+        self.ui.caption("Or add new exercise below")
         
-        st.sidebar.subheader("Add new exercise")
-        name = st.sidebar.text_input("Exercise name", value=suggested_name, key="new_exercise_name")
+        self.ui.subheader("Add new exercise")
+        name = self.ui.text_input("Exercise name", value=suggested_name, key="new_exercise_name")
         resolution = resolve_exercise(name.strip(), allow_web=False) if name and name.strip() else None
         if resolution:
             target_summary = ", ".join(
                 f"{target.muscle_group} ({target.role})"
                 for target in resolution.targets
             )
-            st.sidebar.caption(
+            self.ui.caption(
                 f"Detected: {resolution.category} / {resolution.body_part} | {target_summary}"
             )
         elif name and name.strip():
-            st.sidebar.caption(
+            self.ui.caption(
                 "No local match yet. The app will try an internet lookup when you add it."
             )
 
-        if st.sidebar.button("Add exercise", icon=":material/add:", width="stretch"):
+        if self.ui.button("Add exercise", icon=":material/add:", width="stretch"):
             if not name or not name.strip():
-                st.sidebar.error("Exercise name cannot be empty")
+                self.ui.error("Exercise name cannot be empty")
                 return
             try:
                 if not self.dm.add_exercise(name.strip()):
-                    st.sidebar.error("Failed to add exercise or detect muscle targets.")
+                    self.ui.error("Failed to add exercise or detect muscle targets.")
                     return
 
-                st.sidebar.success("Exercise added!")
+                self.ui.success("Exercise added!")
                 
                 st.cache_data.clear()
                 st.session_state.adding_exercise = False
                 st.session_state.pending_exercise = None
                 st.rerun()
             except Exception as e:
-                st.sidebar.error(f"Failed to add exercise: {str(e)}")
+                self.ui.error(f"Failed to add exercise: {str(e)}")
         
-        if st.sidebar.button("Cancel", icon=":material/close:", width="stretch"):
+        if self.ui.button("Cancel", icon=":material/close:", width="stretch"):
             st.session_state.adding_exercise = False
             st.session_state.pending_exercise = None
             st.session_state.exercise_mapping = {}
@@ -379,11 +385,11 @@ class SidebarUpload:
                 rir_values.extend(self._parse_rir_values(line))
 
         if not set_tokens:
-            st.sidebar.warning(f"Exercise '{name}': no valid sets found.")
+            self.ui.warning(f"Exercise '{name}': no valid sets found.")
             return []
 
         if rir_values and len(rir_values) != len(set_tokens):
-            st.sidebar.warning(
+            self.ui.warning(
                 f"Exercise '{name}': set count != RIR count. Missing RIR values will be imported as empty."
             )
 
@@ -395,7 +401,7 @@ class SidebarUpload:
             duration_seconds = token.get("duration_seconds")
 
             if reps <= 0 or weight < 0 or (rir is not None and rir < 0):
-                st.sidebar.warning(f"Exercise '{name}': negative values not allowed. Set skipped.")
+                self.ui.warning(f"Exercise '{name}': negative values not allowed. Set skipped.")
                 continue
 
             sets_data.append(

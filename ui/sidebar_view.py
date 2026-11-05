@@ -2,14 +2,11 @@
 Sidebar view.
 
 Responsible for:
-- global filters (time range)
+- shortcuts into History
 - navigation between views
 """
 
-from typing import Optional
-import pandas as pd
 import streamlit as st
-from ui.sidebar_upload import SidebarUpload
 
 
 class SidebarView:
@@ -17,46 +14,10 @@ class SidebarView:
     Sidebar controller for the application UI.
 
     Responsibilities:
-    - render global filters
+    - expose four task-oriented pages
     - render navigation
     - return user selections
     """
-
-    def render_filters(self, sets_df: pd.DataFrame) -> Optional[str]:
-        """
-        Render global sidebar filters.
-
-        Currently supported:
-        - month selector (YYYY-MM)
-
-        Parameters
-        ----------
-        sets_df : pd.DataFrame
-            Set-level dataframe containing `session_date`.
-
-        Returns
-        -------
-        Optional[str]
-            Selected month in YYYY-MM format, or None.
-        """
-        st.sidebar.header("Filters")
-
-        if sets_df is None or sets_df.empty:
-            st.sidebar.info("No data available.")
-            return None
-
-        df = sets_df.copy()
-        df["session_date"] = pd.to_datetime(df["session_date"])
-
-        available_months = (df["session_date"].dt.to_period("M").astype(str).sort_values().unique())
-        month_options = ["All time", *available_months]
-        
-        if len(available_months) == 0:
-            return None
-        
-        selected_month = st.sidebar.selectbox("Select month",options=month_options,index=0)
-        
-        return selected_month
 
     def render_navigation(self) -> str:
         """
@@ -75,26 +36,19 @@ class SidebarView:
         st.sidebar.divider()
         st.sidebar.title("Navigation")
 
-        options = [
-            "Main Dashboard",
-            "Training Plan",
-            "Exercises",
-            "Body Parts",
-            "Analytics",
-            "Body Metrics",
-        ]
+        options = ["Overview", "Analysis", "Plan", "History"]
 
         icons = {
-            "Main Dashboard": ":material/dashboard:",
-            "Training Plan":  ":material/calendar_month:",
-            "Exercises":      ":material/fitness_center:",
-            "Body Parts":     ":material/accessibility_new:",
-            "Analytics":      ":material/bar_chart:",
-            "Body Metrics":   ":material/monitor_weight:",
+            "Overview": ":material/dashboard:",
+            "Analysis": ":material/bar_chart:",
+            "Plan": ":material/calendar_month:",
+            "History": ":material/history:",
         }
 
-        if "nav_selected" not in st.session_state:
-            st.session_state.nav_selected = options[0]
+        aliases = {"Main Dashboard": "Overview", "Training Plan": "Plan", "Exercises": "Analysis",
+                   "Body Parts": "Analysis", "Analytics": "Analysis", "Body Metrics": "Analysis"}
+        previous = st.session_state.get("nav_selected", "Overview")
+        st.session_state.nav_selected = aliases.get(previous, previous) if aliases.get(previous, previous) in options else "Overview"
 
         for opt in options:
             button_type = "primary" if st.session_state.nav_selected == opt else "secondary"
@@ -107,16 +61,17 @@ class SidebarView:
                 args=(opt,),
             )
 
+        st.sidebar.button("Add workout", key="nav_add_workout", icon=":material/add:", on_click=_open_workout_import)
         return st.session_state.nav_selected
 
-    def render_upload(self) -> None:
-        """
-        Render workout upload section.
-        """
-        st.sidebar.divider()
-        
-        SidebarUpload().render()
-        
+
 
 def _set_selected_nav(option: str) -> None:
+    from ui.utils.plan_editor import capture_plan_drafts
+    capture_plan_drafts()
     st.session_state.nav_selected = option
+
+
+def _open_workout_import():
+    _set_selected_nav("History")
+    st.session_state["history_add_workout"] = True

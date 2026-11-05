@@ -178,25 +178,21 @@ APP = '''
 import pandas as pd
 import streamlit as st
 from data_manager import DataManager
-from ui.dashboard_view import DashboardView
-from ui.plan_adherence_view import PlanAdherenceView
+from ui.history_view import HistoryView
 manager = object.__new__(DataManager)
 manager.engine = st.session_state["test_engine"]
 names = {1: "Barbell Bench Press", 2: "Machine Chest Press"}
 month = st.session_state["test_month"]
-if st.session_state.get("analysis"):
-    PlanAdherenceView(manager=manager, exercise_names=names, selected_month=month).render()
-else:
-    frame = manager.load_sessions()
-    frame["exercise_name"] = "Machine Chest Press"
-    frame["repetitions"] = 8
-    frame["weight"] = 50.
-    frame["set_number"] = 1
-    DashboardView({}, frame, month, data_manager=manager, exercise_names=names)._render_history()
+frame = manager.load_sessions()
+frame["exercise_name"] = "Machine Chest Press"
+frame["repetitions"] = 8
+frame["weight"] = 50.
+frame["set_number"] = 1
+HistoryView({}, frame, month, data_manager=manager, exercise_names=names)._render_history()
 '''
 
 
-def test_approval_lives_in_analytics_and_can_be_removed(schedule_data):
+def test_approval_lives_in_history_and_can_be_removed(schedule_data):
     engine, start, plan, _ = schedule_data
     data = linked_report(schedule_data)
     target_id = data.workouts[0].targets[0].plan_exercise_id
@@ -207,17 +203,15 @@ def test_approval_lives_in_analytics_and_can_be_removed(schedule_data):
     app.button(key=f"history_date_{start}").click().run()
     assert not app.exception
     assert not app.dataframe
-    assert not any(box.key.startswith("replacement_") for box in app.selectbox)
-    app.session_state["analysis"] = True
-    app.run()
+    assert any(box.key.startswith("replacement_") for box in app.selectbox)
     prefix = f"replacement_2_{target_id}"
     app.selectbox(key=f"{prefix}_exercise").select(200).run()
     app.button(key=f"{prefix}_confirm").click().run()
     assert not app.exception
     assert not app.error
     assert load_plan_adherence(engine, plan.plan_id, start, start).matches
-    assert len(app.metric) == 3
-    assert app.get("plotly_chart")
+    assert not app.metric
+    assert not app.get("plotly_chart")
     app.button(key=f"{prefix}_remove").click().run()
     assert not app.exception
     assert not load_plan_adherence(engine, plan.plan_id, start, start).matches

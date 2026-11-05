@@ -7,7 +7,8 @@ import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 from data_manager import DataManager
 from models.training_plan import PlannedExercise, ProgressionSettings, TrainingDay, TrainingPlanDraft
-from ui.utils.plan_editor import WEEKDAYS
+from ui.utils.plan_editor import WEEKDAYS, capture_draft
+from ui.utils.active_plan import select_active_plan
 from ui.utils.ui_helpers import page_title, section_header
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class TrainingPlanView:
                        for item in sorted(exercises, key=lambda item: item.name.casefold())}
 
     def render(self):
-        page_title("Reference data", "Training Plan")
+        page_title("Plan", "Your training plan")
         st.caption("Define the weekly reference used to analyse your workout logs.")
         try:
             if not self.dm.training_plan_storage_ready():
@@ -38,14 +39,20 @@ class TrainingPlanView:
         if "plan_saved_notice" in st.session_state:
             st.success(st.session_state.pop("plan_saved_notice"))
         if "plan_next_selection" in st.session_state:
-            st.session_state["training_plan_picker"] = st.session_state.pop("plan_next_selection")
-        selected = st.selectbox("Your plans", [None, *plans], index=1 if plans else 0, key="training_plan_picker",
-                                format_func=lambda value: "Create a new plan" if value is None else plans[value].draft.name)
-        source = plans.get(selected)
+            st.session_state["adherence_plan"] = st.session_state.pop("plan_next_selection")
+            st.session_state["active_plan_id"] = st.session_state["adherence_plan"]
+            st.session_state["plan_create_new"] = False
+            st.session_state["plan_create_mode"] = False
+        selected = select_active_plan(plans.values())
+        create = st.toggle("Create a new plan", value=st.session_state.get("plan_create_mode", False), key="plan_create_new") if plans else True
+        st.session_state["plan_create_mode"] = create
+        source = None if create else plans.get(selected)
         if source:
             st.caption(f"Version {source.version_number} · from {source.draft.effective_from:%d %b %Y}")
             self._overview(source.draft, source.version_id)
-        if source is None or st.toggle("Edit as a new version", key=f"plan_edit_{source.version_id}"):
+        editing = source is None or st.toggle("Edit as a new version", value=st.session_state.get("plan_editing_version") == source.version_id, key=f"plan_edit_{source.version_id}")
+        st.session_state["plan_editing_version"] = source.version_id if source and editing else None
+        if editing:
             self._render_editor(source)
         if source:
             self._render_history(source.plan_id)
@@ -83,17 +90,7 @@ class TrainingPlanView:
 
     @staticmethod
     def _capture(scope, store):
-        # Capture before switching cards: Streamlit cleans up hidden widgets.
-        for day in store["days"]:
-            prefix = f'{scope}_day_{day["uid"]}'
-            for field in ("name", "weekday"):
-                if f"{prefix}_{field}" in st.session_state:
-                    day[field] = st.session_state[f"{prefix}_{field}"]
-            for exercise in day["exercises"]:
-                for field in ("exercise_id", "sets", "minimum", "maximum", "unit", "rir", "increment"):
-                    key = f'{prefix}_ex_{exercise["uid"]}_{field}'
-                    if key in st.session_state:
-                        exercise[field] = st.session_state[key]
+        capture_draft(scope, store)
 
     def _render_editor(self, source):
         scope = f"plan_editor_{source.version_id if source else 'new'}"
@@ -130,12 +127,14 @@ class TrainingPlanView:
                 block_weeks = right.selectbox("Block length (weeks)", [6, 7, 8], index=[6, 7, 8].index(weeks), key=f"{scope}_block_weeks")
                 store["block_start"], store["block_weeks"] = block_start, block_weeks
                 st.caption("Blocks repeat from this date; the final week of each block is deload. A new plan version keeps this anchor; change it explicitly to restart the schedule.")
-            st.caption("See next-workout targets, deloads and their explanations in Analytics → Plan execution → Next workout.")
+            st.caption("See next-workout targets, deloads and their explanations in Overview → Next workout.")
         action = None
         if store["days"]:
             ids = [day["uid"] for day in store["days"]]
             if "select_next" in store:
                 st.session_state[f"{scope}_active_day"] = store.pop("select_next")
+            if st.session_state.get(f"{scope}_active_day") not in ids:
+                st.session_state[f"{scope}_active_day"] = store.get("selected_day") if store.get("selected_day") in ids else ids[0]
             day_id = st.selectbox("Workout to edit", ids, key=f"{scope}_active_day",
                                   format_func=lambda value: next(f'{ids.index(value) + 1:02d} · {WEEKDAYS[day["weekday"]]} · {day["name"] or "Untitled workout"}' for day in store["days"] if day["uid"] == value))
             day = next(item for item in store["days"] if item["uid"] == day_id)
@@ -144,17 +143,31 @@ class TrainingPlanView:
                 left, right = st.columns([2, 1])
                 left.text_input("Workout name", value=day["name"], placeholder="e.g. Upper A", max_chars=120, key=f"{prefix}_name")
                 right.selectbox("Planned weekday", range(7), index=day["weekday"], format_func=lambda value: WEEKDAYS[value], key=f"{prefix}_weekday")
+                selected_exercise = None
+                if day["exercises"]:
+                    exercise_ids = [item["uid"] for item in day["exercises"]]
+                    exercise_key = f"{prefix}_active_exercise"
+                    if "select_exercise_next" in day:
+                        st.session_state[exercise_key] = day.pop("select_exercise_next")
+                    if st.session_state.get(exercise_key) not in exercise_ids:
+                        st.session_state[exercise_key] = day.get("selected_exercise") if day.get("selected_exercise") in exercise_ids else exercise_ids[0]
+                    st.caption(f'{len(exercise_ids)} exercises in this workout. Select one to edit; all changes are saved together.')
+                    selected_exercise = st.selectbox("Exercise to edit", exercise_ids, key=exercise_key,
+                        format_func=lambda value: next(f'{index + 1:02d} · {self.labels.get(item["exercise_id"], "Choose an exercise")}' for index, item in enumerate(day["exercises"]) if item["uid"] == value))
                 for index, item in enumerate(day["exercises"]):
+                    if item["uid"] != selected_exercise:
+                        continue
                     ex_prefix = f'{prefix}_ex_{item["uid"]}'
                     with st.container(key=f'plan_exercise_{day_id}_{item["uid"]}'):
-                        title, up, down, remove = st.columns([5, 1, 1, 1])
-                        title.markdown(f'<div class="plan-workout-heading">Exercise {index + 1:02d}</div>', unsafe_allow_html=True)
-                        if up.button("↑", key=f"{ex_prefix}_up", help="Move exercise up", disabled=index == 0):
-                            action = ("move", day_id, index, -1)
-                        if down.button("↓", key=f"{ex_prefix}_down", help="Move exercise down", disabled=index == len(day["exercises"]) - 1):
-                            action = ("move", day_id, index, 1)
-                        if remove.button("×", key=f"{ex_prefix}_remove", help="Remove exercise"):
-                            action = ("remove_exercise", day_id, item["uid"])
+                        with st.container(key=f"{ex_prefix}_controls"):
+                            title, up, down, remove = st.columns([5, 1, 1, 1])
+                            title.markdown(f'<div class="plan-workout-heading">Exercise {index + 1:02d}</div>', unsafe_allow_html=True)
+                            if up.button("↑", key=f"{ex_prefix}_up", help="Move exercise up", disabled=index == 0):
+                                action = ("move", day_id, index, -1)
+                            if down.button("↓", key=f"{ex_prefix}_down", help="Move exercise down", disabled=index == len(day["exercises"]) - 1):
+                                action = ("move", day_id, index, 1)
+                            if remove.button("×", key=f"{ex_prefix}_remove", help="Remove exercise"):
+                                action = ("remove_exercise", day_id, item["uid"])
                         options = [None, *self.labels]
                         st.selectbox("Exercise", options, index=options.index(item["exercise_id"]),
                                      format_func=lambda value: "Choose an exercise" if value is None else self.labels[value], key=f"{ex_prefix}_exercise_id")
@@ -182,8 +195,11 @@ class TrainingPlanView:
                 day["exercises"][a], day["exercises"][b] = day["exercises"][b], day["exercises"][a]
             elif action[0] == "remove_exercise":
                 day["exercises"] = [item for item in day["exercises"] if item["uid"] != action[2]]
+                if day["exercises"]:
+                    day["select_exercise_next"] = day["exercises"][0]["uid"]
             elif action[0] == "add_exercise":
                 day["exercises"].append(self._exercise(uid=day["next_exercise"]))
+                day["select_exercise_next"] = day["next_exercise"]
                 day["next_exercise"] += 1
             else:
                 store["days"].remove(day)

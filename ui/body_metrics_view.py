@@ -42,7 +42,7 @@ class BodyMetricsView:
     - Forms for adding new measurements
     """
 
-    def __init__(self, body_metrics: Dict) -> None:
+    def __init__(self, body_metrics: Dict, *, manager=None) -> None:
         """Initialize view with pre-computed body metrics.
         
         Args:
@@ -55,11 +55,12 @@ class BodyMetricsView:
                 - deltas: Change values for each metric
         """
         self.body_metrics = body_metrics
-        self.dm = DataManager()
+        self.dm = manager if manager is not None else DataManager()
 
-    def render(self) -> None:
+    def render(self, *, focused=False) -> None:
         """Render the complete body metrics view."""
-        page_title("Body Metrics", "Body Metrics")
+        if not focused:
+            page_title("Body Metrics", "Body Metrics")
 
         timeline = self.body_metrics.get("timeline", [])
         if not timeline:
@@ -69,6 +70,27 @@ class BodyMetricsView:
         df = pd.DataFrame(timeline)
         df["date"] = pd.to_datetime(df["date"])
         df = df.sort_values("date")
+
+        if focused:
+            available = {label: cfg for group in METRIC_CONFIG.values() for label, cfg in group.items()
+                         if cfg["col"] in df and df[cfg["col"]].notna().any()}
+            if not available:
+                st.info("No measurements in this period. Add a measurement in History.")
+                return
+            if st.session_state.get("analysis_body_metric") not in available:
+                st.session_state["analysis_body_metric"] = next(iter(available))
+            selected = st.selectbox("Measurement", list(available), key="analysis_body_metric")
+            cfg = available[selected]
+            points = df[["date", cfg["col"]]].dropna().rename(columns={cfg["col"]: selected})
+            current = points.iloc[-1]
+            delta = current[selected] - points.iloc[0][selected]
+            st.caption(f'{selected}: {current[selected]:g} {cfg["unit"]} on {current["date"]:%d %b %Y}. '
+                       + (f'Change since {points.iloc[0]["date"]:%d %b}: {delta:+g} {cfg["unit"]}.' if len(points) > 1 else "One observation; no trend yet."))
+            line_chart(points.set_index("date"), selected)
+            st.caption("These are recorded measurements. Direction alone does not establish improvement; device estimates may vary.")
+            with st.expander("Measurement records"):
+                st.dataframe(points, hide_index=True, width="stretch")
+            return
 
         self._render_snapshot_kpis(df)
         self._render_composition_trends(df)

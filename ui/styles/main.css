@@ -1193,4 +1193,23 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
 @media (max-width: 640px) {
     .st-key-training_plan_details,
     [class*="st-key-training_workout_"] { padding: 14px; }
+    [class*="st-key-plan_editor_"][class*="_controls"] [data-testid="stHorizontalBlock"] {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+    [class*="st-key-plan_editor_"][class*="_controls"] [data-testid="stColumn"] {
+        flex: 0 0 34px;
+        min-width: 0;
+        width: 34px;
+    }
+    [class*="st-key-plan_editor_"][class*="_controls"] [data-testid="stColumn"]:first-child {
+        flex: 1 1 auto;
+        width: auto;
+    }
+    [class*="st-key-plan_editor_"][class*="_controls"] button {
+        min-width: 32px;
+        padding-left: 6px;
+        padding-right: 6px;
+    }
 }

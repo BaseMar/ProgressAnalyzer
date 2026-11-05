@@ -45,9 +45,10 @@ class ExerciseView:
         self.exercises_metrics = exercises_metrics
         self.sets_df = sets_df.loc[~sets_df["is_warmup"].eq(True)].copy() if "is_warmup" in sets_df else sets_df
 
-    def render(self) -> None:
+    def render(self, *, focused=False) -> None:
         """Render the complete exercise analysis view."""
-        page_title("Exercises", "Exercise Library")
+        if not focused:
+            page_title("Exercises", "Exercise Library")
 
         per_exercise = self.exercises_metrics.get("per_exercise", {})
         exercises_df = pd.DataFrame(per_exercise).T.reset_index(drop=True)
@@ -56,7 +57,31 @@ class ExerciseView:
             st.info("No exercise data available.")
             return
 
-        self._render_selector(exercises_df)
+        if focused:
+            self._render_focused()
+        else:
+            self._render_selector(exercises_df)
+
+    def _render_focused(self):
+        items = self.exercises_metrics.get("per_exercise", {})
+        if st.session_state.get("analysis_recorded_exercise") not in items:
+            st.session_state["analysis_recorded_exercise"] = next(iter(items))
+        selected = st.selectbox("Recorded exercise", list(items), key="analysis_recorded_exercise",
+                                format_func=lambda value: f'{items[value]["exercise_name"]} · #{value}')
+        exercise = items[selected]
+        timed = bool(exercise.get("total_duration_seconds"))
+        question = st.radio("Show", ["Performance", "Workload"], horizontal=True, key="recorded_exercise_series")
+        workload = question == "Workload"
+        field = "duration_seconds" if timed else "volume" if workload else "estimated_1rm"
+        key = ("per_session_duration" if workload else "per_session_best_duration") if timed else ("per_session_volume" if workload else "per_session_1rm")
+        label = "Seconds" if timed else "Volume (kg)" if workload else "Best eligible e1RM (kg)"
+        points = exercise.get(key, [])
+        if points:
+            st.caption(f'{len(points)} recorded sessions · {exercise["total_sets"]} descriptive sets. Read changes within this exercise only.')
+        self._series(points, field, label)
+        st.caption("Workload includes light and unknown-effort logs. Performance uses eligible ordinary sets or timed work; planned deloads are excluded. e1RM is an estimate, not a tested maximum.")
+        with st.expander("Source sessions"):
+            st.dataframe(pd.DataFrame(points), hide_index=True, width="stretch")
 
     def _render_selector(self, exercises_df: pd.DataFrame) -> None:
         """Render exercise selector dropdown and associated analysis sections."""

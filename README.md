@@ -1,7 +1,7 @@
 # Workout Progress Analyzer
 
-An end-to-end data analytics dashboard for strength training progress, fatigue,
-muscle-group volume, and body composition tracking.
+An end-to-end analytics dashboard for recorded training progress, plan consistency,
+next-workout targets, muscle exposure and body measurements.
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red)
@@ -29,17 +29,17 @@ muscle-group volume, and body composition tracking.
 ## Project Goal
 
 Workout logs usually show raw training history, but they rarely explain whether
-a user is actually progressing, accumulating fatigue, or training muscle groups
-in a balanced way.
+a user's recorded performance is changing, whether logs match the plan, or how
+training is distributed across muscle groups.
 
 This project turns raw workout and body-measurement data into an analytical
 dashboard that helps identify:
 
-- strength progress and regressions,
+- comparable changes in exercise performance,
 - training consistency,
-- fatigue patterns,
+- recorded effort and evidence gaps,
 - body-part volume distribution,
-- body recomposition trends.
+- body-measurement trends.
 
 It also connects exercise-level performance with muscle-group exposure, so a
 training log can answer not only "what did I lift?", but also "what parts of
@@ -62,7 +62,7 @@ I designed and implemented the full application, including:
 
 Live app: <https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app>
 
-The deployed version uses anonymized personal training and body-measurement data
+The deployed version uses personal training and body-measurement data
 prepared for demonstration purposes and stored in a hosted Supabase database.
 Local development uses the same application code, but requires a
 PostgreSQL-compatible database configured through `DATABASE_URL`.
@@ -73,18 +73,19 @@ per-user data isolation.
 ## Project Status
 
 The application is functional and deployed as a public single-user demo. Core
-analytics, TXT import, database integration, and tests are implemented. The next
-major improvements are a complete database
-bootstrap, anonymized seed data, Docker Compose setup, and CI. Versioned plan
-storage, its additive migration, and the Training Plan editor are implemented.
+analytics, versioned plans, progression/deload targets, TXT import and database
+integration are implemented. Four task-oriented pages separate decisions,
+analysis, planning and source history. GitHub Actions runs tests with disposable
+PostgreSQL. Planned infrastructure work includes a complete database bootstrap,
+anonymized seed data and Docker Compose.
 
 ## Preview
 
-![Main Dashboard overview](screenshots/Main_Dashboard_1.png)
+![Current training decisions and next workout](screenshots/Overview.png)
 
-![Analytics overview](screenshots/Analytics_1.png)
+![One exercise analysed in its plan context](screenshots/Analysis_Exercise.png)
 
-![Body parts heatmap](screenshots/Body_Parts_2.png)
+![Recorded calendar and session history](screenshots/History.png)
 
 ## Tech Stack
 
@@ -100,9 +101,9 @@ storage, its additive migration, and the Training Plan editor are implemented.
 
 ## What It Does
 
-Workout Progress Analyzer is a Streamlit dashboard for tracking strength
-training, recovery pressure, exercise trends, body measurements, and body
-composition. It imports workout data from a database, maps it into a small
+Workout Progress Analyzer is a Streamlit dashboard for tracking recorded training,
+plan consistency, exercise trends, body measurements and body composition.
+It imports workout data from a database, maps it into a small
 domain model, computes core metrics in a separate calculation layer, and renders
 the results as focused dashboard views.
 
@@ -115,12 +116,12 @@ alongside training.
 
 The dashboard can answer questions such as:
 
-- Which exercises are improving, stagnating, or regressing?
-- Which exercises generate the highest training volume or estimated 1RM?
+- Did I record more reps at the same load and RIR in the same workout context?
+- What does the next workout prescribe, and which sessions support that target?
 - Which muscle groups receive the most weekly volume, and which may be
   undertrained?
-- Is training fatigue increasing through more failure sets, lower RIR, or higher
-  workload?
+- Which exercises had less reserve than planned, or need more evidence before
+  assigning a new target?
 - Are high-volume sessions concentrated in specific periods or body parts?
 - Is body weight changing together with muscle mass, fat mass, or body fat
   percentage?
@@ -131,42 +132,18 @@ The dashboard can answer questions such as:
 
 ### Training Analytics
 
-- Session overview: volume, set count, estimated strength, duration, and workload.
-- Exercise analytics: total volume, estimated 1RM, average RIR, exposure, and
-  progress trends.
-- Progress classification: improving, stagnating, and regressing exercises.
-- Training frequency: sessions per week and average days between sessions.
+- Evidence-backed observations and next-workout targets in Overview.
+- Exercise comparisons within saved plan targets, or one recorded exercise's
+  eligible performance/workload series at a time.
+- Plan consistency: linked workouts, set coverage, range checks and weekly history.
+- Local historical periods in Analysis; future recommendations use their own dates.
 
-Frequency includes all ISO calendar weeks between the first and last workout in
-the selected period, including weeks without workouts. Exercise and body-part
-frequencies use that same observation period. Separate sessions on the same day
-count separately. Dates outside that observed span are not treated as missed
-training without a plan.
-
-Progress compares the first and last non-overlapping windows of up to three
-sessions, using each session's best estimated 1RM (or longest set for timed
-exercises). At least two comparable sessions are required; exposures count
-sessions rather than sets. These metrics describe recorded performance, not
-technique, plan adherence, or muscle growth.
-
-Exercise histories also keep same-day sessions separate. Exercise volume trends
-compare total session volumes; strength and duration trends compare session bests.
-A single session has no between-session trend.
-
-### Fatigue & Recovery
-
-- RIR distribution and average RIR.
-- Sets to failure and failure-set ratio.
-- Volume load and timed work.
-- Per-session heuristic score and high-score session indicators.
-
-`Mean session e1RM` is displayed in kg: it averages the session means of estimated
-1RM values, rather than representing relative intensity. The fatigue chart uses
-recorded dates/start times, and consecutive high-score runs follow chronological
-order. High-score session shares are displayed as percentages. The 0–1 score and
-its 0.7 threshold are unvalidated heuristics, not measurements of recovery.
-Strength rankings use neutral `Highest change` / `Lowest change` labels, even
-when every exercise improves or every exercise declines.
+Per-exercise workload retains light and unknown-effort work. Ordinary performance
+uses eligible working sets; planned deloads are excluded. Timed exercises use
+seconds without requiring RIR. Substitutes retain separate exercise identities.
+The former overall strength rankings and unvalidated fatigue-score screens are
+not exposed in the four-page navigation. Backend calculations remain available
+for compatibility; the interface does not present them as training effectiveness.
 
 ### Body-Part Analysis
 
@@ -179,40 +156,46 @@ when every exercise improves or every exercise declines.
 
 - Body weight, muscle mass, fat mass, water mass, and body fat percentage.
 - Measurement trends for chest, waist, abdomen, hips, thigh, calf, and biceps.
-- Body proportion ratios such as chest-to-waist and thigh-to-waist.
-- Recomposition quality based on weight and lean-mass change.
+- One selected measurement with source dates and an observed change.
+- First observations and measurement-only dates remain visible; direction alone
+  is not labelled improvement or deterioration.
 
 ### Data Import
 
-- TXT workout import from sidebar notes.
+- TXT workout import in History, opened by Add workout.
 - Flexible parsing for common set, RIR, and time-range formats.
 - Exercise matching for imported exercise names.
 - Option to add missing exercises with inferred muscle targets.
 
 ## App Sections
 
-- `Main Dashboard` - high-level training summary and an interactive workout calendar.
-  Days with recorded workouts are marked with a dot. Select a day to see all its
-  sessions, exercises, and sets. The calendar follows the sidebar month filter;
-  with `All time`, use the history month selector to browse between workouts.
-- `Exercises` - exercise-specific performance and trend analysis.
-- `Training Plan` - build weekly routines from catalog exercises, set working
-  sets and repetition/time ranges, and save successive versions with history.
-- `Body Parts` - muscle-group volume distribution and heatmap.
-- `Analytics` - progress and fatigue analysis.
-- `Body Metrics` - body composition and measurement trends.
+- **Overview** ? one conclusion, at most three annotations and the only
+  next-workout recommendation. Uses recent actual dates, independently of filters.
+- **Analysis** ? choose Exercise progress, Plan consistency, Muscle distribution
+  or Body measurements. Only the selected question is rendered. Choose the month
+  here; source details stay collapsed until needed. Unplanned exercises remain
+  available via All recorded exercises.
+- **Plan** ? weekly summary, block settings and versioned routine. Edit one
+  workout and one exercise at a time. Draft values survive switching items/pages.
+- **History** ? calendar, recorded sets, explicit plan assignments, session-specific
+  replacements and optional set corrections. Add workout opens TXT import here;
+  the sidebar button is a shortcut. Add body measurement opens the measurement
+  forms here, including when no measurements exist yet.
+
+One active plan is shared between these tasks. Overview and Plan have no history
+month selector. Analysis and History retain their own date selections.
 
 ## Training Plan editor
 
-Select `Training Plan` in the sidebar, then choose `Create a new plan` or an
-existing plan. Plans are independent of the sidebar history month filter.
+Open **Plan**, choose the active plan, or switch on **Create a new plan**.
+Historical periods do not change the routine or block settings.
 
 Saved plans open as weekly reference cards, with exercises available under
 `Reference exercises`. Switch on `Edit as a new version` to change a saved plan.
 
 1. Enter the plan name and effective date.
 2. Add named workouts and choose their weekdays. Select one `Workout to edit`.
-3. Add exercise cards from the catalog. Set the number of sets, minimum/maximum,
+3. Add exercises from the catalog and select one **Exercise to edit**. Set its sets, minimum/maximum,
    and measurement unit. For example, 3 sets with 6–10 reps.
 4. Use the arrow buttons to reorder exercises. Target RIR and the available weight
    step are in the collapsed `Progression & RIR` section of each exercise card.
@@ -222,7 +205,7 @@ Saved plans open as weekly reference cards, with exercises available under
 The plan editor requires migration 001 described below. Calendar assignments
 require migration 002; execution analysis and confirmed replacements require
 migration 003. Progression and deload recommendations are shown in
-`Main Dashboard -> Next workout` and are also available through
+`Overview -> Next workout` and are also available through
 the backend API.
 Native tables and inputs use the shared dark/teal theme in `.streamlit/config.toml`.
 
@@ -342,13 +325,13 @@ length starts a separate recommendation history. A moved planned deload remains
 deload; a normal slot actually performed during deload is also excluded from normal
 baselines and confirmations. Results after `as_of` never supply evidence.
 
-In **Analytics -> Plan execution**, resistance-exercise deload dates use reduced
+In **Analysis → Plan consistency / Exercise progress**, resistance-exercise deload dates use reduced
 set counts and repetition/RIR targets for coverage and range checks. Their
 comparisons are labelled deload and have no progress/regression delta; the next
 normal execution compares against the previous normal execution. Amber diamonds
 identify deload logs on the exercise chart, whose target band follows each date.
-Raw history, saved plan versions, and the descriptive Overall strength/Fatigue
-metrics are unchanged. Those descriptive metrics still include logged deload work.
+Raw history and saved plan versions are unchanged. Descriptive workload retains
+logged deload work; the retired strength rankings and fatigue score are not shown.
 The Next workout card presents these derived targets separately from historical
 analysis, as described below.
 
@@ -362,7 +345,7 @@ policies are currently backend options and are not persisted as plan settings.
 
 ### Next workout card (step 4)
 
-Open **Main Dashboard**, choose the active plan, and read **Next workout**
+Open **Overview**, choose the active plan, and read **Next workout**
 beside the recent observations. It defaults to the earliest
 unlinked planned workout from today onwards. `Upcoming workout` lets you preview
 other dates in the next four weeks; a future plan starts that window at its first
@@ -386,8 +369,8 @@ invented. Unsupported deload prescriptions are labelled `Manual target`.
 
 `Why these targets?` contains the full engine explanation, evidence session
 IDs/dates, and the default progression/deload rules. Historical source sessions
-remain in the dashboard's collapsed calendar section. Historical plan charts/KPIs
-are in Analytics, where the recommendation is no longer repeated. An unconfigured or not-yet-started block gets one
+remain in History. Historical exercise comparisons and plan consistency are
+separate questions in Analysis; neither repeats the upcoming recommendation. An unconfigured or not-yet-started block gets one
 setup message rather than repeated empty recommendations for every exercise.
 
 If an alternative was previously approved and logged in the same workout context,
@@ -404,10 +387,9 @@ the historical plan overview; the card never writes derived targets to logs.
 
 ## Planned workouts in the calendar
 
-In `Main Dashboard`, expand **Calendar & recorded sessions**. The calendar uses
-the same active plan as the overview; switch off **Show planned workouts** to
-view workout history alone. With the sidebar set to
-`All time`, the calendar also lets you browse future months. Each date uses the
+Open **History**. The calendar uses the same active plan as Overview; switch off
+**Show planned workouts** to view recorded history alone. Its own month selector
+lets you browse past and future dates. Each date uses the
 version effective on that date, so old workouts retain their original targets.
 
 - A bottom dot marks the actual day of recorded training.
@@ -429,17 +411,12 @@ than materializing an unlimited recurring schedule in the database.
 
 ## Plan execution and exercise replacements
 
-`Analytics` has separate tabs for Plan execution, Overall strength and Fatigue.
-Plan execution replaces Plateau Zone Analysis.
-Select a plan; the sidebar month filter sets the scheduled date range. Actual
-sessions linked from other dates/months are still loaded in full.
-
-The overview shows three percentages: workouts with linked logs, planned sets
-logged, and logged sets within the target range. The last indicator uses recorded
-sets as its denominator, rather than penalizing absent logs twice. A weekly
-stacked chart distinguishes full, partial, unmatched and unlinked workouts.
-Decision annotations and next-workout targets live in Main Dashboard; they are
-not repeated in this historical drill-down.
+Open **Analysis ? Plan consistency** and choose the active plan and analysis
+period. The selected month refers to scheduled dates; sessions linked from other
+dates/months are loaded in full. One short annotation reports linked workouts,
+set coverage and logged sets within range. The weekly chart distinguishes full,
+partial, unmatched and unlinked workouts. These are recorded facts, not proof of
+training effectiveness. Exercise progress is a separate analytical question.
 
 Summary ratios include only scheduled dates before today. Today's open workouts
 and future slots neither lower nor inflate them. A moved workout counts as
@@ -452,8 +429,8 @@ the planned count per position. Coverage alone does not indicate success against
 the repetition/time range or RIR; these are checked separately below. Technique
 and muscle growth are not assessed.
 
-In Analytics, expand `Exercise replacements & data corrections`, choose the linked
-workout and planned exercise, then explicitly confirm the actual exercise. For
+In **History**, select the planned day with a linked session and expand
+**Confirm exercise replacements**. Choose the planned and actual exercises. For
 example, Machine Chest Press can cover the planned Barbell Bench Press position.
 This approval applies to that session only; the plan and actual exercise identity
 remain unchanged. Their strength histories are never combined.
@@ -468,8 +445,8 @@ also removes its approvals, while unlinking preserves the workout log.
 
 ## Exercise target checks and previous performance
 
-Exercise analysis lives only in Analytics. Select one workout/exercise context
-under `Exercise trends` to see its latest observation, range/RIR result and chart.
+Open **Analysis ? Exercise progress ? Plan targets**. Select one workout/exercise
+context under `Exercise trends` to see its latest observation, range/RIR result and chart.
 Mean repetitions/time and mean load are shown separately. The shaded target band
 applies to the mean; the hover shows the number of individual sets within range,
 so the mean alone should not be read as proof that all sets met the target.
@@ -498,7 +475,7 @@ performance uses duration without requiring RIR.
 
 ## Decision annotations
 
-In **Main Dashboard → What changed · what to do**, up to three
+In **Overview → What changed · what to do**, up to three
 annotations show an observation, per-set evidence and a next action. The pure
 `compute_training_insights` engine prioritizes less-than-planned reserve, deload,
 increased output, lower output, changed effort, evidence gaps, changed load and
@@ -508,7 +485,7 @@ display policy, not a training-effectiveness score.
 Overview uses the last 28 **actual** days, independently of the history month.
 This includes workouts performed early or moved from older planned dates.
 Unlinked elapsed slots in that window are counted by their scheduled date.
-Historical Analytics continues to use the selected scheduled month.
+Plan analysis continues to use the selected scheduled month.
 Actual dates and session order choose the latest linked execution in each context; earlier history remains
 available. Two complete ordinary executions on different days, at most 21 days
 apart, support a paired observation. Changed target prescriptions, substitutes
@@ -534,7 +511,7 @@ and evidence. No data is rewritten and no schema migration is required.
 
 ## Current training overview
 
-Main Dashboard opens with a single conclusion based on the current block phase,
+Overview opens with a single conclusion based on the current block phase,
 recent evidence and the actual selected workout's target availability. It does
 not estimate physiological effectiveness. Below, the left column contains at
 most three annotations; the right contains the only full next-workout preview.
@@ -542,10 +519,9 @@ The layout stacks below 920 px. Exact next-target numbers live in the workout
 card; annotations point there instead of repeating the prescription.
 
 The former five global KPI cards and two session charts are removed from the
-landing page. Calendar, assignments, session logs and optional set corrections
-remain reachable under **Calendar & recorded sessions**, until the separately
-approved History navigation step. The active plan persists between Overview
-and Analytics, with a safe fallback if that plan is no longer available.
+landing page. Calendar, assignments, replacements, imports, session logs and
+optional corrections now live in History. The active plan persists across all
+four pages, with a safe fallback if that plan is no longer available.
 
 The layout redesign continues in separately approved steps documented in
 [analytics-redesign-plan.md](docs/analytics-redesign-plan.md).
@@ -574,11 +550,11 @@ These thresholds are application policy, not a diagnosis of a set's training
 value. Derived results carry their kind, source and reason separately from the
 original `is_warmup` value.
 
-Migration 004 stores optional exceptions only. In the dashboard's recorded-session
+Migration 004 stores optional exceptions only. In History's recorded-session
 details, open `Set interpretation · optional correction` and switch on `Correct a
 set` only when needed. The editor shows the derived interpretation and its source.
 `Auto` removes an explicit correction; `Working` and `Warm-up` save exceptions.
-The former mandatory labelling control is removed from Analytics/Fatigue.
+The former mandatory labelling control is removed from the analytical flow.
 Calendar log totals still preserve recorded sets; explicit warm-ups carry a `WU`
 badge. Training-visit frequency still counts recorded sessions. Source data are
 cached for up to five minutes; imports and corrections invalidate the cache.
@@ -690,11 +666,10 @@ streamlit_app.py
   -> models/             # immutable domain models
 ```
 
-Core rule: the main metric formulas live outside the UI. Data is loaded from the
-database, mapped into `MetricsInput`, processed by
-`metrics.metrics_engine.compute_all_metrics`, and then rendered by the UI. Views
-may still perform presentation-level reshaping, filtering, or aggregation needed
-for a specific chart or table.
+Core rule: decision formulas live outside the UI. Database rows become
+`MetricsInput` and immutable plan snapshots. Each view calls the pure calculator
+needed for its selected task; the general metrics registry remains available
+for backend consumers. Views may reshape or aggregate prepared values for a chart.
 
 ## Data Model
 
@@ -960,35 +935,32 @@ in [release-validation.md](docs/release-validation.md).
 
 ## Screenshots
 
-### Sidebar
+Captured 5 November 2026 using the pinned Streamlit version and configured demo
+data. Browser verification is recorded in [release-validation.md](docs/release-validation.md).
 
-![Sidebar navigation and filters](screenshots/SideBar.png)
+### Overview
 
-### Main Dashboard
+![Current conclusion, observations and next workout](screenshots/Overview.png)
 
-![Main Dashboard overview](screenshots/Main_Dashboard_1.png)
-![Main Dashboard session history](screenshots/Main_Dashboard_2.png)
+### Analysis
 
-### Exercises
+![Exercise progress](screenshots/Analysis_Exercise.png)
+![Plan consistency](screenshots/Analysis_Consistency.png)
+![Muscle set allocation](screenshots/Analysis_Muscles.png)
+![One body measurement](screenshots/Analysis_Body.png)
 
-![Exercises summary](screenshots/Exercises_1.png)
-![Exercise details](screenshots/Exercises_2.png)
+### Plan
 
-### Body Parts
+![Weekly plan summary](screenshots/Plan.png)
+![One exercise edited at a time](screenshots/Plan_Editor.png)
 
-![Body parts overview](screenshots/Body_Parts_1.png)
-![Body parts heatmap](screenshots/Body_Parts_2.png)
-![Body parts details](screenshots/Body_Parts_3.png)
+### History
 
-### Analytics
+![Calendar, assignments and recorded sessions](screenshots/History.png)
+![On-demand TXT import](screenshots/History_Import.png)
 
-![Analytics overview](screenshots/Analytics_1.png)
-![Fatigue analytics](screenshots/Analytics_2.png)
-![Progress analytics](screenshots/Analytics_3.png)
+### Mobile
 
-### Body Metrics
-
-![Body metrics snapshot](screenshots/Body_Metrics_1.png)
-![Body composition trends](screenshots/Body_Metrics_2.png)
-![Body measurement trends](screenshots/Body_Metrics_3.png)
-![Body proportions](screenshots/Body_Metrics_4.png)
+![Stacked training overview](screenshots/Overview_Mobile.png)
+![Compact exercise editor](screenshots/Plan_Editor_Mobile.png)
+![Workout calendar and session logs](screenshots/History_Mobile.png)

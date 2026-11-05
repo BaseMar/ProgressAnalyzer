@@ -193,15 +193,15 @@ from data_manager import DataManager
 from ui.plan_adherence_view import PlanAdherenceView
 manager = object.__new__(DataManager)
 manager.engine = st.session_state["test_engine"]
-PlanAdherenceView(manager=manager, exercise_names={1: "Bench Press"}, selected_month="2024-05").render()
+PlanAdherenceView(manager=manager, exercise_names={1: "Bench Press"}, selected_month="2024-05").render(mode="exercise")
 ''', default_timeout=30)
     app.session_state["test_engine"] = engine
     app.session_state["adherence_plan"] = plan.plan_id
     app.run()
     assert not app.exception
     assert not app.error
-    assert len(app.metric) == 3
-    assert len(app.get("plotly_chart")) == 2
+    assert not app.metric
+    assert len(app.get("plotly_chart")) == 1
     tables = [table.value for table in app.dataframe]
     comparison_table = next(table for table in tables if "Previous" in table.columns)
     assert "8 reps @ 60 kg" in comparison_table.iloc[0]["Previous"]

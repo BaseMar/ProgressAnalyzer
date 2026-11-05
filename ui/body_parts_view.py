@@ -179,9 +179,10 @@ class BodyPartsView:
                     dates.append(pd.to_datetime(date).normalize())
         return dates
 
-    def render(self) -> None:
+    def render(self, *, focused=False) -> None:
         """Render the complete body parts view."""
-        page_title("Body Parts", "Training Distribution")
+        if not focused:
+            page_title("Body Parts", "Training Distribution")
 
         body_df = self._build_bodypart_df()
 
@@ -189,6 +190,16 @@ class BodyPartsView:
             st.info("No body part data available.")
             return
 
+        if focused:
+            measure = st.radio("Distribution view", ["Muscle map", "Set allocation"], horizontal=True, key="analysis_muscle_view")
+            st.caption("Muscle exposure is an allocation estimate: sets are weighted by each exercise's saved muscle targets. This does not measure muscle growth or physiological fatigue.")
+            if measure == "Muscle map":
+                self._render_heatmap(body_df)
+            else:
+                st.plotly_chart(_bar_fig(body_df, "Total_Sets", "Allocated set equivalents"), width="stretch", key="analysis_muscle_sets")
+            with st.expander("Allocation details"):
+                self._render_table(body_df)
+            return
         self._render_kpis(body_df)
         self._render_heatmap(body_df)
         self._render_charts(body_df)

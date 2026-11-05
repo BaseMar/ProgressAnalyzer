@@ -1,36 +1,8 @@
-"""
-Workout Progress Analyzer
+"""Load source data and route to Overview, Analysis, Plan or History.
 
-A Streamlit-based analytics dashboard for monitoring strength training progress,
-body composition changes, exercise performance, and training consistency.
-
-Architecture:
-  The application follows clean architecture with clear layer separation:
-  
-  1. Data Layer (data_manager.py, db/)
-     - Database queries and persistence
-     - Returns Pandas DataFrames
-  
-  2. Metrics Layer (metrics/)
-     - Pure functions that compute KPIs from raw data
-     - Modules: session_metrics, exercise_metrics, progress_metrics,
-               fatigue_metrics, body_metrics
-     - All calculations are stateless and testable
-  
-  3. Presentation Layer (ui/)
-     - Streamlit view classes
-     - Presentation-only, no business logic
-     - Receive pre-computed metrics dictionaries
-     - Handle styling and layout
-  
-DataFlow:
-  Load Data → Compute Metrics → Render Views (one-way, no feedback loops)
-
-Key Design Principles:
-  - Views don't compute anything; all metrics pre-computed
-  - Metrics are pure functions with no Streamlit dependencies
-  - Type safety: structured data types throughout (MetricsInput, etc)
-  - Single responsibility: each module has one clear concern
+Database services own persistence, pure metrics modules own decision rules,
+and views prepare the selected analytical question for display. Historical
+filters stay local; they never change the upcoming training prescription.
 """
 
 from pathlib import Path
@@ -39,18 +11,16 @@ import pandas as pd
 import streamlit as st
 
 from data_loader import load_data
+from data_manager import DataManager
 from metrics.input import MetricsInput
-
-from metrics.metrics_engine import compute_all_metrics
+from metrics.measurement_timeline import measurement_timeline
 
 from ui.sidebar_view import SidebarView
-from ui.dashboard_view import DashboardView
-from ui.exercise_view import ExerciseView
-from ui.body_parts_view import BodyPartsView
-from ui.analytics_view import AnalyticsView
-from ui.body_metrics_view import BodyMetricsView
 from ui.training_plan_view import TrainingPlanView
-from ui.utils.data_filter import filter_data_by_month
+from ui.overview_view import OverviewView
+from ui.analysis_view import AnalysisView
+from ui.history_view import HistoryView
+from ui.utils.ui_helpers import page_title
 
 
 @st.cache_data(ttl=300, show_spinner="Loading workout data…")
@@ -76,38 +46,8 @@ def _load_global_styles() -> None:
     else:
         st.error(f"CSS NOT FOUND: {css_path}")
 
-def _compute_metrics(input_data: MetricsInput) -> dict:
-    """Compute all domain metrics from filtered input data.
-    
-    Args:
-        input_data: MetricsInput with filtered session/exercise/body data
-    
-    Returns:
-        Dictionary containing all computed metrics by domain:
-        - sessions: Session-level metrics
-        - exercises: Exercise-level metrics  
-        - progress: Strength progress metrics
-        - fatigue: Fatigue and recovery metrics
-        - body: Body composition and measurement metrics
-    """
-    return compute_all_metrics(input_data)
-
 def main() -> None:
-    """
-    Application entry point orchestrating the complete data and view pipeline.
-
-    Execution order on every Streamlit widget interaction or rerun:
-      1. Load cached data            — database is queried once per TTL (300s)
-      2. Render sidebar              — month filter and navigation controls
-      3. Filter application data     — slice to selected month
-      4. Compute all metrics         — process filtered data through metrics layer
-      5. Render selected view        — display pre-computed metrics
-
-    Architecture:
-    - Data flows one direction: database → metrics engine → views
-    - Views are stateless and presentation-only
-    - All logic is in the metrics layer (metrics/*.py)
-    """
+    """Load source data, then render one task; historical filters belong to Analysis."""
     _load_global_styles()
 
     try:
@@ -117,29 +57,17 @@ def main() -> None:
         st.stop()
 
     sidebar = SidebarView()
-    selected_month = sidebar.render_filters(sets_dataframe)
-
-    filtered_input, filtered_sets_dataframe = filter_data_by_month(
-        raw_input_data, sets_dataframe, selected_month,
-    )
-
-    metrics = _compute_metrics(filtered_input)
-
     selected_page = sidebar.render_navigation()
-
-    views = {
-        "Main Dashboard": DashboardView(metrics, filtered_sets_dataframe, selected_month,
-            exercise_names={exercise.exercise_id: exercise.name for exercise in raw_input_data.exercises}),
-        "Training Plan": TrainingPlanView(raw_input_data.exercises),
-        "Exercises": ExerciseView(metrics["exercises"], filtered_sets_dataframe),
-        "Body Parts": BodyPartsView(metrics["exercises"], selected_month),
-        "Analytics": AnalyticsView(metrics, selected_month=selected_month,
-            exercise_names={exercise.exercise_id: exercise.name for exercise in raw_input_data.exercises}),
-        "Body Metrics": BodyMetricsView(metrics["body"]),
-    }
-
-    views[selected_page].render()
-    sidebar.render_upload()
+    names = {exercise.exercise_id: exercise.name for exercise in raw_input_data.exercises}
+    if selected_page == "Overview":
+        page_title("Overview", "Training Overview")
+        OverviewView(DataManager(), names).render()
+    elif selected_page == "Analysis":
+        AnalysisView(raw_input_data, sets_dataframe, exercise_names=names).render()
+    elif selected_page == "Plan":
+        TrainingPlanView(raw_input_data.exercises).render()
+    else:
+        HistoryView({"body": {"timeline": measurement_timeline(raw_input_data)}}, sets_dataframe, exercise_names=names).render()
 
     st.markdown('<div class="app-footer">All data shown are my personal workout and body measurements, used solely for the purposes of this project.</div>', unsafe_allow_html=True,)
 

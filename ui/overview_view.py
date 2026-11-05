@@ -24,7 +24,7 @@ class OverviewView:
         as_of = as_of or date.today()
         try:
             if not self.dm.adherence_storage_ready():
-                st.info("Plan analysis needs setup. Your recorded sessions are available below.")
+                st.info("Plan analysis needs setup. Your recorded sessions are available in History.")
                 return None, ()
             plans = self.dm.load_training_plans()
             plan_id = select_active_plan(plans)
@@ -39,12 +39,12 @@ class OverviewView:
             history = self.dm.load_plan_performance(plan_id, start, as_of)
         except SQLAlchemyError:
             logger.exception("Unable to load current plan overview")
-            st.error("The plan overview could not be loaded. Your recorded sessions remain available below.")
+            st.error("The plan overview could not be loaded. Your recorded sessions remain available in History.")
             return None, ()
         settings = {version.version_id: version.draft.progression for version in versions}
         current = max((version for version in versions if version.draft.effective_from <= as_of),
                       key=lambda version: version.draft.effective_from, default=min(versions, key=lambda version: version.draft.effective_from))
-        st.caption(f"Current plan · recent 28 days ({start:%d %b}–{as_of:%d %b %Y}) · history filters apply to the calendar and Analytics.")
+        st.caption(f"Current plan · recent 28 days ({start:%d %b}–{as_of:%d %b %Y}) · historical periods are selected in Analysis.")
         headline = st.empty()
         with st.container(key="overview_decisions"):
             attention, next_workout = st.columns([1, 1], gap="large")

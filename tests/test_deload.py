@@ -291,7 +291,7 @@ from data_manager import DataManager
 from ui.plan_adherence_view import PlanAdherenceView
 manager = object.__new__(DataManager)
 manager.engine = st.session_state["test_engine"]
-PlanAdherenceView(manager=manager, exercise_names={1: "Bench Press"}, selected_month=st.session_state["test_month"]).render()
+PlanAdherenceView(manager=manager, exercise_names={1: "Bench Press"}, selected_month=st.session_state["test_month"]).render(mode="exercise")
 ''', default_timeout=30)
     app.session_state["test_engine"] = engine
     app.session_state["test_month"] = deload_day.strftime("%Y-%m")

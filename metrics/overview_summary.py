@@ -21,7 +21,7 @@ def overview_conclusion(report, preview, *, as_of, version):
         return OverviewConclusion("Your plan starts soon", f"First planned date: {version.draft.effective_from:%d %b %Y}. Review the upcoming workout below.")
     phase = training_block_phase(as_of, version.draft.progression)
     if phase.phase == "unconfigured":
-        return OverviewConclusion("Set up your training block", "Add the block start and length in Training Plan to enable next-workout targets.", "attention")
+        return OverviewConclusion("Set up your training block", "Add the block start and length in Plan to enable next-workout targets.", "attention")
     if phase.phase == "not_started":
         return OverviewConclusion("Your training block starts soon", f"Block starts on {version.draft.progression.block_start:%d %b %Y}. Keep the plan ready below.")
     if phase.phase == "deload":

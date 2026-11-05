@@ -48,7 +48,7 @@ def recommendation_note(item):
         "light_sets": "Light sets remain in history; log the planned ordinary work before increasing the target.",
         "low_effort_sets": "Sets above RIR 5 remain in history and do not establish an ordinary progression target.",
         "missing_rir": "Complete the missing RIR values in the source workout.",
-        "missing_target_rir": "Set target RIR in Training Plan → Progression & RIR.",
+        "missing_target_rir": "Set target RIR in Plan → Progression & RIR.",
         "history_gap": "The last comparable workout is too old. Establish a new baseline.",
         "invalid_values": "Review the source workout's load and RIR values.",
         "deload_load_not_supported": "Choose a deload load manually; this load or equipment step is unsupported.",
@@ -58,7 +58,7 @@ def recommendation_note(item):
     if item.reason_code in ("missing_weight_step", "invalid_weight_step"):
         if item.actual_exercise_id != item.planned_exercise_id:
             return "Enter a positive weight step for this alternative in the options above."
-        return "Set the available weight step in Training Plan → Progression & RIR."
+        return "Set the available weight step in Plan → Progression & RIR."
     return notes.get(item.reason_code, item.reason)
 
 
@@ -104,9 +104,9 @@ class NextWorkoutView:
             result = self.dm.load_workout_recommendations(plan_id, slot.day_id, slot.scheduled_date, as_of=as_of)
             version = next(version for version in versions if version.version_id == slot.version_id)
             self._heading(slot, result.block, version.draft.progression)
-            st.caption("Today and upcoming dates · independent of the history month filter · linked workouts are excluded.")
+            st.caption("Today and upcoming dates · independent of Analysis and History filters · linked workouts are excluded.")
             if result.block.phase == "unconfigured":
-                st.info("Configure a training block in Training Plan → Edit as a new version → Progression & training block to enable targets.")
+                st.info("Configure a training block in Plan → Edit as a new version → Progression & training block to enable targets.")
                 return
             if result.block.phase == "not_started":
                 st.info(f"The training block starts on {version.draft.progression.block_start:%d %b %Y}. Select a workout on or after that date.")

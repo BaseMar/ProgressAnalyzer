@@ -140,7 +140,7 @@ def test_active_plan_survives_widget_cleanup_and_removed_plan_selection(schedule
     assert app.selectbox(key='adherence_plan').value in (old.plan_id, saved.plan_id)
 
 
-def test_dashboard_keeps_calendar_reachable_behind_one_disclosure(schedule_data):
+def test_overview_contains_no_calendar_or_source_correction_widgets(schedule_data):
     engine, _, _, _ = schedule_data
     saved = seed(schedule_data)
     app = start_app(engine, saved, app_source='''
@@ -152,17 +152,9 @@ manager = object.__new__(DataManager)
 manager.engine = st.session_state['test_engine']
 DashboardView({}, pd.DataFrame(), '2026-05', data_manager=manager, exercise_names={1: 'Bench Press'}).render(as_of=st.session_state['as_of'])
 ''')
-    calendar = next(item for item in app.expander if item.label == 'Calendar & recorded sessions')
-    assert not calendar.proto.expanded
-    assert app.button(key='history_date_2026-05-25').label == '25'
-    assert 'planned' in app.button(key='history_date_2026-05-25').help
-    assert not any(item.label == 'Calendar plan' for item in app.selectbox)
+    assert not any(item.label == 'Calendar & recorded sessions' for item in app.expander)
+    assert not any(item.key.startswith('history_date_') for item in app.button)
     assert not app.metric and not app.dataframe and not app.get('plotly_chart')
-    app.toggle(key='calendar_plan_overlay').set_value(False).run()
-    assert not app.exception
-    assert 'planned' not in app.button(key='history_date_2026-05-25').help
-    assert app.session_state['active_plan_id'] == saved.plan_id
-    assert app.selectbox(key=f'next_workout_{saved.plan_id}').value.endswith(str(NEXT))
 
 
 def test_recent_window_uses_actual_dates_including_early_and_moved_workouts():

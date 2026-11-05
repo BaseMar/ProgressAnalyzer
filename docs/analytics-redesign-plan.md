@@ -1,7 +1,7 @@
 # Analytics-first layout proposal
 
-Status: approved, 5 November 2026. Steps 1–3 are implemented and verified.
-Steps 4–5 have not started. The user requires explicit approval
+Status: approved, 5 November 2026. Steps 1–4 are implemented and verified.
+Step 5 is approved and in progress. The user requires explicit approval
 before moving from each completed step to the next.
 
 ## Product goal
@@ -175,5 +175,38 @@ Step 2 was committed and pushed as `c21ad1f` before starting the approved step 3
   PostgreSQL tests pass; all six application views pass AppTest. No schema or
   progression-rule changes.
 
-Next action: obtain the user's approval before starting step 4 (Analysis, Plan
-and History layout). Steps 4–5 are not included in this delivery.
+Step 3 was committed and pushed as `7194ada` before starting the approved step 4.
+
+## Step 4 delivery
+
+- Four navigation entries: Overview, Analysis, Plan and History. The sidebar has
+  one Add workout shortcut and no global period filter or import form.
+- Analysis renders one question at a time: exercise progress, plan consistency,
+  muscle distribution or one body measurement. Plan comparisons and all recorded
+  exercises remain available. Historical periods are local and include body data.
+- Consistency is a factual annotation plus one weekly chart. Exercise comparisons
+  have their own view. Rankings/fatigue-score screens are not exposed in navigation.
+- History owns the calendar, session logs, assignments, replacement approval, set
+  exceptions, TXT import and body input. Input opens only on an explicit action.
+- Plan uses the shared active plan and edits one workout/exercise at a time.
+  Draft fields and selected items survive switching exercises, workouts and pages;
+  saves still create immutable versions and retain the block settings/history.
+- Recorded measurement timelines include first/measurement-only dates, without
+  requiring two composition records or inventing a trend. Database date forms
+  (strings, dates and timestamps) are normalized before filtering.
+- Verification: 311 unit/SQLite/Streamlit tests and five isolated PostgreSQL tests
+  pass. All four application views and analytical questions pass on current data.
+  Desktop/mobile browser checks cover navigation, a single exercise editor,
+  import ownership and the calendar. No migration or new progression rule.
+
+## Step 5 verification and publication
+
+- Approved by the user after step 4.
+- Full pinned-version verification passes: 316 tests, including five isolated
+  PostgreSQL cases. Production migration preview reports no pending migrations.
+- Desktop/mobile browser journeys cover all four pages, analytical questions,
+  import ownership and the single-exercise editor without writing demo records.
+- README and screenshots are refreshed for the four-page layout. Numerical
+  evidence and operational limits are in `docs/release-validation.md`.
+- Next: publish to `main`, verify that commit's GitHub Actions run, and repeat
+  the read-only journey on Streamlit Cloud before marking this step complete.

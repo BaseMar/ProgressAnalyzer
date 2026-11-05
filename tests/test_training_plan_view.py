@@ -93,7 +93,7 @@ def test_create_plan_persists_and_is_visible_after_a_fresh_page_load(plan_engine
     assert saved.draft.days[0].exercises[0].target_min == 6
     assert app.success
     fresh = start_app(plan_engine)
-    fresh.selectbox(key="training_plan_picker").select(saved.plan_id).run()
+    fresh.selectbox(key="adherence_plan").select(saved.plan_id).run()
     assert not fresh.exception
     assert not fresh.text_input
     fresh.toggle(key=f"plan_edit_{saved.version_id}").set_value(True).run()
