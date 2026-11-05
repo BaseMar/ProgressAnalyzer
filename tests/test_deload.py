@@ -206,6 +206,40 @@ def test_manual_block_reset_excludes_history_of_previous_settings():
     assert item.reason_code == "no_normal_baseline"
 
 
+@pytest.mark.parametrize("day, logged, code", [
+    (date(2026, 5, 18), date(2026, 5, 11), "one_more_rep"),
+    (DELOAD, date(2026, 6, 8), "scheduled_deload"),
+    (RETURN, date(2026, 6, 8), "resume_after_deload"),
+])
+def test_initial_block_setup_reuses_linked_unconfigured_version(day, logged, code):
+    entry = working(1, logged, (8, 8, 8))
+    snapshots = {1: None, 2: SETTINGS}
+    target = upcoming(day=day)
+    target = replace(target, slot=replace(target.slot, version_id=2))
+    item = recommend_workout(data(entry), target, as_of=day, settings=SETTINGS,
+                             settings_by_version=snapshots).exercises[0]
+    assert item.reason_code == code
+    assert item.evidence_session_ids == (1,)
+    assert item.goals
+    assert snapshots == {1: None, 2: SETTINGS}
+
+
+@pytest.mark.parametrize("scheduled, performed", [
+    (START - timedelta(days=7), START - timedelta(days=7)),
+    (START - timedelta(days=7), START),
+    (START, START - timedelta(days=1)),
+    (DELOAD, DELOAD),
+    (date(2026, 6, 8), DELOAD),
+    (DELOAD, RETURN),
+])
+def test_initial_block_setup_excludes_preblock_and_deload_history(scheduled, performed):
+    entry = working(1, scheduled, (8, 8, 8))
+    entry = (replace(entry[0], slot=replace(entry[0].slot, performed_on=performed)), entry[1], entry[2])
+    item = recommend(entry, day=RETURN, settings_by_version={1: None}).exercises[0]
+    assert item.reason_code == "no_normal_baseline"
+    assert not item.goals
+
+
 def test_unconfigured_not_started_linked_and_past_slots_are_explicit():
     assert recommend(settings=None).block.phase == "unconfigured"
     assert recommend(settings=ProgressionSettings(RETURN, 7)).exercises[0].reason_code == "before_block"
@@ -247,6 +281,34 @@ def test_future_performed_date_does_not_change_past_analytic_expectations():
     entry = (replace(entry[0], slot=replace(entry[0].slot, performed_on=DELOAD)), entry[1], entry[2])
     adjusted = deload_adjusted_input(data(entry), {1: SETTINGS}, as_of=date(2026, 6, 10))
     assert adjusted.workouts[0].targets[0].exercise.set_count == 3
+
+
+def test_readonly_service_uses_history_linked_before_initial_block_setup(schedule_data):
+    engine, _, source, sessions = schedule_data
+    next_day = date.today() + timedelta(days=(0 - date.today().weekday()) % 7)
+    logged = next_day - timedelta(days=7)
+    settings = ProgressionSettings(logged, 6)
+    original = save_training_plan(engine, replace(source.draft, effective_from=logged,
+        days=(replace(source.draft.days[0], exercises=(PLAN,)),), progression=None))
+    old_slot = load_scheduled_workouts(engine, original.plan_id, logged, logged)[0]
+    with engine.begin() as connection:
+        connection.execute(sessions.update().where(sessions.c.session_id == 2).values(session_date=logged))
+        connection.execute(actual_exercises.insert().values(workout_exercise_id=200, session_id=2, exercise_id=1))
+        connection.execute(actual_sets.insert(), [{"set_id": 20 + number, "workout_exercise_id": 200,
+            "set_number": number, "repetitions": 8, "weight": 60., "rir": 2} for number in (1, 2, 3)])
+        connection.execute(classifications.insert(), [{"set_id": 20 + number, "is_warmup": False}
+                                                    for number in (1, 2, 3)])
+    assign_scheduled_session(engine, old_slot.day_id, logged, 2)
+    configured = save_training_plan(engine, replace(original.draft, effective_from=date.today(), progression=settings),
+                                   plan_id=original.plan_id)
+    next_slot = load_scheduled_workouts(engine, original.plan_id, next_day, next_day)[0]
+    result = load_workout_recommendations(engine, original.plan_id, next_slot.day_id, next_day, as_of=date.today())
+    item = result.exercises[0]
+    assert next_slot.version_id == configured.version_id
+    assert item.reason_code == "one_more_rep"
+    assert item.evidence_session_ids == (2,)
+    assert [(goal.weight, goal.minimum) for goal in item.goals] == [(60., 9), (60., 8), (60., 8)]
+    assert load_training_plan_version(engine, original.version_id).draft.progression is None
 
 
 def test_readonly_service_uses_versioned_settings_and_cross_cycle_history(schedule_data):

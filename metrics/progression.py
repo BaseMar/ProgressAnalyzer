@@ -191,6 +191,11 @@ def recommend_workout(
     phase = training_block_phase(upcoming.slot.scheduled_date, settings)
     version_settings = settings_by_version if settings_by_version is not None else {
         item.slot.version_id: settings for item in data.workouts}
+    # Initial block setup may cover workouts linked to an earlier, unconfigured
+    # version. Interpret those dates with the selected block, without changing
+    # historical snapshots. Explicitly different settings still reset history.
+    version_settings = {version_id: configured if configured is not None else settings
+                        for version_id, configured in version_settings.items()}
     # A manual change of anchor/length starts a fresh history. Revisions with the
     # same block settings preserve it. Both scheduled and actual dates matter.
     ordinary = replace(data, workouts=tuple(item for item in data.workouts
