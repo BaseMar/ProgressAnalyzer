@@ -2,6 +2,8 @@
 from dataclasses import replace
 from datetime import date, timedelta
 
+import pytest
+
 from test_plan_adherence import TODAY, example
 from metrics.plan_adherence import compute_plan_adherence
 from metrics.plan_performance import compute_plan_performance
@@ -57,3 +59,24 @@ def test_exercise_chart_shows_previous_context_and_target_band():
     assert fig.layout.shapes[0].y1 == 10
     assert list(fig.data[0].y) == [8]
     assert list(fig.data[1].y) == [50]
+
+
+@pytest.mark.parametrize("point_count", [1, 4])
+@pytest.mark.parametrize("load", [0, 50])
+def test_target_band_covers_each_session_in_data_coordinates(point_count, load):
+    base = compute_plan_performance(example(), as_of=TODAY)[0]
+    rows = [dict(base, session_id=index + 1, previous=None,
+                 performed_on=base["performed_on"] + timedelta(days=index * 7),
+                 sets=tuple(dict(item, weight=load) for item in base["sets"]),
+                 target_min=6 + index, target_max=10 + index)
+            for index in range(point_count)]
+    fig = exercise_history_chart(rows)
+    bounds = fig.layout.xaxis.range
+    assert bounds == (-0.5, point_count - 0.5)
+    assert len(fig.layout.shapes) == point_count
+    for index, band in enumerate(fig.layout.shapes):
+        assert (band.xref, band.yref) == ("x", "y")
+        assert (band.x0, band.x1) == (index - 0.5, index + 0.5)
+        assert (band.y0, band.y1) == (rows[index]["target_min"], rows[index]["target_max"])
+    if load:
+        assert fig.layout.xaxis2.range == bounds

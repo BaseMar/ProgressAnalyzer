@@ -52,7 +52,8 @@ def exercise_history_chart(rows):
                             marker=markers, customdata=custom,
                             hovertemplate="%{customdata[0]} · session #%{customdata[3]} · %{customdata[5]}<br>Mean: %{y:.1f}<br>Logged sets: %{customdata[1]}/%{customdata[2]}<br>In range: %{customdata[4]}/%{customdata[2]}<extra></extra>"), row=1, col=1)
     for index, point in enumerate(points):
-        fig.add_hrect(x0=index - 0.5, x1=index + 0.5, y0=point["target_min"], y1=point["target_max"],
+        fig.add_shape(type="rect", x0=index - 0.5, x1=index + 0.5,
+                      y0=point["target_min"], y1=point["target_max"], xref="x", yref="y", layer="below",
                       fillcolor="rgba(0,173,181,0.12)", line_color=ACCENT,
                       line_width=1 if point["target_min"] == point["target_max"] else 0, row=1, col=1)
     fig.update_yaxes(title_text=f"Mean {field} / set", row=1, col=1)
@@ -66,6 +67,6 @@ def exercise_history_chart(rows):
         fig.update_yaxes(title_text="Mean total / recorded kg", row=2, col=1)
     fig.update_layout(**PLOTLY_LAYOUT)
     fig.update_layout(height=350 if with_load else 250, margin=dict(l=8, r=8, t=16, b=8))
-    fig.update_xaxes(tickmode="array", tickvals=x, ticktext=labels)
+    fig.update_xaxes(tickmode="array", tickvals=x, ticktext=labels, range=[-0.5, len(points) - 0.5])
     fig.update_xaxes(title_text="Recorded session", row=2 if with_load else 1, col=1)
     return fig
