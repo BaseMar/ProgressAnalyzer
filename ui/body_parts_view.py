@@ -10,9 +10,10 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from metrics.muscle_volume import allocation_components
 from ui.utils.body_heatmap import render_body_heatmap
-from ui.utils.body_parts_table import render_body_parts_table
-from ui.utils.ui_helpers import ACCENT, PLOTLY_LAYOUT, section_header
+from ui.utils.muscle_distribution_table import render_weekly_distribution
+from ui.utils.ui_helpers import ACCENT, PLOTLY_LAYOUT
 
 
 class BodyPartsView:
@@ -33,7 +34,7 @@ class BodyPartsView:
         """Aggregate exercise metrics per body part.
         
         Returns:
-            DataFrame with columns: Body Part, Total_Sets, Total_Volume, Sessions, Avg_1RM
+            DataFrame with columns: Body Part, Total_Sets, Total_Volume, Sessions
             Sorted by total volume descending.
         """
         per_exercise = self.exercises_metrics.get("per_exercise", {})
@@ -57,18 +58,16 @@ class BodyPartsView:
 
             for target in muscle_targets:
                 body_part = target.get("muscle_group")
-                if not body_part:
+                if not body_part or not str(body_part).strip():
                     continue
                 factor = float(target.get("set_factor", 1.0))
                 set_exposure = float(row.get("dynamic_sets", row["total_sets"]))
                 rows.append(
                     {
-                        "Body Part": str(body_part),
-                        "Total_Sets": set_exposure * factor,
+                        "Body Part": str(body_part).strip().title(),
+                        **allocation_components(set_exposure, target),
                         "Timed_Sets": float(row.get("timed_sets", 0)) * factor,
                         "Total_Volume": float(row["total_volume"]) * factor,
-                        "Avg_1RM": row.get("estimated_1rm_avg"),
-                        "Weight": max(set_exposure * factor, 0.0),
                     }
                 )
 
@@ -81,42 +80,26 @@ class BodyPartsView:
                 if date is not None:
                     for target in muscle_targets:
                         body_part = target.get("muscle_group")
-                        if body_part:
-                            session_dates_by_part[str(body_part)].add(pd.to_datetime(date).date())
+                        if body_part and str(body_part).strip():
+                            session_dates_by_part[str(body_part).strip().title()].add(pd.to_datetime(date).date())
 
         if not rows:
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)
-        weighted_1rm = (
-            df.dropna(subset=["Avg_1RM"])
-            .assign(Weighted_1RM=lambda x: x["Avg_1RM"] * x["Weight"])
-            .groupby("Body Part", dropna=True)
-            .agg(Weighted_1RM=("Weighted_1RM", "sum"), Weight=("Weight", "sum"))
-        )
-
         body_df = (
             df.groupby("Body Part", dropna=True)
             .agg(
                 Total_Sets=("Total_Sets", "sum"),
+                Direct_Sets=("Direct_Sets", "sum"),
+                Indirect_Sets=("Indirect_Sets", "sum"),
+                Stabilizer_Sets=("Stabilizer_Sets", "sum"),
+                Unclassified_Sets=("Unclassified_Sets", "sum"),
                 Timed_Sets=("Timed_Sets", "sum"),
                 Total_Volume=("Total_Volume", "sum"),
-                Avg_1RM=("Avg_1RM", "mean"),
             )
             .reset_index()
         )
-        if not weighted_1rm.empty:
-            body_df = body_df.drop(columns=["Avg_1RM"]).merge(
-                weighted_1rm.reset_index(),
-                on="Body Part",
-                how="left",
-            )
-            body_df["Avg_1RM"] = body_df.apply(
-                lambda row: row["Weighted_1RM"] / row["Weight"] if row["Weight"] else None,
-                axis=1,
-            )
-            body_df = body_df.drop(columns=["Weighted_1RM", "Weight"])
-
         body_df["Sessions"] = body_df["Body Part"].map(
             lambda part: len(session_dates_by_part.get(str(part), set()))
         )
@@ -165,34 +148,21 @@ class BodyPartsView:
         body_df = self._build_bodypart_df()
         if body_df.empty:
             st.info("No body part data available.")
-            body_df = pd.DataFrame(columns=["Body Part", "Total_Sets", "Total_Volume", "Sessions", "Avg_1RM"])
+            body_df = pd.DataFrame(columns=["Body Part", "Total_Sets", "Total_Volume", "Sessions"])
         measure = st.radio("Distribution view", ["Muscle map", "Set allocation"], horizontal=True, key="analysis_muscle_view")
-        st.caption("The weekly hypertrophy guide and plan targets count dynamic sets only. Timed work is reported separately.")
+        period_weeks, period_label = self._training_period()
+        summary = render_weekly_distribution(body_df, period_weeks, period_label,
+            weekly_targets=self.weekly_targets)
         if "Timed_Sets" in body_df and body_df["Timed_Sets"].gt(0).any():
-            with st.expander("Timed work · excluded from the weekly set guide"):
+            with st.expander("Timed sets"):
                 st.dataframe(body_df.loc[body_df["Timed_Sets"] > 0, ["Body Part", "Timed_Sets"]]
                     .rename(columns={"Timed_Sets": "Allocated timed sets"}), hide_index=True, width="stretch")
-        st.caption("Muscle exposure is an allocation estimate: sets are weighted by each exercise's saved muscle targets. This does not measure muscle growth or physiological fatigue.")
         if measure == "Muscle map":
-            self._render_heatmap(body_df)
+            render_body_heatmap(summary, period_weeks, period_label)
         elif body_df.empty:
             st.info("Log a workout to see set allocation.")
         else:
-            st.plotly_chart(_bar_fig(body_df, "Total_Sets", "Allocated set equivalents"), width="stretch", key="analysis_muscle_sets")
-        if not body_df.empty:
-            with st.expander("Allocation details"):
-                self._render_table(body_df)
-
-    def _render_heatmap(self, body_df: pd.DataFrame) -> None:
-        """Render training target heatmap for the active filter period."""
-        section_header("Training Heatmap")
-        period_weeks, period_label = self._training_period()
-        render_body_heatmap(body_df, period_weeks, period_label, weekly_targets=self.weekly_targets)
-
-    def _render_table(self, body_df: pd.DataFrame) -> None:
-        """Render detailed body part comparison table."""
-        section_header("Body Part Comparison")
-        render_body_parts_table(body_df)
+            st.plotly_chart(_bar_fig(body_df, "Total_Sets", "Sets in selected period"), width="stretch", key="analysis_muscle_sets")
 
 
 def _bar_fig(body_df: pd.DataFrame, y_field: str, y_title: str):
@@ -202,7 +172,6 @@ def _bar_fig(body_df: pd.DataFrame, y_field: str, y_title: str):
         x=y_field,
         y="Body Part",
         orientation="h",
-        custom_data=["Total_Sets", "Total_Volume", "Sessions", "Avg_1RM"],
     )
     fig.update_traces(
         marker_color=ACCENT,
@@ -210,10 +179,6 @@ def _bar_fig(body_df: pd.DataFrame, y_field: str, y_title: str):
         hovertemplate=(
             "<b>%{y}</b><br>"
             f"{y_title}: " + "%{x:,.0f}<br>"
-            "Sets: %{customdata[0]:,.1f}<br>"
-            "Volume: %{customdata[1]:,.0f} kg<br>"
-            "Sessions: %{customdata[2]:.0f}<br>"
-            "Avg 1RM: %{customdata[3]:,.1f} kg"
             "<extra></extra>"
         ),
     )

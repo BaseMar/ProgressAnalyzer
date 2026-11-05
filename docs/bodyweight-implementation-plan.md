@@ -97,6 +97,33 @@ python -m db.migrate --apply
   or duration-based hard-set equivalents are computed.
 - No new migration or live database modification is part of Step 3.
 
-Status: Step 1 committed and pushed as `c07e3a0`; Step 2 as `d3601a0`.
-Step 3 approved by the user for commit and push. Step 4 is authorized; its
-completion requires a new approval before commit and push.
+## Step 4 implementation
+
+- Following user review, the interface is deliberately compact: Body Part, Plan
+  target, Recorded / week and Plan %. The table remains visible in both Muscle
+  map and Set allocation. Timed sets have a separate compact disclosure.
+- Research links, population/counting notes, role breakdown explanations, formulas
+  and evidence limitations live in README. No research selector, evidence columns,
+  calculation disclosure or technical role warning is shown in the app.
+- Underlying weighted allocation, raw role accounting and current-plan target
+  switching are preserved. The unused research registry, old body-part comparison
+  renderer and muscle-level e1RM aggregation are removed.
+- Colors compare recorded weighted allocation with the active plan only, using
+  an application-defined +/-10% band. No plan gives neutral colors. Unplanned
+  recorded work is distinguished from no planned dynamic sets. No scientific
+  threshold grades a plan or infers personal limits.
+- Newly added load-analysis and input descriptions are shortened as well. Actual
+  missing-data messages and the date/value of a body-mass suggestion remain
+  visible. Calculation details stay in README.
+- No migration or live database write is part of this revision.
+
+Status: All four steps approved by the user for release. Steps 1-3 were committed
+and pushed as `c07e3a0`, `d3601a0` and `7fa2995`; Step 4 includes the compact UI
+requested during review.
+
+Migration `006_set_loads` was applied to the application database on 2026-11-05.
+No migrations remain pending. Historical set count and recorded-weight sum were
+verified unchanged. Read-only checks confirmed load storage, body-mass lookup
+and muscle-distribution loading. The rollout also fixed body-mass suggestions
+for the live database's legacy TEXT dates; DATE/TIMESTAMP values remain supported,
+and malformed or future measurements do not become suggestions.

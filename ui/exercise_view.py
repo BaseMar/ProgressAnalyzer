@@ -102,16 +102,11 @@ class ExerciseView:
             st.caption("No eligible performance sets yet. Workload includes descriptive logs.")
         else:
             st.plotly_chart(fig, width="stretch", key="recorded_load_history")
-        st.caption("Performance compares reps or seconds at the same known load, within this exercise and load convention. "
-                   "Body mass + additional weight − measured assistance gives estimated total supported load. "
-                   "Unknown body mass or assistance stays unknown; less assistance increases difficulty.")
-        if kind == "legacy":
-            st.caption("Original-log kg retain their historical meaning. Zero recorded kg does not establish absence of bodyweight loading.")
-        st.caption("Record different grips, active/passive hangs and unilateral variants as separate exercises. "
-                   "Timed work is shown in seconds and recorded sets; bodyweight work has no inferred e1RM. "
-                   "Workload includes light and unknown-effort sets; deloads are excluded from performance.")
+        if any(item["total_load_kg"] is None for item in points):
+            st.caption("Some load values are missing.")
         with st.expander("Source sets"):
-            st.dataframe(pd.DataFrame(points).rename(columns={"weight": "External kg", "body_mass_kg": "Body mass kg",
+            fields = ["date", "quantity", "unit", "weight", "body_mass_kg", "assistance_kg", "total_load_kg", "rir"]
+            st.dataframe(pd.DataFrame(points)[fields].rename(columns={"date": "Date", "weight": "External kg", "body_mass_kg": "Body mass kg",
                 "assistance_kg": "Assistance kg", "total_load_kg": "Total kg", "quantity": "Reps/seconds"}),
                 hide_index=True, width="stretch")
 

@@ -104,8 +104,6 @@ class PlanAdherenceView:
         if fig is not None:
             st.plotly_chart(fig, width="stretch", key="plan_exercise_history")
         st.caption("Shaded band = target range at each date; amber diamonds = deload. Means describe logged sets, including partial sessions. Read load alongside reps/time; substitutes keep separate histories.")
-        st.caption("Explicit bodyweight logs use body mass + additional weight − measured assistance. "
-                   "Unknown loads and convention changes are not graded; less assistance increases difficulty.")
         with st.expander("Previous vs current · set breakdown"):
             previous = latest["previous"]
             if previous:

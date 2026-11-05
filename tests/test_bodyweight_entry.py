@@ -59,6 +59,18 @@ def test_mass_suggestion_accepts_native_date_values(entry_data, monkeypatch):
     assert entry_data.suggest_body_mass(date(2026, 2, 15)) == {"date": date(2026, 2, 1), "weight": 80}
 
 
+def test_mass_suggestion_handles_legacy_text_and_malformed_dates(entry_data):
+    with entry_data.engine.begin() as connection:
+        connection.exec_driver_sql("DROP TABLE body_composition")
+        connection.exec_driver_sql("CREATE TABLE body_composition (measurement_date TEXT, weight FLOAT)")
+        connection.exec_driver_sql("""INSERT INTO body_composition VALUES
+            ('2026-02-01', 75), ('2026-02-12T08:00:00', 77),
+            ('2026-02-12T20:00:00', 79), ('2026-02-20', 90),
+            ('bad-date', 100), (NULL, 100)""")
+    assert entry_data.suggest_body_mass(date(2026, 2, 15)) == {"date": date(2026, 2, 12), "weight": 79}
+    assert entry_data.suggest_body_mass(date(2025, 12, 31)) is None
+
+
 def test_batch_and_manual_append_share_session_and_preserve_snapshots(entry_data):
     day = date(2026, 2, 15)
     entry_data.add_workout_session(day, "Imported", [

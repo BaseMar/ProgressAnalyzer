@@ -24,7 +24,6 @@ def render_load_inputs(manager, workout_date, *, key, current=None, default="leg
     kind = st.selectbox("Load type", options, index=options.index(default),
                         format_func=LOAD_LABELS.get, key=f"{key}_kind")
     if kind == "legacy":
-        st.caption("Keep the file's recorded kg values. Select Bodyweight only when kg means additional weight.")
         return kind, None, None
     if kind == "external":
         return kind, None, 0.0
@@ -35,16 +34,14 @@ def render_load_inputs(manager, workout_date, *, key, current=None, default="leg
     body = st.number_input("Body mass (kg)", min_value=0.1, value=initial, step=0.1,
                            key=f"{key}_{workout_date}_{kind}_body", format="%.1f")
     if suggestion:
-        st.caption(f"Latest measurement on/before this workout: {suggestion['weight']:g} kg "
-                   f"on {suggestion['date']:%Y-%m-%d}. You can edit the value saved with these sets.")
+        st.caption(f"Last measurement: {suggestion['weight']:g} kg · {suggestion['date']:%Y-%m-%d}")
     else:
-        st.caption("No earlier body-mass measurement. Enter a value or leave it unknown.")
+        st.caption("No earlier body-mass measurement.")
     assistance = 0.0
     if kind == "assisted_bodyweight":
         initial_assistance = current.assistance_kg if current is not None and current.load_type == kind else None
         assistance = st.number_input("Assistance (kg)", min_value=0.1, value=initial_assistance,
             step=0.5, key=f"{key}_assistance", help="Measured counterweight. Leave blank for unknown support, such as an unmeasured resistance band.")
-    st.caption("The kg column records additional weight. Body mass is saved separately for this workout.")
     return kind, body, assistance
 
 

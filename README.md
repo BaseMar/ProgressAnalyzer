@@ -193,25 +193,68 @@ example, primary 1.0 and secondary 0.5). Timed sets are reported separately and
 excluded from dynamic-set targets. Deload prescriptions remain in Overview; this table describes
 the base weekly routine.
 
-**Min = 10, Max = 20 weekly sets** is a general hypertrophy reference, based on
-[IUSCA (2021)](https://doi.org/10.47206/ijsc.v1i1.81) and
-[ACSM (2026)](https://doi.org/10.1249/MSS.0000000000003897). This practical range
-does not establish individual MEV/MRV or separate limits for every muscle.
-Broad catalog groups (such as Legs), saved fractional allocations and timed
-holds make the comparison approximate. Lower volumes can produce growth, and
-20 is not a recovery ceiling. The target is never clamped to this range;
-the table reports whether the plan is below, within or above it. Map colors
-compare logged weekly sets with the plan, using a ±10% band. Without a plan,
-colors use the reference range instead. Blank target means unavailable;
-zero means the muscle is not allocated any sets in the plan. Missing mappings
-or plan read errors leave targets blank instead of showing partial totals.
-Manual heatmap range settings are no longer read or written.
+The interface shows only **Body Part**, **Plan target**, **Recorded / week** and
+**Plan %**, alongside a muscle map or allocation chart. Time-based sets have a
+separate compact disclosure. Sources, research interpretation, role breakdowns
+and calculation explanations are documented here instead of appearing in the app.
+
+### Muscle distribution: calculation details and sources
+
+The target sums dynamic exercise sets in one reference week of the active plan,
+multiplied by each exercise's saved muscle factor. Recorded allocation uses the
+same factors. Primary mappings are direct work; secondary and stabilizer mappings
+are indirect work. Raw direct/indirect counts and weighted allocation are distinct:
+6 primary sets with factor 1 plus 8 secondary sets with factor 0.5 gives 10 weighted
+set equivalents. Stabilizers may use 0.25 or custom saved overrides. These factors
+are allocation assumptions, not measured physiological conversions. Unspecified
+roles are not guessed from factor size; their saved weighted contribution remains
+included. If detailed mappings are absent, the catalog body part is treated as
+primary with factor 1. A set can contribute to several muscle rows.
+
+Recorded / week divides the selected period's weighted allocation by its length
+in weeks, with a minimum one-week denominator. A selected past month uses all its
+calendar days; the current month ends today. All time spans the first through last
+recorded metric date, including intervening rest days/weeks. The month filter
+changes recorded allocation, while the target remains the plan effective today.
+Plan % is recorded weighted sets/week divided by that plan target, times 100.
+Targets are never clamped to a research range. Zero means no planned dynamic sets;
+a blank means unavailable. Missing plan mappings or plan read errors leave targets
+blank rather than showing partial totals.
+
+Map colors compare the recorded weighted allocation with the current plan only,
+using an application-defined +/-10% band. Without a plan, colors are neutral.
+Unplanned dynamic work is distinguished from no planned sets. These colors do
+not diagnose undertraining, overtraining or recovery capacity. Logged allocation
+excludes explicit/inferred warm-ups, but includes descriptive light, unknown-effort
+and deload work; it is not automatically a count of hard hypertrophy sets. Timed
+holds remain separate and are not converted into dynamic sets or 30-second set
+equivalents. Manual heatmap range settings are no longer read or written.
+
+Research provides context for programming, not personal Min/Max values:
+
+| Muscle/group | Research context | Limits of interpretation |
+| --- | --- | --- |
+| General guidance | [IUSCA (2021)](https://doi.org/10.47206/ijsc.v1i1.81) discusses roughly 10 weekly sets as a general starting prescription to optimize hypertrophy; [ACSM (2026)](https://doi.org/10.1249/MSS.0000000000003897) supports higher weekly volume for muscle growth. | Growth can occur below this amount. Protocols and counting methods vary; neither defines individual minimum effective or maximum recoverable volume. |
+| Biceps | [Baz-Valle et al. (2022)](https://doi.org/10.2478/hukin-2022-0017) compared 12-20 with more than 20 weekly sets in young trained men, without detecting an advantage for the higher category. | Single- and multi-joint sets were counted. This is not a prescription for 12-20 app-weighted equivalents, a minimum, a ceiling, or proof that the doses are equivalent. |
+| Triceps | The same review found benefits in some higher-volume protocols above 20 sets. | Compound work contributed to the totals. This is not a recommendation for more than 20 direct sets or a validated closed personal range. |
+| Chest | [Pinto et al. (2025)](https://doi.org/10.1519/JSC.0000000000005045) found similar growth with one and three pec-deck sets per session in a small trial in untrained men. | It does not establish the optimal weekly range for trained lifters. General guidance is not a chest-specific minimum. |
+| Legs, Back, Shoulders | These catalog labels pool muscles or regions with different exercise exposure. | A finding for quadriceps cannot be applied as a shared budget for all leg muscles; the same pooling limitation applies to back muscles and shoulder regions. |
+| Other groups | General guidance can inform an initial program. | The selected evidence does not establish precise separate limits for every catalog group. |
+
+[Pelland et al. (2026)](https://doi.org/10.1007/s40279-025-02344-w) found the
+fractional indirect-set model (0.5 credit for indirect work) best supported among
+the compared counting methods. It supports distinguishing direct and indirect
+work, without validating every custom factor or stabilization estimate in this
+app. Research references therefore do not color the map, grade the plan, or
+establish individualized recovery limits.
 
 History → Add workout supports **Import TXT** and **Enter exercise**. Manual
 entry records reps or seconds, per-set weight, RIR and set purpose. For explicit
 bodyweight logs, kg means additional weight; body mass and assistance are saved
 separately. The latest body-mass measurement on/before the workout date is offered
 as an editable suggestion. Missing body mass or unknown assistance remains unknown.
+Suggestions support legacy text dates as well as date/timestamp columns; invalid
+dates or weights are skipped without altering the recorded measurements.
 
 TXT import keeps its original kg convention by default. Open **Review body mass
 and load types** to choose an explicit convention and inspect the total load

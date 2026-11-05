@@ -4,7 +4,6 @@ import base64
 from io import BytesIO
 from html import escape
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -12,18 +11,16 @@ import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image, ImageDraw
 
-from metrics.muscle_volume import BODY_PART_ORDER, volume_ranges
 from ui.utils.ui_helpers import ACCENT, MUTED, SURFACE, TEXT, chart_label
 
 
 BODY_IMAGE_PATH = Path(__file__).resolve().parents[1] / "wzorzec" / "human_body.png"
 STATUS_META = {
     "under": {"label": "Below plan", "color": "#3B82F6"},
-    "minimum": {"label": "Below reference", "color": "#06B6D4"},
     "on_target": {"label": "On plan", "color": "#22C55E"},
-    "high": {"label": "Within reference", "color": "#F59E0B"},
-    "over": {"label": "Above plan", "color": "#EF4444"},
-    "above_reference": {"label": "Above reference", "color": "#F59E0B"},
+    "over": {"label": "Above plan", "color": "#F59E0B"},
+    "unplanned": {"label": "Unplanned dynamic work", "color": "#A0AAB8"},
+    "not_planned": {"label": "No dynamic sets planned", "color": MUTED},
     "no_range": {"label": "No plan target", "color": MUTED},
 }
 
@@ -134,106 +131,10 @@ EXCLUDED_OVERLAY_REGIONS = {
 }
 
 
-def render_body_heatmap(body_df: pd.DataFrame, period_weeks: float, period_label: str, *, weekly_targets=None) -> None:
-    """Show automatic reference ranges and current-plan weekly targets."""
-    chart_label("Weekly Volume Ranges")
-    parts = [*body_df["Body Part"].tolist(), *(weekly_targets or {})]
-    ordered_parts = _ordered_body_parts(parts)
-    ranges = volume_ranges(ordered_parts, weekly_targets)
-    rows = []
-    for part, values in ranges.items():
-        target = values["Target"]
-        reference = ("No plan" if target is None else "No dynamic sets" if target == 0 else
-                     "Below" if target < values["Min"] else "Above" if target > values["Max"] else "Within")
-        rows.append({"Body Part": part, **values, "Plan vs reference": reference})
-    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch", column_config={
-        "Min": st.column_config.NumberColumn("Min", help="General hypertrophy reference, not an individual minimum.", format="%.1f"),
-        "Target": st.column_config.NumberColumn("Target", help="Weekly sets from the active plan, weighted by saved muscle allocations. Zero means not planned; blank means unavailable.", format="%.1f"),
-        "Max": st.column_config.NumberColumn("Max", help="Practical upper reference, not a recovery or safety limit.", format="%.1f"),
-    })
-    with st.expander("How ranges and targets are calculated"):
-        st.markdown(
-            "Min–Max = **10–20 sets per week**, a general starting guide for hypertrophy. "
-            "[IUSCA (2021)](https://doi.org/10.47206/ijsc.v1i1.81) supports about 10 weekly sets "
-            "to optimize growth; [ACSM (2026)](https://doi.org/10.1249/MSS.0000000000003897) "
-            "describes diminishing returns around 18–20. Progress is possible below this range, "
-            "and 20 is not a maximum recoverable volume. These are not muscle-specific limits.\n\n"
-            "Target sums dynamic exercise slots in one reference week of the active plan. "
-            "Each set is weighted by its saved muscle allocation (for example, 1 for a primary "
-            "muscle and 0.5 for a secondary muscle). "
-            "[Pelland et al. (2026)](https://pubmed.ncbi.nlm.nih.gov/41343037/) supports fractional "
-            "counting of indirect sets; the saved exercise factors remain allocation estimates. "
-            "Broad groups such as Legs or Back pool several muscles, so their reference comparison "
-            "is approximate. Timed holds are reported separately and do not contribute to "
-            "these dynamic-set targets or the weekly hypertrophy reference.\n\n"
-            "Map colors compare recorded weekly sets with the plan (±10%). "
-            "Without a plan target, colors show only the general reference range. "
-            "They do not diagnose undertraining or overtraining."
-        )
-    heatmap_df = _build_heatmap_df(body_df, ordered_parts, ranges, period_weeks)
-    chart_label(f"Muscle Heatmap | {period_label}")
+def render_body_heatmap(heatmap_df: pd.DataFrame, period_weeks: float, period_label: str) -> None:
+    """Color only against the active plan's weighted weekly targets."""
+    chart_label("Muscle map")
     _render_heatmap_html(heatmap_df, period_weeks)
-
-
-def _ordered_body_parts(parts: Iterable[str]) -> list[str]:
-    seen = {str(part).strip().title() for part in parts if part}
-    return [*BODY_PART_ORDER, *sorted(seen.difference(BODY_PART_ORDER))]
-
-
-def _build_heatmap_df(
-    body_df: pd.DataFrame,
-    body_parts: list[str],
-    ranges: dict[str, dict[str, float | None]],
-    period_weeks: float,
-) -> pd.DataFrame:
-    source = body_df.copy()
-    source["Body Part"] = source["Body Part"].astype(str).str.title()
-    source = source.set_index("Body Part")
-
-    rows = []
-    safe_weeks = max(float(period_weeks), 1.0)
-
-    for body_part in body_parts:
-        trained_sets = float(source.loc[body_part, "Total_Sets"]) if body_part in source.index else 0.0
-        body_range = ranges.get(body_part, {})
-        minimum = float(body_range.get("Min", 0.0))
-        target = body_range.get("Target")
-        maximum = float(body_range.get("Max", 0.0))
-        sets_per_week = trained_sets / safe_weeks
-        target_pct = (sets_per_week / target * 100) if target is not None and target > 0 else None
-
-        rows.append(
-            {
-                "Body Part": body_part,
-                "Total Sets": trained_sets,
-                "Sets / Week": sets_per_week,
-                "Min": minimum,
-                "Target": target,
-                "Max": maximum,
-                "Target %": target_pct,
-                "Status": _status_from_range(sets_per_week, minimum, target, maximum),
-            }
-        )
-
-    return pd.DataFrame(rows)
-
-
-def _status_from_range(sets_per_week: float, minimum: float, target: float | None, maximum: float) -> str:
-    if target is not None:
-        if target == 0:
-            return "no_range"
-        if sets_per_week < target * 0.9:
-            return "under"
-        if sets_per_week > target * 1.1:
-            return "over"
-        return "on_target"
-    if minimum <= 0 and maximum <= 0:
-        return "no_range"
-    if sets_per_week < minimum:
-        return "minimum"
-    if sets_per_week > maximum:
-        return "above_reference"
-    return "high"
 
 
 def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
@@ -417,7 +318,7 @@ def _body_overlay_data_uri(
 
     for body_part, seeds in MUSCLE_GROUP_SEEDS.items():
         status = statuses.get(body_part, "no_range")
-        if status == "no_range":
+        if status in ("no_range", "not_planned"):
             continue
 
         color = _hex_to_rgb(STATUS_META[status]["color"])

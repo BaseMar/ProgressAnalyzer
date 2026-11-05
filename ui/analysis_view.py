@@ -60,10 +60,7 @@ class AnalysisView:
                     version = manager.load_effective_training_plan(plan_id, date.today())
                     if version is not None:
                         targets, missing = weekly_plan_sets(version.draft, self.input)
-                        st.caption(f"Target: {version.draft.name} · version {version.version_number} "
-                                   f"· effective from {version.draft.effective_from:%Y-%m-%d}. "
-                                   "One full reference week; the month filter applies to logged sets only. "
-                                   "Deload reductions are shown in Overview.")
+                        st.caption(f"Target: {version.draft.name}")
                         if missing:
                             targets = None
                             names = {item.exercise_id: item.name for item in self.input.exercises}
@@ -77,5 +74,5 @@ class AnalysisView:
                 st.info("Training plan storage needs setup before targets can be calculated.")
         except SQLAlchemyError:
             logger.exception("Unable to load muscle distribution plan")
-            st.warning("Plan targets could not be loaded. The reference range and recorded sets remain available.")
+            st.warning("Plan targets could not be loaded. Recorded sets remain available.")
         BodyPartsView(compute_exercise_metrics(filtered), month, weekly_targets=targets).render()

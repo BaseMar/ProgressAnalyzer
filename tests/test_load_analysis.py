@@ -228,6 +228,6 @@ ExerciseView(st.session_state["metrics"], pd.DataFrame()).render(focused=True)
     app.run()
     assert not app.exception and not app.error
     assert len(app.get("plotly_chart")) == 1
-    assert any("same known load" in item.value for item in app.caption)
+    assert not any("Body mass +" in item.value for item in app.caption)
     app.radio(key="recorded_exercise_series").set_value("Workload").run()
     assert not app.exception and len(app.get("plotly_chart")) == 1

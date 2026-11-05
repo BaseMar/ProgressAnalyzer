@@ -3,12 +3,11 @@ import pandas as pd
 from ui.utils.body_heatmap import (
     BODY_IMAGE_PATH,
     MUSCLE_GROUP_SEEDS,
-    _build_heatmap_df,
     _body_fill_mask,
     _excluded_overlay_mask,
     _mask_from_seeds,
-    _status_from_range,
 )
+from metrics.muscle_distribution import build_weekly_distribution, status_from_plan
 
 
 def test_excluded_overlay_mask_covers_hands_and_feet():
@@ -68,18 +67,19 @@ def test_heatmap_seeds_cover_front_thigh_and_upper_oblique_panels():
 
 
 def test_map_compares_plan_independently_of_reference():
-    assert _status_from_range(8.0, 10.0, 12.0, 20.0) == "under"
-    assert _status_from_range(12.5, 10.0, 12.0, 20.0) == "on_target"
-    assert _status_from_range(14.0, 10.0, 12.0, 20.0) == "over"
-    assert _status_from_range(6.0, 10.0, 6.0, 20.0) == "on_target"
-    assert _status_from_range(25.0, 10.0, 25.0, 20.0) == "on_target"
+    assert status_from_plan(8.0, 12.0) == "under"
+    assert status_from_plan(12.5, 12.0) == "on_target"
+    assert status_from_plan(14.0, 12.0) == "over"
+    assert status_from_plan(6.0, 6.0) == "on_target"
+    assert status_from_plan(25.0, 25.0) == "on_target"
 
 
-def test_missing_plan_uses_reference_but_zero_means_not_planned():
-    assert _status_from_range(8.0, 10.0, None, 20.0) == "minimum"
-    assert _status_from_range(12.0, 10.0, None, 20.0) == "high"
-    assert _status_from_range(25.0, 10.0, None, 20.0) == "above_reference"
-    assert _status_from_range(0.0, 10.0, 0.0, 20.0) == "no_range"
+def test_missing_plan_is_neutral_and_zero_means_not_planned():
+    assert status_from_plan(8.0, None) == "no_range"
+    assert status_from_plan(12.0, None) == "no_range"
+    assert status_from_plan(25.0, None) == "no_range"
+    assert status_from_plan(0.0, 0.0) == "not_planned"
+    assert status_from_plan(5.0, 0.0) == "unplanned"
 
 
 def test_build_heatmap_df_reports_target_percentage():
@@ -89,14 +89,9 @@ def test_build_heatmap_df_reports_target_percentage():
         ]
     )
 
-    result = _build_heatmap_df(
-        body_df,
-        ["Back"],
-        {"Back": {"Min": 10.0, "Target": 20.0, "Max": 20.0}},
-        period_weeks=3.0,
-    )
+    result = build_weekly_distribution(body_df, period_weeks=3.0, weekly_targets={"Back": 20.0})
 
-    row = result.iloc[0]
+    row = result.loc[result["Body Part"] == "Back"].iloc[0]
     assert row["Sets / Week"] == 7.0
     assert row["Target %"] == 35.0
     assert row["Status"] == "under"

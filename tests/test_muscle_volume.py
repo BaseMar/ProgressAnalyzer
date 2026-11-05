@@ -6,7 +6,8 @@ import pandas as pd
 from sqlalchemy.exc import SQLAlchemyError
 
 from db.training_plans import save_training_plan
-from metrics.muscle_volume import volume_ranges, weekly_plan_sets
+from metrics.muscle_volume import weekly_plan_sets
+from metrics.muscle_distribution import build_weekly_distribution
 from models.training_plan import PlannedExercise, TrainingDay, TrainingPlanDraft
 from ui.body_parts_view import BodyPartsView
 
@@ -32,12 +33,13 @@ def test_body_part_fallback_and_unknown_mapping_are_explicit(sample_input):
     assert missing == {999}
 
 
-def test_reference_does_not_clamp_plan_or_invent_target():
-    targets = volume_ranges(["Chest", "Back", "Calves"], {"Chest": 4.5, "Back": 30.0})
-    assert targets["Chest"] == {"Min": 10.0, "Target": 4.5, "Max": 20.0}
-    assert targets["Back"]["Target"] == 30.0
-    assert targets["Calves"]["Target"] == 0.0
-    assert volume_ranges(["Chest"])["Chest"]["Target"] is None
+def test_summary_does_not_clamp_plan_or_invent_target():
+    empty = pd.DataFrame(columns=["Body Part", "Total_Sets"])
+    table = build_weekly_distribution(empty, 1., {"Chest": 4.5, "Back": 30.0}).set_index("Body Part")
+    assert table.loc["Chest", "Target"] == 4.5
+    assert table.loc["Back", "Target"] == 30.0
+    assert table.loc["Calves", "Target"] == 0.0
+    assert build_weekly_distribution(empty, 1.)["Target"].isna().all()
 
 
 def test_timed_sets_are_separate_from_dynamic_distribution():
@@ -116,7 +118,7 @@ def test_no_plans_still_shows_reference_without_targets(schedule_data, sample_in
         connection.execute(plans.delete())
     app = open_muscle_distribution(schedule_data, sample_input, sets_dataframe)
     assert pd.isna(ranges_table(app).loc["Chest", "Target"])
-    assert ranges_table(app).loc["Chest", "Min"] == 10.0
+    assert ranges_table(app).loc["Chest", "Recorded / week"] > 0
 
 
 def test_plan_read_failure_keeps_reference_visible(schedule_data, sample_input, sets_dataframe, monkeypatch):

@@ -1,8 +1,9 @@
 """Explicit set-load corrections, saved atomically with the external weight."""
-from datetime import date, datetime, timedelta
+from datetime import date
 from math import isfinite
 
-from sqlalchemy import Column, DateTime, Float, Integer, MetaData, Table, inspect, select
+import pandas as pd
+from sqlalchemy import Column, DateTime, Float, Integer, MetaData, String, Table, cast, inspect, select
 
 from db.migrations.v006_set_loads import define_table
 from models.set_load import SetLoad
@@ -24,14 +25,23 @@ def suggest_body_mass(engine, on_date: date):
     with engine.connect() as connection:
         if not inspect(connection).has_table(measurements.name):
             return None
-        rows = connection.execute(select(measurements.c.measurement_date, measurements.c.weight)
-            .where(measurements.c.measurement_date < on_date + timedelta(days=1))
-            .order_by(measurements.c.measurement_date.desc()))
-        for measured_on, value in rows:
-            if value is not None and isfinite(value) and value > 0:
-                day = measured_on.date() if isinstance(measured_on, datetime) else measured_on
-                return {"date": day, "weight": float(value)}
-    return None
+        # Legacy installations store dates as TEXT; newer schemas use DATE or
+        # TIMESTAMP. Normalize this small measurement history without imposing
+        # a date operator on the physical column or changing historical records.
+        rows = connection.execute(select(cast(measurements.c.measurement_date, String), measurements.c.weight))
+        latest = None
+        for measured_on, raw_weight in rows:
+            try:
+                stamp = pd.Timestamp(measured_on)
+                weight = float(raw_weight)
+                if pd.isna(stamp) or not isfinite(weight) or weight <= 0 or stamp.date() > on_date:
+                    continue
+                stamp = stamp.tz_localize(None)
+            except (ValueError, TypeError, OverflowError):
+                continue
+            if latest is None or stamp > latest[0]:
+                latest = stamp, weight
+    return {"date": latest[0].date(), "weight": latest[1]} if latest is not None else None
 
 
 def insert_set_load(connection, set_id, value):
