@@ -21,6 +21,8 @@ from db.progression import load_workout_recommendations
 from db.set_classifications import classifications
 from db.training_plans import load_training_plan_version, save_training_plan
 from metrics.plan_performance import compute_plan_performance
+from metrics.training_insights import compute_training_insights
+from models.training_insights import WorkoutPreview
 from models.training_plan import PlannedExercise, ProgressionSettings, TrainingDay, TrainingPlanDraft
 
 pytestmark = pytest.mark.skipif(not os.getenv("TEST_POSTGRES_URL"), reason="Set TEST_POSTGRES_URL for isolated PostgreSQL integration tests")
@@ -121,10 +123,19 @@ def test_normal_goals_use_postgres_dates_labels_and_cross_month_history(postgres
     with postgres.connect() as connection:
         connection.execute(classifications.delete())
         before = connection.execute(select(actual_sets).order_by(actual_sets.c.set_id)).mappings().all()
-    item = recommend(postgres, saved, NEXT).exercises[0]
+    recommendation = recommend(postgres, saved, NEXT)
+    item = recommendation.exercises[0]
     assert item.action == action
     assert [(goal.weight, goal.minimum) for goal in item.goals] == [(expected_weight, expected_reps)] * 3
     assert item.evidence_dates[-1] == SECOND
+    history = load_plan_performance(postgres, saved.plan_id, FIRST, NEXT)
+    upcoming = next(workout for workout in history.workouts if workout.slot.scheduled_date == NEXT)
+    insights = compute_training_insights(history, as_of=NEXT, start=FIRST, end=NEXT,
+        settings_by_version={saved.version_id: saved.draft.progression}, preview=WorkoutPreview(upcoming, recommendation))
+    observed = insights.annotations[0]
+    assert observed.code == "same_output"
+    assert observed.recommendation == item
+    assert [source.session_id for source in observed.sources] == [1, 2]
     with postgres.connect() as connection:
         assert connection.execute(select(actual_sets).order_by(actual_sets.c.set_id)).mappings().all() == before
         assert connection.execute(select(classifications)).all() == []
@@ -151,6 +162,9 @@ def test_deload_return_and_analytical_coverage_on_postgres(postgres):
     assert (observed["training_phase"], observed["missing_sets"], observed["reps_delta"]) == ("deload", 0, None)
     from db.training_context import load_deload_exercise_ids
     assert load_deload_exercise_ids(postgres, as_of=RETURN) == frozenset({400})
+    insights = compute_training_insights(load_plan_performance(postgres, saved.plan_id, DELOAD, RETURN),
+        as_of=RETURN, start=DELOAD, end=RETURN, settings_by_version={saved.version_id: saved.draft.progression})
+    assert [item.code for item in insights.annotations] == ["deload"]
 
 
 def test_confirmed_substitute_keeps_own_load_step_and_never_edits_plan_on_postgres(postgres):
@@ -165,6 +179,10 @@ def test_confirmed_substitute_keeps_own_load_step_and_never_edits_plan_on_postgr
     actual = recommend(postgres, saved, NEXT, substitutions=choices, replacement_weight_steps={2: 5.}).exercises[0]
     assert actual.action == "increase_weight"
     assert [goal.weight for goal in actual.goals] == [65.] * 3
+    insights = compute_training_insights(load_plan_performance(postgres, saved.plan_id, FIRST, NEXT),
+        as_of=NEXT, start=FIRST, settings_by_version={saved.version_id: saved.draft.progression})
+    assert insights.annotations[0].exercise_id == 2
+    assert all(source.context[5] == 2 for source in insights.annotations[0].sources)
     assert load_training_plan_version(postgres, saved.version_id) == saved
     with postgres.connect() as connection:
         assert connection.execute(select(func.count()).select_from(actual_sets)).scalar_one() == 8

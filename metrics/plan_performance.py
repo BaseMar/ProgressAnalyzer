@@ -113,7 +113,7 @@ def compute_plan_performance(data: PlanAdherenceInput, *, as_of: date, start: da
             expected = effective[(slot.day_id, slot.scheduled_date)].targets[position - 1].exercise
             current = {
                 "context": context,
-                "day_id": slot.day_id, "plan_exercise_id": target.plan_exercise_id,
+                "day_id": slot.day_id, "version_id": slot.version_id, "plan_exercise_id": target.plan_exercise_id,
                 "scheduled_date": slot.scheduled_date, "performed_on": slot.performed_on,
                 "session_id": slot.session_id, "workout": slot.name,
                 "planned_exercise_id": planned.exercise_id, "actual_exercise_id": actual_id,

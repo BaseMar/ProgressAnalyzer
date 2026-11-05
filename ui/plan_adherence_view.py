@@ -10,10 +10,12 @@ from data_manager import DataManager
 from metrics.plan_adherence import compatible_set, compute_plan_adherence
 from metrics.plan_performance import compute_plan_performance
 from metrics.plan_summary import summarize_plan
+from metrics.training_insights import compute_training_insights
 from ui.utils.plan_charts import exercise_history_chart, weekly_execution_chart
 from ui.utils.ui_helpers import chart_label, section_header
 from metrics.training_block import deload_adjusted_input
 from ui.next_workout_view import NextWorkoutView
+from ui.training_insights_view import render_training_insights
 
 logger = logging.getLogger(__name__)
 
@@ -52,13 +54,16 @@ class PlanAdherenceView:
             st.error("Plan analysis could not be loaded. Please try again.")
             return
         block_settings = {version.version_id: version.draft.progression for version in versions}
-        NextWorkoutView(self.dm, self.names).render(plan_id, versions, history=history)
+        preview = NextWorkoutView(self.dm, self.names).render(plan_id, versions, history=history)
         section_header("Recorded plan execution")
         report = compute_plan_adherence(deload_adjusted_input(data, block_settings, as_of=date.today()),
                                         as_of=date.today(), settings_by_version=block_settings)
         performance = compute_plan_performance(history, as_of=date.today(), start=start, end=end,
                                              settings_by_version=block_settings)
         overview, summary = summarize_plan(report, performance), report["summary"]
+        insights = compute_training_insights(history, as_of=date.today(), start=start, end=end,
+                                            settings_by_version=block_settings, preview=preview)
+        render_training_insights(insights, self.names)
         cols = st.columns(3)
         for col, label, value, note in (
             (cols[0], "Workouts recorded", overview["workout_pct"], f'{summary["linked_workouts"]} of {summary["due_workouts"]} planned workouts linked'),
@@ -70,9 +75,6 @@ class PlanAdherenceView:
         if not summary["due_workouts"]:
             st.info("No elapsed planned days in this period. Today and future dates are excluded.")
         else:
-            gap = overview["largest_gap"]
-            message = f"Largest gap: {gap[0]} — {gap[1]} planned sets without a matching log." if gap else "All planned sets are covered by linked logs in this period."
-            st.markdown(f'<div class="analysis-insight">{escape(message)}</div>', unsafe_allow_html=True)
             chart_label("Weekly execution")
             st.plotly_chart(weekly_execution_chart(overview["weeks"]), width="stretch", key="weekly_plan_execution")
         st.caption("Completed calendar days only. An unlinked workout is not proof that it was skipped.")

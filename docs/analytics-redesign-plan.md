@@ -1,7 +1,7 @@
 # Analytics-first layout proposal
 
-Status: approved, 5 November 2026. Step 1 is implemented and verified.
-Steps 2–5 have not started. The user requires explicit approval
+Status: approved, 5 November 2026. Steps 1–2 are implemented and verified.
+Steps 3–5 have not started. The user requires explicit approval
 before moving from each completed step to the next.
 
 ## Product goal
@@ -126,5 +126,28 @@ of charts, cards or metrics rendered.
   return, optional corrections, missing RIR, timed work, SQLite, isolated PostgreSQL
   and all six application views. No schema migration or historical relabelling.
 
-Next action: obtain the user's approval before starting step 2 (decision
-annotations). No steps 2–5 are included in this delivery.
+Step 1 was committed and pushed as `7bc5f88` before starting the approved step 2.
+
+## Step 2 delivery
+
+- Pure `metrics/training_insights.py` prepares at most three prioritized
+  observation/evidence/action annotations; immutable models retain session/set
+  snapshots, interpretation provenance and any original numeric recommendation.
+- Comparisons use complete ordinary work, actual chronology, separate substitute
+  histories and identical context/block settings. Per-set RIR changes are explicit;
+  heavier loads with fewer reps never automatically mean regression.
+- The latest linked execution is the evidence barrier, including empty/incomplete
+  work. First baselines, missing data, gaps and unlinked elapsed slots are grouped.
+  Unlinked work is not labelled skipped; deload receives its own grouped note.
+- Numeric actions reuse the selected next-workout preview only when it cites the
+  same evidence and context. Historical months do not inherit today's future target.
+- Annotations and optional Why/source snapshots appear in Analytics → Plan
+  execution, replacing the largest-gap banner. Navigation and the Overview layout
+  remain scheduled for their approved implementation steps.
+- Verification: 290 unit/SQLite/Streamlit tests pass; five opt-in PostgreSQL cases
+  verify dates, cross-month evidence, recommendation reuse, alternatives and deload
+  in isolated rolled-back schemas. All six application views pass AppTest with
+  the pinned Streamlit version. No migration or historical relabelling.
+
+Next action: obtain the user's approval before starting step 3 (Overview layout).
+Steps 3–5 are not included in this delivery.

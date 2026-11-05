@@ -7,28 +7,12 @@ import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
 from metrics.plan_performance import comparison_context, compute_plan_performance
+from metrics.utils.recommendation_text import goal_summary
+from models.plan_adherence import PlannedTarget, PlannedWorkout
+from models.training_insights import WorkoutPreview
 from ui.utils.ui_helpers import section_header
 
 logger = logging.getLogger(__name__)
-
-
-def goal_summary(recommendation):
-    """Keep uniform sets compact while preserving unequal per-set targets."""
-    goals = recommendation.goals
-    if not goals:
-        return "Target not available yet"
-    quantities = [str(item.minimum) if item.minimum == item.maximum else f"{item.minimum}–{item.maximum}" for item in goals]
-    unit = "reps" if goals[0].unit == "reps" else "s"
-    if all(item.weight == goals[0].weight for item in goals):
-        quantity = f"{len(goals)} × {quantities[0]}" if len(set(quantities)) == 1 else " / ".join(quantities)
-        load = f"{goals[0].weight:g} kg · " if goals[0].weight else ""
-        label = f"{load}{quantity} {unit}"
-    else:
-        label = " · ".join(f"S{index}: {item.weight:g} kg × {quantity} {unit}"
-                           for index, (item, quantity) in enumerate(zip(goals, quantities), start=1))
-    if recommendation.target_rir is not None:
-        label += f" · RIR ≥ {recommendation.target_rir}"
-    return label
 
 
 def approved_alternatives(history, slot, planned_exercises, *, as_of):
@@ -89,7 +73,7 @@ class NextWorkoutView:
         as_of = as_of or date.today()
         section_header("Next workout")
         try:
-            self._render(plan_id, versions, history, as_of)
+            return self._render(plan_id, versions, history, as_of)
         except SQLAlchemyError:
             logger.exception("Unable to load next-workout recommendations")
             st.error("Next-workout targets could not be loaded. Your historical analysis is still available below.")
@@ -148,6 +132,9 @@ class NextWorkoutView:
                         st.caption(f"Based on: {evidence}")
                 st.caption("Normal training: add one total rep; a weight increase requires two upper-range executions on different days. Default history limit: 21 days; maximum weight step: 10%.")
                 st.caption("Deload: retain half the sets rounded up, target the lower rep bound, reduce load by 10–20% in whole equipment steps, and target at least RIR 4 (or original RIR + 2). After deload, resume ordinary loads without an increase.")
+            return WorkoutPreview(PlannedWorkout(slot, tuple(
+                PlannedTarget(item.plan_exercise_id, exercise)
+                for item, exercise in zip(result.exercises, planned.exercises))), result)
 
     @staticmethod
     def _heading(slot, phase, settings):

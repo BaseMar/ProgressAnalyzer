@@ -432,8 +432,8 @@ sessions linked from other dates/months are still loaded in full.
 The overview shows three percentages: workouts with linked logs, planned sets
 logged, and logged sets within the target range. The last indicator uses recorded
 sets as its denominator, rather than penalizing absent logs twice. A weekly
-stacked chart distinguishes full, partial, unmatched and unlinked workouts. One
-short observation highlights the largest gap in logged sets.
+stacked chart distinguishes full, partial, unmatched and unlinked workouts.
+Short decision annotations replace the former largest-gap banner.
 
 Summary ratios include only scheduled dates before today. Today's open workouts
 and future slots neither lower nor inflate them. A moved workout counts as
@@ -489,6 +489,42 @@ executions. These are observed comparisons, not weight recommendations or a
 judgment that training was physiologically effective. Unknown effort remains
 visible in descriptive coverage but cannot produce a progress delta. Timed
 performance uses duration without requiring RIR.
+
+## Decision annotations
+
+In **Analytics → Plan execution → What changed · what to do**, up to three
+annotations show an observation, per-set evidence and a next action. The pure
+`compute_training_insights` engine prioritizes less-than-planned reserve, deload,
+increased output, lower output, changed effort, evidence gaps, changed load and
+unchanged output, in that order. Ties prefer recent evidence. This is an explicit
+display policy, not a training-effectiveness score.
+
+The selected month refers to scheduled dates. Actual dates and session order
+choose the latest linked execution in each context; earlier history remains
+available. Two complete ordinary executions on different days, at most 21 days
+apart, support a paired observation. Changed target prescriptions, substitutes
+and manually reset block settings have separate histories. An incomplete latest
+execution is a barrier; the engine never falls back to an older successful log.
+
+At equal per-set loads **and per-set recorded RIR**, changed total reps describe
+changed output. A change in any set's RIR produces an effort-context note, even
+when average RIR is identical. Changed load never automatically means regression.
+Timed work compares seconds without requiring RIR. Less-than-planned reserve can
+be reported from one complete execution. Deload uses reduced targets and is
+excluded from ordinary comparisons. Missing RIR, incomplete sets, first baselines,
+long gaps and unlinked elapsed workouts are grouped into one evidence message.
+Missing linkage is never presented as proof of skipped training.
+
+A numeric next action reuses the existing progression engine's actual selected
+workout preview. It must cite the latest observed session and match exercise,
+prescription and block settings. Current future targets are not attached to a
+historical month. **Why?** contains the rule, evidence level (`paired`, `observed`
+or `limited`), immutable source snapshots, dates, IDs, individual sets and inferred
+classification provenance; attached recommendations retain their original reason
+and evidence. No data is rewritten and no schema migration is required.
+
+The layout redesign continues in separately approved steps documented in
+[analytics-redesign-plan.md](docs/analytics-redesign-plan.md).
 
 ## Working sets and warm-ups
 
