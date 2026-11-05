@@ -1,7 +1,7 @@
 """Short decisions derived from logged facts and the existing target engine.
 
-The date window selects scheduled dates, as in plan execution. Actual dates and
-session_order determine comparisons. Earlier history remains available. These
+The date window selects scheduled dates by default; Overview selects actual
+dates. Actual dates and session_order determine comparisons. Earlier history remains available. These
 are application rules, not estimates of muscle growth or training quality.
 """
 from collections import Counter, defaultdict
@@ -76,7 +76,7 @@ def _next_target(row, preview, *, as_of, end, settings_by_version):
 
 
 def compute_training_insights(data, *, as_of: date, start=None, end=None,
-                              settings_by_version=None, preview=None, policy=InsightPolicy()):
+                              settings_by_version=None, preview=None, policy=InsightPolicy(), date_basis="scheduled"):
     """Return at most three prioritized annotations with immutable evidence.
 
     Select the latest *linked* execution per context, including an empty or
@@ -84,10 +84,13 @@ def compute_training_insights(data, *, as_of: date, start=None, end=None,
     prescriptions remain separate; a manual block reset starts a new history.
     Unlinked elapsed slots describe missing linkage, never skipped workouts.
     """
+    if date_basis not in ("scheduled", "performed"):
+        raise ValueError("Date basis must be scheduled or performed")
     settings = settings_by_version or {}
     rows = compute_plan_performance(data, as_of=as_of, settings_by_version=settings)
-    inside = lambda row: ((start is None or row["scheduled_date"] >= start)
-                          and (end is None or row["scheduled_date"] <= end))
+    def inside(row):
+        selected_date = (row["performed_on"] or row["scheduled_date"]) if date_basis == "performed" else row["scheduled_date"]
+        return (start is None or selected_date >= start) and (end is None or selected_date <= end)
     groups = defaultdict(list)
     unlinked = {}
     for row in rows:

@@ -7,6 +7,7 @@ import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
 from metrics.plan_performance import comparison_context, compute_plan_performance
+from metrics.overview_summary import workout_focus
 from metrics.utils.recommendation_text import goal_summary
 from models.plan_adherence import PlannedTarget, PlannedWorkout
 from models.training_insights import WorkoutPreview
@@ -69,19 +70,19 @@ class NextWorkoutView:
     def _name(self, exercise_id):
         return self.names.get(exercise_id, f"Exercise #{exercise_id}")
 
-    def render(self, plan_id, versions, *, history=None, as_of=None):
+    def render(self, plan_id, versions, *, history=None, as_of=None, compact=False):
         as_of = as_of or date.today()
         section_header("Next workout")
         try:
-            return self._render(plan_id, versions, history, as_of)
+            return self._render(plan_id, versions, history, as_of, compact=compact)
         except SQLAlchemyError:
             logger.exception("Unable to load next-workout recommendations")
-            st.error("Next-workout targets could not be loaded. Your historical analysis is still available below.")
+            st.error("Next-workout targets could not be loaded. Your recorded history is still available.")
         except ValueError:
             logger.exception("Next-workout selection is no longer valid")
             st.info("The plan or workout assignment changed. Refresh this view to select the next workout.")
 
-    def _render(self, plan_id, versions, history, as_of):
+    def _render(self, plan_id, versions, history, as_of, *, compact=False):
         if not versions:
             st.info("Save a Training Plan to see the next workout.")
             return
@@ -121,7 +122,19 @@ class NextWorkoutView:
             if substitutions:
                 result = self.dm.load_workout_recommendations(plan_id, slot.day_id, slot.scheduled_date,
                     as_of=as_of, substitutions=substitutions, replacement_weight_steps=steps)
-            st.markdown('<div class="recommendation-list">' + ''.join(self._exercise(item) for item in result.exercises) + '</div>', unsafe_allow_html=True)
+            if compact:
+                focus = workout_focus(result)
+                st.caption(f"{focus.available} of {focus.total} exercise targets available. Full workout includes every planned exercise.")
+                if focus.gaps:
+                    st.caption("To complete targets: " + "; ".join(
+                        f"{gap.count} exercise(s) — {recommendation_note(gap.example)}" for gap in focus.gaps[:2])
+                        + (" Further setup details are in Full workout." if len(focus.gaps) > 2 else ""))
+                if focus.visible:
+                    st.markdown('<div class="recommendation-list">' + ''.join(self._exercise(item) for item in focus.visible) + '</div>', unsafe_allow_html=True)
+                with st.expander(f"Full workout · {focus.total} exercises"):
+                    st.markdown('<div class="recommendation-list">' + ''.join(self._exercise(item) for item in result.exercises) + '</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="recommendation-list">' + ''.join(self._exercise(item) for item in result.exercises) + '</div>', unsafe_allow_html=True)
             with st.expander("Why these targets?"):
                 st.caption("RIR means repetitions in reserve. Working sets are inferred automatically from RIR and sequence; explicit corrections take priority. Deload and timed work use their own context. Targets are rule-based suggestions.")
                 for item in result.exercises:

@@ -10,12 +10,10 @@ from data_manager import DataManager
 from metrics.plan_adherence import compatible_set, compute_plan_adherence
 from metrics.plan_performance import compute_plan_performance
 from metrics.plan_summary import summarize_plan
-from metrics.training_insights import compute_training_insights
 from ui.utils.plan_charts import exercise_history_chart, weekly_execution_chart
 from ui.utils.ui_helpers import chart_label, section_header
 from metrics.training_block import deload_adjusted_input
-from ui.next_workout_view import NextWorkoutView
-from ui.training_insights_view import render_training_insights
+from ui.utils.active_plan import select_active_plan
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +37,7 @@ class PlanAdherenceView:
             if not plans:
                 st.info("Add a Training Plan, then link sessions in the calendar to start the analysis.")
                 return
-            plan_id = st.selectbox("Plan to analyse", list(plans), key="adherence_plan", format_func=lambda value: plans[value].draft.name)
+            plan_id = select_active_plan(plans.values())
             versions = self.dm.load_training_plan_versions(plan_id)
             if self.selected_month not in (None, "All time"):
                 start = date.fromisoformat(f"{self.selected_month}-01")
@@ -54,16 +52,12 @@ class PlanAdherenceView:
             st.error("Plan analysis could not be loaded. Please try again.")
             return
         block_settings = {version.version_id: version.draft.progression for version in versions}
-        preview = NextWorkoutView(self.dm, self.names).render(plan_id, versions, history=history)
         section_header("Recorded plan execution")
         report = compute_plan_adherence(deload_adjusted_input(data, block_settings, as_of=date.today()),
                                         as_of=date.today(), settings_by_version=block_settings)
         performance = compute_plan_performance(history, as_of=date.today(), start=start, end=end,
                                              settings_by_version=block_settings)
         overview, summary = summarize_plan(report, performance), report["summary"]
-        insights = compute_training_insights(history, as_of=date.today(), start=start, end=end,
-                                            settings_by_version=block_settings, preview=preview)
-        render_training_insights(insights, self.names)
         cols = st.columns(3)
         for col, label, value, note in (
             (cols[0], "Workouts recorded", overview["workout_pct"], f'{summary["linked_workouts"]} of {summary["due_workouts"]} planned workouts linked'),

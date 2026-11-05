@@ -1,7 +1,7 @@
 # Analytics-first layout proposal
 
-Status: approved, 5 November 2026. Steps 1–2 are implemented and verified.
-Steps 3–5 have not started. The user requires explicit approval
+Status: approved, 5 November 2026. Steps 1–3 are implemented and verified.
+Steps 4–5 have not started. The user requires explicit approval
 before moving from each completed step to the next.
 
 ## Product goal
@@ -149,5 +149,31 @@ Step 1 was committed and pushed as `7bc5f88` before starting the approved step 2
   in isolated rolled-back schemas. All six application views pass AppTest with
   the pinned Streamlit version. No migration or historical relabelling.
 
-Next action: obtain the user's approval before starting step 3 (Overview layout).
-Steps 3–5 are not included in this delivery.
+Step 2 was committed and pushed as `c21ad1f` before starting the approved step 3.
+
+## Step 3 delivery
+
+- Main Dashboard now opens with one full-width conclusion, recent observations
+  on the left and the selected next workout on the right. The existing theme is
+  preserved; columns stack below 920 px.
+- Overview uses the last 28 actual days, including early/moved workouts, with
+  earlier comparison evidence available. The history month does not constrain
+  these current decisions. The conclusion respects today's block/deload phase.
+- The next-workout preview shows at most two available targets by default,
+  preferring changes. Full workout exposes every exercise, including maintained
+  targets. Common missing-target reasons are grouped; setup is explained once.
+- Exact next-target numbers are shown in the workout card; annotations refer
+  there. Both annotations and the full recommendation are removed from Analytics.
+- One persistent active-plan selection is shared with Analytics and the calendar.
+  The previous five global KPI cards and two charts are removed from the landing
+  page. Calendar, assignment and optional corrections remain in one collapsed
+  section, with an overlay toggle, until the History navigation step.
+- Verification covers current dates, context persistence, target disclosure,
+  alternatives/equipment steps, empty/setup states and real desktop/mobile
+  browser layout (1440 px desktop, 390 px mobile; stacked columns without
+  horizontal overflow). 302 unit/SQLite/Streamlit tests and five isolated
+  PostgreSQL tests pass; all six application views pass AppTest. No schema or
+  progression-rule changes.
+
+Next action: obtain the user's approval before starting step 4 (Analysis, Plan
+and History layout). Steps 4–5 are not included in this delivery.

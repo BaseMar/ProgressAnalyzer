@@ -222,7 +222,7 @@ Saved plans open as weekly reference cards, with exercises available under
 The plan editor requires migration 001 described below. Calendar assignments
 require migration 002; execution analysis and confirmed replacements require
 migration 003. Progression and deload recommendations are shown in
-`Analytics -> Plan execution -> Next workout` and are also available through
+`Main Dashboard -> Next workout` and are also available through
 the backend API.
 Native tables and inputs use the shared dark/teal theme in `.streamlit/config.toml`.
 
@@ -362,8 +362,8 @@ policies are currently backend options and are not persisted as plan settings.
 
 ### Next workout card (step 4)
 
-Open **Analytics -> Plan execution**, choose a plan, and read the **Next workout**
-card above the recorded execution indicators. It defaults to the earliest
+Open **Main Dashboard**, choose the active plan, and read **Next workout**
+beside the recent observations. It defaults to the earliest
 unlinked planned workout from today onwards. `Upcoming workout` lets you preview
 other dates in the next four weeks; a future plan starts that window at its first
 effective date. Slots on the same day remain distinct and follow their plan order.
@@ -372,7 +372,11 @@ Linked workouts disappear from this selector; overdue slots are not silently
 rescheduled or treated as proof that a user skipped training.
 
 The card shows the workout/date, normal or deload phase, block/week and deload
-dates. Each exercise has one compact target and decision: `Add a rep`,
+dates. Up to two available targets are shown by default, preferring changes.
+**Full workout** opens every exercise, including maintained loads and entries
+waiting for more evidence. Repeated missing-target reasons are grouped into a
+single note instead of rendering empty cards for each exercise. Each exercise
+has one compact target and decision: `Add a rep`,
 `Increase load`, `Keep load`, `Deload`, or `Return after deload`. Uniform sets
 are grouped, for example **62.5 kg · 3 x 6 reps · RIR >= 2**. Unequal reps and
 loads retain their individual set targets instead of being averaged. Missing
@@ -382,8 +386,8 @@ invented. Unsupported deload prescriptions are labelled `Manual target`.
 
 `Why these targets?` contains the full engine explanation, evidence session
 IDs/dates, and the default progression/deload rules. Historical source sessions
-remain in the dashboard, and the existing plan charts/KPIs describe the selected
-history period below the card. An unconfigured or not-yet-started block gets one
+remain in the dashboard's collapsed calendar section. Historical plan charts/KPIs
+are in Analytics, where the recommendation is no longer repeated. An unconfigured or not-yet-started block gets one
 setup message rather than repeated empty recommendations for every exercise.
 
 If an alternative was previously approved and logged in the same workout context,
@@ -400,8 +404,9 @@ the historical plan overview; the card never writes derived targets to logs.
 
 ## Planned workouts in the calendar
 
-In `Main Dashboard`, select a `Calendar plan` to overlay its weekly schedule.
-Choose `Workout history only` to hide the overlay. With the sidebar set to
+In `Main Dashboard`, expand **Calendar & recorded sessions**. The calendar uses
+the same active plan as the overview; switch off **Show planned workouts** to
+view workout history alone. With the sidebar set to
 `All time`, the calendar also lets you browse future months. Each date uses the
 version effective on that date, so old workouts retain their original targets.
 
@@ -433,7 +438,8 @@ The overview shows three percentages: workouts with linked logs, planned sets
 logged, and logged sets within the target range. The last indicator uses recorded
 sets as its denominator, rather than penalizing absent logs twice. A weekly
 stacked chart distinguishes full, partial, unmatched and unlinked workouts.
-Short decision annotations replace the former largest-gap banner.
+Decision annotations and next-workout targets live in Main Dashboard; they are
+not repeated in this historical drill-down.
 
 Summary ratios include only scheduled dates before today. Today's open workouts
 and future slots neither lower nor inflate them. A moved workout counts as
@@ -492,15 +498,18 @@ performance uses duration without requiring RIR.
 
 ## Decision annotations
 
-In **Analytics → Plan execution → What changed · what to do**, up to three
+In **Main Dashboard → What changed · what to do**, up to three
 annotations show an observation, per-set evidence and a next action. The pure
 `compute_training_insights` engine prioritizes less-than-planned reserve, deload,
 increased output, lower output, changed effort, evidence gaps, changed load and
 unchanged output, in that order. Ties prefer recent evidence. This is an explicit
 display policy, not a training-effectiveness score.
 
-The selected month refers to scheduled dates. Actual dates and session order
-choose the latest linked execution in each context; earlier history remains
+Overview uses the last 28 **actual** days, independently of the history month.
+This includes workouts performed early or moved from older planned dates.
+Unlinked elapsed slots in that window are counted by their scheduled date.
+Historical Analytics continues to use the selected scheduled month.
+Actual dates and session order choose the latest linked execution in each context; earlier history remains
 available. Two complete ordinary executions on different days, at most 21 days
 apart, support a paired observation. Changed target prescriptions, substitutes
 and manually reset block settings have separate histories. An incomplete latest
@@ -522,6 +531,21 @@ historical month. **Why?** contains the rule, evidence level (`paired`, `observe
 or `limited`), immutable source snapshots, dates, IDs, individual sets and inferred
 classification provenance; attached recommendations retain their original reason
 and evidence. No data is rewritten and no schema migration is required.
+
+## Current training overview
+
+Main Dashboard opens with a single conclusion based on the current block phase,
+recent evidence and the actual selected workout's target availability. It does
+not estimate physiological effectiveness. Below, the left column contains at
+most three annotations; the right contains the only full next-workout preview.
+The layout stacks below 920 px. Exact next-target numbers live in the workout
+card; annotations point there instead of repeating the prescription.
+
+The former five global KPI cards and two session charts are removed from the
+landing page. Calendar, assignments, session logs and optional set corrections
+remain reachable under **Calendar & recorded sessions**, until the separately
+approved History navigation step. The active plan persists between Overview
+and Analytics, with a safe fallback if that plan is no longer available.
 
 The layout redesign continues in separately approved steps documented in
 [analytics-redesign-plan.md](docs/analytics-redesign-plan.md).

@@ -1,15 +1,4 @@
-"""
-Dashboard View
-
-Main training dashboard with session-level KPIs, trends, and history.
-
-Responsibilities:
-  - Render global training metrics (avg intensity, sessions/week, volume)
-  - Display volume and duration trends over time
-  - Show session history with exercise breakdowns
-
-All metrics are pre-computed; this view only handles presentation.
-"""
+"""Current training decisions and a collapsible calendar during the layout transition."""
 
 from __future__ import annotations
 
@@ -21,8 +10,9 @@ import pandas as pd
 import streamlit as st
 from data_manager import DataManager
 from ui.plan_schedule_view import PlanScheduleView
+from ui.overview_view import OverviewView
 
-from ui.utils.ui_helpers import chart_label, format_number, line_chart, page_title, section_header
+from ui.utils.ui_helpers import page_title, section_header
 
 
 def _set_pills(ex_df: pd.DataFrame) -> str:
@@ -48,17 +38,7 @@ def _set_pills(ex_df: pd.DataFrame) -> str:
 
 
 class DashboardView:
-    """UI view for the main training dashboard.
-    
-    Displays:
-    - Global training KPIs (intensity, frequency, volume, sets)
-    - Session trend charts (volume over time, duration over time)
-    - Expandable detailed session history with per-exercise breakdowns
-    
-    Data:
-    - metrics: Pre-computed session-level and global metrics
-    - sets_df: Raw set data for detailed session rendering
-    """
+    """Current plan decisions, with recorded sessions reachable on demand."""
 
     def __init__(self, metrics: dict, sets_df: pd.DataFrame, selected_month: str | None = None, *, exercise_names=None, data_manager=None) -> None:
         """Initialize with pre-computed metrics and raw set data.
@@ -71,69 +51,33 @@ class DashboardView:
         self.sets_df = sets_df
         self.selected_month = selected_month
         self.dm = data_manager if data_manager is not None else DataManager()
+        self.exercise_names = exercise_names or {}
         self.schedule = PlanScheduleView(self.dm, exercise_names)
         self.scheduled_workouts = []
 
 
-    def render(self) -> None:
+    def render(self, *, as_of=None) -> None:
         """Render the complete dashboard view."""
         self._render_title()
-        self._render_kpis()
-        self._render_trends()
-        self._render_history()
+        plan_id, versions = OverviewView(self.dm, self.exercise_names).render(as_of=as_of)
+        self.schedule.plan_id = plan_id
+        self.schedule.version_dates = [version.draft.effective_from for version in versions]
+        with st.expander("Calendar & recorded sessions"):
+            if plan_id is not None and not st.toggle("Show planned workouts", value=True, key="calendar_plan_overlay"):
+                self.schedule.plan_id = None
+                self.schedule.version_dates = []
+            self._render_history(use_existing_plan=True)
 
     def _render_title(self) -> None:
         """Render page header."""
-        page_title("Overview", "Workout Dashboard")
+        page_title("Overview", "Training Overview")
 
-    def _render_kpis(self) -> None:
-        """Render global training KPIs."""
-        g = self.metrics.get("sessions", {}).get("global", {})
-
-        section_header("Performance Snapshot")
-
-        cols = st.columns(5)
-        cols[0].metric("Mean session e1RM", f"{format_number(g.get('avg_estimated_1rm'), 1)} kg" if g.get("avg_estimated_1rm") is not None else "—", help="Average of session mean estimated 1RM values, in kg.")
-        cols[1].metric("Sessions / Week", format_number(g.get("avg_sessions_per_week"), 1) if g.get("avg_sessions_per_week") else "—")
-        cols[2].metric("Avg Volume / Session", f"{format_number(g.get('avg_volume_per_session'), 0)} kg" if g.get("avg_volume_per_session") else "—")
-        cols[3].metric("Avg Sets / Session",format_number(g.get("avg_sets_per_session"), 1) if g.get("avg_sets_per_session") else "—")
-        cols[4].metric("Avg Duration",f"{format_number(g.get('avg_session_duration'), 0)} min" if g.get("avg_session_duration") else "—")
-
-    def _render_trends(self) -> None:
-        """Render session trend charts (volume and duration over time)."""
-        per_session = self.metrics.get("sessions", {}).get("per_session", {})
-        rows = [
-            {
-                "Date": s["session_date"],
-                "Volume (kg)": s.get("total_volume"),
-                "Duration (min)": s.get("duration_minutes"),
-            }
-            for s in per_session.values()
-            if s.get("session_date") is not None
-        ]
-
-        section_header("Session Trends")
-
-        if not rows:
-            st.info("No trend data available yet.")
-            return
-
-        trend_df = pd.DataFrame(rows).sort_values("Date").set_index("Date")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            chart_label("Session Volume")
-            line_chart(trend_df, "Volume (kg)")
-
-        with col2:
-            chart_label("Session Duration")
-            line_chart(trend_df, "Duration (min)")
-
-    def _render_history(self) -> None:
+    def _render_history(self, *, use_existing_plan=False) -> None:
         section_header("Session History")
 
         df = self.sets_df.copy()
-        self.schedule.render_picker()
+        if not use_existing_plan:
+            self.schedule.render_picker()
         if df.empty and self.selected_month in (None, "All time") and self.schedule.plan_id is None:
             st.info("No workout history yet.")
             return

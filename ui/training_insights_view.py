@@ -8,7 +8,7 @@ import streamlit as st
 from ui.utils.ui_helpers import section_header
 
 
-def render_training_insights(report, exercise_names=None):
+def render_training_insights(report, exercise_names=None, *, show_target_actions=True):
     names = exercise_names or {}
     section_header("What changed · what to do")
     if not report.annotations:
@@ -17,9 +17,12 @@ def render_training_insights(report, exercise_names=None):
     for insight in report.annotations:
         name = names.get(insight.exercise_id, f"Exercise #{insight.exercise_id}") if insight.exercise_id else None
         title = f"{name}: {insight.observation}" if name else insight.observation
+        action = insight.action
+        if not show_target_actions and insight.next_target:
+            action = "Use the prescribed target in Next workout."
         st.markdown('<div class="analysis-insight">'
                     f'<strong>{escape(title)}</strong><br>{escape(insight.evidence)}'
-                    f'<br><strong>{escape(insight.action)}</strong></div>', unsafe_allow_html=True)
+                    f'<br><strong>{escape(action)}</strong></div>', unsafe_allow_html=True)
         with st.expander(f"Why? · {title}"):
             st.caption(f"Evidence: {insight.evidence_level} · Rule: {insight.code}")
             st.caption(insight.rule)

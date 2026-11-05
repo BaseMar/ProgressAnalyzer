@@ -218,7 +218,7 @@ def test_goal_summary_preserves_unequal_sets_and_zero_rir():
     assert "S2: 65 kg × 6–10 reps" in goal_summary(mixed)
 
 
-def test_history_month_does_not_select_a_past_workout(schedule_data):
+def test_historical_analytics_has_no_duplicate_next_workout(schedule_data):
     engine, _, _, _ = schedule_data
     plan = seed(schedule_data)
     app = AppTest.from_string('''
@@ -233,9 +233,8 @@ PlanAdherenceView(manager=manager, exercise_names={1: "Bench Press"}, selected_m
     app.session_state["adherence_plan"] = plan.plan_id
     app.run()
     assert not app.exception
-    selected = app.selectbox(key=f"next_workout_{plan.plan_id}").value
-    assert date.fromisoformat(selected.split(":")[1]) >= date.today()
-    assert any("independent of the history month" in item.value for item in app.caption)
+    assert not any(item.label == "Upcoming workout" for item in app.selectbox)
+    assert not any('class="recommendation-list"' in item.value for item in app.markdown)
     assert len(app.metric) == 3
 
 

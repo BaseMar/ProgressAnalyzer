@@ -983,6 +983,42 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
     background: linear-gradient(140deg, rgba(0, 173, 181, 0.06), rgba(57, 62, 70, 0.18));
 }
 
+/* Overview uses existing theme tokens; only the information hierarchy changes. */
+.overview-conclusion {
+    padding: 24px 28px;
+    margin: 8px 0 24px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-lg);
+    background: rgba(57, 62, 70, 0.22);
+}
+.overview-eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.overview-conclusion h2 { margin: 8px 0; font-size: 26px; line-height: 1.3; }
+.overview-conclusion p { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+.overview-conclusion--attention { border-left-color: #ffc947; }
+.overview-conclusion--deload { border-left-color: #ffc947; }
+.st-key-overview_decisions .analysis-insight { overflow-wrap: anywhere; }
+
+@media (max-width: 920px) {
+    .st-key-overview_decisions [data-testid="stHorizontalBlock"]:has(.st-key-next_workout_card) {
+        flex-direction: column;
+        gap: 18px;
+    }
+    .st-key-overview_decisions [data-testid="stHorizontalBlock"]:has(.st-key-next_workout_card) > [data-testid="stColumn"] {
+        width: 100%;
+        flex: 1 1 100%;
+        min-width: 100%;
+    }
+    .overview-conclusion { padding: 20px; }
+    .overview-conclusion h2 { font-size: 22px; }
+}
+
 .recommendation-heading,
 .recommendation-exercise-top {
     display: flex;
