@@ -1,10 +1,14 @@
 import re
+import hashlib
 from datetime import datetime
+import pandas as pd
 import streamlit as st
+from sqlalchemy.exc import SQLAlchemyError
 
 from data_manager import DataManager
 from db.exercise_muscle_resolver import resolve_exercise
 from ui.utils.exercise_matcher import normalize
+from ui.utils.set_load_inputs import make_set_load, render_load_inputs, render_total_loads
 
 
 class SidebarUpload:
@@ -44,13 +48,15 @@ class SidebarUpload:
                 st.session_state.exercise_mapping = {}
             return
 
-        if file.name != st.session_state.uploaded_file_name:
+        content = file.getvalue().decode("utf-8")
+        digest = hashlib.sha256(content.encode("utf-8")).hexdigest()[:12]
+        if file.name != st.session_state.uploaded_file_name or digest != st.session_state.get("uploaded_file_digest"):
             st.session_state.uploaded_file_name = file.name
+            st.session_state["uploaded_file_digest"] = digest
             st.session_state.adding_exercise = False
             st.session_state.pending_exercise = None
             st.session_state.exercise_mapping = {}
 
-        content = file.read().decode("utf-8")
         workout_date = self.ui.date_input("Workout date", value=datetime.today())
         parsed = self._parse_txt(content)
         start_time, end_time = self._parse_time_range(content)
@@ -62,8 +68,39 @@ class SidebarUpload:
             self._new_exercise_form(st.session_state.pending_exercise)
             return
 
+        try:
+            parsed = self._review_loads(parsed, workout_date, digest)
+        except (ValueError, TypeError) as exc:
+            self.ui.error(str(exc))
+            return
+        except SQLAlchemyError:
+            self.ui.error("Load details could not be loaded. Please try again.")
+            return
         if self.ui.button("Import workout", icon=":material/upload:"):
             self._process(parsed, workout_date, start_time, end_time)
+
+    def _review_loads(self, parsed, workout_date, scope):
+        if not self.dm.set_load_storage_ready():
+            self.ui.caption("Load details need database setup. Import will preserve the original kg values.")
+            return parsed
+        output = []
+        with self.ui.expander("Review body mass and load types"):
+            for index, exercise in enumerate(parsed):
+                self.ui.markdown(f"**{exercise['name']}**")
+                key = f"import_{scope}_{index}"
+                settings = render_load_inputs(self.dm, workout_date, key=key)
+                sets = [dict(item) for item in exercise["sets"]]
+                if settings[0] != "legacy":
+                    frame = pd.DataFrame({"Set": range(1, len(sets) + 1), "kg": [item["weight"] for item in sets]})
+                    edited = st.data_editor(frame, key=f"{key}_weights", hide_index=True, disabled=["Set"],
+                        column_config={"kg": st.column_config.NumberColumn(
+                            "Weight (kg)" if settings[0] == "external" else "Additional kg", min_value=0., required=True)})
+                    for item, weight in zip(sets, edited["kg"]):
+                        item["weight"] = float(weight)
+                        item["load"] = make_set_load(settings, weight)
+                    render_total_loads(settings, edited["kg"])
+                output.append({**exercise, "sets": sets})
+        return output
 
     def _process(self, parsed, workout_date, start_time, end_time):
         """Process and validate parsed exercises before importing."""
@@ -105,20 +142,17 @@ class SidebarUpload:
             self.ui.warning("Time range not found in file. Importing without time data.")
 
         try:
-            for ex in parsed:
-                norm_name = normalize(ex["name"])
-                original_name = original_map[norm_name]
-                
-                self.dm.add_full_session(
-                    session_date=workout_date,
-                    notes="Imported",
-                    exercise_name=original_name,
-                    sets_data=ex["sets"],
-                    session_start=start_time,
-                    session_end=end_time
-                )
+            self.dm.add_workout_session(workout_date, "Imported", [
+                {"name": original_map[normalize(ex["name"])], "exercise_id": normalized_map[normalize(ex["name"])],
+                 "sets": ex["sets"]} for ex in parsed
+            ], start_time, end_time)
 
             self.ui.success("Workout imported successfully!")
+            st.session_state["history_workout_notice"] = "Workout imported successfully!"
+            st.session_state["history_calendar_month"] = f"{workout_date:%Y-%m}"
+            st.session_state["history_month"] = f"{workout_date:%Y-%m}"
+            st.session_state[f"history_day_{workout_date:%Y-%m}"] = workout_date
+            st.session_state["history_add_workout"] = False
 
             st.cache_data.clear()
             st.session_state.adding_exercise = False

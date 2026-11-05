@@ -207,6 +207,21 @@ zero means the muscle is not allocated any sets in the plan. Missing mappings
 or plan read errors leave targets blank instead of showing partial totals.
 Manual heatmap range settings are no longer read or written.
 
+History → Add workout supports **Import TXT** and **Enter exercise**. Manual
+entry records reps or seconds, per-set weight, RIR and set purpose. For explicit
+bodyweight logs, kg means additional weight; body mass and assistance are saved
+separately. The latest body-mass measurement on/before the workout date is offered
+as an editable suggestion. Missing body mass or unknown assistance remains unknown.
+
+TXT import keeps its original kg convention by default. Open **Review body mass
+and load types** to choose an explicit convention and inspect the total load
+before importing. All exercises in an import are committed atomically. History
+shows the saved load components, and **Body mass and load details** allows an
+individual set to be corrected. Apply migration `006_set_loads` with
+`python -m db.migrate --apply` before using explicit load entry. Existing
+analytics/progression still use their previous load convention until the analysis
+step in [the implementation plan](docs/bodyweight-implementation-plan.md).
+
 ## Training Plan editor
 
 Open **Plan**, choose the active plan, or switch on **Create a new plan**.

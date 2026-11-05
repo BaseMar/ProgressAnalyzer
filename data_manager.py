@@ -1,11 +1,11 @@
 import logging
 from typing import Any, Dict, List
-from datetime import date, time
+from datetime import date, time, timedelta
 import pandas as pd
 from sqlalchemy import text
 
 from db.connection import get_engine
-from db.set_loads import save_session_set_loads, set_load_storage_ready
+from db.set_loads import insert_set_load, save_session_set_loads, set_load_storage_ready, suggest_body_mass
 from db.progression import load_normal_workout_recommendations, load_workout_recommendations
 from db.training_context import load_deload_exercise_ids
 from db.training_plans import (
@@ -13,6 +13,7 @@ from db.training_plans import (
     save_training_plan, training_plan_storage_ready,
 )
 from models.training_plan import TrainingPlanDraft, TrainingPlanVersion
+from models.set_load import SetLoad
 from db.set_classifications import classifications, classification_storage_ready, load_session_sets, save_set_classifications
 from db.plan_adherence import adherence_storage_ready, load_plan_adherence, load_plan_performance, save_exercise_match, remove_exercise_match
 from db.plan_schedule import (
@@ -55,6 +56,9 @@ class DataManager:
 
     def save_session_set_loads(self, session_id, values):
         return save_session_set_loads(self.engine, session_id, values)
+
+    def suggest_body_mass(self, on_date):
+        return suggest_body_mass(self.engine, on_date)
 
     def load_deload_exercise_ids(self, *, as_of=None):
         return load_deload_exercise_ids(self.engine, as_of=as_of)
@@ -186,79 +190,90 @@ class DataManager:
         sets_data: List[Dict[str, Any]],
         session_start: time,
         session_end: time,
+        *, exercise_id: int | None = None,
     ) -> bool:
         """Insert a complete workout session including exercise and sets.
 
         Returns True on success or re-raises the exception if the operation fails.
         """
+        return self.add_workout_session(session_date, notes,
+            [{"name": exercise_name, "exercise_id": exercise_id, "sets": sets_data}], session_start, session_end)
+
+    def add_workout_session(self, session_date, notes, exercises_data, session_start=None, session_end=None):
+        """Save every exercise and load snapshot atomically, appending to the day."""
+        day = pd.Timestamp(session_date).date()
+        if pd.isna(day) or not exercises_data or any(not item.get("sets") for item in exercises_data):
+            raise ValueError("Choose a workout date and add at least one set per exercise")
+        explicit = False
+        for exercise in exercises_data:
+            for item in exercise["sets"]:
+                load = item.get("load")
+                if load is not None:
+                    explicit = True
+                    if not isinstance(load, SetLoad) or item["weight"] != load.external_weight_kg:
+                        raise ValueError("Set weight must match its explicit external weight")
+        if explicit and not self.set_load_storage_ready():
+            raise ValueError("Bodyweight load entry needs database setup (migration 006_set_loads)")
         try:
-            engine = self.engine
-            with engine.begin() as conn:
-                qry = text(
-                    "SELECT session_id FROM workout_sessions WHERE CAST(session_date AS DATE) = :session_date"
-                )
-                row = conn.execute(qry, {"session_date": session_date}).fetchone()
+            with self.engine.begin() as conn:
+                row = conn.execute(text("SELECT session_id FROM workout_sessions "
+                    "WHERE session_date >= :day AND session_date < :next_day ORDER BY session_id DESC"),
+                    {"day": day, "next_day": day + timedelta(days=1)}).first()
                 if row:
                     session_id = row[0]
                 else:
-                    insert_q = text(
-                        """INSERT INTO workout_sessions (session_date, notes, start_time, end_time)
-                           VALUES (:date, :notes, :start_time, :end_time)
-                           RETURNING session_id"""
-                    )
-                    session_id = conn.execute(
-                        insert_q,
-                        {
-                            "date": session_date,
-                            "notes": notes,
-                            "start_time": session_start,
-                            "end_time": session_end,
-                        },
+                    session_id = conn.execute(text("""
+                        INSERT INTO workout_sessions (session_date, notes, start_time, end_time)
+                        VALUES (:date, :notes, :start_time, :end_time) RETURNING session_id
+                    """), {"date": day, "notes": notes, "start_time": session_start, "end_time": session_end}).scalar_one()
+                for exercise in exercises_data:
+                    if exercise.get("exercise_id") is not None:
+                        res = conn.execute(text("SELECT exercise_id FROM exercises WHERE exercise_id=:id"),
+                                           {"id": exercise["exercise_id"]}).fetchone()
+                    else:
+                        res = conn.execute(text("SELECT exercise_id FROM exercises WHERE exercise_name=:name"),
+                                           {"name": exercise["name"]}).fetchone()
+                    if not res:
+                        raise ValueError("Exercise not found")
+                    exercise_id = res[0]
+
+                    insert_we = text(
+                        "INSERT INTO workout_exercises (session_id, exercise_id) VALUES (:sid, :eid) RETURNING workout_exercise_id;")
+                    workout_ex_id = conn.execute(
+                        insert_we, {"sid": session_id, "eid": exercise_id}
                     ).scalar()
 
-                ex_id_q = text(
-                    "SELECT exercise_id FROM Exercises WHERE exercise_name = :name"
-                )
-                res = conn.execute(ex_id_q, {"name": exercise_name}).fetchone()
-                if not res:
-                    raise ValueError("Exercise not found")
-                exercise_id = res[0]
-
-                insert_we = text(
-                    "INSERT INTO workout_exercises (session_id, exercise_id) VALUES (:sid, :eid) RETURNING workout_exercise_id;")
-                workout_ex_id = conn.execute(
-                    insert_we, {"sid": session_id, "eid": exercise_id}
-                ).scalar()
-
-                for idx, s in enumerate(sets_data, start=1):
-                    ins_set = text(
-                        """
-                        INSERT INTO workout_sets
-                            (workout_exercise_id, set_number, repetitions, weight, duration_seconds, RIR)
-                        VALUES
-                            (:weid, :num, :reps, :weight, :duration_seconds, :rir)
-                        RETURNING set_id
-                        """
-                    )
-                    result = conn.execute(
-                        ins_set,
-                        {
-                            "weid": workout_ex_id,
-                            "num": idx,
-                            "reps": s["reps"],
-                            "weight": s["weight"],
-                            "duration_seconds": s.get("duration_seconds"),
-                            "rir": s["rir"],
-                        },
-                    )
-                    set_id = result.scalar_one()
-                    if s.get("is_warmup") is not None:
-                        if type(s["is_warmup"]) is not bool:
-                            raise ValueError("Invalid set classification")
-                        conn.execute(classifications.insert().values(set_id=set_id, is_warmup=s["is_warmup"]))
+                    for idx, s in enumerate(exercise["sets"], start=1):
+                        ins_set = text(
+                            """
+                            INSERT INTO workout_sets
+                                (workout_exercise_id, set_number, repetitions, weight, duration_seconds, RIR)
+                            VALUES
+                                (:weid, :num, :reps, :weight, :duration_seconds, :rir)
+                            RETURNING set_id
+                            """
+                        )
+                        result = conn.execute(
+                            ins_set,
+                            {
+                                "weid": workout_ex_id,
+                                "num": idx,
+                                "reps": s["reps"],
+                                "weight": s["weight"],
+                                "duration_seconds": s.get("duration_seconds"),
+                                "rir": s["rir"],
+                            },
+                        )
+                        set_id = result.scalar_one()
+                        if s.get("load") is not None:
+                            insert_set_load(conn, set_id, s["load"])
+                        if s.get("is_warmup") is not None:
+                            if type(s["is_warmup"]) is not bool:
+                                raise ValueError("Invalid set classification")
+                            conn.execute(classifications.insert().values(set_id=set_id, is_warmup=s["is_warmup"]))
             return True
         except Exception:
-            logger.exception("add_full_session failed")
+            logger.exception("add_workout_session failed")
             raise
 
     def add_body_measurements(self, data: dict) -> bool:

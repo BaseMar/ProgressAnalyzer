@@ -37,7 +37,8 @@ def render_set_classification(manager=None, *, session_id=None):
             frame["Interpretation"] = [meaning.kind.replace("_", " ").capitalize() for meaning in meanings]
             frame["Source"] = [meaning.source.capitalize() for meaning in meanings]
             frame["Type"] = frame["is_warmup"].map(lambda value: "Auto" if pd.isna(value) else "Warm-up" if value else "Working")
-            display = frame.rename(columns={"exercise_name": "Exercise", "set_number": "Set", "repetitions": "Reps", "weight": "kg", "duration_seconds": "Seconds"}).drop(columns="is_warmup")
+            display = frame.rename(columns={"exercise_name": "Exercise", "set_number": "Set", "repetitions": "Reps", "weight": "kg", "duration_seconds": "Seconds"}).drop(
+                columns=["is_warmup", "load_type", "body_mass_kg", "assistance_kg"], errors="ignore")
             st.caption("Auto uses effort, sequence and deload context. Working/Warm-up overrides the inferred purpose; missing RIR remains unknown.")
             edited = st.data_editor(display, key=f"set_types_{sid}", hide_index=True, width="stretch",
                                     disabled=[column for column in display.columns if column != "Type"],

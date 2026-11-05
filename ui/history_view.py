@@ -15,6 +15,10 @@ from ui.plan_schedule_view import PlanScheduleView
 from ui.body_metrics_view import BodyMetricsView
 from ui.sidebar_upload import SidebarUpload
 from ui.exercise_replacements_view import ExerciseReplacementsView
+from mapper import map_workout_set
+from ui.set_load_view import render_set_load_correction
+from ui.workout_entry_view import render_workout_entry
+from ui.utils.set_load_inputs import format_load
 from ui.utils.active_plan import select_active_plan
 from ui.utils.ui_helpers import page_title, section_header
 
@@ -34,8 +38,14 @@ def _set_pills(ex_df: pd.DataFrame) -> str:
         duration_seconds = row.get("duration_seconds")
         if pd.notna(duration_seconds) and int(duration_seconds) > 0:
             value = _format_seconds(duration_seconds)
+            if pd.isna(row.get("load_type")) and pd.notna(row.get("weight")) and row["weight"] > 0:
+                value += f' · logged load {row["weight"]:g} kg'
         else:
             value = f'{row["repetitions"]} × {row["weight"]:g} kg'
+        if not pd.isna(row.get("load_type")):
+            load_text = format_load(map_workout_set(row.to_dict()).load)
+            value = (f"{_format_seconds(duration_seconds)} · " if pd.notna(duration_seconds) and duration_seconds > 0
+                     else f'{row["repetitions"]} × ') + load_text
         if pd.notna(row.get("is_warmup")) and row.get("is_warmup") == True:
             value = f"WU · {value}"
         pills.append(f'<span class="set-pill">{value}</span>')
@@ -63,6 +73,8 @@ class HistoryView:
 
     def render(self) -> None:
         page_title("History", "Your training history")
+        if "history_workout_notice" in st.session_state:
+            st.success(st.session_state.pop("history_workout_notice"))
         workout_action, measurement_action = st.columns(2)
         if workout_action.button("Add workout", key="history_add_workout_button", icon=":material/add:"):
             st.session_state["history_add_workout"] = True
@@ -70,10 +82,14 @@ class HistoryView:
             st.session_state["history_add_measurement"] = not st.session_state.get("history_add_measurement", False)
         if st.session_state.get("history_add_workout"):
             with st.container(key="history_import"):
-                if st.button("Close import", key="history_close_import"):
+                if st.button("Close entry", key="history_close_import"):
                     st.session_state["history_add_workout"] = False
                     st.rerun()
-                SidebarUpload(manager=self.dm).render()
+                mode = st.radio("Workout entry", ["Import TXT", "Enter exercise"], horizontal=True, key="workout_entry_mode")
+                if mode == "Import TXT":
+                    SidebarUpload(manager=self.dm).render()
+                else:
+                    render_workout_entry(self.dm)
         if st.session_state.get("history_add_measurement"):
             BodyMetricsView(self.metrics.get("body", {}), manager=self.dm)._add_measurement_form()
         self._select_plan()
@@ -237,17 +253,16 @@ class HistoryView:
         grouped = df.groupby(["session_id", "session_date"], sort=False)
 
         for (session_id, session_date), session_df in grouped:
-            total_volume = (session_df["repetitions"] * session_df["weight"]).sum()
+            duration = session_df.get("duration_seconds", pd.Series(0, index=session_df.index)).fillna(0)
+            dynamic = session_df.loc[duration <= 0]
+            total_volume = (dynamic["repetitions"] * dynamic["weight"]).sum()
             total_sets = len(session_df)
             exercises_count = session_df["exercise_name"].nunique()
             volume_str = f"{total_volume:,.0f}".replace(",", "\u202f")
 
-            label = (
-                f"{session_date.strftime('%d %b %Y')}   ·   "
-                f"{total_sets} sets   ·   "
-                f"{exercises_count} exercises   ·   "
-                f"{volume_str} kg"
-            )
+            label = f"{session_date:%d %b %Y}   \u00b7   {total_sets} sets   \u00b7   {exercises_count} exercises"
+            if not session_df.get("load_type", pd.Series(dtype=str)).isin(["bodyweight", "assisted_bodyweight"]).any() and not dynamic.empty:
+                label += f"   \u00b7   {volume_str} kg"
 
             with st.expander(label, icon=":material/event:", expanded=True):
                 for exercise, ex_df in session_df.groupby("exercise_name"):
@@ -257,6 +272,7 @@ class HistoryView:
                         unsafe_allow_html=True,
                     )
                 render_set_classification(self.dm, session_id=int(session_id))
+                render_set_load_correction(self.dm, session_id=int(session_id), workout_date=session_date.date())
                 
                 st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
                 

@@ -1,5 +1,8 @@
 """Explicit set-load corrections, saved atomically with the external weight."""
-from sqlalchemy import Column, Float, Integer, MetaData, Table, inspect, select
+from datetime import date, datetime, timedelta
+from math import isfinite
+
+from sqlalchemy import Column, DateTime, Float, Integer, MetaData, Table, inspect, select
 
 from db.migrations.v006_set_loads import define_table
 from models.set_load import SetLoad
@@ -10,6 +13,33 @@ sets = Table("workout_sets", metadata, Column("set_id", Integer, primary_key=Tru
 workouts = Table("workout_exercises", metadata, Column("workout_exercise_id", Integer, primary_key=True),
                  Column("session_id", Integer))
 loads = define_table(metadata)
+measurements = Table("body_composition", metadata,
+    Column("measurement_date", DateTime), Column("weight", Float))
+
+
+def suggest_body_mass(engine, on_date: date):
+    """Return the latest valid mass on/before the workout, never a future value."""
+    if type(on_date) is not date:
+        raise ValueError("Workout date must be a date")
+    with engine.connect() as connection:
+        if not inspect(connection).has_table(measurements.name):
+            return None
+        rows = connection.execute(select(measurements.c.measurement_date, measurements.c.weight)
+            .where(measurements.c.measurement_date < on_date + timedelta(days=1))
+            .order_by(measurements.c.measurement_date.desc()))
+        for measured_on, value in rows:
+            if value is not None and isfinite(value) and value > 0:
+                day = measured_on.date() if isinstance(measured_on, datetime) else measured_on
+                return {"date": day, "weight": float(value)}
+    return None
+
+
+def insert_set_load(connection, set_id, value):
+    """Persist an already validated load within its caller's transaction."""
+    if not isinstance(value, SetLoad):
+        raise ValueError("An explicit SetLoad is required")
+    connection.execute(loads.insert().values(set_id=set_id, load_type=value.load_type,
+        body_mass_kg=value.body_mass_kg, assistance_kg=value.assistance_kg))
 
 
 def set_load_storage_ready(engine):
@@ -49,5 +79,4 @@ def save_session_set_loads(engine, session_id, values: dict[int, SetLoad | None]
             if value is None:
                 continue
             connection.execute(sets.update().where(sets.c.set_id == set_id).values(weight=value.external_weight_kg))
-            connection.execute(loads.insert().values(set_id=set_id, load_type=value.load_type,
-                body_mass_kg=value.body_mass_kg, assistance_kg=value.assistance_kg))
+            insert_set_load(connection, set_id, value)

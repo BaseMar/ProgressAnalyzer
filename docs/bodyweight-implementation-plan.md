@@ -49,5 +49,30 @@ implicitly. Deployment command when rollout is authorized:
 python -m db.migrate --apply
 ```
 
-Status: Step 1 approved by the user for commit and push. Step 2 is authorized;
-its completion requires a new approval before commit, push and Step 3.
+## Step 2 implementation
+
+- History → Add workout offers Import TXT and Enter exercise. Manual entry
+  records per-set reps or seconds, external/additional kg, optional RIR and set
+  purpose. The suggested type for a hang, pull-up or dip is visible and editable.
+- Body-mass suggestions use the latest valid measurement on/before the workout
+  date, with its date displayed. Future measurements are excluded. Manual
+  overrides are supported, and a missing measurement stays unknown.
+- Import TXT defaults to the original kg convention. Review body mass and load
+  types allows explicit per-exercise conventions and per-set additional weights,
+  with a preview of the resulting total loads. Input file contents are included
+  in the widget identity so a changed file cannot reuse stale load settings.
+- Imports save all exercises, set purposes and load snapshots in one transaction.
+  Manual entry appends one exercise to the latest session on the selected day.
+  Saving opens the workout's date in History's calendar.
+- History badges show time/reps, body mass, added weight, assistance and estimated
+  total load. The optional load editor corrects an individual set explicitly.
+  Historical weights are not automatically reclassified.
+- Timed sets do not contribute a fictitious reps × kg total in history headers.
+  Headers omit kg totals for bodyweight sessions pending the full analysis work.
+- Migration 006 must be applied before manual entry or explicit load corrections.
+  Legacy TXT import and history remain readable without it. The live database
+  has not been migrated as part of these code changes.
+
+Status: Step 1 committed and pushed as `c07e3a0`. Step 2 approved by the user
+for commit and push. Step 3 is authorized; its completion requires a new approval
+before commit, push and Step 4.
