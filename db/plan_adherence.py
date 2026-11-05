@@ -3,19 +3,20 @@
 from dataclasses import replace
 from datetime import date
 
-from sqlalchemy import Column, Integer, Float, MetaData, Table, func, inspect, select
+from sqlalchemy import Column, Integer, Float, MetaData, Table, func, inspect, literal, select
 from sqlalchemy.exc import IntegrityError
 
 from db.migrations.v003_exercise_matches import define_table
 from db.plan_schedule import links, load_scheduled_workouts, sessions
 from db.training_plans import exercises as targets, versions, days
 from db.set_classifications import classifications
+from db.set_loads import loads
+from mapper import map_workout_set
 from metrics.plan_adherence import compatible_set
 from models.plan_adherence import (
     ExerciseMatch, PlanAdherenceInput, PlannedTarget, PlannedWorkout, RecordedExercise,
 )
 from models.training_plan import PlannedExercise
-from models.workout_set import WorkoutSet
 
 metadata = MetaData()
 Table("training_plan_session_links", metadata, Column("session_id", Integer, primary_key=True))
@@ -42,17 +43,23 @@ def _recorded(connection, session_ids):
     if not session_ids:
         return ()
     exercises = connection.execute(select(actual_exercises).where(actual_exercises.c.session_id.in_(session_ids))).mappings().all()
-    rows = connection.execute(select(actual_sets, classifications.c.is_warmup).outerjoin(
+    load_fields = ("load_type", "body_mass_kg", "assistance_kg")
+    load_storage = inspect(connection).has_table(loads.name)
+    columns = [loads.c[name] if load_storage else literal(None).label(name) for name in load_fields]
+    query = select(actual_sets, classifications.c.is_warmup, *columns).outerjoin(
         classifications, classifications.c.set_id == actual_sets.c.set_id,
     ).join(
         actual_exercises, actual_sets.c.workout_exercise_id == actual_exercises.c.workout_exercise_id,
-    ).where(actual_exercises.c.session_id.in_(session_ids)).order_by(actual_sets.c.set_number)).mappings().all()
+    )
+    if load_storage:
+        query = query.outerjoin(loads, loads.c.set_id == actual_sets.c.set_id)
+    rows = connection.execute(query.where(actual_exercises.c.session_id.in_(session_ids))
+                              .order_by(actual_sets.c.set_number)).mappings().all()
     sets = {row["workout_exercise_id"]: [] for row in exercises}
     for row in rows:
-        sets[row["workout_exercise_id"]].append(WorkoutSet(
-            row["workout_exercise_id"], row["set_number"], row["repetitions"] or 0,
-            row["weight"] or 0., row["rir"], row["duration_seconds"], row["is_warmup"],
-        ))
+        sets[row["workout_exercise_id"]].append(map_workout_set({
+            **row, "repetitions": row["repetitions"] or 0, "weight": row["weight"] or 0.,
+        }))
     return tuple(RecordedExercise(row["workout_exercise_id"], row["session_id"], row["exercise_id"],
                                   tuple(sets[row["workout_exercise_id"]])) for row in exercises)
 

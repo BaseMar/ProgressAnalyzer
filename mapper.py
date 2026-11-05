@@ -1,5 +1,7 @@
 import pandas as pd
 
+from models.set_load import SetLoad
+
 from models import (
     BodyComposition,
     BodyMeasurement,
@@ -31,6 +33,13 @@ def map_workout_exercise(row: dict) -> WorkoutExercise:
 
 
 def map_workout_set(row: dict) -> WorkoutSet:
+    load = None
+    if not pd.isna(row.get("load_type")):
+        load = SetLoad(
+            load_type=row["load_type"], external_weight_kg=float(row["weight"]),
+            body_mass_kg=None if pd.isna(row.get("body_mass_kg")) else float(row["body_mass_kg"]),
+            assistance_kg=None if pd.isna(row.get("assistance_kg")) else float(row["assistance_kg"]),
+        )
     return WorkoutSet(
         workout_exercise_id=row["workout_exercise_id"],
         set_number=row["set_number"],
@@ -39,6 +48,7 @@ def map_workout_set(row: dict) -> WorkoutSet:
         rir=None if pd.isna(row.get("rir")) else int(row["rir"]),
         duration_seconds=row.get("duration_seconds"),
         is_warmup=None if pd.isna(row.get("is_warmup")) else bool(row["is_warmup"]),
+        load=load,
     )
 
 

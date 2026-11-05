@@ -67,7 +67,7 @@ def test_database_rejects_invalid_block_length(plan_engine):
 
 def test_upgrade_preserves_legacy_plan_without_assuming_a_block(plan_engine, monkeypatch):
     with monkeypatch.context() as temporary:
-        temporary.setattr(migration_runner, "MIGRATIONS", migration_runner.MIGRATIONS[:-1])
+        temporary.setattr(migration_runner, "MIGRATIONS", migration_runner.MIGRATIONS[:4])
         migration_runner.migrate(plan_engine, apply=True)
     with plan_engine.begin() as connection:
         plan_id = connection.execute(plans.insert().values()).inserted_primary_key[0]
@@ -77,7 +77,7 @@ def test_upgrade_preserves_legacy_plan_without_assuming_a_block(plan_engine, mon
         day_id = connection.execute(days.insert().values(version_id=version_id, name="Upper", weekday=0, position=1)).inserted_primary_key[0]
         connection.execute(exercises.insert().values(day_id=day_id, exercise_id=1, position=1,
             set_count=3, target_min=6, target_max=10, target_unit="reps", target_rir=2, weight_increment=1.25))
-    assert migration_runner.migrate(plan_engine, apply=True) == ["005_progression_settings"]
+    assert migration_runner.migrate(plan_engine, apply=True) == ["005_progression_settings", "006_set_loads"]
     assert migration_runner.migrate(plan_engine, apply=True) == []
     saved = load_training_plan_version(plan_engine, version_id)
     assert saved.draft.progression is None

@@ -61,9 +61,9 @@ def draft():
 
 
 def test_migration_preview_is_read_only_and_apply_is_repeatable(engine):
-    assert migrate(engine) == ["001_training_plans", "002_plan_session_links", "003_exercise_matches", "004_set_classifications", "005_progression_settings"]
+    assert migrate(engine) == ["001_training_plans", "002_plan_session_links", "003_exercise_matches", "004_set_classifications", "005_progression_settings", "006_set_loads"]
     assert "schema_migrations" not in inspect(engine).get_table_names()
-    assert migrate(engine, apply=True) == ["001_training_plans", "002_plan_session_links", "003_exercise_matches", "004_set_classifications", "005_progression_settings"]
+    assert migrate(engine, apply=True) == ["001_training_plans", "002_plan_session_links", "003_exercise_matches", "004_set_classifications", "005_progression_settings", "006_set_loads"]
     assert migrate(engine, apply=True) == []
     assert migrate(engine) == []
     with engine.connect() as connection:
@@ -177,5 +177,5 @@ def test_conflicting_schema_does_not_mark_migration_applied(engine):
         connection.exec_driver_sql("CREATE TABLE training_plan_days (unexpected INTEGER)")
     with pytest.raises(OperationalError):
         migrate(engine, apply=True)
-    assert migrate(engine) == ["001_training_plans", "002_plan_session_links", "003_exercise_matches", "004_set_classifications", "005_progression_settings"]
+    assert migrate(engine) == ["001_training_plans", "002_plan_session_links", "003_exercise_matches", "004_set_classifications", "005_progression_settings", "006_set_loads"]
     assert "training_plans" not in inspect(engine).get_table_names()
