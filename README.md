@@ -190,9 +190,12 @@ Incomplete load totals are flagged, and charts show gaps.
 
 For repetition-based external-load records, the backend uses the Epley estimate:
 
-$$
-\mathrm{e1RM} = w \times \left(1 + \frac{r}{30}\right)
-$$
+```text
+e1RM = weight × (1 + reps / 30)
+```
+
+Here **weight** is the recorded external load in kg and **reps** is the number
+of completed repetitions.
 
 For example, `60 kg × 10 reps` gives an estimate of `80 kg`.
 This is a formula output, not a measured one-rep maximum.
