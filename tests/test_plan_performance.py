@@ -200,7 +200,7 @@ PlanAdherenceView(manager=manager, exercise_names={1: "Bench Press"}, selected_m
     app.run()
     assert not app.exception
     assert not app.error
-    assert not app.metric
+    assert [item.value for item in app.metric] == ['60 kg × 9 reps', '+3', '3/3']
     assert len(app.get("plotly_chart")) == 1
     tables = [table.value for table in app.dataframe]
     comparison_table = next(table for table in tables if "Previous" in table.columns)
@@ -240,9 +240,9 @@ PlanAdherenceView(manager=manager).render(mode="consistency")
     app.run()
     assert not app.exception
     assert not app.error
-    assert any("1 of 1 assessed workouts have linked logs" in item.value for item in app.markdown)
-    assert any("3 of 3 planned sets are logged; 3 of 3 logged sets are within range" in item.value
-               for item in app.markdown)
+    assert [item.value for item in app.metric] == ['1/1', '100%', '100%']
+    assert '3 of 3 planned sets' in app.metric[1].proto.help
+    assert '3 of 3 logged sets' in app.metric[2].proto.help
     assert len(app.get("plotly_chart")) == 1
     records = app.dataframe[0].value
     linked = records.loc[records["Recorded date"] == recorded_date].iloc[0]

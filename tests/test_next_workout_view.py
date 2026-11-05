@@ -235,8 +235,8 @@ PlanAdherenceView(manager=manager, exercise_names={1: "Bench Press"}, selected_m
     assert not app.exception
     assert not any(item.label == "Upcoming workout" for item in app.selectbox)
     assert not any('class="recommendation-list"' in item.value for item in app.markdown)
-    assert not app.metric
-    assert any('assessed workouts have linked logs' in item.value for item in app.markdown)
+    assert [item.value for item in app.metric] == ['2/4', '50%', '100%']
+    assert 'An unlinked workout is not proof it was skipped' in app.metric[0].proto.help
 
 
 def test_card_failure_does_not_raise_or_hide_rest_of_page():

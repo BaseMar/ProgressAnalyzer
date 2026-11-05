@@ -106,9 +106,10 @@ def test_analysis_period_applies_to_body_data_and_keeps_other_questions_hidden(s
     app.selectbox(key='analysis_body_metric').select('Waist').run()
     assert not app.exception
     assert len(app.get('vega_lite_chart')) == 1
-    assert not app.metric and not app.form
+    assert len(app.metric) == 3 and not app.form
     assert not any(item.label in ('Explore an exercise', 'Upcoming workout') for item in app.selectbox)
-    assert any('Waist: 80 cm' in item.value and 'One observation' in item.value for item in app.caption)
+    assert [item.value for item in app.metric] == ['80 cm', '—', '01 May 2026']
+    assert any('One observation' in item.value for item in app.caption)
     records = app.dataframe[0].value
     assert len(records) == 1
     assert records['Waist'].iloc[0] == 80
@@ -124,9 +125,9 @@ def test_plan_consistency_has_one_chart_and_no_editing_or_exercise_drilldown(sch
     app.selectbox(key='analysis_question').select('Plan consistency').run()
     assert not app.exception
     assert len(app.get('plotly_chart')) == 1
-    assert not app.metric and not app.text_input
+    assert len(app.metric) == 3 and not app.text_input
     assert not any(item.label in ('Explore an exercise', 'Linked workout', 'Upcoming workout') for item in app.selectbox)
-    assert any('assessed workouts have linked logs' in item.value for item in app.markdown)
+    assert app.metric[0].label == 'Workouts with linked logs'
 
 
 def test_recorded_exercise_analysis_preserves_unplanned_exercises_without_rankings(schedule_data, sample_input, sets_dataframe):
@@ -135,7 +136,7 @@ def test_recorded_exercise_analysis_preserves_unplanned_exercises_without_rankin
     assert not app.exception
     app.selectbox(key='analysis_recorded_exercise').select(2).run()
     assert len(app.get('vega_lite_chart')) == 1
-    assert not app.metric
+    assert [item.value for item in app.metric] == ['60 kg × 12 reps', '1', '1']
     assert not any('Top Strength' in item.value or 'Weakest Strength' in item.value for item in app.markdown)
     app.selectbox(key='analysis_month').select('2026-05').run()
     assert not app.exception

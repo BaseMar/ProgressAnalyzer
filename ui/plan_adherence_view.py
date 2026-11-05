@@ -15,6 +15,7 @@ from ui.utils.plan_charts import exercise_history_chart, weekly_execution_chart
 from ui.utils.ui_helpers import chart_label, section_header
 from metrics.training_block import deload_adjusted_input
 from ui.utils.active_plan import select_active_plan
+from ui.utils.analysis_kpis import recorded_set_value
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +63,13 @@ class PlanAdherenceView:
             self.render_performance(performance)
             return
         overview, summary = summarize_plan(report, performance), report["summary"]
-        st.markdown('<div class="analysis-insight">'
-                    f'<strong>{summary["linked_workouts"]} of {summary["due_workouts"]} assessed workouts have linked logs.</strong><br>'
-                    f'{summary["covered_sets"]} of {summary["planned_sets"]} planned sets are logged; '
-                    f'{overview["in_range"]} of {overview["recorded_sets"]} logged sets are within range.</div>', unsafe_allow_html=True)
+        linked, coverage, in_range = st.columns(3)
+        linked.metric("Workouts with linked logs", f'{summary["linked_workouts"]}/{summary["due_workouts"]}' if summary["due_workouts"] else "—",
+                      help="Linked logs among assessed planned workouts. An unlinked workout is not proof it was skipped.")
+        coverage.metric("Planned sets logged", f'{overview["set_pct"]:.0f}%' if overview["set_pct"] is not None else "—",
+                        help=f'{summary["covered_sets"]} of {summary["planned_sets"]} planned sets are logged.')
+        in_range.metric("Logged sets in range", f'{overview["range_pct"]:.0f}%' if overview["range_pct"] is not None else "—",
+                        help=f'{overview["in_range"]} of {overview["recorded_sets"]} logged sets are within the rep/time range. RIR is assessed separately.')
         if not summary["due_workouts"]:
             st.info("No elapsed planned days or earlier completed workouts in this period yet.")
         else:
@@ -98,6 +102,16 @@ class PlanAdherenceView:
         selected = st.selectbox("Explore an exercise", contexts, key="performance_context", format_func=lambda key: f'{key[0]} · {self._name(key[5])} · {key[7]} × {key[8]}–{key[9]} {key[6]} · position {key[3]}')
         selected_rows = [row for row in observed if row["context"] == selected]
         latest = selected_rows[-1]
+        last_set, change, in_range = st.columns(3)
+        last_set.metric("Last logged set", recorded_set_value(latest["sets"][-1], latest["unit"]),
+                        help="Final credited set of the latest recorded execution. Other sets can use different loads.")
+        timed = latest["unit"] == "seconds"
+        delta = latest["seconds_delta"] if timed else latest["reps_delta"]
+        change.metric("Seconds vs previous" if timed else "Reps vs previous",
+                      f'{delta:+g}' if delta is not None else "—",
+                      help="Change in total output across all planned sets at the same load. " + latest["comparison"] + ". Read RIR separately.")
+        in_range.metric("Sets in target range", f'{latest["in_range"]}/{latest["planned_sets"]}',
+                        help="Sets within the prescribed repetition/time range in the latest execution. RIR is assessed separately.")
         st.markdown(f'<div class="analysis-insight">{escape(latest["comparison"])}</div>', unsafe_allow_html=True)
         st.caption(f'Last recorded {latest["performed_on"]:%d %b %Y} · {latest["in_range"]}/{latest["planned_sets"]} sets in range · {latest["rir_status"]}')
         fig = exercise_history_chart(selected_rows)

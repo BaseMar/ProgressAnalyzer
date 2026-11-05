@@ -227,6 +227,7 @@ ExerciseView(st.session_state["metrics"], pd.DataFrame()).render(focused=True)
     app.session_state["metrics"] = compute_exercise_metrics(inp)
     app.run()
     assert not app.exception and not app.error
+    assert [item.value for item in app.metric] == ['85 kg total × 35 s', '2', '2']
     assert len(app.get("plotly_chart")) == 1
     assert not any("Body mass +" in item.value for item in app.caption)
     app.radio(key="recorded_exercise_series").set_value("Workload").run()

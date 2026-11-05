@@ -18,6 +18,8 @@ from typing import Dict
 import pandas as pd
 import streamlit as st
 
+from metrics.load_metrics import describe_load
+from ui.utils.analysis_kpis import recorded_set_value
 from ui.utils.exercise_table import render_exercise_table
 from ui.utils.load_charts import load_history_chart
 from ui.utils.set_load_inputs import LOAD_LABELS
@@ -77,6 +79,7 @@ class ExerciseView:
         if exercise.get("per_set_performance") and (timed or exercise.get("has_explicit_load")):
             self._render_load_series(exercise, workload)
             return
+        self._render_recorded_kpis(exercise, exercise.get("per_set_performance", []))
         field = "duration_seconds" if timed else "volume" if workload else "estimated_1rm"
         key = ("per_session_duration" if workload else "per_session_best_duration") if timed else ("per_session_volume" if workload else "per_session_1rm")
         label = "Seconds" if timed else "Volume (kg)" if workload else "Best eligible e1RM (kg)"
@@ -97,6 +100,7 @@ class ExerciseView:
         units = list(dict.fromkeys(item["unit"] for item in points))
         unit = st.radio("Recorded set type", units, horizontal=True, key="recorded_load_unit") if len(units) > 1 else units[0]
         points = [item for item in points if item["unit"] == unit]
+        self._render_recorded_kpis(exercise, points)
         fig = load_history_chart(points, workload=workload)
         if fig is None:
             st.caption("No eligible performance sets yet. Workload includes descriptive logs.")
@@ -109,6 +113,20 @@ class ExerciseView:
             st.dataframe(pd.DataFrame(points)[fields].rename(columns={"date": "Date", "weight": "External kg", "body_mass_kg": "Body mass kg",
                 "assistance_kg": "Assistance kg", "total_load_kg": "Total kg", "quantity": "Reps/seconds"}),
                 hide_index=True, width="stretch")
+
+    @staticmethod
+    def _render_recorded_kpis(exercise, points):
+        last_set, sets, sessions = st.columns(3)
+        if points:
+            latest = max(points, key=lambda item: (pd.Timestamp(item["date"]), item.get("session_order", item["session_id"]),
+                                                    item["workout_exercise_id"], item["set_number"]))
+            item = {**latest, "seconds": latest["quantity"], "reps": latest["quantity"]}
+            last_set.metric("Last logged set", recorded_set_value(item, latest["unit"]),
+                            help=f'{latest["date"]:%d %b %Y} · {describe_load(latest)}. Recorded work may include light or unknown-effort sets.')
+        else:
+            last_set.metric("Last logged set", "—")
+        sets.metric("Logged sets in period", len(points) if points else exercise["total_sets"])
+        sessions.metric("Sessions in period", len({item["session_id"] for item in points}) if points else exercise["sessions_count"])
 
     def _render_selector(self, exercises_df: pd.DataFrame) -> None:
         """Render exercise selector dropdown and associated analysis sections."""

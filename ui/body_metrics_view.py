@@ -84,8 +84,14 @@ class BodyMetricsView:
             points = df[["date", cfg["col"]]].dropna().rename(columns={cfg["col"]: selected})
             current = points.iloc[-1]
             delta = current[selected] - points.iloc[0][selected]
-            st.caption(f'{selected}: {current[selected]:g} {cfg["unit"]} on {current["date"]:%d %b %Y}. '
-                       + (f'Change since {points.iloc[0]["date"]:%d %b}: {delta:+g} {cfg["unit"]}.' if len(points) > 1 else "One observation; no trend yet."))
+            change_unit = "pp" if cfg["unit"] == "%" else cfg["unit"]
+            latest, change, recorded = st.columns(3)
+            latest.metric(f"Latest {selected.lower()}", f'{current[selected]:g} {cfg["unit"]}')
+            change.metric("Change in selected period", f'{delta:+g} {change_unit}' if len(points) > 1 else "—",
+                          help=f'Compared with the first available measurement on {points.iloc[0]["date"]:%d %b %Y}. Direction alone does not establish improvement.')
+            recorded.metric("Last measured", f'{current["date"]:%d %b %Y}')
+            if len(points) == 1:
+                st.caption("One observation; no trend yet.")
             line_chart(points.set_index("date"), selected)
             st.caption("These are recorded measurements. Direction alone does not establish improvement; device estimates may vary.")
             with st.expander("Measurement records"):
