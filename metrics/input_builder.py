@@ -3,7 +3,6 @@ from metrics.input import MetricsInput
 from mapper import map_body_composition, map_body_measurement, map_workout_set
 from models.workout_session import WorkoutSession
 from models.workout_exercise import WorkoutExercise
-from models.workout_set import WorkoutSet
 from models.exercise import Exercise
 
 

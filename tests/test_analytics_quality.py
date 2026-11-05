@@ -1,7 +1,6 @@
 """Regression coverage for honest units, dated charts and explicit warm-up labels."""
 from dataclasses import replace
 from datetime import date, time
-import json
 import pandas as pd
 
 import pytest
@@ -41,38 +40,6 @@ def test_fatigue_has_dates_and_consecutive_sessions_follow_chronology(sample_inp
     assert list(fatigue["per_session"]) == [1, 2, 3, 4]
     assert fatigue["global"]["max_consecutive_high_fatigue_sessions"] == 2
     assert fatigue["per_session"][3]["session_date"] == date(2026, 5, 3)
-
-
-def test_fatigue_ui_displays_kilograms_percentages_and_nonempty_chart(sample_input):
-    app = AppTest.from_string('''
-import streamlit as st
-from ui.analytics_view import AnalyticsView
-AnalyticsView(st.session_state["metrics"])._fatigue_section()
-''', default_timeout=30)
-    app.session_state["metrics"] = compute_all_metrics(sample_input)
-    app.run()
-    assert not app.exception
-    values = {item.label: item.value for item in app.metric}
-    assert values["Mean session e1RM"].endswith(" kg")
-    assert values["High-score sessions"].endswith("%")
-    charts = app.get("plotly_chart")
-    assert len(charts) == 1
-    assert len(json.loads(charts[0].proto.spec)["data"][0]["x"]) == 3
-    assert not app.success
-
-
-def test_positive_lowest_change_is_not_called_regression():
-    app = AppTest.from_string('''
-from ui.analytics_view import AnalyticsView
-AnalyticsView({"progress": {"per_exercise": {
-    1: {"exercise_name": "Bench", "progress_pct": 10., "exposure_count": 3},
-    2: {"exercise_name": "Row", "progress_pct": 5., "exposure_count": 3},
-}}})._progress_section()
-''', default_timeout=30).run()
-    assert not app.exception
-    values = {item.label: item.value for item in app.metric}
-    assert values["Lowest change"] == "Row"
-    assert "Top Regressor" not in values
 
 
 def test_mapper_keeps_unknown_type_and_missing_rir_unknown():

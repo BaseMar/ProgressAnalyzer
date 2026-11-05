@@ -163,7 +163,7 @@ APP = '''
 import pandas as pd
 import streamlit as st
 from data_manager import DataManager
-from ui.dashboard_view import DashboardView
+from ui.history_view import HistoryView
 manager = object.__new__(DataManager)
 manager.engine = st.session_state["test_engine"]
 frame = manager.load_sessions()
@@ -176,7 +176,7 @@ if st.session_state.get("empty_history"):
 month = st.session_state["test_month"]
 if month:
     frame = frame.loc[frame.session_date.dt.strftime("%Y-%m") == month]
-DashboardView({}, frame, month, data_manager=manager, exercise_names={1: "Bench Press"})._render_history()
+HistoryView({}, frame, month, data_manager=manager, exercise_names={1: "Bench Press"})._render_history()
 '''
 
 

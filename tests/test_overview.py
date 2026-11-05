@@ -147,10 +147,10 @@ def test_overview_contains_no_calendar_or_source_correction_widgets(schedule_dat
 import pandas as pd
 import streamlit as st
 from data_manager import DataManager
-from ui.dashboard_view import DashboardView
+from ui.overview_view import OverviewView
 manager = object.__new__(DataManager)
 manager.engine = st.session_state['test_engine']
-DashboardView({}, pd.DataFrame(), '2026-05', data_manager=manager, exercise_names={1: 'Bench Press'}).render(as_of=st.session_state['as_of'])
+OverviewView(manager, {1: 'Bench Press'}).render(as_of=st.session_state['as_of'])
 ''')
     assert not any(item.label == 'Calendar & recorded sessions' for item in app.expander)
     assert not any(item.key.startswith('history_date_') for item in app.button)

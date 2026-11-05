@@ -1,5 +1,4 @@
 """Session-specific replacement approval, owned by History."""
-from html import escape
 import logging
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError

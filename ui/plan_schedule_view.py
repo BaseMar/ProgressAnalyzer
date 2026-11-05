@@ -1,6 +1,5 @@
 """Plan overlays and explicit session assignment controls for the calendar."""
 
-from datetime import date
 from html import escape
 import logging
 

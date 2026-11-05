@@ -67,12 +67,19 @@ def test_heatmap_seeds_cover_front_thigh_and_upper_oblique_panels():
     assert all(obliques_mask[y, x] for x, y in upper_oblique_points)
 
 
-def test_status_uses_target_band_inside_mev_mrv_range():
-    assert _status_from_range(8.0, mev=10.0, target=12.0, mrv=16.0) == "under"
-    assert _status_from_range(10.5, mev=10.0, target=12.0, mrv=16.0) == "minimum"
-    assert _status_from_range(12.5, mev=10.0, target=12.0, mrv=16.0) == "on_target"
-    assert _status_from_range(14.0, mev=10.0, target=12.0, mrv=16.0) == "high"
-    assert _status_from_range(17.0, mev=10.0, target=12.0, mrv=16.0) == "over"
+def test_map_compares_plan_independently_of_reference():
+    assert _status_from_range(8.0, 10.0, 12.0, 20.0) == "under"
+    assert _status_from_range(12.5, 10.0, 12.0, 20.0) == "on_target"
+    assert _status_from_range(14.0, 10.0, 12.0, 20.0) == "over"
+    assert _status_from_range(6.0, 10.0, 6.0, 20.0) == "on_target"
+    assert _status_from_range(25.0, 10.0, 25.0, 20.0) == "on_target"
+
+
+def test_missing_plan_uses_reference_but_zero_means_not_planned():
+    assert _status_from_range(8.0, 10.0, None, 20.0) == "minimum"
+    assert _status_from_range(12.0, 10.0, None, 20.0) == "high"
+    assert _status_from_range(25.0, 10.0, None, 20.0) == "above_reference"
+    assert _status_from_range(0.0, 10.0, 0.0, 20.0) == "no_range"
 
 
 def test_build_heatmap_df_reports_target_percentage():
@@ -85,7 +92,7 @@ def test_build_heatmap_df_reports_target_percentage():
     result = _build_heatmap_df(
         body_df,
         ["Back"],
-        {"Back": {"MEV": 14.0, "Target": 20.0, "MRV": 26.0}},
+        {"Back": {"Min": 10.0, "Target": 20.0, "Max": 20.0}},
         period_weeks=3.0,
     )
 

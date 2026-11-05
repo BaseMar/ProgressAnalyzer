@@ -185,6 +185,28 @@ for compatibility; the interface does not present them as training effectiveness
 One active plan is shared between these tasks. Overview and Plan have no history
 month selector. Analysis and History retain their own date selections.
 
+Muscle distribution calculates **Target** from one full reference week of the
+active plan version effective today. Saving a new plan selects it automatically;
+future versions take effect on their start date. The month filter affects logged
+sets only. Saved muscle factors weight both planned and recorded sets (for
+example, primary 1.0 and secondary 0.5). Timed sets count once, independent of
+their duration. Deload prescriptions remain in Overview; this table describes
+the base weekly routine.
+
+**Min = 10, Max = 20 weekly sets** is a general hypertrophy reference, based on
+[IUSCA (2021)](https://doi.org/10.47206/ijsc.v1i1.81) and
+[ACSM (2026)](https://doi.org/10.1249/MSS.0000000000003897). This practical range
+does not establish individual MEV/MRV or separate limits for every muscle.
+Broad catalog groups (such as Legs), saved fractional allocations and timed
+holds make the comparison approximate. Lower volumes can produce growth, and
+20 is not a recovery ceiling. The target is never clamped to this range;
+the table reports whether the plan is below, within or above it. Map colors
+compare logged weekly sets with the plan, using a ±10% band. Without a plan,
+colors use the reference range instead. Blank target means unavailable;
+zero means the muscle is not allocated any sets in the plan. Missing mappings
+or plan read errors leave targets blank instead of showing partial totals.
+Manual heatmap range settings are no longer read or written.
+
 ## Training Plan editor
 
 Open **Plan**, choose the active plan, or switch on **Create a new plan**.

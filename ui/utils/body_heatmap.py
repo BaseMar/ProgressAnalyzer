@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 from io import BytesIO
-import json
 from html import escape
 from pathlib import Path
 from typing import Iterable
@@ -13,36 +12,19 @@ import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image, ImageDraw
 
+from metrics.muscle_volume import BODY_PART_ORDER, volume_ranges
 from ui.utils.ui_helpers import ACCENT, MUTED, SURFACE, TEXT, chart_label
 
 
 BODY_IMAGE_PATH = Path(__file__).resolve().parents[1] / "wzorzec" / "human_body.png"
-VOLUME_RANGES_PATH = Path(__file__).resolve().parents[2] / "user_settings" / "body_heatmap_ranges.json"
-
-DEFAULT_VOLUME_RANGES = {
-    "Chest": {"MEV": 6.0, "Target": 12.0, "MRV": 16.0},
-    "Back": {"MEV": 10.0, "Target": 16.0, "MRV": 24.0},
-    "Lower Back": {"MEV": 4.0, "Target": 6.0, "MRV": 10.0},
-    "Glutes": {"MEV": 8.0, "Target": 12.0, "MRV": 20.0},
-    "Legs": {"MEV": 8.0, "Target": 14.0, "MRV": 24.0},
-    "Shoulders": {"MEV": 6.0, "Target": 12.0, "MRV": 20.0},
-    "Biceps": {"MEV": 8.0, "Target": 12.0, "MRV": 20.0},
-    "Triceps": {"MEV": 6.0, "Target": 12.0, "MRV": 20.0},
-    "Forearms": {"MEV": 4.0, "Target": 8.0, "MRV": 14.0},
-    "Abs": {"MEV": 6.0, "Target": 10.0, "MRV": 16.0},
-    "Obliques": {"MEV": 4.0, "Target": 8.0, "MRV": 14.0},
-    "Calves": {"MEV": 6.0, "Target": 12.0, "MRV": 20.0},
-}
-
-BODY_PART_ORDER = list(DEFAULT_VOLUME_RANGES.keys())
-
 STATUS_META = {
-    "under": {"label": "Undertrained", "color": "#3B82F6"},
-    "minimum": {"label": "Minimum", "color": "#06B6D4"},
-    "on_target": {"label": "Target", "color": "#22C55E"},
-    "high": {"label": "High", "color": "#F59E0B"},
-    "over": {"label": "Overtrained", "color": "#EF4444"},
-    "no_range": {"label": "No range", "color": MUTED},
+    "under": {"label": "Below plan", "color": "#3B82F6"},
+    "minimum": {"label": "Below reference", "color": "#06B6D4"},
+    "on_target": {"label": "On plan", "color": "#22C55E"},
+    "high": {"label": "Within reference", "color": "#F59E0B"},
+    "over": {"label": "Above plan", "color": "#EF4444"},
+    "above_reference": {"label": "Above reference", "color": "#F59E0B"},
+    "no_range": {"label": "No plan target", "color": MUTED},
 }
 
 MUSCLE_GROUP_SEEDS = {
@@ -152,162 +134,56 @@ EXCLUDED_OVERLAY_REGIONS = {
 }
 
 
-def render_body_heatmap(body_df: pd.DataFrame, period_weeks: float, period_label: str) -> None:
-    """Render editable weekly set ranges and a muscle heatmap for filtered data."""
+def render_body_heatmap(body_df: pd.DataFrame, period_weeks: float, period_label: str, *, weekly_targets=None) -> None:
+    """Show automatic reference ranges and current-plan weekly targets."""
     chart_label("Weekly Volume Ranges")
-
-    ordered_parts = _ordered_body_parts(body_df["Body Part"].tolist())
-    ranges = _render_range_inputs(ordered_parts)
+    parts = [*body_df["Body Part"].tolist(), *(weekly_targets or {})]
+    ordered_parts = _ordered_body_parts(parts)
+    ranges = volume_ranges(ordered_parts, weekly_targets)
+    rows = []
+    for part, values in ranges.items():
+        target = values["Target"]
+        reference = ("No plan" if target is None else "Not planned" if target == 0 else
+                     "Below" if target < values["Min"] else "Above" if target > values["Max"] else "Within")
+        rows.append({"Body Part": part, **values, "Plan vs reference": reference})
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch", column_config={
+        "Min": st.column_config.NumberColumn("Min", help="General hypertrophy reference, not an individual minimum.", format="%.1f"),
+        "Target": st.column_config.NumberColumn("Target", help="Weekly sets from the active plan, weighted by saved muscle allocations. Zero means not planned; blank means unavailable.", format="%.1f"),
+        "Max": st.column_config.NumberColumn("Max", help="Practical upper reference, not a recovery or safety limit.", format="%.1f"),
+    })
+    with st.expander("How ranges and targets are calculated"):
+        st.markdown(
+            "Min–Max = **10–20 sets per week**, a general starting guide for hypertrophy. "
+            "[IUSCA (2021)](https://doi.org/10.47206/ijsc.v1i1.81) supports about 10 weekly sets "
+            "to optimize growth; [ACSM (2026)](https://doi.org/10.1249/MSS.0000000000003897) "
+            "describes diminishing returns around 18–20. Progress is possible below this range, "
+            "and 20 is not a maximum recoverable volume. These are not muscle-specific limits.\n\n"
+            "Target sums all workout slots in one reference week of the active plan. "
+            "Each set is weighted by its saved muscle allocation (for example, 1 for a primary "
+            "muscle and 0.5 for a secondary muscle). "
+            "[Pelland et al. (2026)](https://pubmed.ncbi.nlm.nih.gov/41343037/) supports fractional "
+            "counting of indirect sets; the saved exercise factors remain allocation estimates. "
+            "Broad groups such as Legs or Back pool several muscles, so their reference comparison "
+            "is approximate. Timed holds count as logged sets, not 30-second equivalents; "
+            "their hypertrophy dose is not directly comparable to dynamic sets.\n\n"
+            "Map colors compare recorded weekly sets with the plan (±10%). "
+            "Without a plan target, colors show only the general reference range. "
+            "They do not diagnose undertraining or overtraining."
+        )
     heatmap_df = _build_heatmap_df(body_df, ordered_parts, ranges, period_weeks)
-
     chart_label(f"Muscle Heatmap | {period_label}")
     _render_heatmap_html(heatmap_df, period_weeks)
 
 
 def _ordered_body_parts(parts: Iterable[str]) -> list[str]:
-    seen = {str(part).title() for part in parts if part}
-    ordered = [part for part in BODY_PART_ORDER if part in seen or part in DEFAULT_VOLUME_RANGES]
-    extras = sorted(seen.difference(ordered))
-    return ordered + extras
-
-
-def _render_range_inputs(body_parts: list[str]) -> dict[str, dict[str, float]]:
-    saved_ranges = _load_volume_ranges()
-    rows = []
-    for body_part in body_parts:
-        defaults = saved_ranges.get(
-            body_part,
-            DEFAULT_VOLUME_RANGES.get(
-                body_part,
-                {"MEV": 6.0, "Target": 8.0, "MRV": 12.0},
-            ),
-        )
-        rows.append(
-            {
-                "Body Part": body_part,
-                "MEV": float(defaults["MEV"]),
-                "Target": float(defaults["Target"]),
-                "MRV": float(defaults["MRV"]),
-            }
-        )
-
-    edited = st.data_editor(
-        pd.DataFrame(rows),
-        hide_index=True,
-        width="stretch",
-        key="body_heatmap_volume_ranges",
-        disabled=["Body Part"],
-        column_config={
-            "Body Part": st.column_config.TextColumn("Body Part", width="medium"),
-            "MEV": st.column_config.NumberColumn(
-                "MEV",
-                help="Minimum effective weekly sets.",
-                min_value=0.0,
-                max_value=80.0,
-                step=1.0,
-                format="%.0f",
-                width="small",
-            ),
-            "Target": st.column_config.NumberColumn(
-                "Target",
-                help="Target weekly sets.",
-                min_value=0.0,
-                max_value=80.0,
-                step=1.0,
-                format="%.0f",
-                width="small",
-            ),
-            "MRV": st.column_config.NumberColumn(
-                "MRV",
-                help="Maximum recoverable weekly sets.",
-                min_value=0.0,
-                max_value=80.0,
-                step=1.0,
-                format="%.0f",
-                width="small",
-            ),
-        },
-    )
-
-    ranges = {}
-    invalid_ranges = []
-    for _, row in edited.iterrows():
-        body_part = str(row["Body Part"])
-        mev, target, mrv = _ordered_range(row["MEV"], row["Target"], row["MRV"])
-        if (mev, target, mrv) != (float(row["MEV"]), float(row["Target"]), float(row["MRV"])):
-            invalid_ranges.append(body_part)
-        ranges[body_part] = {"MEV": mev, "Target": target, "MRV": mrv}
-
-    if invalid_ranges:
-        st.warning(
-            "Some volume ranges were inconsistent, so they were ordered as MEV <= Target <= MRV: "
-            + ", ".join(invalid_ranges)
-        )
-
-    _save_volume_ranges(ranges)
-    return ranges
-
-
-def _load_volume_ranges() -> dict[str, dict[str, float]]:
-    if not VOLUME_RANGES_PATH.exists():
-        return {}
-
-    try:
-        raw_ranges = json.loads(VOLUME_RANGES_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-
-    if not isinstance(raw_ranges, dict):
-        return {}
-
-    ranges = {}
-    for body_part, values in raw_ranges.items():
-        if not isinstance(values, dict):
-            continue
-        try:
-            mev, target, mrv = _ordered_range(values["MEV"], values["Target"], values["MRV"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        ranges[str(body_part).title()] = {"MEV": mev, "Target": target, "MRV": mrv}
-
-    return ranges
-
-
-def _save_volume_ranges(ranges: dict[str, dict[str, float]]) -> None:
-    payload = {
-        body_part: {
-            "MEV": float(values["MEV"]),
-            "Target": float(values["Target"]),
-            "MRV": float(values["MRV"]),
-        }
-        for body_part, values in ranges.items()
-    }
-
-    try:
-        VOLUME_RANGES_PATH.parent.mkdir(parents=True, exist_ok=True)
-        VOLUME_RANGES_PATH.write_text(
-            json.dumps(payload, indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
-    except OSError as exc:
-        st.warning(f"Could not save weekly volume ranges: {exc}")
-
-
-def _ordered_range(mev: float, target: float, mrv: float) -> tuple[float, float, float]:
-    ordered = sorted([_range_value(mev), _range_value(target), _range_value(mrv)])
-    return ordered[0], ordered[1], ordered[2]
-
-
-def _range_value(value: float) -> float:
-    if pd.isna(value):
-        return 0.0
-    return float(value)
+    seen = {str(part).strip().title() for part in parts if part}
+    return [*BODY_PART_ORDER, *sorted(seen.difference(BODY_PART_ORDER))]
 
 
 def _build_heatmap_df(
     body_df: pd.DataFrame,
     body_parts: list[str],
-    ranges: dict[str, dict[str, float]],
+    ranges: dict[str, dict[str, float | None]],
     period_weeks: float,
 ) -> pd.DataFrame:
     source = body_df.copy()
@@ -319,48 +195,45 @@ def _build_heatmap_df(
 
     for body_part in body_parts:
         trained_sets = float(source.loc[body_part, "Total_Sets"]) if body_part in source.index else 0.0
-        body_range = ranges.get(body_part, {"MEV": 0.0, "Target": 0.0, "MRV": 0.0})
-        mev = float(body_range.get("MEV", 0.0))
-        target = float(body_range.get("Target", 0.0))
-        mrv = float(body_range.get("MRV", 0.0))
+        body_range = ranges.get(body_part, {})
+        minimum = float(body_range.get("Min", 0.0))
+        target = body_range.get("Target")
+        maximum = float(body_range.get("Max", 0.0))
         sets_per_week = trained_sets / safe_weeks
-        target_pct = (sets_per_week / target * 100) if target > 0 else None
+        target_pct = (sets_per_week / target * 100) if target is not None and target > 0 else None
 
         rows.append(
             {
                 "Body Part": body_part,
                 "Total Sets": trained_sets,
                 "Sets / Week": sets_per_week,
-                "MEV": mev,
+                "Min": minimum,
                 "Target": target,
-                "MRV": mrv,
+                "Max": maximum,
                 "Target %": target_pct,
-                "Status": _status_from_range(sets_per_week, mev, target, mrv),
+                "Status": _status_from_range(sets_per_week, minimum, target, maximum),
             }
         )
 
     return pd.DataFrame(rows)
 
 
-def _status_from_range(sets_per_week: float, mev: float, target: float, mrv: float) -> str:
-    if mev <= 0 and target <= 0 and mrv <= 0:
+def _status_from_range(sets_per_week: float, minimum: float, target: float | None, maximum: float) -> str:
+    if target is not None:
+        if target == 0:
+            return "no_range"
+        if sets_per_week < target * 0.9:
+            return "under"
+        if sets_per_week > target * 1.1:
+            return "over"
+        return "on_target"
+    if minimum <= 0 and maximum <= 0:
         return "no_range"
-    if sets_per_week < mev:
-        return "under"
-    if mrv > 0 and sets_per_week > mrv:
-        return "over"
-    if target <= 0:
-        return "on_target"
-
-    target_floor = max(mev, target * 0.9)
-    target_ceiling = min(mrv, target * 1.1) if mrv > 0 else target * 1.1
-    if sets_per_week < target_floor:
+    if sets_per_week < minimum:
         return "minimum"
-    if sets_per_week <= target_ceiling:
-        return "on_target"
-    if mrv > 0 and sets_per_week <= mrv:
-        return "high"
-    return "on_target"
+    if sets_per_week > maximum:
+        return "above_reference"
+    return "high"
 
 
 def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
@@ -368,7 +241,6 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
     legend_html = "".join(
         f'<span class="legend-item"><i style="background:{meta["color"]}"></i>{meta["label"]}</span>'
         for meta in STATUS_META.values()
-        if meta["label"] != "No range"
     )
     body_image_src = _body_image_data_uri(BODY_IMAGE_PATH.stat().st_mtime_ns)
     overlay_image_src = _body_overlay_data_uri(

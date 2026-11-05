@@ -2,7 +2,7 @@ from datetime import date
 
 import pandas as pd
 
-from ui.body_parts_view import BodyPartsView, _bar_fig, _data_signature
+from ui.body_parts_view import BodyPartsView, _bar_fig
 from ui.utils.data_filter import filter_data_by_month
 from ui.utils.exercise_matcher import normalize
 from ui.utils.muscle_tags import resolve_muscle_tag
@@ -82,5 +82,4 @@ def test_body_parts_chart_helpers_return_stable_outputs():
         ]
     )
 
-    assert _data_signature(body_df) == _data_signature(body_df.sample(frac=1))
     assert _bar_fig(body_df, "Total_Volume", "Volume (kg)").data[0].orientation == "h"

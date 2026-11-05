@@ -7,7 +7,7 @@ APP = '''
 from unittest.mock import patch
 import pandas as pd
 import streamlit as st
-from ui.dashboard_view import DashboardView
+from ui.history_view import HistoryView
 
 rows = [
     dict(session_id=1, session_date="2024-02-29", exercise_name="Bench Press",
@@ -21,8 +21,8 @@ df = pd.DataFrame(rows)
 month = st.session_state.get("filter_month", "All time")
 if month != "All time":
     df = df.loc[df.session_date.str.startswith(month)]
-with patch("ui.dashboard_view.DataManager"):
-    view = DashboardView({}, df, month)
+with patch("ui.history_view.DataManager"):
+    view = HistoryView({}, df, month)
 view._render_history()
 '''
 
@@ -92,9 +92,9 @@ def test_no_history_shows_empty_state():
     app = AppTest.from_string('''
 from unittest.mock import patch
 import pandas as pd
-from ui.dashboard_view import DashboardView
-with patch("ui.dashboard_view.DataManager"):
-    view = DashboardView({}, pd.DataFrame())
+from ui.history_view import HistoryView
+with patch("ui.history_view.DataManager"):
+    view = HistoryView({}, pd.DataFrame())
 view._render_history()
 ''', default_timeout=30).run()
     assert not app.exception
