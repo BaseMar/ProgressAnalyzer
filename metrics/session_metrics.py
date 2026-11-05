@@ -16,7 +16,7 @@ from typing import Any, Dict
 from metrics.input import MetricsInput
 from metrics.utils import is_duration_set, set_duration_seconds, set_intensity, set_reps, set_volume
 from metrics.utils.calendar import observed_week_count
-from metrics.utils.set_values import analysis_sets
+from metrics.utils.set_values import analysis_sets, load_summary
 
 
 def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
@@ -116,6 +116,7 @@ def compute_session_metrics(input: MetricsInput) -> Dict[str, Any]:
             "session_date": session.session_date,
             "duration_minutes": duration_minutes,
             "total_sets": total_sets,
+            **load_summary(sets),
             "total_reps": total_reps,
             "total_volume": total_volume,
             "total_duration_seconds": total_duration_seconds,

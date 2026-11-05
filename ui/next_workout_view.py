@@ -38,6 +38,9 @@ def recommendation_note(item):
         "mixed_loads": "Keep each set's logged load; automatic increases need one common working load.",
         "mixed_range": "Some sets exceeded the range while others stayed below its upper bound.",
         "timed_exercise": "Keep the logged load and time range; automatic timed progression is not supported.",
+        "bodyweight_load_manual": "Choose additional weight or assistance manually. Compare total supported load; less assistance increases difficulty. Body mass for the next workout is not assumed.",
+        "unknown_load": "Add the missing body mass or assistance in History before comparing loads.",
+        "mixed_load_convention": "The latest sets use different load conventions. Choose the next load manually.",
         "zero_load": "Keep this target; adding external load requires a manual decision.",
         "weight_step_not_supported": "The available weight step is too large for an automatic increase.",
         "scheduled_deload": "Lighter week: fewer sets, reduced load and more reserve.",
@@ -190,7 +193,7 @@ class NextWorkoutView:
                  "deload": "Deload", "insufficient_data": "More data needed"}[item.action]
         if item.reason_code == "resume_after_deload":
             label = "Return after deload"
-        if item.reason_code in ("deload_load_not_supported", "deload_timed_not_supported"):
+        if item.reason_code in ("deload_load_not_supported", "deload_timed_not_supported", "bodyweight_load_manual", "mixed_load_convention"):
             label = "Manual target"
         original = f'<small>Instead of {escape(self._name(item.planned_exercise_id))}</small>' if item.actual_exercise_id != item.planned_exercise_id else ""
         return ('<div class="recommendation-exercise"><div class="recommendation-exercise-top">'

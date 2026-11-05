@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from data_manager import DataManager
 from metrics.plan_adherence import compute_plan_adherence
 from metrics.plan_performance import compute_plan_performance
+from metrics.load_metrics import describe_load
 from metrics.plan_summary import summarize_plan
 from ui.utils.plan_charts import exercise_history_chart, weekly_execution_chart
 from ui.utils.ui_helpers import chart_label, section_header
@@ -82,6 +83,8 @@ class PlanAdherenceView:
     @staticmethod
     def _set_label(item, unit):
         quantity = f'{item["seconds"]}s' if unit == "seconds" else f'{item["reps"]} reps'
+        if item.get("load_type", "legacy") != "legacy":
+            return f'{quantity} @ {describe_load(item)} · RIR {item["rir"] if item["rir"] is not None else "?"}'
         load = f' @ {item["weight"]:g} kg' if item["weight"] else ""
         return f'{quantity}{load} · RIR {item["rir"] if item["rir"] is not None else "?"}'
 
@@ -101,6 +104,8 @@ class PlanAdherenceView:
         if fig is not None:
             st.plotly_chart(fig, width="stretch", key="plan_exercise_history")
         st.caption("Shaded band = target range at each date; amber diamonds = deload. Means describe logged sets, including partial sessions. Read load alongside reps/time; substitutes keep separate histories.")
+        st.caption("Explicit bodyweight logs use body mass + additional weight − measured assistance. "
+                   "Unknown loads and convention changes are not graded; less assistance increases difficulty.")
         with st.expander("Previous vs current · set breakdown"):
             previous = latest["previous"]
             if previous:

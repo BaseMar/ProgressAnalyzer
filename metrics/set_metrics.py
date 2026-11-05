@@ -9,7 +9,7 @@ from statistics import mean
 from typing import Dict, Any
 
 from metrics.input import MetricsInput
-from metrics.utils.set_values import analysis_sets
+from metrics.utils.set_values import analysis_sets, load_summary
 from metrics.utils import (
     is_duration_set,
     set_duration_seconds,
@@ -73,12 +73,13 @@ def compute_set_metrics(input: MetricsInput) -> Dict[str, Any]:
     if max_estimated_1rm is not None:
         heavy_threshold = 0.8 * max_estimated_1rm
         heavy_sets = sum(1 for orm in one_rms if orm >= heavy_threshold)
-        heavy_set_ratio = heavy_sets / len(strength_sets) if strength_sets else None
+        heavy_set_ratio = heavy_sets / len(one_rms) if one_rms else None
     else:
         heavy_set_ratio = None
 
     return {
         "total_sets": total_sets,
+        **load_summary(sets),
         "total_reps": total_reps,
         "total_volume": total_volume,
         "total_duration_seconds": total_duration_seconds,

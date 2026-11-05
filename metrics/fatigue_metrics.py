@@ -4,7 +4,7 @@ from datetime import datetime, time
 
 from metrics.input import MetricsInput
 from metrics.utils import set_duration_seconds, set_intensity, set_volume
-from metrics.utils.set_values import analysis_sets
+from metrics.utils.set_values import analysis_sets, load_summary
 
 
 def compute_fatigue_metrics(input: MetricsInput) -> dict:
@@ -72,6 +72,7 @@ def compute_fatigue_metrics(input: MetricsInput) -> dict:
         high_fatigue_flags.append(fatigue_score >= 0.7)
 
         per_session[session.session_id] = {
+            **load_summary(sets),
             "session_date": session.session_date,
             "session_timestamp": datetime.combine(session.session_date, session.start_time or time.min),
             "avg_rir": round(avg_rir, 2) if avg_rir is not None else None,

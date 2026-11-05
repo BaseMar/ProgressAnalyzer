@@ -33,6 +33,10 @@ class InsightSet:
     kind: str
     source: str
     reason: str
+    load_type: str = "legacy"
+    total_load_kg: float | None = None
+    body_mass_kg: float | None = None
+    assistance_kg: float | None = None
 
 
 @dataclass(frozen=True)

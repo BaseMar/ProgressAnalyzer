@@ -19,6 +19,8 @@ import pandas as pd
 import streamlit as st
 
 from ui.utils.exercise_table import render_exercise_table
+from ui.utils.load_charts import load_history_chart
+from ui.utils.set_load_inputs import LOAD_LABELS
 from ui.utils.ui_helpers import chart_label, format_number, line_chart, page_title, section_header
 
 
@@ -72,6 +74,9 @@ class ExerciseView:
         timed = bool(exercise.get("total_duration_seconds"))
         question = st.radio("Show", ["Performance", "Workload"], horizontal=True, key="recorded_exercise_series")
         workload = question == "Workload"
+        if exercise.get("per_set_performance") and (timed or exercise.get("has_explicit_load")):
+            self._render_load_series(exercise, workload)
+            return
         field = "duration_seconds" if timed else "volume" if workload else "estimated_1rm"
         key = ("per_session_duration" if workload else "per_session_best_duration") if timed else ("per_session_volume" if workload else "per_session_1rm")
         label = "Seconds" if timed else "Volume (kg)" if workload else "Best eligible e1RM (kg)"
@@ -82,6 +87,33 @@ class ExerciseView:
         st.caption("Workload includes light and unknown-effort logs. Performance uses eligible ordinary sets or timed work; planned deloads are excluded. e1RM is an estimate, not a tested maximum.")
         with st.expander("Source sessions"):
             st.dataframe(pd.DataFrame(points), hide_index=True, width="stretch")
+
+    def _render_load_series(self, exercise, workload):
+        points = exercise["per_set_performance"]
+        kinds = list(dict.fromkeys(item["load_type"] for item in points))
+        kind = st.selectbox("Load convention", kinds, format_func=LOAD_LABELS.get,
+                            key="recorded_load_convention") if len(kinds) > 1 else kinds[0]
+        points = [item for item in points if item["load_type"] == kind]
+        units = list(dict.fromkeys(item["unit"] for item in points))
+        unit = st.radio("Recorded set type", units, horizontal=True, key="recorded_load_unit") if len(units) > 1 else units[0]
+        points = [item for item in points if item["unit"] == unit]
+        fig = load_history_chart(points, workload=workload)
+        if fig is None:
+            st.caption("No eligible performance sets yet. Workload includes descriptive logs.")
+        else:
+            st.plotly_chart(fig, width="stretch", key="recorded_load_history")
+        st.caption("Performance compares reps or seconds at the same known load, within this exercise and load convention. "
+                   "Body mass + additional weight − measured assistance gives estimated total supported load. "
+                   "Unknown body mass or assistance stays unknown; less assistance increases difficulty.")
+        if kind == "legacy":
+            st.caption("Original-log kg retain their historical meaning. Zero recorded kg does not establish absence of bodyweight loading.")
+        st.caption("Record different grips, active/passive hangs and unilateral variants as separate exercises. "
+                   "Timed work is shown in seconds and recorded sets; bodyweight work has no inferred e1RM. "
+                   "Workload includes light and unknown-effort sets; deloads are excluded from performance.")
+        with st.expander("Source sets"):
+            st.dataframe(pd.DataFrame(points).rename(columns={"weight": "External kg", "body_mass_kg": "Body mass kg",
+                "assistance_kg": "Assistance kg", "total_load_kg": "Total kg", "quantity": "Reps/seconds"}),
+                hide_index=True, width="stretch")
 
     def _render_selector(self, exercises_df: pd.DataFrame) -> None:
         """Render exercise selector dropdown and associated analysis sections."""
@@ -103,7 +135,7 @@ class ExerciseView:
         if is_duration_exercise:
             cols[2].metric("Total Time", _format_seconds(exercise.get("total_duration_seconds")))
             cols[3].metric("Best Set", _format_seconds(exercise.get("best_duration_seconds")))
-            cols[4].metric("Effective Sets", format_number(exercise.get("effective_sets"), 1))
+            cols[4].metric("Timed sets", exercise.get("timed_sets", exercise["total_sets"]))
         else:
             cols[2].metric("Total Volume", f"{format_number(exercise['total_volume'], 0)} kg")
             cols[3].metric("Max Weight", f"{format_number(exercise['max_weight'], 1)} kg")

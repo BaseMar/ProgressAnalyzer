@@ -5,6 +5,7 @@ from decimal import Decimal, ROUND_CEILING
 from math import isclose, isfinite
 
 from metrics.plan_performance import comparison_context, compute_plan_performance
+from metrics.load_metrics import recorded_load, same_loads
 from metrics.training_block import deload_exercise_target, is_deload_workout, training_block_phase
 from models.plan_adherence import PlanAdherenceInput, PlannedWorkout
 from models.progression import DeloadPolicy, ExerciseRecommendation, ProgressionPolicy, SetGoal, WorkoutRecommendation
@@ -25,6 +26,12 @@ def _evidence_problem(latest, planned, scheduled_date, policy):
         return "incomplete_sets", "The latest linked session does not contain every planned set."
     if any(not isfinite(item["weight"]) or item["weight"] < 0 for item in sets):
         return "invalid_values", "Recorded loads are invalid."
+    if any(recorded_load(item) is None for item in sets):
+        return "unknown_load", "Complete the body-mass or assistance snapshot before comparing loads."
+    if len({item.get("load_type", "legacy") for item in sets}) > 1:
+        return "mixed_load_convention", "The latest sets use different load conventions; select the next load manually."
+    if any(item.get("load_type") in ("bodyweight", "assisted_bodyweight") for item in sets):
+        return "bodyweight_load_manual", "Select additional weight or assistance manually using total load. A future body mass is not assumed; reducing assistance increases difficulty."
     if planned.target_unit == "seconds":
         return None
     if planned.target_rir is None:
@@ -126,6 +133,7 @@ def recommend_normal_workout(
         qualifies = qualifies and len({row["session_id"] for row in confirmed}) == policy.confirmations_required
         qualifies = qualifies and len({row["performed_on"] for row in confirmed}) == policy.confirmations_required
         for row in confirmed:
+            qualifies = qualifies and same_loads(row["sets"], sets)
             qualifies = qualifies and not row["missing_sets"] and len(row["sets"]) == planned.set_count
             qualifies = qualifies and all(item["progression_eligible"] and item["rir"] is not None
                 and isfinite(item["rir"]) and item["rir"] >= planned.target_rir

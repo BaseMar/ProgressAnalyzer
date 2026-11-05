@@ -73,6 +73,30 @@ python -m db.migrate --apply
   Legacy TXT import and history remain readable without it. The live database
   has not been migrated as part of these code changes.
 
-Status: Step 1 committed and pushed as `c07e3a0`. Step 2 approved by the user
-for commit and push. Step 3 is authorized; its completion requires a new approval
-before commit, push and Step 4.
+## Step 3 implementation
+
+- A shared load layer computes total supported mass from saved snapshots. Plan
+  comparisons and insights require the same convention and known per-set loads.
+  Equal additional kg with changed body mass/assistance is a changed load, not
+  an automatic improvement or regression.
+- Source observations include external kg, body mass, assistance and total load.
+  Recorded-exercise charts split conventions and reps/time. Performance has
+  separate series at each known timed/bodyweight load, while unknowns remain
+  unconnected observations. Workload totals are descriptive; incomplete dynamic
+  volumes have explicit missing-load counts and gaps in charts.
+- Bodyweight e1RM is not inferred. Progress uses reps/seconds at the same known
+  load and does not bridge a change of convention. Assistance reductions increase
+  difficulty. Warm-up inference also uses comparable total loads.
+- Automatic bodyweight/assisted load goals, deloads and return loads require
+  manual selection: the next workout's body mass and support are not guessed.
+  Unknown/mixed load conventions block automatic prescriptions. External-only
+  confirmations cannot bridge a convention change.
+- Timed holds count as recorded sets, with a separate count and seconds total.
+  They do not contribute to the dynamic hypertrophy target or muscle-set guide;
+  Muscle distribution reports allocated timed sets separately. No kg × seconds
+  or duration-based hard-set equivalents are computed.
+- No new migration or live database modification is part of Step 3.
+
+Status: Step 1 committed and pushed as `c07e3a0`; Step 2 as `d3601a0`.
+Step 3 approved by the user for commit and push. Step 4 is authorized; its
+completion requires a new approval before commit and push.

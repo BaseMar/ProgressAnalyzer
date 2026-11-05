@@ -6,7 +6,7 @@ are application rules, not estimates of muscle growth or training quality.
 """
 from collections import Counter, defaultdict
 from datetime import date
-from math import isclose
+from metrics.load_metrics import describe_load, load_comparison_problem, recorded_load, same_loads
 
 from metrics.plan_performance import comparison_context, compute_plan_performance
 from metrics.utils.recommendation_text import goal_summary
@@ -22,7 +22,9 @@ def _source(row):
         row["context"], row["training_phase"], row["planned_sets"], row["target_min"],
         row["target_max"], row["target_rir"],
         tuple(InsightSet(item[field], item["weight"], item["rir"], item["set_kind"],
-                         item["classification_source"], item["classification_reason"])
+                         item["classification_source"], item["classification_reason"],
+                         item.get("load_type", "legacy"), recorded_load(item),
+                         item.get("body_mass_kg"), item.get("assistance_kg"))
               for item in row["sets"]), tuple(row["excluded_set_kinds"]),
     )
 
@@ -31,10 +33,9 @@ def _result(row):
     """Per-set vectors avoid disguising mixed loads or RIR with a mean."""
     field = "seconds" if row["unit"] == "seconds" else "reps"
     quantities = "/".join(f'{item[field]:g}' for item in row["sets"])
-    loads = [item["weight"] for item in row["sets"]]
-    load = f"{loads[0]:g}" if len(set(loads)) == 1 else "/".join(f"{value:g}" for value in loads)
+    load = " / ".join(dict.fromkeys(describe_load(item) for item in row["sets"]))
     reserve = "/".join("?" if item["rir"] is None else str(item["rir"]) for item in row["sets"])
-    return f'{row["performed_on"]:%d %b}: {quantities} {row["unit"]} @ {load} kg' + (
+    return f'{row["performed_on"]:%d %b}: {quantities} {row["unit"]} @ {load}' + (
         f" · RIR {reserve}" if field == "reps" else "")
 
 
@@ -48,6 +49,8 @@ def _limitation(row):
         return "no matching working sets"
     if row["missing_sets"]:
         return "incomplete set count"
+    if any(recorded_load(item) is None for item in row["sets"]):
+        return "unknown body mass or assistance"
     if row["unit"] == "reps" and row["rir_known_sets"] < len(row["sets"]):
         return "missing RIR"
     if not row["progression_eligible"]:
@@ -137,6 +140,9 @@ def compute_training_insights(data, *, as_of: date, start=None, end=None,
         if problem:
             limitations.append((f"previous execution: {problem}", (previous, current)))
             continue
+        if load_comparison_problem(current["sets"], previous["sets"]) is not None:
+            limitations.append(("load convention changed", (previous, current)))
+            continue
         gap = (current["performed_on"] - previous["performed_on"]).days
         if gap == 0:
             limitations.append(("executions on the same day", (previous, current)))
@@ -146,8 +152,7 @@ def compute_training_insights(data, *, as_of: date, start=None, end=None,
             continue
 
         assessed += 1
-        same_load = all(isclose(now["weight"], old["weight"], abs_tol=1e-6, rel_tol=0)
-                        for now, old in zip(current["sets"], previous["sets"]))
+        same_load = same_loads(current["sets"], previous["sets"])
         field = "seconds" if current["unit"] == "seconds" else "reps"
         delta = sum(item[field] for item in current["sets"]) - sum(item[field] for item in previous["sets"])
         rir_pairs = [(now["rir"], old["rir"]) for now, old in zip(current["sets"], previous["sets"])]

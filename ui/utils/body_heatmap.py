@@ -143,7 +143,7 @@ def render_body_heatmap(body_df: pd.DataFrame, period_weeks: float, period_label
     rows = []
     for part, values in ranges.items():
         target = values["Target"]
-        reference = ("No plan" if target is None else "Not planned" if target == 0 else
+        reference = ("No plan" if target is None else "No dynamic sets" if target == 0 else
                      "Below" if target < values["Min"] else "Above" if target > values["Max"] else "Within")
         rows.append({"Body Part": part, **values, "Plan vs reference": reference})
     st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch", column_config={
@@ -158,14 +158,14 @@ def render_body_heatmap(body_df: pd.DataFrame, period_weeks: float, period_label
             "to optimize growth; [ACSM (2026)](https://doi.org/10.1249/MSS.0000000000003897) "
             "describes diminishing returns around 18–20. Progress is possible below this range, "
             "and 20 is not a maximum recoverable volume. These are not muscle-specific limits.\n\n"
-            "Target sums all workout slots in one reference week of the active plan. "
+            "Target sums dynamic exercise slots in one reference week of the active plan. "
             "Each set is weighted by its saved muscle allocation (for example, 1 for a primary "
             "muscle and 0.5 for a secondary muscle). "
             "[Pelland et al. (2026)](https://pubmed.ncbi.nlm.nih.gov/41343037/) supports fractional "
             "counting of indirect sets; the saved exercise factors remain allocation estimates. "
             "Broad groups such as Legs or Back pool several muscles, so their reference comparison "
-            "is approximate. Timed holds count as logged sets, not 30-second equivalents; "
-            "their hypertrophy dose is not directly comparable to dynamic sets.\n\n"
+            "is approximate. Timed holds are reported separately and do not contribute to "
+            "these dynamic-set targets or the weekly hypertrophy reference.\n\n"
             "Map colors compare recorded weekly sets with the plan (±10%). "
             "Without a plan target, colors show only the general reference range. "
             "They do not diagnose undertraining or overtraining."

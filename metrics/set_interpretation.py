@@ -3,6 +3,7 @@ from collections import defaultdict
 from math import isfinite
 
 from models.set_interpretation import SetInterpretation
+from metrics.load_metrics import load_type, total_load_kg
 
 
 def _number(value):
@@ -73,9 +74,11 @@ def interpret_sets(sets, *, deload_exercise_ids=frozenset()):
             output.append(SetInterpretation("working", "rir", "rir_0_3", True))
         elif rir <= 5:
             first = first_work.get(item.workout_exercise_id)
-            first_load = _number(first.weight) if first is not None else None
+            first_load = total_load_kg(first) if first is not None else None
+            actual_load = total_load_kg(item)
             warmup = (first is not None and first.set_number > item.set_number
-                      and first_load is not None and load < first_load)
+                      and first_load is not None and actual_load is not None
+                      and load_type(first) == load_type(item) and actual_load < first_load)
             output.append(SetInterpretation("warmup" if warmup else "light", "sequence" if warmup else "rir",
                                             "lighter_before_working" if warmup else "rir_4_5"))
         else:

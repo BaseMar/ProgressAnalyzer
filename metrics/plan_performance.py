@@ -1,7 +1,7 @@
 """Observed exercise performance and prescribed targets, without recommendations."""
 
 from datetime import date
-from math import isclose
+from metrics.load_metrics import load_comparison_problem, load_record, same_loads
 
 from metrics.plan_adherence import compute_plan_adherence
 from metrics.training_block import deload_adjusted_input, is_deload_workout
@@ -44,7 +44,7 @@ def _target_result(sets, planned, interpretations):
         "rir_status": rir_status, "rir_known_sets": len(known),
         "avg_rir": sum(known) / len(known) if known and len(known) == len(sets) else None,
         "progression_eligible": bool(sets) and all(meaning.progression_eligible for meaning in interpretations),
-        "sets": tuple({"reps": set_reps(item), "weight": set_weight(item),
+        "sets": tuple({"reps": set_reps(item), "weight": set_weight(item), **load_record(item),
                        "seconds": set_duration_seconds(item), "rir": item.rir,
                        "is_warmup": item.is_warmup, "set_kind": meaning.kind,
                        "classification_source": meaning.source, "classification_reason": meaning.reason,
@@ -66,9 +66,11 @@ def _comparison(current, previous):
     elif not current["progression_eligible"] or not previous["progression_eligible"]:
         result["comparison"] = "Not comparable: missing or insufficient ordinary effort evidence"
     else:
-        same_load = all(isclose(now["weight"], old["weight"], rel_tol=0, abs_tol=1e-6)
-                        for now, old in zip(current["sets"], previous["sets"]))
-        if not same_load:
+        problem = load_comparison_problem(current["sets"], previous["sets"])
+        if problem:
+            result["comparison"] = ("Not comparable: body mass or assistance is unknown" if problem == "unknown_load"
+                                    else "Not comparable: load convention changed")
+        elif not same_loads(current["sets"], previous["sets"]):
             result["comparison"] = "Load changed: inspect individual sets"
         else:
             field = "seconds" if current["unit"] == "seconds" else "reps"

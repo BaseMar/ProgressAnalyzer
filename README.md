@@ -189,8 +189,8 @@ Muscle distribution calculates **Target** from one full reference week of the
 active plan version effective today. Saving a new plan selects it automatically;
 future versions take effect on their start date. The month filter affects logged
 sets only. Saved muscle factors weight both planned and recorded sets (for
-example, primary 1.0 and secondary 0.5). Timed sets count once, independent of
-their duration. Deload prescriptions remain in Overview; this table describes
+example, primary 1.0 and secondary 0.5). Timed sets are reported separately and
+excluded from dynamic-set targets. Deload prescriptions remain in Overview; this table describes
 the base weekly routine.
 
 **Min = 10, Max = 20 weekly sets** is a general hypertrophy reference, based on
@@ -218,9 +218,24 @@ and load types** to choose an explicit convention and inspect the total load
 before importing. All exercises in an import are committed atomically. History
 shows the saved load components, and **Body mass and load details** allows an
 individual set to be corrected. Apply migration `006_set_loads` with
-`python -m db.migrate --apply` before using explicit load entry. Existing
-analytics/progression still use their previous load convention until the analysis
-step in [the implementation plan](docs/bodyweight-implementation-plan.md).
+`python -m db.migrate --apply` before using explicit load entry.
+
+Bodyweight analytics use the saved body mass plus additional weight minus measured
+assistance. Missing mass or assistance remains unknown. Plan comparisons check
+per-set total loads and load conventions before grading reps or seconds. Historical
+logs retain their original kg convention; a convention change starts a new
+comparison baseline. Recorded-exercise charts separate load conventions, reps and
+time, and show separate performance series for each known bodyweight/timed load.
+Timed work contributes seconds and recorded set counts, never kg × seconds or
+30-second set equivalents. Dynamic volume uses total supported mass × reps;
+incomplete totals are flagged and charted as gaps. These are descriptive load
+estimates, not muscle force, mechanical work or hypertrophy measurements.
+
+Explicit bodyweight work has no inferred e1RM. Its progress uses reps/seconds at
+the same total load. Automatic load and deload prescriptions require manual
+selection for bodyweight/assisted exercises: future body mass is not assumed and
+less assistance means greater difficulty. Missing-load and mixed-convention sets
+cannot generate automatic goals. See [the implementation plan](docs/bodyweight-implementation-plan.md).
 
 ## Training Plan editor
 

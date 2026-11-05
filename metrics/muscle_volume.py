@@ -21,8 +21,8 @@ REFERENCE_MAX = 20.0
 def weekly_plan_sets(draft, input_data):
     """Count every weekly slot using the same saved allocation as logged sets.
 
-    No effort or duration multiplier: one planned set counts once before muscle
-    allocation. Missing mappings are returned so the UI can avoid partial targets.
+    Dynamic sets count once before muscle allocation. Timed holds stay separate
+    from the hypertrophy guide. Missing mappings prevent partial targets.
     """
     allocations = defaultdict(list)
     for item in input_data.exercise_muscle_targets:
@@ -37,6 +37,8 @@ def weekly_plan_sets(draft, input_data):
     missing = set()
     for day in draft.days:
         for item in day.exercises:
+            if item.target_unit == "seconds":
+                continue
             if item.exercise_id not in allocations:
                 missing.add(item.exercise_id)
             for group, factor in allocations[item.exercise_id]:

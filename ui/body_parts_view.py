@@ -60,11 +60,12 @@ class BodyPartsView:
                 if not body_part:
                     continue
                 factor = float(target.get("set_factor", 1.0))
-                set_exposure = float(row["total_sets"])
+                set_exposure = float(row.get("dynamic_sets", row["total_sets"]))
                 rows.append(
                     {
                         "Body Part": str(body_part),
                         "Total_Sets": set_exposure * factor,
+                        "Timed_Sets": float(row.get("timed_sets", 0)) * factor,
                         "Total_Volume": float(row["total_volume"]) * factor,
                         "Avg_1RM": row.get("estimated_1rm_avg"),
                         "Weight": max(set_exposure * factor, 0.0),
@@ -98,6 +99,7 @@ class BodyPartsView:
             df.groupby("Body Part", dropna=True)
             .agg(
                 Total_Sets=("Total_Sets", "sum"),
+                Timed_Sets=("Timed_Sets", "sum"),
                 Total_Volume=("Total_Volume", "sum"),
                 Avg_1RM=("Avg_1RM", "mean"),
             )
@@ -165,6 +167,11 @@ class BodyPartsView:
             st.info("No body part data available.")
             body_df = pd.DataFrame(columns=["Body Part", "Total_Sets", "Total_Volume", "Sessions", "Avg_1RM"])
         measure = st.radio("Distribution view", ["Muscle map", "Set allocation"], horizontal=True, key="analysis_muscle_view")
+        st.caption("The weekly hypertrophy guide and plan targets count dynamic sets only. Timed work is reported separately.")
+        if "Timed_Sets" in body_df and body_df["Timed_Sets"].gt(0).any():
+            with st.expander("Timed work · excluded from the weekly set guide"):
+                st.dataframe(body_df.loc[body_df["Timed_Sets"] > 0, ["Body Part", "Timed_Sets"]]
+                    .rename(columns={"Timed_Sets": "Allocated timed sets"}), hide_index=True, width="stretch")
         st.caption("Muscle exposure is an allocation estimate: sets are weighted by each exercise's saved muscle targets. This does not measure muscle growth or physiological fatigue.")
         if measure == "Muscle map":
             self._render_heatmap(body_df)

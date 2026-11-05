@@ -97,7 +97,7 @@ def test_compute_exercise_metrics_handles_duration_exercises():
     assert plank["total_volume"] == 0
     assert plank["total_duration_seconds"] == 120
     assert plank["best_duration_seconds"] == 75
-    assert plank["effective_sets"] == pytest.approx(4.0)
+    assert plank["effective_sets"] == pytest.approx(2.0)
     assert plank["estimated_1rm_max"] is None
 
 

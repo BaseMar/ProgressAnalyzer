@@ -40,10 +40,12 @@ def test_reference_does_not_clamp_plan_or_invent_target():
     assert volume_ranges(["Chest"])["Chest"]["Target"] is None
 
 
-def test_timed_sets_are_counted_once_in_distribution():
+def test_timed_sets_are_separate_from_dynamic_distribution():
     view = BodyPartsView({"per_exercise": {1: {"body_part": "Abs", "total_sets": 2,
-        "effective_sets": 6.0, "total_volume": 0.0}}})
-    assert view._build_bodypart_df().iloc[0]["Total_Sets"] == 2.0
+        "effective_sets": 6.0, "dynamic_sets": 0, "timed_sets": 2, "total_volume": 0.0}}})
+    row = view._build_bodypart_df().iloc[0]
+    assert row["Total_Sets"] == 0.0
+    assert row["Timed_Sets"] == 2.0
 
 
 def ranges_table(app):
