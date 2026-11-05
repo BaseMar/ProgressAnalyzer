@@ -1,7 +1,7 @@
 # Workout Progress Analyzer
 
-An end-to-end analytics dashboard for recorded training progress, plan consistency,
-next-workout targets, muscle exposure and body measurements.
+A training dashboard that turns workout notes into a clearer next step:
+**see what changed, compare it with your plan, and decide what to do next.**
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red)
@@ -18,643 +18,526 @@ next-workout targets, muscle exposure and body measurements.
 - [Preview](#preview)
 - [Tech Stack](#tech-stack)
 - [What It Does](#what-it-does)
-- [Example Insights](#example-insights)
-- [Features](#features)
+- [Your First Plan and Workout](#your-first-plan-and-workout)
+- [Training Terms](#training-terms)
+- [How the Numbers Work](#how-the-numbers-work)
+- [Training Plan and Next Workout](#training-plan-and-next-workout)
+- [Recording and Importing Workouts](#recording-and-importing-workouts)
+- [Research and Sources](#research-and-sources)
 - [Architecture](#architecture)
 - [Data Model](#data-model)
 - [Installation](#installation)
+- [Database Migrations](#database-migrations)
 - [Tests](#tests)
 - [Limitations & Future Work](#limitations--future-work)
+- [Screenshots](#screenshots)
 
 ## Project Goal
 
-Workout logs usually show raw training history, but they rarely explain whether
-a user's recorded performance is changing, whether logs match the plan, or how
-training is distributed across muscle groups.
+A workout log can tell you that you lifted 60 kg. It takes more context to tell
+whether you did more repetitions, used less effort, or followed the planned workout.
 
-This project turns raw workout and body-measurement data into an analytical
-dashboard that helps identify:
+This project connects those pieces: **what you planned → what you recorded →
+what can reasonably be compared**. It also shows how training is distributed
+across muscle groups and how body measurements change over time.
 
-- comparable changes in exercise performance,
-- training consistency,
-- recorded effort and evidence gaps,
-- body-part volume distribution,
-- body-measurement trends.
-
-It also connects exercise-level performance with muscle-group exposure, so a
-training log can answer not only "what did I lift?", but also "what parts of
-the body am I actually training, how hard, and with what trend over time?".
+For example, `60 kg × 8 reps, RIR 2` followed by `60 kg × 9 reps, RIR 2`
+describes more output at the same recorded load and reserve. Here RIR 2 means
+about two repetitions left in reserve. Changing the exercise, load or reserve
+needs a different interpretation.
 
 ## My Role
 
-I designed and implemented the full application, including:
+I designed and implemented the full application, from the database to the dashboard:
 
-- relational data model for workout and body-tracking data,
-- metric calculation layer for sessions, exercises, fatigue, progress, body
-  parts, and body measurements,
-- Streamlit dashboard UI,
-- TXT workout importer with flexible parsing and exercise matching,
-- automated tests for core metric logic, mappers, filters, and import helpers,
-- visual analytics for progress, fatigue, muscle-group volume, and body
-  composition.
+- relational models for workouts, versioned plans and body measurements;
+- calculation rules for comparable performance, plan execution and next targets;
+- a Streamlit interface with charts, a calendar and a muscle map;
+- a TXT importer, manual workout entry and optional corrections;
+- automated tests for calculations, storage, import and interface behavior.
 
 ## Live Demo
 
-Live app: <https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app>
+**[Open the live app](https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app)**
 
-The deployed version uses personal training and body-measurement data
-prepared for demonstration purposes and stored in a hosted Supabase database.
-Local development uses the same application code, but requires a
-PostgreSQL-compatible database configured through `DATABASE_URL`.
+The demo uses personal training and measurement data stored in Supabase.
+It is a public, single-user application with one shared dataset.
 
-This is a public single-user demo, not a multi-user product with private
-per-user data isolation.
+For local development, see [Installation](#installation). An existing
+PostgreSQL-compatible database is required.
 
 ## Project Status
 
-The application is functional and deployed as a public single-user demo. Core
-analytics, versioned plans, progression/deload targets, TXT import and database
-integration are implemented. Four task-oriented pages separate decisions,
-analysis, planning and source history. GitHub Actions runs tests with disposable
-PostgreSQL. Planned infrastructure work includes a complete database bootstrap,
-anonymized seed data and Docker Compose.
+The app is deployed and supports workout import/entry, versioned plans,
+progression and deload targets, muscle distribution and body tracking.
+GitHub Actions checks the test suite against a disposable PostgreSQL database.
+
+A complete database bootstrap, anonymized sample data and Docker Compose
+remain planned work.
 
 ## Preview
 
 ![Current training decisions and next workout](screenshots/Overview.png)
 
-![One exercise analysed in its plan context](screenshots/Analysis_Exercise.png)
-
-![Recorded calendar and session history](screenshots/History.png)
+More views, including mobile layouts, are in [Screenshots](#screenshots).
 
 ## Tech Stack
 
-- **Python 3.11+**
-- **Streamlit** for the interactive dashboard UI
-- **Pandas** and **NumPy** for data processing and aggregation
-- **PostgreSQL** hosted on **Supabase** for persistent workout and body-tracking data
-- **SQLAlchemy** with **psycopg2** for database access
-- **Plotly** for interactive charts
-- **Pillow** for body heatmap image processing
-- **Pytest** for automated tests
-- **Streamlit Community Cloud** for deployment
+| Layer | Tools |
+| --- | --- |
+| Application | Python 3.11+, Streamlit |
+| Calculations | Pandas, NumPy |
+| Charts and muscle map | Plotly, Pillow |
+| Storage | PostgreSQL / Supabase, SQLAlchemy, psycopg2 |
+| Verification and hosting | Pytest, GitHub Actions, Streamlit Community Cloud |
 
 ## What It Does
 
-Workout Progress Analyzer is a Streamlit dashboard for tracking recorded training,
-plan consistency, exercise trends, body measurements and body composition.
-It imports workout data from a database, maps it into a small
-domain model, computes core metrics in a separate calculation layer, and renders
-the results as focused dashboard views.
+The app has four pages. Each answers a different question.
 
-The app is built for lifters who want more than a list of completed workouts.
-It highlights whether performance is moving up or down, whether volume is
-distributed sensibly across body parts, and whether body composition is changing
-alongside training.
+| Page | Start here when you want to… |
+| --- | --- |
+| **Overview** | Read recent observations and the next workout's suggested targets. |
+| **Analysis** | Compare an exercise, check plan consistency, inspect muscle distribution or explore body measurements. |
+| **Plan** | Create a weekly routine, edit its targets or configure a training block. |
+| **History** | Browse recorded sessions, link them to a plan, import workouts or correct a set. |
 
-## Example Insights
+One active plan is shared across the app. Analysis and History have their own
+date filters; changing a historical month does not change the current plan
+or the next workout.
 
-The dashboard can answer questions such as:
+## Your First Plan and Workout
 
-- Did I record more reps at the same load and RIR in the same workout context?
-- What does the next workout prescribe, and which sessions support that target?
-- Which muscle groups receive the most weekly volume, and which may be
-  undertrained?
-- Which exercises had less reserve than planned, or need more evidence before
-  assigning a new target?
-- Are high-volume sessions concentrated in specific periods or body parts?
-- Is body weight changing together with muscle mass, fat mass, or body fat
-  percentage?
-- Are body measurements and proportions moving in the expected direction over
-  time?
+1. **Create your routine in Plan.** Name the workouts, choose weekdays and add
+   exercises, for example `3 sets × 6–10 reps`.
+2. **Add a workout in History → Add workout.** Enter an exercise manually or
+   import a TXT note. Record RIR when you know it.
+3. **Link the session to its planned workout in the History calendar.**
+   This tells the app which prescription the log belongs to.
+4. **Read Analysis, then Overview.** Analysis explains recorded results;
+   Overview shows the upcoming target when enough comparable evidence exists.
 
-## Features
+Saving a new plan selects it automatically and updates muscle targets.
+A new user may see **More data needed** before receiving numeric recommendations:
+the app first needs a configured block and suitable linked history.
 
-### Training Analytics
+## Training Terms
 
-- Evidence-backed observations and next-workout targets in Overview.
-- Exercise comparisons within saved plan targets, or one recorded exercise's
-  eligible performance/workload series at a time.
-- Plan consistency: linked workouts, set coverage, range checks and weekly history.
-- Local historical periods in Analysis; future recommendations use their own dates.
-
-Per-exercise workload retains light and unknown-effort work. Ordinary performance
-uses eligible working sets; planned deloads are excluded. Timed exercises use
-seconds without requiring RIR. Substitutes retain separate exercise identities.
-The former overall strength rankings and unvalidated fatigue-score screens are
-not exposed in the four-page navigation. Backend calculations remain available
-for compatibility; the interface does not present them as training effectiveness.
-
-### Body-Part Analysis
-
-- Weekly set volume by body part.
-- Muscle-group exposure through exercise-to-muscle mappings.
-- Volume distribution across trained body parts.
-- Heatmap against editable target volume ranges.
-
-### Body Metrics
-
-- Body weight, muscle mass, fat mass, water mass, and body fat percentage.
-- Measurement trends for chest, waist, abdomen, hips, thigh, calf, and biceps.
-- One selected measurement with source dates and an observed change.
-- First observations and measurement-only dates remain visible; direction alone
-  is not labelled improvement or deterioration.
-
-### Data Import
-
-- TXT workout import in History, opened by Add workout.
-- Flexible parsing for common set, RIR, and time-range formats.
-- Exercise matching for imported exercise names.
-- Option to add missing exercises with inferred muscle targets.
-
-## App Sections
-
-- **Overview** ? one conclusion, at most three annotations and the only
-  next-workout recommendation. Uses recent actual dates, independently of filters.
-- **Analysis** ? choose Exercise progress, Plan consistency, Muscle distribution
-  or Body measurements. Only the selected question is rendered. Choose the month
-  here; source details stay collapsed until needed. Unplanned exercises remain
-  available via All recorded exercises.
-- **Plan** ? weekly summary, block settings and versioned routine. Edit one
-  workout and one exercise at a time. Draft values survive switching items/pages.
-- **History** ? calendar, recorded sets, explicit plan assignments, session-specific
-  replacements and optional set corrections. Add workout opens TXT import here;
-  the sidebar button is a shortcut. Add body measurement opens the measurement
-  forms here, including when no measurements exist yet.
-
-One active plan is shared between these tasks. Overview and Plan have no history
-month selector. Analysis and History retain their own date selections.
-
-Muscle distribution calculates **Target** from one full reference week of the
-active plan version effective today. Saving a new plan selects it automatically;
-future versions take effect on their start date. The month filter affects logged
-sets only. Saved muscle factors weight both planned and recorded sets (for
-example, primary 1.0 and secondary 0.5). Timed sets are reported separately and
-excluded from dynamic-set targets. Deload prescriptions remain in Overview; this table describes
-the base weekly routine.
-
-The interface shows only **Body Part**, **Plan target**, **Recorded / week** and
-**Plan %**, alongside a muscle map or allocation chart. Time-based sets have a
-separate compact disclosure. Sources, research interpretation, role breakdowns
-and calculation explanations are documented here instead of appearing in the app.
-
-### Muscle distribution: calculation details and sources
-
-The target sums dynamic exercise sets in one reference week of the active plan,
-multiplied by each exercise's saved muscle factor. Recorded allocation uses the
-same factors. Primary mappings are direct work; secondary and stabilizer mappings
-are indirect work. Raw direct/indirect counts and weighted allocation are distinct:
-6 primary sets with factor 1 plus 8 secondary sets with factor 0.5 gives 10 weighted
-set equivalents. Stabilizers may use 0.25 or custom saved overrides. These factors
-are allocation assumptions, not measured physiological conversions. Unspecified
-roles are not guessed from factor size; their saved weighted contribution remains
-included. If detailed mappings are absent, the catalog body part is treated as
-primary with factor 1. A set can contribute to several muscle rows.
-
-Recorded / week divides the selected period's weighted allocation by its length
-in weeks, with a minimum one-week denominator. A selected past month uses all its
-calendar days; the current month ends today. All time spans the first through last
-recorded metric date, including intervening rest days/weeks. The month filter
-changes recorded allocation, while the target remains the plan effective today.
-Plan % is recorded weighted sets/week divided by that plan target, times 100.
-Targets are never clamped to a research range. Zero means no planned dynamic sets;
-a blank means unavailable. Missing plan mappings or plan read errors leave targets
-blank rather than showing partial totals.
-
-Map colors compare the recorded weighted allocation with the current plan only,
-using an application-defined +/-10% band. Without a plan, colors are neutral.
-Unplanned dynamic work is distinguished from no planned sets. These colors do
-not diagnose undertraining, overtraining or recovery capacity. Logged allocation
-excludes explicit/inferred warm-ups, but includes descriptive light, unknown-effort
-and deload work; it is not automatically a count of hard hypertrophy sets. Timed
-holds remain separate and are not converted into dynamic sets or 30-second set
-equivalents. Manual heatmap range settings are no longer read or written.
-
-Research provides context for programming, not personal Min/Max values:
-
-| Muscle/group | Research context | Limits of interpretation |
+| Term | Plain meaning | Example |
 | --- | --- | --- |
-| General guidance | [IUSCA (2021)](https://doi.org/10.47206/ijsc.v1i1.81) discusses roughly 10 weekly sets as a general starting prescription to optimize hypertrophy; [ACSM (2026)](https://doi.org/10.1249/MSS.0000000000003897) supports higher weekly volume for muscle growth. | Growth can occur below this amount. Protocols and counting methods vary; neither defines individual minimum effective or maximum recoverable volume. |
-| Biceps | [Baz-Valle et al. (2022)](https://doi.org/10.2478/hukin-2022-0017) compared 12-20 with more than 20 weekly sets in young trained men, without detecting an advantage for the higher category. | Single- and multi-joint sets were counted. This is not a prescription for 12-20 app-weighted equivalents, a minimum, a ceiling, or proof that the doses are equivalent. |
-| Triceps | The same review found benefits in some higher-volume protocols above 20 sets. | Compound work contributed to the totals. This is not a recommendation for more than 20 direct sets or a validated closed personal range. |
-| Chest | [Pinto et al. (2025)](https://doi.org/10.1519/JSC.0000000000005045) found similar growth with one and three pec-deck sets per session in a small trial in untrained men. | It does not establish the optimal weekly range for trained lifters. General guidance is not a chest-specific minimum. |
-| Legs, Back, Shoulders | These catalog labels pool muscles or regions with different exercise exposure. | A finding for quadriceps cannot be applied as a shared budget for all leg muscles; the same pooling limitation applies to back muscles and shoulder regions. |
-| Other groups | General guidance can inform an initial program. | The selected evidence does not establish precise separate limits for every catalog group. |
-
-[Pelland et al. (2026)](https://doi.org/10.1007/s40279-025-02344-w) found the
-fractional indirect-set model (0.5 credit for indirect work) best supported among
-the compared counting methods. It supports distinguishing direct and indirect
-work, without validating every custom factor or stabilization estimate in this
-app. Research references therefore do not color the map, grade the plan, or
-establish individualized recovery limits.
-
-History → Add workout supports **Import TXT** and **Enter exercise**. Manual
-entry records reps or seconds, per-set weight, RIR and set purpose. For explicit
-bodyweight logs, kg means additional weight; body mass and assistance are saved
-separately. The latest body-mass measurement on/before the workout date is offered
-as an editable suggestion. Missing body mass or unknown assistance remains unknown.
-Suggestions support legacy text dates as well as date/timestamp columns; invalid
-dates or weights are skipped without altering the recorded measurements.
-
-TXT import keeps its original kg convention by default. Open **Review body mass
-and load types** to choose an explicit convention and inspect the total load
-before importing. All exercises in an import are committed atomically. History
-shows the saved load components, and **Body mass and load details** allows an
-individual set to be corrected. Apply migration `006_set_loads` with
-`python -m db.migrate --apply` before using explicit load entry.
-
-Bodyweight analytics use the saved body mass plus additional weight minus measured
-assistance. Missing mass or assistance remains unknown. Plan comparisons check
-per-set total loads and load conventions before grading reps or seconds. Historical
-logs retain their original kg convention; a convention change starts a new
-comparison baseline. Recorded-exercise charts separate load conventions, reps and
-time, and show separate performance series for each known bodyweight/timed load.
-Timed work contributes seconds and recorded set counts, never kg × seconds or
-30-second set equivalents. Dynamic volume uses total supported mass × reps;
-incomplete totals are flagged and charted as gaps. These are descriptive load
-estimates, not muscle force, mechanical work or hypertrophy measurements.
-
-Explicit bodyweight work has no inferred e1RM. Its progress uses reps/seconds at
-the same total load. Automatic load and deload prescriptions require manual
-selection for bodyweight/assisted exercises: future body mass is not assumed and
-less assistance means greater difficulty. Missing-load and mixed-convention sets
-cannot generate automatic goals. See [the implementation plan](docs/bodyweight-implementation-plan.md).
-
-## Training Plan editor
-
-Open **Plan**, choose the active plan, or switch on **Create a new plan**.
-Historical periods do not change the routine or block settings.
-
-Saved plans open as weekly reference cards, with exercises available under
-`Reference exercises`. Switch on `Edit as a new version` to change a saved plan.
-
-1. Enter the plan name and effective date.
-2. Add named workouts and choose their weekdays. Select one `Workout to edit`.
-3. Add exercises from the catalog and select one **Exercise to edit**. Set its sets, minimum/maximum,
-   and measurement unit. For example, 3 sets with 6–10 reps.
-4. Use the arrow buttons to reorder exercises. Target RIR and the available weight
-   step are in the collapsed `Progression & RIR` section of each exercise card.
-5. Save the plan. All workout cards are saved together; editing an existing plan
-   appends a version with a later start date. Previous versions remain available.
-
-The plan editor requires migration 001 described below. Calendar assignments
-require migration 002; execution analysis and confirmed replacements require
-migration 003. Progression and deload recommendations are shown in
-`Overview -> Next workout` and are also available through
-the backend API.
-Native tables and inputs use the shared dark/teal theme in `.streamlit/config.toml`.
-
-### Progression configuration
-
-Migration 005 adds versioned block settings. Under `Progression & training block`,
-set the block start date and choose 6, 7 or 8 total weeks. The final week is reserved
-for deload: for example, a 7-week block means 6 ordinary weeks followed by a deload
-week. Blocks repeat automatically from the saved start date, so deload returns
-every 6, 7 or 8 weeks. Weeks are seven-day intervals from that date, including
-midweek starts. Missed workouts do not shift the calendar or prove fatigue.
-
-The block start is separate from the plan version's effective date. Edits inherit
-the existing start and length, so saving a revision does not restart the block.
-An explicit change to either field is stored in the new snapshot; older snapshots
-keep their configuration. Missing settings in revision API calls also preserve
-the previous configuration. Existing plans remain unconfigured after migration
-until the user explicitly enables `Configure training block` in the editor.
-
-Each exercise keeps its own optional weight step in kg and target RIR. Use the
-same weight convention as the workout log (including per-dumbbell weights if
-applicable). Blank values remain unknown; a weight step must be finite and positive.
-
-### Normal-session progression engine (step 2)
-
-`DataManager.load_workout_recommendations(plan_id, day_id, scheduled_date,
-as_of=...)` is the general entry point. It returns a `WorkoutRecommendation`
-with block phase/cycle/week/dates and immutable per-exercise recommendations.
-It reads linked history across month filters and does not write recommendations
-to the database or change plan targets. No new migration is required.
-
-`load_normal_workout_recommendations` remains a compatibility wrapper returning
-only the exercise tuple; it rejects deload dates. The pure
-`metrics.progression.recommend_normal_workout` remains the low-level normal-only
-engine. Use `recommend_workout` or the general database API for arbitrary dates
-so that deload classification and cycle boundaries cannot be bypassed.
-
-Rules are deterministic and return `increase_reps`, `increase_weight`, `maintain`
-or `insufficient_data`, plus per-set goals, target RIR, a reason code/explanation
-and evidence session IDs/dates:
-
-- Compare only the same exercise and workout context within the current cycle,
-  using actual session chronology and excluding data recorded after `as_of`.
-- Require complete working sets, recognized automatically or explicitly corrected,
-  a target RIR and recorded RIR for repetition-based increases. Missing RIR does
-  not support an increase; timed comparisons do not require repetition-based RIR.
-- Treat target RIR as a minimum reserve in every set. Below-target reserve or reps
-  below the lower bound keeps the logged load and original range.
-- At one common working load and within the range, add one total rep to the
-  lowest-repetition set (first set breaks ties), without exceeding the upper bound.
-- At/above the upper bound, require two consecutive complete executions on different
-  recorded days, at the same load, with enough reserve. Then add exactly one
-  available weight step and target the lower repetition bound in every set.
-- Missing evidence, changed contexts or a new block do not manufacture confirmations.
-  A linked session with no matching work does not fall back to older successful work.
-- Mixed per-set loads retain their individual loads/ranges; timed exercise progression
-  and automatic transitions from zero-load/bodyweight to weighted work are not supported.
-
-Default `ProgressionPolicy` uses two confirmations, a 21-day history-gap limit
-and a 10% relative load-step cap. These are explicit, configurable application
-guards, not validated individual training prescriptions. Large steps are held,
-never replaced by an invented weight unavailable on the user's equipment.
-Decimal arithmetic avoids values such as `12.299999999...` in suggested loads.
-
-An old substitution approval does not automatically change the next workout's
-exercise. Pass explicit `substitutions={plan_exercise_id: actual_exercise_id}`
-to request a substitute; its own history is used. Its weight step must be supplied
-separately with `replacement_weight_steps`, never copied from the original exercise.
-The engine currently assumes ordinary positive resistance loads, not assistance
-machines whose load direction has a different meaning.
-
-The general idea is progressive adjustment of the training stimulus, discussed in
-the [2026 ACSM overview](https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/).
-The exact one-rep rule, confirmation count, reset target and guards above are the
-application's transparent policy, not an algorithm validated by that paper.
-
-### Scheduled deload and return (step 3)
-
-The general engine classifies the planned workout as `unconfigured`,
-`not_started`, `normal` or `deload`. The final seven days of each configured
-cycle use the following default `DeloadPolicy` for resistance exercises:
-
-- Keep `ceil(planned sets * 0.5)` working sets, with at least one set. Three sets
-  become two; four become two. A single-set exercise retains one set.
-- Target the original lower repetition bound in every remaining set.
-- Reduce each retained set's last normal load by at least 10%, subtracting whole
-  available equipment steps from the logged load. Stop if the required reduction
-  exceeds 20% or would make the load zero/negative; return `insufficient_data`
-  with a reason rather than inventing a different step or available weight.
-- Set the target reserve to `max(4, original target RIR + 2)`.
-
-For example, a plan with 3 x 6-10, RIR 2, a 2.5 kg step and a complete normal
-log of 60 kg x 10/10/10 gives **2 x 6 at 52.5 kg, target RIR 4** during deload.
-The 7.5 kg reduction is three available steps (12.5%), not a fabricated 54 kg.
-These are derived targets, not a guarantee of the RIR a user will achieve.
-
-The latest comparable normal execution in the same cycle supplies evidence.
-It must pass the same completeness, working-set classification, RIR and
-21-day default history-gap checks as ordinary recommendations. Deload sessions
-are never reused as a baseline, so multiple sessions in the deload week do not
-compound the reduction. An explicit substitute uses its own history and supplied
-weight step. Timed exercises, zero-load/bodyweight and assistance-machine load
-selection are outside the automatic deload prescription; select loads manually.
-
-On the first normal exposure after deload, use the last comparable normal loads
-and original range from the immediately preceding cycle, without an increase.
-This is `maintain` / `resume_after_deload`. It needs no weight step because it
-does not change loads. Old upper-bound confirmations do not carry forward:
-new-cycle executions establish progression again. Missing/partial latest evidence,
-long gaps, a changed context or a manual change of block settings prevents reuse.
-The calendar continues even if no deload session was logged; the rule does not
-claim that the user recovered or completed a deload.
-
-Historical plan versions retain their own block settings. Saving a revision with
-the same settings preserves the schedule/history. A manually changed anchor or
-length starts a separate recommendation history. A moved planned deload remains
-deload; a normal slot actually performed during deload is also excluded from normal
-baselines and confirmations. Results after `as_of` never supply evidence.
-
-In **Analysis → Plan consistency / Exercise progress**, resistance-exercise deload dates use reduced
-set counts and repetition/RIR targets for coverage and range checks. Their
-comparisons are labelled deload and have no progress/regression delta; the next
-normal execution compares against the previous normal execution. Amber diamonds
-identify deload logs on the exercise chart, whose target band follows each date.
-Raw history and saved plan versions are unchanged. Descriptive workload retains
-logged deload work; the retired strength rankings and fatigue score are not shown.
-The Next workout card presents these derived targets separately from historical
-analysis, as described below.
-
-The general reduction of training demand is supported as a design approach by
-the [deload Delphi consensus](https://pmc.ncbi.nlm.nih.gov/articles/PMC10511399/).
-It does not establish one optimal schedule or algorithm. The repeating 6-8 week
-schedule, exact reductions, RIR targets and return rule above are explicit,
-configurable application policy, not a physiological fatigue diagnosis or a
-validated individual prescription. Analytics uses the default policy; alternative
-policies are currently backend options and are not persisted as plan settings.
-
-### Next workout card (step 4)
-
-Open **Overview**, choose the active plan, and read **Next workout**
-beside the recent observations. It defaults to the earliest
-unlinked planned workout from today onwards. `Upcoming workout` lets you preview
-other dates in the next four weeks; a future plan starts that window at its first
-effective date. Slots on the same day remain distinct and follow their plan order.
-The sidebar history month does not limit recommendations or their evidence.
-Linked workouts disappear from this selector; overdue slots are not silently
-rescheduled or treated as proof that a user skipped training.
-
-The card shows the workout/date, normal or deload phase, block/week and deload
-dates. Up to two available targets are shown by default, preferring changes.
-**Full workout** opens every exercise, including maintained loads and entries
-waiting for more evidence. Repeated missing-target reasons are grouped into a
-single note instead of rendering empty cards for each exercise. Each exercise
-has one compact target and decision: `Add a rep`,
-`Increase load`, `Keep load`, `Deload`, or `Return after deload`. Uniform sets
-are grouped, for example **62.5 kg · 3 x 6 reps · RIR >= 2**. Unequal reps and
-loads retain their individual set targets instead of being averaged. Missing
-evidence shows `More data needed` and the specific reason, such as incomplete
-ordinary work, missing RIR or an unavailable weight step; no numeric load is
-invented. Unsupported deload prescriptions are labelled `Manual target`.
-
-`Why these targets?` contains the full engine explanation, evidence session
-IDs/dates, and the default progression/deload rules. Historical source sessions
-remain in History. Historical exercise comparisons and plan consistency are
-separate questions in Analysis; neither repeats the upcoming recommendation. An unconfigured or not-yet-started block gets one
-setup message rather than repeated empty recommendations for every exercise.
-
-If an alternative was previously approved and logged in the same workout context,
-`Use a confirmed alternative` lets the user explicitly choose it for this preview.
-Its own history is used. Supply its available weight step in kg when required;
-the original exercise's step is never reused. Choices are specific to the plan,
-scheduled slot and date, so a choice for one workout does not silently carry into
-the next. Alternative choices and steps are temporary UI state: they do not edit
-the plan, save a session, or approve a future replacement. After logging the actual
-session, confirm replacements through the existing data-correction controls.
-
-No new schema or migration is needed. Recommendation failures are isolated from
-the historical plan overview; the card never writes derived targets to logs.
-
-## Planned workouts in the calendar
-
-Open **History**. The calendar uses the same active plan as Overview; switch off
-**Show planned workouts** to view recorded history alone. Its own month selector
-lets you browse past and future dates. Each date uses the
-version effective on that date, so old workouts retain their original targets.
-
-- A bottom dot marks the actual day of recorded training.
-- A top-right amber ring marks a planned workout. The ring becomes filled teal
-  when all planned slots on that date have a session linked to them.
-- Select a planned day, choose the actual recorded date, then choose and link its
-  session. Other dates/months remain available for moved workouts. The calendar
-  shows assignment status and workout history, without analysis tables.
-- One recorded session can be linked to one planned slot across all plans. A slot
-  accepts one session. Remove the existing link before correcting an assignment.
-- Removing a link preserves the workout log. Deleting a recorded session removes
-  its link and leaves its planned slot unlinked.
-
-Linking identifies which workout was performed; it does not mark every planned
-exercise/set as completed. Future unlinked slots are simply planned, not missed.
-New plan versions cannot supersede already linked slots: remove those links or
-choose a later effective date. Calendar slots are generated when viewed rather
-than materializing an unlimited recurring schedule in the database.
-
-## Plan execution and exercise replacements
-
-Open **Analysis ? Plan consistency** and choose the active plan and analysis
-period. The selected month refers to scheduled dates; sessions linked from other
-dates/months are loaded in full. One short annotation reports linked workouts,
-set coverage and logged sets within range. The weekly chart distinguishes full,
-partial, unmatched and unlinked workouts. These are recorded facts, not proof of
-training effectiveness. Exercise progress is a separate analytical question.
-
-Summary ratios include only scheduled dates before today. Today's open workouts
-and future slots neither lower nor inflate them. A moved workout counts as
-recorded, but not on the planned day. Unlinked workouts are not proof of absence.
-Timing, data quality and auditable source rows live under `Definitions & source
-data`, rather than expanding the main overview.
-Coverage excludes inferred/explicit warm-ups and uncorrected ordinary light or
-low-effort sets, retains unknown-effort logs, and caps credit at
-the planned count per position. Coverage alone does not indicate success against
-the repetition/time range or RIR; these are checked separately below. Technique
-and muscle growth are not assessed.
-
-In **History**, select the planned day with a linked session and expand
-**Confirm exercise replacements**. Choose the planned and actual exercises. For
-example, Machine Chest Press can cover the planned Barbell Bench Press position.
-This approval applies to that session only; the plan and actual exercise identity
-remain unchanged. Their strength histories are never combined.
-
-Only matching catalog IDs are automatic. Muscle-group similarity does not imply
-approval. A confirmed replacement reserves that recorded exercise for one plan
-position; its sets cannot also cover another position. Repeated exact-ID plan
-positions share the remaining logged sets without double counting. Replacements
-must use the same measurement unit (repetitions or seconds) as the planned target.
-Removing a replacement restores exact matching. Unlinking/deleting the session
-also removes its approvals, while unlinking preserves the workout log.
-
-## Exercise target checks and previous performance
-
-Open **Analysis ? Exercise progress ? Plan targets**. Select one workout/exercise
-context under `Exercise trends` to see its latest observation, range/RIR result and chart.
-Mean repetitions/time and mean load are shown separately. The shaded target band
-applies to the mean; the hover shows the number of individual sets within range,
-so the mean alone should not be read as proof that all sets met the target.
-Session points are equally spaced by execution order, not elapsed calendar time.
-Range boundaries are inclusive. Missing RIR stays unknown; logged zero stays zero.
-
-Expand `Previous vs current · set breakdown` for a compact three-column comparison
-of credited sets. Earlier history remains available outside the
-visible month. Ordering uses recorded session date, start time and session ID,
-not the planned date; unknown start times sort first and IDs break remaining ties.
-
-Comparisons require the same plan workout name, weekday and order, exercise
-position, planned and actual catalog IDs, measurement unit, set count, target
-range and target RIR. Identical targets can be compared across plan versions;
-context changes start a new history. Approved substitutes compare only with the
-same substitute previously used in that plan context, never with the original.
-Unlinked workouts and other plan contexts are not used as a fallback baseline.
-
-At equal per-set loads, the app reports the change in total repetitions or time.
-Changed loads or incomplete executions show both results without an automatic
-improvement/regression label. Mean RIR changes require complete RIR data in both
-executions. These are observed comparisons, not weight recommendations or a
-judgment that training was physiologically effective. Unknown effort remains
-visible in descriptive coverage but cannot produce a progress delta. Timed
-performance uses duration without requiring RIR.
-
-## Decision annotations
-
-In **Overview → What changed · what to do**, up to three
-annotations show an observation, per-set evidence and a next action. The pure
-`compute_training_insights` engine prioritizes less-than-planned reserve, deload,
-increased output, lower output, changed effort, evidence gaps, changed load and
-unchanged output, in that order. Ties prefer recent evidence. This is an explicit
-display policy, not a training-effectiveness score.
-
-Overview uses the last 28 **actual** days, independently of the history month.
-This includes workouts performed early or moved from older planned dates.
-Unlinked elapsed slots in that window are counted by their scheduled date.
-Plan analysis continues to use the selected scheduled month.
-Actual dates and session order choose the latest linked execution in each context; earlier history remains
-available. Two complete ordinary executions on different days, at most 21 days
-apart, support a paired observation. Changed target prescriptions, substitutes
-and manually reset block settings have separate histories. An incomplete latest
-execution is a barrier; the engine never falls back to an older successful log.
-
-At equal per-set loads **and per-set recorded RIR**, changed total reps describe
-changed output. A change in any set's RIR produces an effort-context note, even
-when average RIR is identical. Changed load never automatically means regression.
-Timed work compares seconds without requiring RIR. Less-than-planned reserve can
-be reported from one complete execution. Deload uses reduced targets and is
-excluded from ordinary comparisons. Missing RIR, incomplete sets, first baselines,
-long gaps and unlinked elapsed workouts are grouped into one evidence message.
-Missing linkage is never presented as proof of skipped training.
-
-A numeric next action reuses the existing progression engine's actual selected
-workout preview. It must cite the latest observed session and match exercise,
-prescription and block settings. Current future targets are not attached to a
-historical month. **Why?** contains the rule, evidence level (`paired`, `observed`
-or `limited`), immutable source snapshots, dates, IDs, individual sets and inferred
-classification provenance; attached recommendations retain their original reason
-and evidence. No data is rewritten and no schema migration is required.
-
-## Current training overview
-
-Overview opens with a single conclusion based on the current block phase,
-recent evidence and the actual selected workout's target availability. It does
-not estimate physiological effectiveness. Below, the left column contains at
-most three annotations; the right contains the only full next-workout preview.
-The layout stacks below 920 px. Exact next-target numbers live in the workout
-card; annotations point there instead of repeating the prescription.
-
-The former five global KPI cards and two session charts are removed from the
-landing page. Calendar, assignments, replacements, imports, session logs and
-optional corrections now live in History. The active plan persists across all
-four pages, with a safe fallback if that plan is no longer available.
-
-The layout redesign continues in separately approved steps documented in
-[analytics-redesign-plan.md](docs/analytics-redesign-plan.md).
-
-## Working sets and warm-ups
-
-Series are interpreted automatically in the metrics layer, without modifying
-stored set values or writing inferred labels. Ordinary RIR 0–3 is working;
-RIR 4–5 is light; RIR above 5 is low effort. A light set is a likely warm-up only
-if it precedes the first known working set in the **same logged exercise** and
-has a lower load. A later back-off set is not automatically a warm-up.
-
-Light and low-effort work remain in descriptive workload, but do not establish
-ordinary progression or fill planned working-set counts. Missing RIR stays
-unknown: its logged work remains visible, while ordinary progress comparisons
-and numeric increases require sufficient effort evidence. Timed work is evaluated
-using duration and requires no repetition-based RIR. Linked planned deload work
-uses the historical version's block settings, retains its lighter prescribed
-sets, and never establishes an ordinary progression baseline. Month filtering
-preserves this context, and global/exercise progress excludes deload exposures.
-
-Explicit user corrections take priority over inferred purpose. `Working` can
-override a light/low-effort interpretation, but it does not invent missing RIR.
-`Warm-up` always excludes that set from analysis, including during deload.
-These thresholds are application policy, not a diagnosis of a set's training
-value. Derived results carry their kind, source and reason separately from the
-original `is_warmup` value.
-
-Migration 004 stores optional exceptions only. In History's recorded-session
-details, open `Set interpretation · optional correction` and switch on `Correct a
-set` only when needed. The editor shows the derived interpretation and its source.
-`Auto` removes an explicit correction; `Working` and `Warm-up` save exceptions.
-The former mandatory labelling control is removed from the analytical flow.
-Calendar log totals still preserve recorded sets; explicit warm-ups carry a `WU`
-badge. Training-visit frequency still counts recorded sessions. Source data are
-cached for up to five minutes; imports and corrections invalidate the cache.
-
-TXT import accepts explicit markers, including mixed markers on one line:
+| **Rep** | One repetition of a movement. | One complete bench press. |
+| **Set** | A group of repetitions, or one timed hold. | 8 reps, then rest. |
+| **3 × 6–10** | Three sets, each with a target of 6 to 10 reps. | 8 / 8 / 7 is within the range. |
+| **RIR** | Repetitions in reserve: your estimate of how many more reps you could do. | RIR 2 means about two reps left. |
+| **Working set** | A set treated as part of the main exercise work. | Separate from a warm-up. |
+| **Deload** | A scheduled period with reduced training demand. | Fewer sets and lighter targets. |
+| **Direct / indirect work** | The muscle is a main target / contributes to another movement. | Biceps curl / biceps contribution in a pulling exercise. |
+| **e1RM** | An estimate of the load for one repetition. | A calculation from recorded weight and reps. |
+
+**An empty RIR is unknown. RIR 0 is a recorded estimate of no repetitions left.**
+The app keeps that distinction throughout its calculations.
+
+## How the Numbers Work
+
+### 1. Load: what does “kg” mean?
+
+For an external-load exercise, kg is the recorded weight. Keep the same
+convention between sessions, including whether dumbbell weight is per hand.
+
+For explicitly recorded bodyweight work, the app stores three separate values:
+
+$$
+L = B + A - S
+$$
+
+Here **L** is estimated total supported load, **B** is body mass,
+**A** is added weight and **S** is measured assistance, all in kg.
+
+| Example | Calculation | Total load |
+| --- | --- | --- |
+| Dead hang at 80 kg body mass | 80 + 0 − 0 | 80 kg |
+| Pull-up with 10 kg added | 80 + 10 − 0 | 90 kg |
+| Assisted pull-up with 20 kg support | 80 + 0 − 20 | 60 kg |
+
+Less assistance means more supported load. This estimate describes the saved
+load convention; it does not measure force in an individual muscle.
+
+The latest body-mass measurement on or before the workout date is offered as an
+editable suggestion. Its value is saved with the set, so a later weigh-in does
+not change an old workout. Missing mass or unknown assistance leaves the total
+**unknown**; resistance-band assistance is not guessed.
+
+### 2. Volume: how much recorded work?
+
+For repetition-based exercises:
+
+$$
+V = \sum_i L_i \times r_i
+$$
+
+Add **load × reps** for each included set. Three sets of 10 reps at 60 kg give
+`3 × 60 × 10 = 1,800 kg·reps`.
+
+This is a descriptive workload total. Compare it within a consistent exercise
+and load convention; a larger number alone does not establish better training.
+
+**Timed holds stay in seconds.** A 45-second dead hang is one timed set:
+it creates neither kg × seconds volume nor a converted number of dynamic sets.
+Incomplete load totals are flagged, and charts show gaps.
+
+<details>
+<summary>Where e1RM fits</summary>
+
+For repetition-based external-load records, the backend uses the Epley estimate:
+
+$$
+\mathrm{e1RM} = w \times \left(1 + \frac{r}{30}\right)
+$$
+
+For example, `60 kg × 10 reps` gives an estimate of `80 kg`.
+This is a formula output, not a measured one-rep maximum.
+Explicit bodyweight/assisted sets and timed holds receive no inferred e1RM.
+
+</details>
+
+### 3. Muscle distribution: where do the sets go?
+
+One exercise can involve several muscle groups. The app assigns a saved
+**factor** to each exercise–muscle relationship.
+
+| Role | Default factor | Contribution of 4 sets |
+| --- | --- | --- |
+| Primary: main target | 1.0 | 4 weighted sets |
+| Secondary: assisting muscle | 0.5 | 2 weighted sets |
+| Stabilizer: supporting role | 0.25 | 1 weighted set |
+
+These are allocation assumptions, not measured percentages of muscle activation.
+Saved overrides can differ from the defaults.
+
+For a single muscle group, the weekly plan target is:
+
+$$
+T_m = \sum_e s_e \times f_{e,m}
+$$
+
+**s** is the planned set count for each exercise in one reference week;
+**f** is its saved factor for muscle **m**. Sum every workout in the week.
+
+For example, suppose a plan has **6 biceps-curl sets** with factor 1 and
+**8 pulling sets** with a biceps factor of 0.5:
+
+$$
+T_{\mathrm{biceps}} = 6 \times 1 + 8 \times 0.5 = 10
+$$
+
+That is **10 weighted set equivalents** from 14 exercise sets. Recorded sets
+use the same factors, making the plan and log comparable.
+
+The table then calculates:
+
+$$
+\text{Recorded / week} = \frac{\text{recorded weighted sets}}{W}
+\qquad
+\text{Plan \%} = \frac{\text{Recorded / week}}{T_m} \times 100
+$$
+
+**W** is the selected period's length in weeks, with a minimum of one week.
+If 16 weighted sets were logged across 14 days, the result is
+`16 ÷ 2 = 8 per week`. Against a target of 10, that is **80%**.
+
+| What you see | How to read it |
+| --- | --- |
+| **Plan target** | One reference week of the active plan version effective today. |
+| **Recorded / week** | Your logged weighted sets, averaged over the selected period. |
+| **Plan %** | Recorded weekly allocation divided by the target. |
+| Blue / green / amber on the map | Below / within / above the plan's ±10% comparison band. |
+| Target 0 / blank | No dynamic sets planned / target unavailable. |
+
+A new active plan changes the target automatically. The month filter changes
+the recorded side. A future plan version starts affecting the target on its
+effective date.
+
+<details>
+<summary>Counting details and edge cases</summary>
+
+- A past month uses all calendar days; the current month ends today.
+  **All time** spans the first through last metric date, including rest days.
+- Primary-role counts are direct; secondary and stabilizer counts are indirect.
+  Raw counts and weighted equivalents are different measures.
+- Missing roles are not inferred from factor size. Saved weighted contributions
+  remain included. Without detailed mappings, the catalog body part is used
+  as a primary target with factor 1.
+- Missing plan mappings or a plan read error leave targets blank, avoiding
+  partial totals. With no plan, the map stays neutral; unplanned work has its
+  own status.
+- Explicit and inferred warm-ups are excluded. Descriptive light,
+  unknown-effort and deload work remain included, so the total is not
+  automatically a count of hard hypertrophy sets.
+- Timed sets appear separately and do not enter the dynamic-set target.
+  Muscle distribution describes the base routine; Overview handles temporary
+  deload prescriptions.
+
+The ±10% band is an application rule for comparison with a plan.
+It does not diagnose undertraining, overtraining or recovery capacity.
+
+</details>
+
+### 4. Effort: which sets count for which question?
+
+A recorded set can contribute to workload without supporting a progression
+recommendation. The default interpretation for ordinary repetition-based work is:
+
+| Recorded RIR | Interpretation | Used for ordinary progression? |
+| --- | --- | --- |
+| 0–3 | Working | Yes, subject to the other evidence checks. |
+| 4–5 | Light | No, unless explicitly corrected to Working. |
+| Above 5 | Low effort | No, unless explicitly corrected to Working. |
+| Empty | Unknown | No numeric increase from missing effort evidence. |
+
+A light set is inferred as a warm-up only when it precedes the first known
+working set in the same logged exercise **and** uses a lower load.
+A later lighter set is not automatically a warm-up.
+
+In **History → Set interpretation · optional correction**, choose
+`Auto`, `Working` or `Warm-up` when a correction is needed.
+A Working override does not invent missing RIR. Warm-up excludes the set from
+analytics; the original log remains available.
+
+These thresholds are application policy. Timed exercises use duration without
+requiring repetition-based RIR; planned deload work has its own context.
+
+### 5. Performance: when are two results comparable?
+
+Think **same exercise, same prescription, same recorded load convention**.
+For a simple output comparison, per-set loads must also match.
+
+| Earlier → later | Interpretation |
+| --- | --- |
+| 60 kg × 8 → 60 kg × 9, same RIR | More output at the same recorded load and reserve. |
+| 60 kg × 8 → 65 kg × 7 | Load and reps both changed; no automatic regression label. |
+| RIR 2 → RIR 0 | Effort changed, even if reps increased. |
+| Bodyweight 80 kg → 82 kg | Total load changed, even with no added weight. |
+| 30 s → 40 s, same load and context | Longer recorded hold. |
+
+Plan-based comparisons need linked sessions. A replacement exercise keeps its
+own performance history, even when it covers the original plan position.
+
+<details>
+<summary>Comparison context, evidence and charts</summary>
+
+Comparisons match the workout name, weekday/order, exercise position, planned
+and actual exercise IDs, unit, set count, target range and target RIR.
+Identical prescriptions can span plan versions; changed contexts start a new
+history. Load-convention changes also establish a new baseline.
+
+Actual session date, start time and ID determine order. Unknown times sort
+first; IDs break ties. Prior history remains available beyond the visible month.
+The latest incomplete execution is a barrier: an older success is not substituted.
+
+Overview looks at the last 28 actual days. A paired ordinary observation needs
+complete comparable executions on different days, at most 21 days apart.
+Per-set RIR must match for an output-change annotation; matching averages alone
+are insufficient. One complete log can already show less reserve than planned.
+
+Exercise charts show mean reps/time and load separately. A mean inside the
+shaded band does not mean every set met the range; source details show individual
+sets. Plan-context points are spaced by execution order. Amber diamonds identify
+deload logs, which stay outside ordinary progress comparisons.
+
+Recorded-exercise charts separate load conventions and reps/time. Bodyweight
+and timed performance series use the same known total load. Missing or changed
+loads cannot produce an automatic comparable-progress label.
+
+</details>
+
+### 6. Plan consistency: recorded does not always mean in range
+
+Set coverage asks how much of the planned work has a matching log:
+
+$$
+\text{Coverage \%} =
+\frac{\text{credited recorded sets}}{\text{planned sets}} \times 100
+$$
+
+If 9 of 12 planned sets are credited, coverage is **75%**.
+Each plan position is capped at its planned count.
+
+Unknown-effort logs can count toward coverage. Warm-ups and uncorrected ordinary
+light/low-effort sets do not.
+
+Coverage and range checks answer different questions. A recorded set of
+5 reps may count toward coverage while falling outside a target of 6–10.
+RIR is checked separately too.
+
+Only scheduled dates **before today** enter summary ratios.
+Today's open workouts and future slots do not lower the result.
+An unlinked workout means “no linked record”, not proof of a missed session.
+
+### 7. Body measurements: what changed over time?
+
+Select weight, a circumference or a body-composition measurement in
+**Analysis → Body measurements**. The chart retains first observations and dates
+that have measurements but no workout.
+
+The app reports the observed change and its dates. Whether a rising or falling
+value matches your goal depends on the measurement and your intent.
+
+## Training Plan and Next Workout
+
+### Build a weekly routine
+
+In **Plan**, select a saved plan or enable **Create a new plan**:
+
+1. Set the name and effective date.
+2. Add named workouts and weekdays; select one **Workout to edit**.
+3. Add exercises and set their counts, ranges and unit: reps or seconds.
+4. Set target RIR and an available weight step under **Progression & RIR**.
+5. Save. To revise a saved routine, enable **Edit as a new version**.
+
+A revision preserves earlier plan versions. Draft values survive switching
+exercises or pages.
+
+### Configure a training block
+
+Under **Progression & training block**, choose a start date and a length of
+6, 7 or 8 weeks. The last week is reserved for deload.
+
+```text
+Example: a repeating 7-week block
+Weeks 1–6: ordinary training → Week 7: deload → next cycle
+```
+
+Weeks are seven-day intervals from the start date, including midweek starts.
+Missed workouts do not move the schedule. Saving a revision preserves block
+settings unless you explicitly change them.
+
+### Understand the next target
+
+**Overview → Next workout** previews an unlinked planned workout from today
+onward. You can choose another upcoming date and expand **Full workout**.
+The target is calculated from linked history; it is not written into your log.
+
+For a plan of **3 × 6–10 reps, RIR at least 2, weight step 2.5 kg**:
+
+| Recorded evidence | Default next target |
+| --- | --- |
+| At 60 kg: 8 / 8 / 7, every set RIR ≥ 2 | 60 kg: 8 / 8 / 8 — one extra rep in total. |
+| At 60 kg: 10 / 10 / 10 once | Repeat the upper range to confirm it. |
+| Same upper-range result on two consecutive qualifying days | 62.5 kg: 6 / 6 / 6. |
+| Any set below the rep minimum or target reserve | Keep the logged loads and original range. |
+| Incomplete or missing evidence | A reason for needing more data. |
+
+The extra rep goes to the lowest-repetition set; the first set wins a tie.
+The app requires a common working load for automatic increases.
+
+**Bodyweight/assisted and timed load progression remain manual.**
+The app does not assume future body mass or guess how much assistance to remove.
+
+### Deload example
+
+Using the same plan and a complete ordinary log of 60 kg × 10 / 10 / 10:
+
+```text
+Ordinary: 3 × 6–10 at 60 kg, RIR ≥ 2
+Deload:   2 × 6    at 52.5 kg, RIR ≥ 4
+Return:   resume the last comparable ordinary loads and original range
+```
+
+The default keeps half the planned sets, rounded up with at least one set,
+and uses the lower rep bound. It reduces load by at least 10% in whole equipment
+steps, stopping if that would exceed 20% or make the load non-positive.
+Here three 2.5 kg steps give a 12.5% reduction.
+
+Target reserve becomes `max(4, original target RIR + 2)`.
+These are suggested targets, not a prediction of the reserve you will achieve.
+
+<details>
+<summary>Recommendation safeguards and developer API</summary>
+
+- Default progression needs two upper-range confirmations on different days,
+  a maximum 21-day evidence gap and a weight step no greater than 10% of the load.
+  These are configurable application guards.
+- Complete working sets, recorded RIR and target RIR are needed for rep increases.
+  Mixed per-set loads keep individual loads/ranges. Missing evidence or a changed
+  context never creates a confirmation.
+- Deload uses the latest comparable normal execution in the same cycle.
+  Deload logs do not compound reductions or establish ordinary baselines.
+- Return uses the immediately preceding cycle's comparable normal history,
+  without an increase. Old upper-range confirmations do not carry forward.
+  Missing/partial latest evidence, long gaps or manually changed block settings
+  prevent reuse.
+- A moved planned deload remains a deload. Normal work actually performed during
+  deload is excluded from normal baselines as well.
+- Future records after `as_of` are not evidence. Unconfigured/not-started blocks
+  get a setup message; unavailable equipment steps produce no invented load.
+- Explicit alternatives use their own history and weight steps. A preview choice
+  is temporary and does not edit the plan or confirm a future replacement.
+
+The general API is
+`DataManager.load_workout_recommendations(plan_id, day_id, scheduled_date, as_of=...)`.
+It returns immutable `WorkoutRecommendation` / per-exercise targets with dates,
+block phase, reasons and evidence IDs.
+
+`load_normal_workout_recommendations` is a compatibility wrapper for normal dates.
+Pure rules live in `metrics.progression`; use `recommend_workout` for arbitrary
+dates so cycle and deload rules are applied.
+
+Overview shows up to three observations and one full next-workout preview.
+Its numeric next action comes from that same preview. **Why?** / **Why these
+targets?** expose source sessions, evidence and rules. Historical Analysis does
+not attach a current future recommendation to a past month.
+
+</details>
+
+## Recording and Importing Workouts
+
+### Manual entry and bodyweight sets
+
+Open **History → Add workout → Enter exercise** for reps/seconds, weight,
+RIR and set purpose. For explicit bodyweight work, weight means **additional kg**;
+body mass and assistance have separate fields.
+
+History shows the saved load components.
+**Body mass and load details** corrects an individual set.
+Older logs keep their original kg convention until explicitly corrected.
+
+### TXT workout import
+
+Choose **History → Add workout → Import TXT**, or use the sidebar shortcut:
+
+```text
+Godzina 15:35-16:50
+
+1. Incline Dumbbell Press
+10x24 / 10x24 / 6x26
+RIR 2 / 2 / 0
+
+2. Lat Pulldown
+12x70 / 10x70 / 11x70
+RIR: 1 / 0 / 0
+```
+
+`10x24` means **10 repetitions at 24 kg**. Slashes separate sets;
+the RIR values follow the same order.
+
+| Also accepted | Example |
+| --- | --- |
+| Alternative set notation | `10 x 100 kg`, `10*100`, `10 @ 100` |
+| Decimal comma | `10x67,5` |
+| Exercise numbering | `1.`, `1)`, `1 -` |
+| Inline exercise | `Bench Press: 10x100/8x110 RIR 2/1` |
+| Time range | `Godzina: 10:30 - 12:45`, `Godz. 15.35 do 16.50` |
+| Missing RIR | Leave it out; the value stays unknown. |
+
+Unknown exercise names can be matched to the catalog or added as a new exercise.
+Before importing explicit bodyweight sets, open **Review body mass and load types**
+and check the convention and estimated total. The default preserves the TXT log's
+original kg meaning. An import saves all exercises together or rolls back.
+
+<details>
+<summary>Warm-up markers and timed dead hang examples</summary>
+
+Mark set purpose explicitly when useful:
 
 ```text
 1. Bench Press
@@ -663,399 +546,364 @@ Working: 8x60 / 8x60
 RIR: 4 / 3 / 2 / 1
 ```
 
-`Rozgrzewka:` and `Robocze:` are also supported. Unmarked tokens retain an empty
-stored label and are interpreted automatically at analysis time. Exceptions
-remain stored separately from original set values; no new migration is needed.
+`Rozgrzewka:` and `Robocze:` work too. Unmarked sets keep an empty stored
+label and are interpreted during analysis. Explicit exceptions are stored
+separately from the original set values.
 
-## TXT Workout Import
-
-The sidebar importer accepts structured workout notes such as:
-
-```text
-Godzina 15:35-16:50
-
-1. Incline Dumbbell Press
-10x24/10x24/6x26
-RIR 2/2/0
-
-2. Lat Pulldown
-12x70 / 10x70 / 11x70
-RIR: 1 / 0 / 0
-```
-
-It also supports common variants:
-
-- time ranges like `Godzina: 10:30 - 12:45`, `Godz. 15.35 do 16.50`, or
-  `15:35-16:50`,
-- numbered exercises written as `1.`, `1)`, or `1 -`,
-- inline exercise entries like `Bench Press: 10x100/8x110 RIR 2/1`,
-- set formats such as `10x100`, `10 x 100 kg`, `10*100`, and `10 @ 100`,
-- comma decimal weights such as `67,5`,
-- missing RIR values, which are imported as empty instead of dropping the whole
-  exercise.
-
-If an imported exercise is not found in the database, the app suggests similar
-existing exercise names and allows the user to select one or add a new exercise.
-
-For a bodyweight dead hang, record each hold separately as a duration:
+For dead hang, record each hold as its own duration:
 
 ```text
 1. Dead hang
 Working: 30s / 45s / 1:00
 ```
 
-This example imports three working sets lasting 30, 45 and 60 seconds, with no
-added weight. RIR may be omitted and stays unknown; seconds of reserve are not
-repetitions in reserve. In Training Plan, choose `Measure = seconds` and the
-desired time range. Timed sets use `duration_seconds`, contribute no tonnage or
-estimated 1RM, and do not receive automatic timed progression recommendations.
-The current TXT duration format does not capture additional hanging weight.
+This gives three timed sets of 30, 45 and 60 seconds.
+Choose **Measure = seconds** in the plan. RIR may stay empty; repetitions in
+reserve do not mean seconds in reserve.
 
-Wrist Curl and Reverse Wrist Curl use explicit forearm rules (wrist flexors and
-wrist extensors, respectively), before the generic elbow-curl rule. Standard
-straight-arm Dead hang uses forearm finger flexors/grip as primary, with shoulder
-and scapular stabilization; biceps are not credited as a training target. These
-are movement-based analytical labels and application role factors, not measured
-muscle activation percentages. References:
-[ACE wrist flexion](https://www.acefitness.org/resources/everyone/exercise-library/30/wrist-curl-flexion/),
-[ACE wrist extension](https://www.acefitness.org/resources/everyone/exercise-library/29/wrist-curl-extension/),
-[finger-hang/arm-lock-off study](https://pmc.ncbi.nlm.nih.gov/articles/PMC10623130/).
+The TXT duration notation does not encode added hanging weight.
+Use the import load review or manual entry to set the load components.
 
-## Key Technical Decisions
+</details>
 
-- Separated metric calculation from the Streamlit UI to keep business logic
-  testable.
-- Used immutable domain models to make data flow predictable.
-- Built a central metrics engine to compute all dashboard metrics from one
-  structured input.
-- Kept database access isolated in the `db/` and `data_manager.py` layers.
-- Added tests for metric calculations, filtering logic, data mapping, and TXT
-  import parsing.
+### Link a workout or confirm a replacement
 
-## Data Flow
+In **History**, select a planned calendar day and link its recorded session.
+The actual workout may be on another date. A session belongs to one planned slot;
+removing a link preserves its log.
 
-```text
-Database
-  -> DataManager / SQL queries
-  -> Data Loader
-  -> Domain Models / MetricsInput
-  -> Metrics Engine
-  -> Streamlit Views
-```
+If you used another exercise, open **Confirm exercise replacements** on the
+linked workout. For example, Machine Chest Press can cover a Barbell Bench Press
+position for that session. Their performance histories stay separate.
 
-Workout and body-tracking records are read from the database, normalized into
-domain models, passed through one structured `MetricsInput`, and then consumed
-by the dashboard views as precomputed metrics.
+<details>
+<summary>Calendar and matching rules</summary>
+
+- A bottom dot marks a recorded session. A top-right amber ring marks planned
+  work; it fills teal when every planned slot on that date is linked.
+- Slots use the plan version effective on their scheduled date.
+  A new version cannot replace an already linked slot; unlink it or choose
+  a later effective date.
+- Matching exercise catalog IDs are automatic. Similar muscle groups alone do
+  not confirm a replacement. Replacements must use the same unit: reps or seconds.
+- Confirmed replacements reserve the recorded exercise for one plan position.
+  Remaining exact-ID sets are allocated in plan order without double counting.
+- Unlinking/deleting a session removes its replacement approvals.
+  Deleting the session also removes the link; unlinking alone keeps the workout.
+- Analysis uses scheduled dates for plan periods and loads moved linked sessions
+  in full. A moved workout counts as recorded, but not on the planned day.
+
+</details>
+
+## Research and Sources
+
+**Why no personal Min/Max for every muscle?** A study compares particular people,
+exercises and counting methods. It does not reveal an individual user's minimum
+effective volume or recovery ceiling.
+
+The app therefore derives its target from **your plan**. Research explains the
+programming context; it does not grade the plan or color the muscle map.
+
+| Source | Takeaway used in this project |
+| --- | --- |
+| [IUSCA position stand, 2021](https://doi.org/10.47206/ijsc.v1i1.81) and [ACSM overview, 2026](https://doi.org/10.1249/MSS.0000000000003897) | Weekly volume matters for muscle growth; around 10 sets is a general reference, not a personal minimum or ceiling. |
+| [Pelland et al., 2026](https://doi.org/10.1007/s40279-025-02344-w) | Distinguishing direct and indirect work helps interpret volume; 0.5 credit for indirect sets had the strongest support among the compared models. |
+| [Bell et al., 2023: deload consensus](https://doi.org/10.1186/s40798-023-00633-0) | Reducing training demand is a recognized deload approach; the app's exact schedule and reductions are its own policy. |
+
+The one-rep progression rule, confirmation count, RIR classifications, ±10% map
+band and repeating 6–8 week block are transparent **application choices**.
+These papers do not validate the complete algorithm or each custom muscle factor.
+
+<details>
+<summary>Muscle-specific findings and their limits</summary>
+
+**Biceps and triceps.**
+[Baz-Valle et al. (2022)](https://doi.org/10.2478/hukin-2022-0017)
+compared 12–20 with more than 20 weekly sets in young trained men.
+The review detected no biceps advantage for the higher category, while triceps
+results favored higher volume. This does not prove equal biceps responses or
+define a closed personal range.
+
+The review counted single- and multi-joint work. Its “12–20 sets” must not be
+treated as “12–20 app-weighted equivalents” or as a prescription for that many
+direct sets.
+
+**Chest.**
+[Pinto et al. (2025)](https://doi.org/10.1519/JSC.0000000000005045)
+found similar growth with one and three pec-deck sets per session in a small
+trial in untrained men. This does not establish the optimal weekly chest range
+for trained lifters.
+
+**Broad catalog groups.**
+Legs, Back and Shoulders combine different muscles or regions. A quadriceps
+result cannot define a shared budget for every leg muscle. The selected evidence
+does not provide exact separate limits for every catalog group.
+
+**Allocation factors.**
+Pelland's indirect-set findings do not validate a 0.25 stabilizer factor or
+every exercise-specific override. Both the raw direct/indirect counts and saved
+weighted contributions remain available in the calculation layer.
+
+</details>
+
+<details>
+<summary>Exercise mapping examples and references</summary>
+
+Wrist Curl targets wrist flexors; Reverse Wrist Curl targets wrist extensors.
+These explicit rules run before the generic elbow-curl rule.
+See [ACE wrist flexion](https://www.acefitness.org/resources/everyone/exercise-library/30/wrist-curl-flexion/)
+and [ACE wrist extension](https://www.acefitness.org/resources/everyone/exercise-library/29/wrist-curl-extension/).
+
+Standard straight-arm Dead hang credits forearm finger flexors/grip as primary,
+with shoulder and scapular stabilization. Biceps are not a training target in
+this mapping. The [finger-hang / arm-lock-off study](https://pmc.ncbi.nlm.nih.gov/articles/PMC10623130/)
+provides movement context. The mapping and its factors remain analytical labels,
+not measured activation percentages.
+
+</details>
 
 ## Architecture
 
-The project is split into clear layers:
+Database records become domain models, then calculated results, then charts:
 
-```text
-streamlit_app.py
-  -> ui/                 # Streamlit views and presentation helpers
-  -> metrics/            # pure metric calculation logic
-  -> data_loader.py      # maps database data into domain models
-  -> data_manager.py     # high-level data operations
-  -> db/                 # database connection and SQL queries
-  -> models/             # immutable domain models
+```mermaid
+flowchart LR
+    DB[(PostgreSQL)] --> Load[DataManager and data loader]
+    Load --> Models[Immutable domain models]
+    Models --> Metrics[Calculation rules]
+    Metrics --> UI[Streamlit views]
 ```
 
-Core rule: decision formulas live outside the UI. Database rows become
-`MetricsInput` and immutable plan snapshots. Each view calls the pure calculator
-needed for its selected task; the general metrics registry remains available
-for backend consumers. Views may reshape or aggregate prepared values for a chart.
+| Location | Responsibility |
+| --- | --- |
+| `streamlit_app.py`, `ui/` | Navigation, forms and presentation. |
+| `metrics/` | Calculations and decision rules, independent of Streamlit. |
+| `models/` | Immutable workout, plan and recommendation types. |
+| `data_loader.py`, `mapper.py` | Convert database rows into structured inputs. |
+| `data_manager.py`, `db/` | Database access, imports, transactions and migrations. |
+
+Keeping calculations separate from the interface lets tests check a rule
+without opening the dashboard. Views can reshape prepared results for charts;
+decision formulas stay in the calculation layer.
 
 ## Data Model
 
-Training data uses:
+A **session** contains performed **exercises**, and each exercise contains
+**sets**. The catalog maps exercises to muscle groups. Optional side tables
+store explicit load details and set-purpose corrections.
 
-- `workout_sessions`
-- `workout_exercises`
-- `workout_sets`
-- `exercises`
-- `exercise_muscle_map`
+Plans have dated versions, so an old session can be interpreted against the
+prescription that applied then. Body measurements form independent time series;
+they do not need a workout on the same date.
 
-Training-plan snapshots use:
-
-- `training_plans` — stable identity of a plan.
-- `training_plan_versions` — name, version number, and effective date.
-- `training_plan_days` — named workouts, weekdays (Monday = 0), and order.
-- `training_plan_exercises` — catalog exercise IDs, order, sets, target range,
-  target unit (`reps` or `seconds`), optional RIR and weight increment.
-- `training_plan_progression` — block start and length for a configured plan
-  version; no row means not configured.
-- `training_plan_session_links` — a recorded session assigned to one dated
-  workout template; uniqueness prevents counting a session or planned slot twice.
-- `training_plan_exercise_matches` — explicit session-scoped approval connecting
-  a planned exercise position to a recorded exercise entry.
-
-Edits through the storage API append a complete snapshot. Each new version starts
-after the previous version's start date and cannot be backdated. Its effective
-date ends the previous version's interval. Future versions do not affect the plan
-resolved for earlier dates. Multiple workouts may share a weekday, and an exercise
-may have different targets in different workouts. Existing sessions are not
-automatically assigned to a plan. Plans currently follow the single-user data
-model of this project.
-
-Body tracking data uses:
-
-- `body_composition`
-- `body_measurements`
-
-## Data Model Diagram
+<details>
+<summary>Core database relationships</summary>
 
 ```mermaid
 erDiagram
     workout_sessions ||--o{ workout_exercises : contains
-    exercises ||--o{ workout_exercises : is_performed_as
+    exercises ||--o{ workout_exercises : identifies
     workout_exercises ||--o{ workout_sets : has
     exercises ||--o{ exercise_muscle_map : targets
-
-    workout_sessions {
-        int session_id PK
-        date session_date
-        time start_time
-        time end_time
-    }
-
-    workout_exercises {
-        int workout_exercise_id PK
-        int session_id FK
-        int exercise_id FK
-    }
-
-    workout_sets {
-        int set_id PK
-        int workout_exercise_id FK
-        int set_number
-        int repetitions
-        float weight
-        int rir
-    }
-
-    exercises {
-        int exercise_id PK
-        string exercise_name
-        string category
-        string body_part
-    }
-
-    exercise_muscle_map {
-        int exercise_id FK
-        string muscle_group
-        string muscle_name
-        string role
-        float set_factor
-    }
-
-    body_composition {
-        date measurement_date
-        float weight
-        float muscle_mass
-        float fat_mass
-        float body_fat_percentage
-    }
-
-    body_measurements {
-        date measurement_date
-        float chest
-        float waist
-        float hips
-        float thigh
-        float calf
-        float biceps
-    }
+    workout_sets ||--o| workout_set_loads : load_details
+    workout_sets ||--o| workout_set_classifications : correction
+    training_plans ||--|{ training_plan_versions : versions
+    training_plan_versions ||--o{ training_plan_days : workouts
+    training_plan_days ||--o{ training_plan_exercises : prescribes
+    training_plan_versions ||--o| training_plan_progression : block_settings
 ```
 
-`body_composition` and `body_measurements` are independent time-series tables.
-They are analyzed alongside workout sessions, but they do not need a direct
-foreign-key relationship to a specific training session.
+| Tables | Stored information |
+| --- | --- |
+| `workout_sessions`, `workout_exercises`, `workout_sets` | Dates, performed exercises, reps/time, weight and RIR. |
+| `workout_set_loads` | Explicit load type, per-set body mass and assistance. Added weight stays in `workout_sets`. |
+| `workout_set_classifications` | Optional Working / Warm-up exceptions. |
+| `exercises`, `exercise_muscle_map` | Catalog and muscle roles/factors. |
+| `training_plans`, `training_plan_versions` | Stable plan identity and dated snapshots. |
+| `training_plan_days`, `training_plan_exercises` | Named weekdays, order, sets, ranges, unit, RIR and weight step. |
+| `training_plan_progression` | Versioned block start and length. No row means unconfigured. |
+| `training_plan_session_links`, `training_plan_exercise_matches` | Planned-slot assignments and session-specific replacements. |
+| `body_composition`, `body_measurements` | Weight/composition and body circumferences over time. |
 
-`exercise_muscle_map` supports multiple muscle targets per exercise:
+Versions append a complete snapshot. Each starts after the previous version's
+start date and cannot be backdated. Future versions do not alter earlier dates.
+Multiple workouts may share a weekday; an exercise may have different targets
+in different workouts.
 
-- `exercise_id`
-- `muscle_group`
-- `muscle_name`
-- `role` (`primary`, `secondary`, `stabilizer`)
-- `set_factor`
+Developer entry points:
+`DataManager.save_training_plan(draft, plan_id=...)` appends a revision;
+`load_training_plans()` lists latest snapshots, including future ones;
+`load_effective_training_plan(plan_id, on_date)` resolves a particular date.
+Draft types live in `models/training_plan.py`.
 
-Default volume attribution weights:
+</details>
 
-- `primary`: `1.0`
-- `secondary`: `0.5`
-- `stabilizer`: `0.25`
+## Installation
 
-Seed the exercise-muscle mapping with:
+### Requirements
 
-```bash
-python -m db.seed_exercise_muscle_map
+- Python 3.11 or newer.
+- An existing PostgreSQL-compatible database with the expected workout and
+  body-tracking tables.
+- Dependencies listed in `requirements.txt`.
+
+The repository includes additive migrations, **not a complete bootstrap of the
+original schema or a sample dataset**. Cloning the repository alone does not
+create a ready-to-use database. For a quick look, use the live demo.
+
+### Set up locally
+
+These activation commands are for Windows PowerShell:
+
+```powershell
+git clone https://github.com/BaseMar/ProgressAnalyzer.git
+cd ProgressAnalyzer
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-## Requirements
-
-- Python 3.11 or newer
-- PostgreSQL-compatible database available through `DATABASE_URL`
-- dependencies from `requirements.txt`
-
-> Note: Local setup currently requires an existing PostgreSQL-compatible
-> database with the expected workout/body-tracking schema. The repository includes
-> an additive migration for training plans, but not a full bootstrap of the legacy
-> schema or an anonymized seed dataset. For quick review, use the live demo.
-
-Minimal `.env` example:
+Create `.env` in the project root and supply your database connection:
 
 ```env
 DATABASE_URL=postgresql+psycopg2://user:password@host:5432/database
 ```
 
-## Installation
+Preview and apply the additive migrations, then start the app:
 
-```bash
-git clone https://github.com/BaseMar/ProgressAnalyzer.git
-cd ProgressAnalyzer
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-Streamlit is pinned to **1.66.1** so local installs and Community Cloud use the
-same widget renderer. After pulling a dependency change, reinstall requirements
-inside the active project environment. Custom dropdown CSS supports both legacy
-Base Web lists and current React Aria options; it preserves virtualized row sizes
-and native scrolling. The plan editor numbers workout choices so that two unnamed
-workouts remain distinguishable to the renderer.
-
-## Running The App
-
-```bash
+```powershell
+python -m db.migrate
+python -m db.migrate --apply
 streamlit run streamlit_app.py
 ```
 
-On startup, the app loads data from the database, builds `MetricsInput`,
-computes all metrics, and renders the dashboard sections.
+Streamlit is pinned to **1.66.1** so local installs and Community Cloud use
+the same renderer. Reinstall requirements after dependency changes.
+A missing connection or missing base tables prevents startup data loading.
 
-If `DATABASE_URL` is missing or points to a database without the expected
-tables, the app will fail during startup data loading.
+## Database Migrations
 
-## Training-plan database setup
+A migration adds a versioned database change. They run only when explicitly
+requested, never during app startup.
 
-Use the existing PostgreSQL database configured by `DATABASE_URL`. Migration 001
-creates the new plan tables and a `schema_migrations` ledger; it requires the
-existing `exercises` table. Migration 002 adds session links and requires
-`workout_sessions`. Migration 003 adds confirmed exercise matches and requires
-`workout_exercises`. Migration 004 adds explicit set classifications and requires
-`workout_sets`. Migration 005 adds versioned progression/block settings without
-assigning defaults to legacy plans. These migrations do not change workout records.
-Migrations are never run automatically at application startup.
+| Revision | Adds |
+| --- | --- |
+| 001 | Training plans and dated snapshots. |
+| 002 | Links between recorded sessions and planned workouts. |
+| 003 | Confirmed exercise replacements. |
+| 004 | Optional set-purpose corrections. |
+| 005 | Versioned progression/block settings. |
+| 006 | Explicit set loads and body-mass snapshots. |
 
-Preview pending migrations (read-only):
+`python -m db.migrate` previews pending revisions without writing.
+`python -m db.migrate --apply` applies them and records successful revisions.
 
-```bash
-python -m db.migrate
+<details>
+<summary>Migration and data-handling details</summary>
+
+The migrations require the original catalog/workout tables, including
+`exercises`, `workout_sessions`, `workout_exercises` and `workout_sets`.
+They preserve historical workout values; migration 006 does not reinterpret
+legacy weights. Existing plans do not receive an assumed block configuration.
+
+PostgreSQL runs each application of pending revisions in a transaction with
+a migration lock. Completed revisions are skipped on later runs. An untracked
+conflicting table causes an error.
+
+Body-mass suggestions support legacy text dates and date/timestamp columns;
+invalid or future measurements are skipped without changing them.
+Source data may be cached for up to five minutes; imports and corrections
+invalidate the cache.
+
+To seed exercise–muscle mappings in a configured database:
+
+```powershell
+python -m db.seed_exercise_muscle_map
 ```
 
-Apply pending migrations explicitly:
-
-```bash
-python -m db.migrate --apply
-```
-
-Successful revisions are recorded and skipped on subsequent runs. PostgreSQL
-applies each run in a transaction with a migration lock. An untracked conflicting
-table causes an error rather than being silently adopted.
-
-The storage API is available through `DataManager.save_training_plan(draft)`;
-pass `plan_id` to append a revision. `load_training_plans()` lists the latest saved
-version of each plan (including future versions). Use
-`load_effective_training_plan(plan_id, on_date)` to resolve the version applicable
-on a specific date. Drafts use immutable types from `models/training_plan.py`.
+</details>
 
 ## Tests
 
-The test suite uses `pytest` and covers mappers, domain models, the metrics
-layer, month filtering, parser behavior, and pure UI helpers.
+Tests cover calculations, model validation, parsing, filters, plan versions,
+transaction rollback and Streamlit views.
 
-Plan tests use an isolated SQLite database with foreign keys and transactional DDL
-enabled. They cover migration repeatability, snapshot roundtrips, effective-date
-boundaries, database constraints, and atomic rollback. Five additional integration
-cases run against PostgreSQL when `TEST_POSTGRES_URL` is set. Each case creates a
-unique schema, applies all five migrations, and rolls back its schema and synthetic
-logs afterwards. They verify normal goals, deload/return, confirmed alternatives,
-immutable versions and migration repeatability. They never fall back to the app's
-`DATABASE_URL`.
-
-```bash
+```powershell
 python -m pytest
 python -m compileall -q db metrics models ui streamlit_app.py data_loader.py data_manager.py mapper.py
 ```
 
-For a PostgreSQL test database (PowerShell):
+Five PostgreSQL integration cases need a separate test database.
+Without it, they are skipped while unit, SQLite and Streamlit tests still run.
+
+<details>
+<summary>Run PostgreSQL integration tests</summary>
+
+Use a test role with schema-creation permission:
 
 ```powershell
 $env:TEST_POSTGRES_URL = "postgresql+psycopg2://user:password@localhost:5432/progress_analyzer_test"
 python -m pytest
 ```
 
-The test role needs schema-creation permission. Without this variable, the five
-PostgreSQL cases are skipped and the unit/SQLite/Streamlit tests still run.
-The [Tests workflow](.github/workflows/tests.yml) runs the full suite with Python
-3.12 and a disposable PostgreSQL 16 service on pushes to `main` and pull requests,
-without application database secrets. The final update verification is recorded
-in [release-validation.md](docs/release-validation.md).
+Each case creates a unique schema, applies all six migrations, uses synthetic
+logs and rolls the schema back afterward. The tests never fall back to the app's
+`DATABASE_URL`.
 
-## Design Principles
+The [Tests workflow](.github/workflows/tests.yml) uses Python 3.12 and disposable
+PostgreSQL 16 on pushes to `main` and pull requests.
+Browser/release checks are recorded in [release-validation.md](docs/release-validation.md).
 
-- Metrics are pure functions without Streamlit dependencies.
-- Domain models are immutable (`dataclass(frozen=True)`).
-- Database access is separated from calculation logic.
-- The UI renders prepared data and keeps business rules out of view classes.
-- Tests verify behavior instead of implementation details.
+</details>
 
 ## Limitations & Future Work
 
-- The current live deployment is a public single-user demo backed by one hosted
-  database, not a production multi-user SaaS application.
-- Add an anonymized seed dataset for local development, tests, and screenshots
-  without relying on the hosted Supabase database.
-- Add a Docker Compose setup for repeatable local development with a database.
-- Extend the existing test pipeline with linting and more import-parser regression
-  coverage.
-- Extend the additive plan migrations into a complete legacy database bootstrap.
-- Extend analytics with prediction-oriented features, such as estimated progress
-  trajectory or fatigue-risk signals.
-- Add user authentication and data isolation before treating the app as a
-  multi-user product.
-- Continue improving TXT import coverage for more free-form workout note styles.
+**Current scope:** a public single-user demo. It describes recorded performance
+and plan execution; it does not measure technique, muscle growth or recovery
+capacity from a workout log.
+
+Planned improvements:
+
+- a complete database bootstrap and anonymized sample data;
+- Docker Compose for repeatable local setup;
+- authentication and data isolation for multiple users;
+- broader free-form import coverage and linting in CI.
+
+Implementation notes:
+[analytics redesign](docs/analytics-redesign-plan.md) ·
+[bodyweight and muscle distribution](docs/bodyweight-implementation-plan.md).
 
 ## Screenshots
 
-Captured 5 November 2026 using the pinned Streamlit version and configured demo
-data. Browser verification is recorded in [release-validation.md](docs/release-validation.md).
+Captured 5 November 2026 with the pinned Streamlit version and configured demo data.
+Images show the interface at capture time; see
+[release validation](docs/release-validation.md) for the browser checks.
 
-### Overview
-
-![Current conclusion, observations and next workout](screenshots/Overview.png)
-
-### Analysis
+<details>
+<summary>Analysis: exercise, plan, muscles and body measurements</summary>
 
 ![Exercise progress](screenshots/Analysis_Exercise.png)
 ![Plan consistency](screenshots/Analysis_Consistency.png)
 ![Muscle set allocation](screenshots/Analysis_Muscles.png)
 ![One body measurement](screenshots/Analysis_Body.png)
 
-### Plan
+</details>
+
+<details>
+<summary>Plan and workout history</summary>
 
 ![Weekly plan summary](screenshots/Plan.png)
 ![One exercise edited at a time](screenshots/Plan_Editor.png)
-
-### History
-
 ![Calendar, assignments and recorded sessions](screenshots/History.png)
 ![On-demand TXT import](screenshots/History_Import.png)
 
-### Mobile
+</details>
+
+<details>
+<summary>Mobile layouts</summary>
 
 ![Stacked training overview](screenshots/Overview_Mobile.png)
 ![Compact exercise editor](screenshots/Plan_Editor_Mobile.png)
 ![Workout calendar and session logs](screenshots/History_Mobile.png)
+
+</details>
