@@ -420,6 +420,13 @@ settings unless you explicitly change them.
 onward. You can choose another upcoming date and expand **Full workout**.
 The target is calculated from linked history; it is not written into your log.
 
+On your phone, **Kopiuj trening** copies an editable note for the selected
+workout, including preview alternatives, suggested loads and target RIR. Paste
+it into Samsung Notes. The **Cel:** lines describe targets; fill the **Wynik:**
+and **RIR:** lines with actual results before importing the TXT. Unfilled values
+stay unknown, and targets are ignored by the importer. **Podgląd do skopiowania**
+shows the exact copied text.
+
 For a plan of **3 × 6–10 reps, RIR at least 2, weight step 2.5 kg**:
 
 | Recorded evidence | Default next target |

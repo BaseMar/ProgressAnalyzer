@@ -414,11 +414,22 @@ class SidebarUpload:
         for line in lines:
             if not line:
                 continue
-            set_tokens.extend(self._parse_work_tokens(line))
+            if re.match(r'^(?:cel|target|plan)\s*:', line, re.IGNORECASE):
+                continue
+            if re.match(r'^wynik\s*:', line, re.IGNORECASE):
+                for part in line.split(':', 1)[1].split('/'):
+                    tokens = self._parse_work_tokens(part)
+                    if tokens:
+                        set_tokens.extend(tokens)
+                    elif re.search(r'_+\s*(?:x|s\b)|\d+\s*x\s*_+', part, re.IGNORECASE):
+                        # Keep the RIR position of an unfilled template set.
+                        set_tokens.append(None)
+            else:
+                set_tokens.extend(self._parse_work_tokens(line))
             if self._is_rir_line(line):
                 rir_values.extend(self._parse_rir_values(line))
 
-        if not set_tokens:
+        if not any(token is not None for token in set_tokens):
             self.ui.warning(f"Exercise '{name}': no valid sets found.")
             return []
 
@@ -429,6 +440,8 @@ class SidebarUpload:
 
         sets_data = []
         for idx, token in enumerate(set_tokens):
+            if token is None:
+                continue
             reps = token["reps"]
             weight = token["weight"]
             rir = rir_values[idx] if idx < len(rir_values) else None
@@ -471,7 +484,7 @@ class SidebarUpload:
                     tokens.append(
                         {
                             "reps": duration_seconds,
-                            "weight": 0.0,
+                            "weight": float((match.groupdict().get('weight') or '0').replace(',', '.')),
                             "duration_seconds": duration_seconds,
                         }
                     )
@@ -535,7 +548,8 @@ class SidebarUpload:
 
     def _duration_unit_pattern(self):
         return re.compile(
-            r"(?<![\dA-Za-z])(?P<duration_seconds>\d{1,4})\s*(?:s|sec|secs|sek|sekund|seconds)\b",
+            r"(?<![\dA-Za-z])(?P<duration_seconds>\d{1,4})\s*(?:s|sec|secs|sek|sekund|seconds)\b"
+            r"(?:\s*@\s*(?P<weight>\d+(?:[\.,]\d+)?)\s*(?:kg)?)?",
             re.IGNORECASE,
         )
 
@@ -545,7 +559,7 @@ class SidebarUpload:
             re.IGNORECASE,
         )
 
-    def _parse_rir_values(self, line: str) -> list[int]:
+    def _parse_rir_values(self, line: str) -> list[int | None]:
         """Parse RIR values from a line that contains the RIR label."""
         inline_values = re.findall(
             r"\bRIR\b\s*[:=]?\s*(-?\d+)\b",
@@ -557,7 +571,8 @@ class SidebarUpload:
 
         parts = re.split(r"\bRIR\b", line, maxsplit=1, flags=re.IGNORECASE)
         values = parts[1] if len(parts) > 1 else ""
-        return [int(value) for value in re.findall(r"-?\d+", values)]
+        return [None if value.startswith('_') or value == '?' else int(value)
+                for value in re.findall(r"-?\d+|_+|\?", values)]
 
     def _contains_set_token(self, line: str) -> bool:
         return bool(self._parse_work_tokens(line))

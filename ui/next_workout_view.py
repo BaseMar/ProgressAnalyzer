@@ -10,9 +10,11 @@ from metrics.plan_performance import comparison_context, compute_plan_performanc
 from metrics.overview_summary import workout_focus
 from metrics.utils.recommendation_text import goal_summary
 from metrics.recommendation_history import workout_exercise_identity
+from metrics.workout_template import workout_template
 from models.plan_adherence import PlannedTarget, PlannedWorkout
 from models.training_insights import WorkoutPreview
 from ui.utils.ui_helpers import section_header
+from ui.utils.copy_workout import copy_workout
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +131,14 @@ class NextWorkoutView:
             if substitutions:
                 result = self.dm.load_workout_recommendations(plan_id, slot.day_id, slot.scheduled_date,
                     as_of=as_of, substitutions=substitutions, replacement_weight_steps=steps)
+            upcoming = PlannedWorkout(slot, tuple(
+                PlannedTarget(item.plan_exercise_id, exercise)
+                for item, exercise in zip(result.exercises, planned.exercises)))
+            template = workout_template(upcoming, result, self.names)
+            copy_workout(template, key=f'copy_workout_{plan_id}_{slot.day_id}_{slot.scheduled_date}')
+            with st.expander('Podgląd do skopiowania'):
+                st.caption('Wklej do Samsung Notes. Po treningu uzupełnij faktyczne wyniki i RIR.')
+                st.code(template, language=None, wrap_lines=True)
             if compact:
                 focus = workout_focus(result)
                 st.caption(f"{focus.available} of {focus.total} exercise targets available. Full workout includes every planned exercise.")
@@ -152,9 +162,7 @@ class NextWorkoutView:
                         st.caption(f"Based on: {evidence}")
                 st.caption("Normal training: add one total rep; a weight increase requires two upper-range executions on different days. Default history limit: 21 days; maximum weight step: 10%.")
                 st.caption("Deload: retain half the sets rounded up, target the lower rep bound, reduce load by 10–20% in whole equipment steps, and target at least RIR 4 (or original RIR + 2). After deload, resume ordinary loads without an increase.")
-            return WorkoutPreview(PlannedWorkout(slot, tuple(
-                PlannedTarget(item.plan_exercise_id, exercise)
-                for item, exercise in zip(result.exercises, planned.exercises))), result)
+            return WorkoutPreview(upcoming, result)
 
     @staticmethod
     def _heading(slot, phase, settings):
