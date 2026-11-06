@@ -433,6 +433,17 @@ For a plan of **3 × 6–10 reps, RIR at least 2, weight step 2.5 kg**:
 The extra rep goes to the lowest-repetition set; the first set wins a tie.
 The app requires a common working load for automatic increases.
 
+Changing RIR, ranges or exercise order preserves the exercise's recorded loads
+as **Starting loads** for the new prescription. When that exercise has no local
+execution, a linked execution of the same catalog exercise in another workout
+can supply the starting loads. Each card identifies the source date and workout.
+Adjust those loads to meet the new range and reserve; the older prescription
+does not supply confirmations for an automatic increase. Incomplete, stale or
+unknown-effort evidence remains unavailable for numeric targets.
+
+Confirmed alternatives remain selectable after a plan revision. Select the
+actual exercise in **Use a confirmed alternative** to use its own history.
+
 **Bodyweight/assisted and timed load progression remain manual.**
 The app does not assume future body mass or guess how much assistance to remove.
 

@@ -195,7 +195,10 @@ def test_new_context_and_new_block_do_not_reuse_old_confirmations():
     result = recommend_normal_workout(data(*entries), upcoming(), as_of=AS_OF, block_start=date(2026, 5, 15))[0]
     assert result.reason_code == "confirm_upper_range"
     changed = replace(PLAN, target_max=12)
-    assert recommend(*entries, target=upcoming(changed)).reason_code == "no_history"
+    changed_result = recommend(*entries, target=upcoming(changed))
+    assert changed_result.reason_code == "reuse_exercise_baseline"
+    assert changed_result.action == "maintain"
+    assert all((item.weight, item.minimum, item.maximum) == (60., 6, 12) for item in changed_result.goals)
 
 
 def test_long_gap_and_same_day_confirmations_do_not_increase_load():

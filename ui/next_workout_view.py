@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from metrics.plan_performance import comparison_context, compute_plan_performance
 from metrics.overview_summary import workout_focus
 from metrics.utils.recommendation_text import goal_summary
+from metrics.recommendation_history import workout_exercise_identity
 from models.plan_adherence import PlannedTarget, PlannedWorkout
 from models.training_insights import WorkoutPreview
 from ui.utils.ui_helpers import section_header
@@ -17,13 +18,14 @@ logger = logging.getLogger(__name__)
 
 
 def approved_alternatives(history, slot, planned_exercises, *, as_of):
-    """Only explicitly approved, logged alternatives in the same plan context."""
+    """Explicit logged alternatives for this workout survive target/order changes."""
     rows = compute_plan_performance(history, as_of=as_of)
     return {
         position: sorted({row["actual_exercise_id"] for row in rows
             if row["actual_exercise_id"] != planned.exercise_id and row["sets"]
             and row["performed_on"] is not None and row["performed_on"] <= as_of
-            and row["context"] == comparison_context(slot, position, planned, row["actual_exercise_id"])})
+            and workout_exercise_identity(row["context"]) == workout_exercise_identity(
+                comparison_context(slot, position, planned, row["actual_exercise_id"]))})
         for position, planned in enumerate(planned_exercises, start=1)
     }
 
@@ -47,6 +49,8 @@ def recommendation_note(item):
         "resume_after_deload": "Return to the last ordinary loads. Establish progression again in this block.",
         "no_history": "Log and link a comparable workout to establish a baseline.",
         "no_normal_baseline": "Log and link a normal workout for this exercise to establish a baseline.",
+        "reuse_exercise_baseline": "Starting loads from this exercise's history. Use the current range and RIR; adjust the load as needed. A changed workout or prescription needs a new execution before automatic increases.",
+        "changed_set_count": "History is available, but the set count changed. Choose loads for the new sets manually.",
         "incomplete_sets": "Review the latest linked workout: its matching working-set count is incomplete.",
         "light_sets": "Light sets remain in history; log the planned ordinary work before increasing the target.",
         "low_effort_sets": "Sets above RIR 5 remain in history and do not establish an ordinary progression target.",
@@ -177,7 +181,7 @@ class NextWorkoutView:
                 if st.session_state.get(key) not in options:
                     st.session_state[key] = original
                 actual = st.selectbox(f"Exercise for {self._name(original)} · position {position}", options,
-                    key=key, format_func=lambda value: self._name(value) + (" (planned)" if value == original else ""))
+                    key=key, format_func=lambda value, original=original: self._name(value) + (" (planned)" if value == original else ""))
                 if actual != original:
                     substitutions[item.plan_exercise_id] = actual
             for actual in sorted(set(substitutions.values())):
@@ -193,11 +197,18 @@ class NextWorkoutView:
                  "deload": "Deload", "insufficient_data": "More data needed"}[item.action]
         if item.reason_code == "resume_after_deload":
             label = "Return after deload"
+        if item.reason_code == "reuse_exercise_baseline":
+            label = "Starting loads"
         if item.reason_code in ("deload_load_not_supported", "deload_timed_not_supported", "bodyweight_load_manual", "mixed_load_convention"):
             label = "Manual target"
         original = f'<small>Instead of {escape(self._name(item.planned_exercise_id))}</small>' if item.actual_exercise_id != item.planned_exercise_id else ""
+        sources = []
+        for index, (sid, day) in enumerate(zip(item.evidence_session_ids, item.evidence_dates)):
+            workout = item.evidence_workouts[index] if index < len(item.evidence_workouts) else ""
+            sources.append(f'{day:%d %b %Y}' + (f' · {workout}' if workout else '') + f' · session #{sid}')
+        evidence = f'<p class="recommendation-source">Based on: {escape("; ".join(sources))}</p>' if sources else ""
         return ('<div class="recommendation-exercise"><div class="recommendation-exercise-top">'
                 f'<div><strong>{escape(self._name(item.actual_exercise_id))}</strong>{original}</div>'
                 f'<span class="recommendation-action recommendation-action--{item.action}">{label}</span></div>'
                 f'<div class="recommendation-goal">{escape(goal_summary(item))}</div>'
-                f'<p>{escape(recommendation_note(item))}</p></div>')
+                f'<p>{escape(recommendation_note(item))}</p>{evidence}</div>')

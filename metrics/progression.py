@@ -6,6 +6,7 @@ from math import isclose, isfinite
 
 from metrics.plan_performance import comparison_context, compute_plan_performance
 from metrics.load_metrics import recorded_load, same_loads
+from metrics.recommendation_history import recommendation_history
 from metrics.training_block import deload_exercise_target, is_deload_workout, training_block_phase
 from models.plan_adherence import PlanAdherenceInput, PlannedWorkout
 from models.progression import DeloadPolicy, ExerciseRecommendation, ProgressionPolicy, SetGoal, WorkoutRecommendation
@@ -55,7 +56,8 @@ def recommend_normal_workout(
 
     Substitutions are explicit choices for the upcoming workout, keyed by plan
     position ID. They are not silently carried forward from a past approval.
-    Only comparable, explicitly working sets with complete RIR support increases.
+    Complete working sets with RIR support increases within an unchanged context.
+    Changed prescriptions and other workouts may supply starting loads only.
     The RIR target acts as a minimum reserve, not a requirement to reach failure.
     """
     if type(as_of) is not date or type(upcoming.slot.scheduled_date) is not date:
@@ -75,15 +77,14 @@ def recommend_normal_workout(
         planned = target.exercise
         actual_id = substitutions.get(target.plan_exercise_id, planned.exercise_id)
         context = comparison_context(upcoming.slot, position, planned, actual_id)
-        history = [row for row in performances if row["context"] == context
-                   and row["session_id"] is not None and row["performed_on"] is not None
-                   and row["performed_on"] <= as_of
-                   and (block_start is None or row["performed_on"] >= block_start)]
+        history, baseline_only = recommendation_history(performances, context,
+            as_of=as_of, block_start=block_start)
         def decision(action, code, reason, goals=(), evidence=()):
             return ExerciseRecommendation(
                 target.plan_exercise_id, planned.exercise_id, actual_id, upcoming.slot.scheduled_date,
                 action, tuple(goals), planned.target_rir if planned.target_unit == "reps" else None, code, reason,
                 tuple(row["session_id"] for row in evidence), tuple(row["performed_on"] for row in evidence),
+                tuple(row["workout"] for row in evidence),
             )
         if block_start is None:
             output.append(decision("insufficient_data", "block_not_configured", "Configure the training block before generating goals."))
@@ -104,7 +105,17 @@ def recommend_normal_workout(
         if problem:
             output.append(decision("insufficient_data", *problem, evidence=evidence))
             continue
+        if baseline_only and len(sets) != planned.set_count:
+            output.append(decision("insufficient_data", "changed_set_count",
+                "This exercise has recorded history, but the new set count differs. Choose starting loads for the new sets manually.", evidence=evidence))
+            continue
         hold = tuple(SetGoal(item["weight"], planned.target_min, planned.target_max, planned.target_unit) for item in sets)
+        if baseline_only:
+            output.append(decision("maintain", "reuse_exercise_baseline",
+                "Use the recorded loads as starting points for the current range and RIR. "
+                "The workout, exercise order or prescription changed; adjust loads as needed to meet the new targets. "
+                "Record this context before an automatic increase; older executions do not count as confirmations.", hold, evidence))
+            continue
         if planned.target_unit == "seconds":
             output.append(decision("maintain", "timed_exercise", "Keep the recorded loads and time range; timed work does not require repetition-based RIR and automatic timed progression is not supported.", hold, evidence))
             continue
@@ -218,26 +229,32 @@ def recommend_workout(
             output.append(result)
             continue
         context = comparison_context(upcoming.slot, position, planned, result.actual_exercise_id)
-        history = [row for row in performances if row["context"] == context
-                   and row["performed_on"] is not None and row["performed_on"] <= as_of]
+        candidates = [row for row in performances
+                      if row["performed_on"] is not None and row["performed_on"] <= as_of]
         if phase.phase == "deload":
-            history = [row for row in history if row["scheduled_date"] >= phase.cycle_start
+            candidates = [row for row in candidates if row["scheduled_date"] >= phase.cycle_start
                        and row["performed_on"] >= phase.cycle_start
                        and row["scheduled_date"] < phase.deload_start and row["performed_on"] < phase.deload_start]
         else:
             # Only the immediately preceding cycle may supply the return load.
             previous_start = phase.cycle_start - timedelta(weeks=settings.block_weeks)
-            history = [row for row in history if previous_start <= row["scheduled_date"] < phase.cycle_start
+            candidates = [row for row in candidates if previous_start <= row["scheduled_date"] < phase.cycle_start
                        and previous_start <= row["performed_on"] < phase.cycle_start]
+        history, _ = recommendation_history(candidates, context, as_of=as_of, block_start=None)
         if not history:
             output.append(replace(result, action="insufficient_data", goals=(), reason_code="no_normal_baseline",
                                   reason="No linked ordinary execution in the relevant cycle; deload results are not used as a baseline."))
             continue
         latest = history[-1]
-        result = replace(result, evidence_session_ids=(latest["session_id"],), evidence_dates=(latest["performed_on"],))
+        result = replace(result, evidence_session_ids=(latest["session_id"],), evidence_dates=(latest["performed_on"],),
+                         evidence_workouts=(latest["workout"],))
         problem = _evidence_problem(latest, planned, upcoming.slot.scheduled_date, policy)
         if problem:
             output.append(replace(result, action="insufficient_data", goals=(), reason_code=problem[0], reason=problem[1]))
+            continue
+        if len(latest["sets"]) != planned.set_count:
+            output.append(replace(result, action="insufficient_data", goals=(), reason_code="changed_set_count",
+                                  reason="The recorded set count differs from the current prescription; select starting loads manually."))
             continue
         if phase.phase == "normal":
             goals = tuple(SetGoal(item["weight"], planned.target_min, planned.target_max, planned.target_unit) for item in latest["sets"])

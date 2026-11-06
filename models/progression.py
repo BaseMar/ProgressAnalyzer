@@ -76,6 +76,7 @@ class ExerciseRecommendation:
     reason: str
     evidence_session_ids: tuple[int, ...] = ()
     evidence_dates: tuple[date, ...] = ()
+    evidence_workouts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
