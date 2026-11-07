@@ -6,7 +6,7 @@ from math import isclose, isfinite
 
 from metrics.plan_performance import comparison_context, compute_plan_performance
 from metrics.load_metrics import recorded_load, same_loads
-from metrics.recommendation_history import recommendation_history
+from metrics.recommendation_history import recommendation_history, with_recorded_baselines
 from metrics.training_block import deload_exercise_target, is_deload_workout, training_block_phase
 from models.plan_adherence import PlanAdherenceInput, PlannedWorkout
 from models.progression import DeloadPolicy, ExerciseRecommendation, ProgressionPolicy, SetGoal, WorkoutRecommendation
@@ -77,7 +77,8 @@ def recommend_normal_workout(
         planned = target.exercise
         actual_id = substitutions.get(target.plan_exercise_id, planned.exercise_id)
         context = comparison_context(upcoming.slot, position, planned, actual_id)
-        history, baseline_only = recommendation_history(performances, context,
+        observed = with_recorded_baselines(data, performances, planned, actual_id, as_of=as_of)
+        history, baseline_only = recommendation_history(observed, context,
             as_of=as_of, block_start=block_start)
         def decision(action, code, reason, goals=(), evidence=()):
             return ExerciseRecommendation(
@@ -229,7 +230,8 @@ def recommend_workout(
             output.append(result)
             continue
         context = comparison_context(upcoming.slot, position, planned, result.actual_exercise_id)
-        candidates = [row for row in performances
+        observed = with_recorded_baselines(ordinary, performances, planned, result.actual_exercise_id, as_of=as_of)
+        candidates = [row for row in observed
                       if row["performed_on"] is not None and row["performed_on"] <= as_of]
         if phase.phase == "deload":
             candidates = [row for row in candidates if row["scheduled_date"] >= phase.cycle_start

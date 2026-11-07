@@ -448,6 +448,11 @@ Adjust those loads to meet the new range and reserve; the older prescription
 does not supply confirmations for an automatic increase. Incomplete, stale or
 unknown-effort evidence remains unavailable for numeric targets.
 
+A linked session can also supply starting loads for an exact catalog exercise
+that was recorded outside its older plan version. The source is dated by the
+actual workout day, even when assigned to an earlier planned day. This does not
+infer a replacement or credit that exercise towards historical plan coverage.
+
 Confirmed alternatives remain selectable after a plan revision. Select the
 actual exercise in **Use a confirmed alternative** to use its own history.
 

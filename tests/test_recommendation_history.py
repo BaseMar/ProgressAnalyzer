@@ -9,6 +9,7 @@ from streamlit.testing.v1 import AppTest
 from metrics.progression import recommend_workout
 from metrics.recommendation_history import recommendation_history
 from metrics.plan_performance import compute_plan_performance
+from metrics.plan_adherence import compute_plan_adherence
 from models.training_plan import ProgressionSettings, TrainingDay
 from db.training_plans import save_training_plan, load_training_plan_versions
 from db.plan_schedule import load_scheduled_workouts, assign_scheduled_session
@@ -116,6 +117,70 @@ def test_block_reset_still_blocks_cross_workout_history():
     result = recommend_workout(data(old), upcoming(), as_of=AS_OF,
         settings=ProgressionSettings(date(2026, 5, 15), 7))
     assert result.exercises[0].reason_code == 'no_normal_baseline'
+
+
+def unplanned(sid=1, day=date(2026, 5, 18), values=(12, 12, 12), **options):
+    workout, actual, _ = working(sid, day, values, planned=replace(PLAN, exercise_id=2), actual_id=1, **options)
+    return workout, actual, None
+
+
+def test_recorded_exercise_absent_from_old_plan_is_a_starting_load_without_inferred_replacement():
+    entry = unplanned(weight=63.)
+    result = recommend(entry)
+    assert result.reason_code == 'reuse_exercise_baseline'
+    assert result.actual_exercise_id == 1
+    assert [goal.weight for goal in result.goals] == [63.] * 3
+    assert result.evidence_session_ids == (1,)
+    assert compute_plan_adherence(data(entry), as_of=AS_OF)['summary']['covered_sets'] == 0
+    assert data(entry).matches == ()
+    assert not any(row['actual_exercise_id'] == 1 for row in compute_plan_performance(data(entry), as_of=AS_OF))
+
+
+def test_todays_extra_exercise_linked_to_yesterdays_slot_uses_actual_date():
+    entry = unplanned(day=date(2026, 5, 19), weight=63.)
+    entry = (replace(entry[0], slot=replace(entry[0].slot, performed_on=AS_OF)), entry[1], None)
+    result = recommend(entry)
+    assert result.reason_code == 'reuse_exercise_baseline'
+    assert result.evidence_dates == (AS_OF,)
+    assert result.evidence_workouts == ('Upper A',)
+
+
+@pytest.mark.parametrize('problem,expected', [
+    ('partial', 'incomplete_sets'), ('missing_rir', 'missing_rir'), ('warmup', 'incomplete_sets'),
+    ('light', 'light_sets'), ('future', 'no_history'),
+])
+def test_unplanned_baselines_respect_latest_evidence_barriers(problem, expected):
+    older = unplanned(1, date(2026, 5, 11))
+    latest = unplanned(2, date(2026, 5, 18), (12, 12) if problem == 'partial' else (12, 12, 12),
+                       rir=None if problem == 'missing_rir' else 4 if problem == 'light' else 2)
+    if problem in ('warmup', 'light'):
+        latest = (latest[0], replace(latest[1], sets=tuple(replace(s, is_warmup=True if problem == 'warmup' else None)
+                                                         for s in latest[1].sets)), None)
+    if problem == 'future':
+        latest = (replace(latest[0], slot=replace(latest[0].slot, performed_on=date(2026, 5, 21))), latest[1], None)
+        entries = (latest,)
+    else:
+        entries = (older, latest)
+    result = recommend(*entries)
+    assert result.reason_code == expected and not result.goals
+
+
+def test_unplanned_upper_range_results_do_not_count_as_weight_increase_confirmations():
+    first = unplanned(1, date(2026, 5, 11), (10, 10, 10))
+    second = unplanned(2, date(2026, 5, 18), (10, 10, 10))
+    result = recommend(first, second)
+    assert result.reason_code == 'reuse_exercise_baseline'
+    assert all(goal.weight == 60. for goal in result.goals)
+    first_planned = working(2, date(2026, 5, 18), (10, 10, 10))
+    assert recommend(first, first_planned).reason_code == 'confirm_upper_range'
+
+
+def test_unlinked_exercise_and_another_catalog_id_do_not_supply_starting_loads():
+    entry = unplanned()
+    detached = (replace(entry[0], slot=replace(entry[0].slot, session_id=None, performed_on=None)), entry[1], None)
+    assert recommend(detached).reason_code == 'no_history'
+    different = (entry[0], replace(entry[1], exercise_id=3), None)
+    assert recommend(different).reason_code == 'no_history'
 
 
 @pytest.fixture
