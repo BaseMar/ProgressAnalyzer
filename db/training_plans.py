@@ -1,11 +1,14 @@
 """Transactional plan snapshots. Revisions append rows; they never edit history."""
 
 from datetime import date
+from collections import Counter
+from uuid import uuid4
 
 from sqlalchemy import Column, Integer, MetaData, Table, func, inspect, select
 
 from db.migrations.v001_training_plans import define_tables
 from db.migrations.v005_progression_settings import define_table
+from db.migrations.v007_recommendation_lineage import define_table as define_lineage, legacy_key
 from models.training_plan import PlannedExercise, ProgressionSettings, TrainingDay, TrainingPlanDraft, TrainingPlanVersion
 
 metadata = MetaData()
@@ -16,6 +19,7 @@ versions = tables["training_plan_versions"]
 days = tables["training_plan_days"]
 exercises = tables["training_plan_exercises"]
 progression_settings = define_table(metadata)
+exercise_lineage = define_lineage(metadata)
 
 
 def training_plan_storage_ready(engine) -> bool:
@@ -80,16 +84,31 @@ def save_training_plan(engine, draft: TrainingPlanDraft, *, plan_id: int | None 
             connection.execute(progression_settings.insert().values(
                 version_id=version_id, block_start=settings.block_start, block_weeks=settings.block_weeks,
             ))
+        used_history_keys = set()
         for position, day in enumerate(draft.days, start=1):
             day_id = connection.execute(days.insert().values(
                 version_id=version_id, name=day.name.strip(), weekday=day.weekday, position=position,
             )).inserted_primary_key[0]
-            connection.execute(exercises.insert(), [dict(
+            rows = [dict(
                 day_id=day_id, position=index, exercise_id=item.exercise_id,
                 set_count=item.set_count, target_min=item.target_min,
                 target_max=item.target_max, target_unit=item.target_unit,
                 target_rir=item.target_rir, weight_increment=item.weight_increment,
-            ) for index, item in enumerate(day.exercises, start=1)])
+            ) for index, item in enumerate(day.exercises, start=1)]
+            if inspect(connection).has_table(exercise_lineage.name):
+                occurrences = Counter()
+                for item, values in zip(day.exercises, rows):
+                    occurrences[item.exercise_id] += 1
+                    target_id = connection.execute(exercises.insert().values(**values)).inserted_primary_key[0]
+                    key = item.history_key or legacy_key(plan_id, position, item.exercise_id, occurrences[item.exercise_id])
+                    if key in used_history_keys:
+                        if item.history_key:
+                            raise ValueError("A plan position cannot share its history key with another position")
+                        key = f"plan:{plan_id}:position:{uuid4().hex}"
+                    used_history_keys.add(key)
+                    connection.execute(exercise_lineage.insert().values(plan_exercise_id=target_id, history_key=key))
+            else:
+                connection.execute(exercises.insert(), rows)
         return _load_version(connection, version_id)
 
 
@@ -107,12 +126,16 @@ def _load_version(connection, version_id: int) -> TrainingPlanVersion | None:
         .where(days.c.version_id == version_id).order_by(days.c.position, exercises.c.position)
     ).mappings().all()
     items_by_day = {day["day_id"]: [] for day in day_rows}
+    lineage = dict(connection.execute(select(exercise_lineage.c.plan_exercise_id, exercise_lineage.c.history_key)
+        .where(exercise_lineage.c.plan_exercise_id.in_([row["plan_exercise_id"] for row in exercise_rows]))).all()) if (
+            exercise_rows and inspect(connection).has_table(exercise_lineage.name)) else {}
     for row in exercise_rows:
         items_by_day[row["day_id"]].append(PlannedExercise(
             exercise_id=row["exercise_id"], set_count=row["set_count"],
             target_min=row["target_min"], target_max=row["target_max"],
             target_unit=row["target_unit"], target_rir=row["target_rir"],
             weight_increment=row["weight_increment"],
+            history_key=lineage.get(row["plan_exercise_id"]),
         ))
     return TrainingPlanVersion(
         plan_id=version["plan_id"], version_id=version_id,

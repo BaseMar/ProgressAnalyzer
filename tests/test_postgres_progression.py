@@ -73,7 +73,7 @@ def postgres():
                 {"exercise_id": 2, "exercise_name": "Machine Chest Press"},
             ])
             adapter = TransactionEngine(connection)
-            assert len(migrate(adapter, apply=True)) == 6
+            assert len(migrate(adapter, apply=True)) == 7
             yield adapter
         finally:
             transaction.rollback()
@@ -146,9 +146,9 @@ def test_deload_return_and_analytical_coverage_on_postgres(postgres):
     for sid, day in enumerate((FIRST, SECOND, NEXT), start=1):
         log(postgres, saved, sid, day)
     lighter = recommend(postgres, saved, DELOAD).exercises[0]
-    assert (lighter.action, lighter.target_rir) == ("deload", 4)
-    assert [(goal.weight, goal.minimum) for goal in lighter.goals] == [(52.5, 6)] * 2
-    log(postgres, saved, 4, DELOAD, (6, 6), weight=52.5, rir=4)
+    assert (lighter.action, lighter.target_rir, lighter.target_rir_max) == ("deload", 3, 4)
+    assert [(goal.weight, goal.minimum) for goal in lighter.goals] == [(40., 10)] * 3
+    log(postgres, saved, 4, DELOAD, (10, 10, 10), weight=40., rir=3)
     with postgres.connect() as connection:
         connection.execute(classifications.delete())
     resumed = recommend(postgres, saved, RETURN)

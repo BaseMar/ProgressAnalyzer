@@ -3,16 +3,17 @@
 from dataclasses import replace
 from datetime import date
 
-from sqlalchemy import Column, Integer, Float, MetaData, Table, func, inspect, literal, select
+from sqlalchemy import Column, Integer, Float, MetaData, String, Table, func, inspect, literal, select
 from sqlalchemy.exc import IntegrityError
 
 from db.migrations.v003_exercise_matches import define_table
 from db.plan_schedule import links, load_scheduled_workouts, sessions
-from db.training_plans import exercises as targets, versions, days
+from db.training_plans import exercises as targets, versions, days, exercise_lineage
 from db.set_classifications import classifications
 from db.set_loads import loads
 from mapper import map_workout_set
 from metrics.plan_adherence import compatible_set
+from metrics.load_metrics import suggested_load_type
 from models.plan_adherence import (
     ExerciseMatch, PlanAdherenceInput, PlannedTarget, PlannedWorkout, RecordedExercise,
 )
@@ -31,6 +32,8 @@ actual_sets = Table("workout_sets", metadata,
     Column("repetitions", Integer), Column("weight", Float),
     Column("rir", Integer), Column("duration_seconds", Integer),
 )
+catalog_exercises = Table("exercises", metadata, Column("exercise_id", Integer, primary_key=True),
+                          Column("exercise_name", String))
 matches = define_table(metadata)
 
 
@@ -72,15 +75,23 @@ def load_plan_adherence(engine, plan_id, start, end) -> PlanAdherenceInput:
         rows = connection.execute(select(targets).where(targets.c.day_id.in_(day_ids))
                                   .order_by(targets.c.position)).mappings().all() if day_ids else []
         by_day = {day_id: [] for day_id in day_ids}
+        lineage = dict(connection.execute(select(exercise_lineage.c.plan_exercise_id, exercise_lineage.c.history_key)
+            .where(exercise_lineage.c.plan_exercise_id.in_([row["plan_exercise_id"] for row in rows]))).all()) if (
+                rows and inspect(connection).has_table(exercise_lineage.name)) else {}
         for row in rows:
             by_day[row["day_id"]].append(PlannedTarget(row["plan_exercise_id"], PlannedExercise(
                 row["exercise_id"], row["set_count"], row["target_min"], row["target_max"],
                 row["target_unit"], row["target_rir"], row["weight_increment"],
+                history_key=lineage.get(row["plan_exercise_id"]),
             )))
         recorded = _recorded(connection, session_ids)
         confirmed = tuple(ExerciseMatch(row.session_id, row.plan_exercise_id, row.workout_exercise_id)
                           for row in connection.execute(select(matches).where(matches.c.session_id.in_(session_ids)))) if session_ids else ()
-    return PlanAdherenceInput(tuple(PlannedWorkout(slot, tuple(by_day[slot.day_id])) for slot in slots), recorded, confirmed)
+        manual_ids = frozenset(row.exercise_id for row in connection.execute(
+            select(catalog_exercises.c.exercise_id, catalog_exercises.c.exercise_name))
+            if suggested_load_type(row.exercise_name) in ("bodyweight", "assisted_bodyweight"))
+    return PlanAdherenceInput(tuple(PlannedWorkout(slot, tuple(by_day[slot.day_id])) for slot in slots),
+                              recorded, confirmed, manual_load_exercise_ids=manual_ids)
 
 
 def load_plan_performance(engine, plan_id, start, end) -> PlanAdherenceInput:

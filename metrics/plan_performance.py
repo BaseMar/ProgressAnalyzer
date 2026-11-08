@@ -12,7 +12,9 @@ from models.progression import DeloadPolicy
 
 def comparison_context(slot, position, planned, actual_id):
     """Shared identity used by both analytical comparisons and progression."""
-    return (slot.name, slot.scheduled_date.weekday(), slot.position, position, planned.exercise_id,
+    identity = (planned.history_key, None, None) if planned.history_key else (
+        slot.name, slot.scheduled_date.weekday(), slot.position)
+    return (*identity, position, planned.exercise_id,
             actual_id, planned.target_unit, planned.set_count, planned.target_min, planned.target_max, planned.target_rir)
 
 
@@ -124,6 +126,7 @@ def compute_plan_performance(data: PlanAdherenceInput, *, as_of: date, start: da
                 "target_min": expected.target_min, "target_max": expected.target_max,
                 "target_rir": expected.target_rir,
                 "excluded_set_kinds": detail["excluded_set_kinds"],
+                "ambiguous_recorded_exercises": detail["ambiguous_recorded_exercises"],
                 **_target_result(detail["credited_sets"], expected, detail["set_interpretations"]),
             }
             previous = history.get(context) if current["sets"] else None

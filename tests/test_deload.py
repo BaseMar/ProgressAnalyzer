@@ -69,29 +69,30 @@ def test_invalid_deload_policies_are_rejected(values):
         DeloadPolicy(**values)
 
 
-def test_deload_reduces_sets_load_and_reps_without_writing_evidence():
+def test_deload_keeps_sets_reps_and_reduces_only_load_without_writing_evidence():
     first, last = working(1, date(2026, 6, 1), (10, 10, 10)), working(2, date(2026, 6, 8), (10, 10, 10))
     result = recommend(first, last)
     item = result.exercises[0]
     assert result.block.phase == "deload"
-    assert (item.action, item.reason_code, item.target_rir) == ("deload", "scheduled_deload", 4)
-    assert [(goal.weight, goal.minimum, goal.maximum) for goal in item.goals] == [(52.5, 6, 6)] * 2
+    assert (item.action, item.reason_code, item.target_rir) == ("deload", "scheduled_deload", 3)
+    assert item.target_rir_max == 4
+    assert [(goal.weight, goal.minimum, goal.maximum) for goal in item.goals] == [(40., 10, 10)] * 3
     assert item.evidence_session_ids == (2,)
     assert last[1].sets[0].weight == 60.
     assert last[0].targets[0].exercise.set_count == 3
 
 
-@pytest.mark.parametrize("count, expected", [(1, 1), (2, 1), (3, 2), (4, 2), (5, 3)])
-def test_set_reduction_rounds_up_and_never_proposes_zero_sets(count, expected):
+@pytest.mark.parametrize("count, expected", [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5)])
+def test_deload_preserves_every_planned_set(count, expected):
     planned = replace(PLAN, set_count=count)
     result = recommend(working(1, date(2026, 6, 8), (8,) * count, planned=planned), planned=planned).exercises[0]
     assert len(result.goals) == expected
 
 
-def test_deload_increases_high_rir_target_instead_of_lowering_it():
+def test_deload_uses_the_selected_rir_band():
     planned = replace(PLAN, target_rir=5)
     result = recommend(working(1, date(2026, 6, 8), rir=5, planned=planned), planned=planned).exercises[0]
-    assert result.target_rir == 7
+    assert (result.target_rir, result.target_rir_max) == (3, 4)
 
 
 def test_policy_can_change_reduction_and_preserve_decimal_equipment_steps():
@@ -99,7 +100,7 @@ def test_policy_can_change_reduction_and_preserve_decimal_equipment_steps():
     result = recommend(working(1, date(2026, 6, 8), planned=planned, weight=12.1), planned=planned,
                        deload_policy=DeloadPolicy(retained_set_fraction=.75)).exercises[0]
     assert len(result.goals) == 3
-    assert result.goals[0].weight == 10.7
+    assert result.goals[0].weight == 8.3
 
 
 @pytest.mark.parametrize("problem, code", [
@@ -111,6 +112,8 @@ def test_policy_can_change_reduction_and_preserve_decimal_equipment_steps():
 def test_deload_does_not_invent_loads_or_use_incomplete_data(problem, code):
     planned = replace(PLAN, weight_increment=None if problem == "missing_step" else 20. if problem == "large_step" else 2.5,
                       target_rir=None if problem == "missing_target" else 2)
+    if problem == "large_step":
+        planned = replace(planned, weight_increment=25.)
     entry = working(1, date(2026, 6, 8), (8, 8) if problem == "partial" else (8, 8, 8),
                     weight=0. if problem == "zero_load" else 60., rir=None if problem == "missing_rir" else 2, planned=planned)
     result = recommend(entry, planned=planned).exercises[0]
@@ -120,7 +123,7 @@ def test_deload_does_not_invent_loads_or_use_incomplete_data(problem, code):
 def test_deload_uses_mixed_loads_individually_and_never_rounds_to_zero():
     entry = working(1, date(2026, 6, 8))
     entry = (entry[0], replace(entry[1], sets=(entry[1].sets[0], replace(entry[1].sets[1], weight=65.), entry[1].sets[2])), entry[2])
-    assert [item.weight for item in recommend(entry).exercises[0].goals] == [52.5, 57.5]
+    assert [item.weight for item in recommend(entry).exercises[0].goals] == [40., 45., 40.]
     assert not recommend(working(1, date(2026, 6, 8), weight=2.5)).exercises[0].goals
 
 
@@ -130,7 +133,7 @@ def test_substitute_has_separate_baseline_and_requires_its_own_equipment_step():
     assert recommend(entry, substitutions={101: 2}).exercises[0].reason_code == "missing_weight_step"
     item = recommend(entry, substitutions={101: 2}, replacement_weight_steps={2: 5.}).exercises[0]
     assert item.actual_exercise_id == 2
-    assert item.goals[0].weight == 50.
+    assert item.goals[0].weight == 40.
 
 
 def test_deload_is_not_its_own_baseline_even_after_another_deload_session():
@@ -170,7 +173,7 @@ def test_post_deload_confirmations_restart_in_new_cycle():
     old = working(1, date(2026, 6, 8), (10, 10, 10))
     first = working(2, RETURN, (10, 10, 10))
     second = working(3, RETURN + timedelta(days=7), (10, 10, 10))
-    assert recommend(old, first, day=RETURN + timedelta(days=7)).exercises[0].reason_code == "confirm_upper_range"
+    assert recommend(old, first, day=RETURN + timedelta(days=7)).exercises[0].reason_code == "upper_range_confirmed"
     assert recommend(old, first, second, day=RETURN + timedelta(days=14)).exercises[0].action == "increase_weight"
 
 
@@ -257,23 +260,23 @@ def test_timed_deload_has_no_unsupported_numeric_prescription():
 
 
 def test_analytics_uses_reduced_targets_without_false_regression_or_missing_sets():
-    entries = (working(1, date(2026, 6, 8), (10, 10, 10)), working(2, DELOAD, (6, 6), weight=52.5, rir=4),
+    entries = (working(1, date(2026, 6, 8), (10, 10, 10)), working(2, DELOAD, (10, 10, 10), weight=40., rir=3),
                working(3, RETURN, (10, 10, 10)))
     source = data(*entries)
     rows = compute_plan_performance(source, as_of=RETURN, settings_by_version={1: SETTINGS})
     assert rows[1]["training_phase"] == "deload"
     assert rows[1]["missing_sets"] == 0
-    assert (rows[1]["target_min"], rows[1]["target_max"], rows[1]["target_rir"]) == (6, 6, 4)
+    assert (rows[1]["target_min"], rows[1]["target_max"], rows[1]["target_rir"]) == (6, 10, 3)
     assert rows[1]["reps_delta"] is None
     assert rows[1]["previous"] is None
     assert rows[2]["previous"]["session_id"] == 1
     assert rows[2]["reps_delta"] == 0
     report = compute_plan_adherence(deload_adjusted_input(source, {1: SETTINGS}), as_of=RETURN)
-    assert report["summary"]["planned_sets"] == report["summary"]["covered_sets"] == 5
+    assert report["summary"]["planned_sets"] == report["summary"]["covered_sets"] == 6
     assert source.workouts[1].targets[0].exercise.set_count == 3
     fig = exercise_history_chart(rows)
     assert list(fig.data[0].marker.symbol) == ["circle", "diamond", "circle"]
-    assert fig.layout.shapes[1].y0 == fig.layout.shapes[1].y1 == 6
+    assert (fig.layout.shapes[1].y0, fig.layout.shapes[1].y1) == (6, 10)
 
 
 def test_future_performed_date_does_not_change_past_analytic_expectations():
@@ -331,7 +334,7 @@ def test_readonly_service_uses_versioned_settings_and_cross_cycle_history(schedu
         before = connection.execute(select(actual_sets)).mappings().all()
     lighter = load_workout_recommendations(engine, plan.plan_id, slots[1].day_id, deload_day, as_of=deload_day)
     assert lighter.block.phase == "deload"
-    assert lighter.exercises[0].goals[0].weight == 52.5
+    assert lighter.exercises[0].goals[0].weight == 40.
     assign_scheduled_session(engine, slots[1].day_id, deload_day, 3)
     # A normal revision must retain the anchor and support the preceding version's history.
     revised = save_training_plan(engine, replace(plan.draft, effective_from=next_day), plan_id=plan.plan_id)
@@ -343,7 +346,7 @@ def test_readonly_service_uses_versioned_settings_and_cross_cycle_history(schedu
     assert load_training_plan_version(engine, plan.version_id).draft.progression == settings
     rows = compute_plan_performance(load_plan_performance(engine, plan.plan_id, last_normal, next_day), as_of=next_day,
                                     settings_by_version={plan.version_id: settings, revised.version_id: settings})
-    assert next(row for row in rows if row["scheduled_date"] == deload_day)["missing_sets"] == 0
+    assert next(row for row in rows if row["scheduled_date"] == deload_day)["missing_sets"] == 1
     from db.progression import load_normal_workout_recommendations
     with pytest.raises(ValueError, match="for deload dates"):
         load_normal_workout_recommendations(engine, plan.plan_id, slots[1].day_id, deload_day, as_of=deload_day)
@@ -362,7 +365,7 @@ PlanAdherenceView(manager=manager, exercise_names={1: "Bench Press"}, selected_m
     assert not app.exception
     assert not app.error
     assert any("Deload: reduced training demand" in item.value for item in app.markdown)
-    assert any("2/2 sets in range" in item.value for item in app.caption)
+    assert any("2/3 sets in range" in item.value for item in app.caption)
     with engine.connect() as connection:
         assert connection.execute(select(actual_sets)).mappings().all() == before
     with pytest.raises(ValueError, match="not scheduled"):

@@ -84,6 +84,10 @@ def compute_plan_adherence(data: PlanAdherenceInput, *, as_of: date, settings_by
                 "credited_sets": tuple(credited),
                 "set_interpretations": tuple(meanings),
                 "excluded_set_kinds": tuple(sorted(excluded)),
+                "ambiguous_recorded_exercises": explicit_id is None and len({
+                    we_id for we_id, _, item, meaning in candidates
+                    if meaning.counts_for_plan and compatible_set(item, planned.target_unit)
+                }) > 1 and sum(t.exercise.exercise_id == planned.exercise_id for t in workout.targets) == 1,
             })
         planned_sets = sum(item["planned_sets"] for item in details)
         covered_sets = sum(item["covered_sets"] for item in details)

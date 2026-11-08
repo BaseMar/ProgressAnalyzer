@@ -162,20 +162,22 @@ def test_timed_recommendations_need_neither_explicit_labels_nor_target_rir():
     entry = working(1, date(2026, 5, 18), (30, 40, 45), rir=None, planned=planned, weight=0.)
     entry = (entry[0], replace(entry[1], sets=tuple(replace(value, is_warmup=None) for value in entry[1].sets)), entry[2])
     result = recommend_normal_workout(data(entry), upcoming(planned), as_of=date(2026, 5, 20), block_start=date(2026, 5, 1))[0]
-    assert (result.action, result.reason_code, result.target_rir) == ("maintain", "timed_exercise", None)
+    assert (result.action, result.reason_code, result.target_rir) == ("increase_time", "more_time", None)
+    assert [g.minimum for g in result.goals] == [35,40,45]
     assert len(result.goals) == 3
 
 
-def test_unlabelled_deload_sets_have_reduced_coverage_and_no_regression():
+def test_partial_unlabelled_deload_is_counted_without_regression():
     settings = ProgressionSettings(date(2026, 5, 4), 7)
     entry = working(1, date(2026, 6, 15), (6, 6), weight=52.5, rir=4)
     entry = (entry[0], replace(entry[1], sets=tuple(replace(value, is_warmup=None) for value in entry[1].sets)), entry[2])
     source = data(entry)
     adjusted = deload_adjusted_input(source, {1: settings})
     report = compute_plan_adherence(adjusted, as_of=date(2026, 6, 22), settings_by_version={1: settings})
-    assert report["summary"]["covered_sets"] == report["summary"]["planned_sets"] == 2
+    assert report["summary"]["covered_sets"] == 2
+    assert report["summary"]["planned_sets"] == 3
     row = compute_plan_performance(source, as_of=date(2026, 6, 22), settings_by_version={1: settings})[0]
-    assert row["missing_sets"] == 0
+    assert row["missing_sets"] == 1
     assert row["sets"][0]["set_kind"] == "deload"
     assert row["reps_delta"] is None
 

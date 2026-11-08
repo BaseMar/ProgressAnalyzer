@@ -29,13 +29,13 @@ def other_workout(entry, name='Upper B'):
 @pytest.mark.parametrize('change', [
     {'target_rir': 3}, {'target_min': 8}, {'target_max': 12},
 ])
-def test_changed_prescription_keeps_loads_and_new_targets_without_progression(change):
+def test_changed_prescription_retains_evidence_for_manual_start(change):
     old = working(1, date(2026, 5, 18), (10, 10, 10))
     planned = replace(PLAN, **change)
     result = recommend(old, target=upcoming(planned))
-    assert (result.action, result.reason_code) == ('maintain', 'reuse_exercise_baseline')
+    assert (result.action, result.reason_code) == ('insufficient_data', 'manual_start')
     assert result.target_rir == planned.target_rir
-    assert [(g.weight, g.minimum, g.maximum) for g in result.goals] == [(60., planned.target_min, planned.target_max)] * 3
+    assert not result.goals
     assert result.evidence_session_ids == (1,)
     assert result.evidence_workouts == ('Upper A',)
 
@@ -44,9 +44,9 @@ def test_same_exercise_in_another_workout_supplies_a_baseline():
     source_plan = replace(PLAN, exercise_id=2, target_min=8, target_max=12, target_rir=1)
     entry = other_workout(working(1, date(2026, 5, 14), (7, 8, 7), planned=source_plan, actual_id=1, weight=90.3, rir=1))
     result = recommend(entry)
-    assert result.reason_code == 'reuse_exercise_baseline'
+    assert result.reason_code == 'manual_start'
     assert result.actual_exercise_id == 1
-    assert [goal.weight for goal in result.goals] == [90.3] * 3
+    assert not result.goals
     assert result.evidence_dates == (date(2026, 5, 14),)
     assert result.evidence_workouts == ('Upper B',)
 
@@ -55,7 +55,7 @@ def test_another_exercise_is_never_a_baseline_without_explicit_selection():
     entry = other_workout(working(1, date(2026, 5, 14), actual_id=2))
     assert recommend(entry).reason_code == 'no_history'
     selected = recommend(entry, substitutions={101: 2})
-    assert selected.reason_code == 'reuse_exercise_baseline'
+    assert selected.reason_code == 'manual_start'
     assert selected.actual_exercise_id == 2
 
 
@@ -91,8 +91,8 @@ def test_a_new_context_needs_new_upper_range_confirmations():
     revised = replace(PLAN, target_rir=1)
     new = working(2, date(2026, 5, 18), (10, 10, 10), planned=revised)
     result = recommend(old, new, target=upcoming(revised))
-    assert result.reason_code == 'confirm_upper_range'
-    assert all(goal.weight == 60. for goal in result.goals)
+    assert result.reason_code == 'upper_range_confirmed'
+    assert all(goal.weight == 62.5 for goal in result.goals)
 
 
 def test_baseline_preserves_mixed_loads_and_does_not_invent_new_sets():
@@ -100,7 +100,7 @@ def test_baseline_preserves_mixed_loads_and_does_not_invent_new_sets():
     entry = (entry[0], replace(entry[1], sets=(replace(entry[1].sets[0], weight=80.), *entry[1].sets[1:])), entry[2])
     revised = replace(PLAN, target_rir=3)
     result = recommend(entry, target=upcoming(revised))
-    assert [goal.weight for goal in result.goals] == [80., 60., 60.]
+    assert result.reason_code == 'manual_start' and not result.goals
     result = recommend(entry, target=upcoming(replace(revised, set_count=4)))
     assert result.reason_code == 'changed_set_count' and not result.goals
 
@@ -127,9 +127,9 @@ def unplanned(sid=1, day=date(2026, 5, 18), values=(12, 12, 12), **options):
 def test_recorded_exercise_absent_from_old_plan_is_a_starting_load_without_inferred_replacement():
     entry = unplanned(weight=63.)
     result = recommend(entry)
-    assert result.reason_code == 'reuse_exercise_baseline'
+    assert result.reason_code == 'manual_start'
     assert result.actual_exercise_id == 1
-    assert [goal.weight for goal in result.goals] == [63.] * 3
+    assert not result.goals
     assert result.evidence_session_ids == (1,)
     assert compute_plan_adherence(data(entry), as_of=AS_OF)['summary']['covered_sets'] == 0
     assert data(entry).matches == ()
@@ -140,7 +140,7 @@ def test_todays_extra_exercise_linked_to_yesterdays_slot_uses_actual_date():
     entry = unplanned(day=date(2026, 5, 19), weight=63.)
     entry = (replace(entry[0], slot=replace(entry[0].slot, performed_on=AS_OF)), entry[1], None)
     result = recommend(entry)
-    assert result.reason_code == 'reuse_exercise_baseline'
+    assert result.reason_code == 'manual_start'
     assert result.evidence_dates == (AS_OF,)
     assert result.evidence_workouts == ('Upper A',)
 
@@ -169,10 +169,10 @@ def test_unplanned_upper_range_results_do_not_count_as_weight_increase_confirmat
     first = unplanned(1, date(2026, 5, 11), (10, 10, 10))
     second = unplanned(2, date(2026, 5, 18), (10, 10, 10))
     result = recommend(first, second)
-    assert result.reason_code == 'reuse_exercise_baseline'
-    assert all(goal.weight == 60. for goal in result.goals)
+    assert result.reason_code == 'manual_start'
+    assert not result.goals
     first_planned = working(2, date(2026, 5, 18), (10, 10, 10))
-    assert recommend(first, first_planned).reason_code == 'confirm_upper_range'
+    assert recommend(first, first_planned).reason_code == 'upper_range_confirmed'
 
 
 def test_unlinked_exercise_and_another_catalog_id_do_not_supply_starting_loads():
@@ -236,9 +236,9 @@ def test_database_revision_recovers_local_and_cross_workout_baselines(revised_pl
     bench, incline, pullup, row = result.exercises
     assert bench.actual_exercise_id == 1 and not bench.goals
     for item in (incline, pullup, row):
-        assert item.reason_code == 'reuse_exercise_baseline'
+        assert item.reason_code == 'manual_start'
         assert item.target_rir == 2
-    assert [g.weight for g in incline.goals] == [80., 70., 70.]
+    assert not incline.goals
     assert row.evidence_dates == (monday,)
     assert pullup.evidence_dates == (thursday,)
     assert pullup.evidence_workouts == ('Upper B',)
@@ -249,7 +249,7 @@ def test_database_revision_recovers_local_and_cross_workout_baselines(revised_pl
     chosen = dm.load_workout_recommendations(plan.plan_id, slot.day_id, next_day, as_of=date.today(),
         substitutions={bench.plan_exercise_id: 6})
     assert chosen.exercises[0].actual_exercise_id == 6
-    assert chosen.exercises[0].reason_code == 'reuse_exercise_baseline'
+    assert chosen.exercises[0].reason_code == 'manual_start'
     assert chosen.exercises[0].evidence_dates == (monday,)
 
 
@@ -271,7 +271,7 @@ NextWorkoutView(st.session_state['manager'], st.session_state['names']).render(
     app.selectbox(key=f'next_workout_{plan.plan_id}').select(f'{slot.day_id}:{next_day}').run()
     assert not app.exception
     html = '\n'.join(item.value for item in app.markdown)
-    assert 'Seated Cable Row' in html and 'Starting loads' in html
+    assert 'Seated Cable Row' in html and 'Choose starting load' in html
     assert f'{thursday:%d %b %Y} · Upper B' in html
     assert f'{monday:%d %b %Y} · Upper A' in html
     alternative = next(item for item in app.selectbox if item.key.endswith('_exercise'))
@@ -279,4 +279,4 @@ NextWorkoutView(st.session_state['manager'], st.session_state['names']).render(
     assert not app.exception
     html = '\n'.join(item.value for item in app.markdown)
     assert 'Instead of Barbell Bench Press' in html
-    assert '85 kg' in html
+    assert 'Choose starting load' in html

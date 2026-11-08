@@ -1,6 +1,6 @@
 """Immutable plan snapshots, independent of the UI and database."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from math import isfinite
 
@@ -19,8 +19,11 @@ class PlannedExercise:
     target_unit: str = "reps"
     target_rir: int | None = None
     weight_increment: float | None = None
+    history_key: str | None = field(default=None, compare=False)
 
     def __post_init__(self):
+        if self.history_key is not None and (not isinstance(self.history_key, str) or not self.history_key.strip()):
+            raise ValueError("Exercise history key must be a non-empty string or None")
         for label in ("exercise_id", "set_count", "target_min", "target_max"):
             _positive_int(getattr(self, label), label)
         if self.target_min > self.target_max:

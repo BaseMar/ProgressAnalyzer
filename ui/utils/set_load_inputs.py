@@ -2,21 +2,12 @@
 import streamlit as st
 
 from models.set_load import SetLoad
-from ui.utils.exercise_matcher import normalize
+from metrics.load_metrics import suggested_load_type
 
 LOAD_LABELS = {
     "legacy": "Original log", "external": "External weight",
     "bodyweight": "Bodyweight", "assisted_bodyweight": "Assisted bodyweight",
 }
-
-
-def suggested_load_type(name):
-    name = "".join(normalize(name).split())
-    if any(term in name for term in ("deadhang", "pullup", "chinup", "dip")):
-        if "machine" in name and "assisted" not in name:
-            return "external"
-        return "assisted_bodyweight" if "assisted" in name else "bodyweight"
-    return "external"
 
 
 def render_load_inputs(manager, workout_date, *, key, current=None, default="legacy", allow_legacy=True):

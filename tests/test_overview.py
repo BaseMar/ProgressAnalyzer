@@ -96,12 +96,12 @@ def test_default_focus_groups_unknown_targets_behind_full_workout(schedule_data)
     assert 'Complete the missing RIR' in '\n'.join(item.value for item in full.markdown)
 
 
-def test_legacy_setup_is_explained_once_without_unknown_target_cards(schedule_data):
+def test_legacy_plan_shows_progression_without_requiring_a_block(schedule_data):
     engine, _, _, _ = schedule_data
     saved = seed(schedule_data, progression=False)
     app = start_app(engine, saved)
-    assert 'Set up your training block' in markup(app)
-    assert sum('Configure a training block' in item.value for item in app.info) == 1
+    assert 'Your next progression targets are ready' in markup(app)
+    assert sum('Ordinary progression is available' in item.value for item in app.caption) == 1
     assert 'Target not available yet' not in markup(app)
 
 

@@ -2,6 +2,16 @@
 from math import isclose, isfinite
 
 
+def suggested_load_type(name):
+    """Suggest entry/automation mode; never reinterpret recorded kilograms."""
+    normalized = ''.join(char for char in name.casefold() if char.isalnum())
+    if any(term in normalized for term in ("deadhang", "pullup", "chinup", "dip", "hanginglegraise")):
+        if "machine" in normalized and "assisted" not in normalized:
+            return "external"
+        return "assisted_bodyweight" if "assisted" in normalized else "bodyweight"
+    return "external"
+
+
 def load_type(item):
     load = getattr(item, "load", None)
     return load.load_type if load is not None else "legacy"

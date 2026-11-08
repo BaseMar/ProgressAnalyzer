@@ -179,7 +179,7 @@ def test_deload_is_grouped_and_never_labelled_lower_output():
     result = compute_training_insights(data(execution(1, date(2026, 6, 8), planned=PLAN), lighter),
         as_of=date(2026, 6, 16), settings_by_version={1: SETTINGS})
     assert [item.code for item in result.annotations] == ["deload"]
-    assert result.annotations[0].sources[0].planned_sets == 2
+    assert result.annotations[0].sources[0].planned_sets == 3
     assert result.annotations[0].sources[0].phase == "deload"
 
 

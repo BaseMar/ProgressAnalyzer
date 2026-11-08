@@ -86,7 +86,7 @@ def test_next_normal_goal_and_evidence_render_without_changing_logged_data(sched
     assert app.selectbox(key=f"next_workout_{plan.plan_id}").value.endswith(str(NEXT))
     assert "62.5 kg · 3 × 6 reps · RIR ≥ 2" in exercise_html(app)
     assert "Increase load" in exercise_html(app)
-    assert any("session #2" in item.value and "session #3" in item.value for item in app.caption)
+    assert any("session #3" in item.value for item in app.caption)
     assert not app.dataframe
     with engine.connect() as connection:
         assert connection.execute(select(actual_sets)).mappings().all() == before
@@ -104,7 +104,7 @@ def test_deload_and_return_render_as_different_decisions(schedule_data):
     normal = load_scheduled_workouts(engine, plan.plan_id, date(2026, 6, 8), date(2026, 6, 8))[0]
     assign_scheduled_session(engine, normal.day_id, normal.scheduled_date, 3)
     app = start_app(engine, plan, as_of=date(2026, 6, 15))
-    assert "52.5 kg · 2 × 6 reps · RIR ≥ 4" in exercise_html(app)
+    assert "40 kg · 3 × 10 reps · RIR 3–4" in exercise_html(app)
     assert "recommendation-phase--deload" in rendered(app)
     key = f"{normal.day_id}:2026-06-22"
     app.selectbox(key=f"next_workout_{plan.plan_id}").select(key).run()
@@ -129,12 +129,12 @@ def test_missing_data_gives_a_specific_next_action_and_no_invented_numeric_goal(
     assert "62.5 kg" not in html
 
 
-def test_legacy_plan_explains_setup_once_instead_of_listing_unknown_exercise_goals(schedule_data):
+def test_legacy_plan_has_ordinary_targets_without_a_calendar(schedule_data):
     engine, _, _, _ = schedule_data
     plan = seed(schedule_data, progression=False)
     app = start_app(engine, plan)
-    assert any("Configure a training block" in item.value for item in app.info)
-    assert not any('class="recommendation-list"' in item.value for item in app.markdown)
+    assert any("Ordinary progression is available" in item.value for item in app.caption)
+    assert "62.5 kg" in exercise_html(app)
 
 
 def test_automatic_working_sets_need_no_label_editor_before_recommendations(schedule_data):

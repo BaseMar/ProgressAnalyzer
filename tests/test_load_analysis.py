@@ -174,10 +174,10 @@ def test_historical_convention_change_is_not_a_load_matched_comparison(sample_in
     assert compute_progress_metrics(inp)["per_exercise"] == {}
 
 
-def test_new_external_convention_needs_own_consecutive_confirmations():
+def test_new_external_convention_uses_its_own_single_complete_execution():
     observed = data(entry(1, 60., 10), entry(2, SetLoad("external", 60), 10))
     result = recommend_normal_workout(observed, upcoming(), as_of=date(2026, 5, 20), block_start=date(2026, 5, 1))[0]
-    assert result.reason_code == "confirm_upper_range"
+    assert result.reason_code == "upper_range_confirmed"
 
 
 def test_return_to_old_convention_does_not_bridge_an_intervening_change(sample_input):
@@ -200,9 +200,10 @@ def test_inferred_warmup_uses_total_load_and_same_convention(first_load, expecte
 def test_bodyweight_recommendations_do_not_guess_future_mass_or_reverse_assistance(load):
     observed = data(entry(1, load, 10), entry(2, load, 10))
     result = recommend_normal_workout(observed, upcoming(), as_of=date(2026, 5, 20), block_start=date(2026, 5, 1))[0]
-    assert result.reason_code == "bodyweight_load_manual" and not result.goals
+    assert result.reason_code == "bodyweight_load_manual"
+    assert all(g.weight == load.external_weight_kg and g.assistance_kg == load.assistance_kg for g in result.goals)
     deload = recommend_deload(entry(1, load, day=date(2026, 6, 8))).exercises[0]
-    assert deload.reason_code == "bodyweight_load_manual" and not deload.goals
+    assert deload.reason_code == "deload_load_not_supported" and not deload.goals
 
 
 def test_chart_separates_timed_load_profiles_and_unknown_load(sample_input):

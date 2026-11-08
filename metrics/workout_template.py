@@ -15,7 +15,7 @@ def workout_template(upcoming, recommendation, exercise_names):
             prefix = 'Ciężary wyjściowe; ' if item.reason_code == 'reuse_exercise_baseline' else ''
             lines.append('Cel: ' + prefix + goal_summary(item))
             results = ['__s' + (f' @ {goal.weight:g} kg' if goal.weight else '') if goal.unit == 'seconds'
-                       else f'__x{goal.weight:g}' for goal in item.goals]
+                       else (f'__x{goal.weight:g}' if goal.weight is not None else '__x__') for goal in item.goals]
         else:
             unit = 's' if planned.target_unit == 'seconds' else 'powt.'
             reserve = str(item.target_rir) if item.target_rir is not None else 'nieustalony'

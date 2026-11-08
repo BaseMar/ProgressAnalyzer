@@ -40,6 +40,8 @@ def _result(row):
 
 
 def _limitation(row):
+    if row.get("ambiguous_recorded_exercises"):
+        return "ambiguous recorded exercise match"
     if not row["sets"]:
         kinds = set(row["excluded_set_kinds"])
         if kinds & {"light", "low_effort"}:
@@ -128,7 +130,7 @@ def compute_training_insights(data, *, as_of: date, start=None, end=None,
             next_target = f'{recommendation.scheduled_date:%d %b}: {goal_summary(recommendation)}' if recommendation else None
             annotations.append(TrainingInsight("below_target_rir", 10, "Less reserve than planned",
                 f'{current["workout"]} · {_result(current)} · planned RIR ≥ {target_rir}.',
-                "Next target: " + next_target + "." if next_target else f"Keep the load and aim for RIR ≥ {target_rir}; use the Next workout target.",
+                "Next target: " + next_target + "." if next_target else f"Aim for RIR ≥ {target_rir}. A failure at the minimum needs a set-specific correction; use the Next workout target.",
                 "observed", "At least one current eligible set has less reserve than prescribed. This is an observed target mismatch, not a fatigue diagnosis.",
                 (_source(current),), current["actual_exercise_id"], next_target, recommendation))
             continue

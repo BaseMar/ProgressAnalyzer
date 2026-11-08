@@ -99,7 +99,8 @@ class PlanAdherenceView:
             st.caption("No matching logs in this period. Link a session or confirm a replacement to see its trend.")
             return
         contexts = list(dict.fromkeys(row["context"] for row in observed))
-        selected = st.selectbox("Explore an exercise", contexts, key="performance_context", format_func=lambda key: f'{key[0]} · {self._name(key[5])} · {key[7]} × {key[8]}–{key[9]} {key[6]} · position {key[3]}')
+        workout_names = {row["context"]: row["workout"] for row in observed}
+        selected = st.selectbox("Explore an exercise", contexts, key="performance_context", format_func=lambda key: f'{workout_names[key]} · {self._name(key[5])} · {key[7]} × {key[8]}–{key[9]} {key[6]} · position {key[3]}')
         selected_rows = [row for row in observed if row["context"] == selected]
         latest = selected_rows[-1]
         last_set, change, in_range = st.columns(3)

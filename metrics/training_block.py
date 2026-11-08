@@ -39,8 +39,7 @@ def deload_exercise_target(planned, policy=DeloadPolicy()):
     if planned.target_unit == "seconds":
         # No automatic timed/load prescription in this stage: leave targets intact.
         return planned
-    rir = max(policy.minimum_rir, planned.target_rir + policy.extra_rir) if planned.target_rir is not None else None
-    return replace(planned, set_count=count, target_max=planned.target_min, target_rir=rir)
+    return replace(planned, set_count=count, target_rir=policy.minimum_rir)
 
 
 def deload_adjusted_input(data, settings_by_version, policy=DeloadPolicy(), *, as_of=None):

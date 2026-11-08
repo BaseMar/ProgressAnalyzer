@@ -34,20 +34,26 @@ def approved_alternatives(history, slot, planned_exercises, *, as_of):
 
 def recommendation_note(item):
     notes = {
-        "one_more_rep": "Add one total rep while keeping the same load and reserve.",
-        "upper_range_confirmed": "Upper range confirmed across consecutive workouts. Add one equipment step.",
+        "one_more_rep": "Try one additional total rep in the first set below the ceiling; retain per-set loads and reserve.",
+        "upper_range_confirmed": "All sets reached the ceiling at one common load. One complete result is enough: add one equipment step.",
+        "equalize_loads": "Bring lighter sets toward the first working load within 10% per set. Raised sets start at the lower rep bound.",
+        "minimum_not_met": "Reduce the affected set by one equipment step after the first failure at the minimum.",
+        "reduction_step_not_supported": "Choose a lower load for the affected set manually; no positive lower equipment setting is available.",
+        "manual_start": "Review the source history and choose the working start manually for this context.",
+        "more_time": "Try up to five additional seconds in one set within the time range.",
+        "time_ceiling_manual": "Time ceiling reached. Choose a new range or load manually.",
         "confirm_upper_range": "Repeat the upper range with enough reserve before increasing weight.",
         "rir_below_target": "Keep the load: at least one previous set had less reserve than planned.",
         "below_range": "Keep the load and work towards the planned repetition range.",
         "mixed_loads": "Keep each set's logged load; automatic increases need one common working load.",
         "mixed_range": "Some sets exceeded the range while others stayed below its upper bound.",
         "timed_exercise": "Keep the logged load and time range; automatic timed progression is not supported.",
-        "bodyweight_load_manual": "Choose additional weight or assistance manually. Compare total supported load; less assistance increases difficulty. Body mass for the next workout is not assumed.",
+        "bodyweight_load_manual": "Choose additional weight or assistance manually. Keep the displayed rep target; less assistance increases difficulty. Future body mass is not assumed.",
         "unknown_load": "Add the missing body mass or assistance in History before comparing loads.",
         "mixed_load_convention": "The latest sets use different load conventions. Choose the next load manually.",
         "zero_load": "Keep this target; adding external load requires a manual decision.",
         "weight_step_not_supported": "The available weight step is too large for an automatic increase.",
-        "scheduled_deload": "Lighter week: fewer sets, reduced load and more reserve.",
+        "scheduled_deload": "Lighter week: same sets and recorded repetitions, 30–40% less load, target RIR 3–4.",
         "resume_after_deload": "Return to the last ordinary loads. Establish progression again in this block.",
         "no_history": "Log and link a comparable workout to establish a baseline.",
         "no_normal_baseline": "Log and link a normal workout for this exercise to establish a baseline.",
@@ -115,8 +121,7 @@ class NextWorkoutView:
             self._heading(slot, result.block, version.draft.progression)
             st.caption("Today and upcoming dates · independent of Analysis and History filters · linked workouts are excluded.")
             if result.block.phase == "unconfigured":
-                st.info("Configure a training block in Plan → Edit as a new version → Progression & training block to enable targets.")
-                return
+                st.caption("Ordinary progression is available. Configure the calendar in Plan to schedule automatic deloads.")
             if result.block.phase == "not_started":
                 st.info(f"The training block starts on {version.draft.progression.block_start:%d %b %Y}. Select a workout on or after that date.")
                 return
@@ -160,13 +165,16 @@ class NextWorkoutView:
                     if item.evidence_session_ids:
                         evidence = ", ".join(f"{day:%d %b %Y} (session #{sid})" for sid, day in zip(item.evidence_session_ids, item.evidence_dates))
                         st.caption(f"Based on: {evidence}")
-                st.caption("Normal training: add one total rep; a weight increase requires two upper-range executions on different days. Default history limit: 21 days; maximum weight step: 10%.")
-                st.caption("Deload: retain half the sets rounded up, target the lower rep bound, reduce load by 10–20% in whole equipment steps, and target at least RIR 4 (or original RIR + 2). After deload, resume ordinary loads without an increase.")
+                st.caption("Normal training: add one total rep. One full ceiling result with enough reserve permits equalizing lighter sets first, then raising the common load. History limit: 21 days; load increase limit: 10% per set.")
+                st.caption("Deload: retain sets and recorded repetitions, reduce each load by 30–40% in equipment steps and aim for RIR 3–4. After deload, resume ordinary loads without an immediate increase.")
+                for item in result.exercises:
+                    for notice in item.notices:
+                        st.caption(notice)
             return WorkoutPreview(upcoming, result)
 
     @staticmethod
     def _heading(slot, phase, settings):
-        label = {"normal": "Normal training", "deload": "Deload", "unconfigured": "Setup needed", "not_started": "Before block"}[phase.phase]
+        label = {"normal": "Normal training", "deload": "Deload", "unconfigured": "Normal training", "not_started": "Before block"}[phase.phase]
         st.markdown('<div class="recommendation-heading"><div>'
                     f'<span>{slot.scheduled_date:%A, %d %B}</span><strong>{escape(slot.name)}</strong></div>'
                     f'<span class="recommendation-phase recommendation-phase--{phase.phase}">{label}</span></div>', unsafe_allow_html=True)
@@ -201,12 +209,15 @@ class NextWorkoutView:
         return substitutions, steps
 
     def _exercise(self, item):
-        label = {"increase_reps": "Add a rep", "increase_weight": "Increase load", "maintain": "Keep load",
+        label = {"increase_reps": "Add a rep", "increase_time": "Add time", "equalize_weight": "Equalize loads",
+                 "increase_weight": "Increase load", "reduce_weight": "Reduce affected set", "maintain": "Keep load",
                  "deload": "Deload", "insufficient_data": "More data needed"}[item.action]
         if item.reason_code == "resume_after_deload":
             label = "Return after deload"
         if item.reason_code == "reuse_exercise_baseline":
             label = "Starting loads"
+        if item.reason_code == "manual_start":
+            label = "Choose starting load"
         if item.reason_code in ("deload_load_not_supported", "deload_timed_not_supported", "bodyweight_load_manual", "mixed_load_convention"):
             label = "Manual target"
         original = f'<small>Instead of {escape(self._name(item.planned_exercise_id))}</small>' if item.actual_exercise_id != item.planned_exercise_id else ""
@@ -215,8 +226,9 @@ class NextWorkoutView:
             workout = item.evidence_workouts[index] if index < len(item.evidence_workouts) else ""
             sources.append(f'{day:%d %b %Y}' + (f' · {workout}' if workout else '') + f' · session #{sid}')
         evidence = f'<p class="recommendation-source">Based on: {escape("; ".join(sources))}</p>' if sources else ""
+        notices = ''.join(f'<p>{escape(notice)}</p>' for notice in item.notices)
         return ('<div class="recommendation-exercise"><div class="recommendation-exercise-top">'
                 f'<div><strong>{escape(self._name(item.actual_exercise_id))}</strong>{original}</div>'
                 f'<span class="recommendation-action recommendation-action--{item.action}">{label}</span></div>'
                 f'<div class="recommendation-goal">{escape(goal_summary(item))}</div>'
-                f'<p>{escape(recommendation_note(item))}</p>{evidence}</div>')
+                f'<p>{escape(recommendation_note(item))}</p>{notices}{evidence}</div>')

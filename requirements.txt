@@ -1,4 +1,4 @@
-# Deployment release: recorded-exercise-baselines-2026-11-07
+# Deployment release: recommendation-equalization-2026-11-08
 # Refresh this manifest for a full Cloud rebuild after moving application modules.
 streamlit==1.66.1
 pandas>=1.5

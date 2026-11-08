@@ -28,7 +28,7 @@ def with_recorded_baselines(data, performances, planned, actual_id, *, as_of):
         if workout is None:
             continue
         projected = replace(workout, targets=(PlannedTarget(-recorded.workout_exercise_id,
-                            replace(planned, exercise_id=actual_id)),))
+                            replace(planned, exercise_id=actual_id, history_key=None)),))
         observation = replace(data, workouts=(projected,), recorded=(recorded,), matches=())
         for row in compute_plan_performance(observation, as_of=as_of):
             extra.append({**row, 'baseline_only': True})
@@ -58,6 +58,16 @@ def recommendation_history(performances, context, *, as_of, block_start):
                   and row['session_id'] is not None and row['performed_on'] is not None
                   and row['performed_on'] <= as_of
                   and (block_start is None or row['performed_on'] >= block_start)]
+    if context[1] is None and context[2] is None:
+        lineage = [row for row in performances if row['context'][0] == context[0]
+                   and not row.get('baseline_only')
+                   and row['session_id'] is not None and row['performed_on'] is not None
+                   and row['performed_on'] <= as_of
+                   and (block_start is None or row['performed_on'] >= block_start)]
+        if lineage and lineage[-1]['context'] != context:
+            # Returning to an old exercise must not bridge an intervening
+            # exercise/replacement in the same stable position.
+            return candidates[-1:], True
     local = [row for row in candidates
              if workout_exercise_identity(row['context']) == workout_exercise_identity(context)]
     if local:

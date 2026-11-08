@@ -40,3 +40,4 @@ class PlanAdherenceInput:
     recorded: tuple[RecordedExercise, ...]
     matches: tuple[ExerciseMatch, ...]
     session_order: tuple[int, ...] = ()
+    manual_load_exercise_ids: frozenset[int] = frozenset()

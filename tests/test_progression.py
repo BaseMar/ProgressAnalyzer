@@ -49,22 +49,22 @@ def test_adds_one_total_rep_to_lowest_set_and_preserves_inputs():
         result.action = "maintain"
 
 
-def test_lowest_set_tie_uses_first_set_without_exceeding_range():
+def test_first_set_below_ceiling_gets_the_additional_rep():
     result = recommend(working(1, date(2026, 5, 18), (8, 7, 7)))
-    assert [item.minimum for item in result.goals] == [8, 8, 7]
+    assert [item.minimum for item in result.goals] == [9, 7, 7]
 
 
 def test_two_top_executions_increase_one_hardware_step_and_target_lower_bound():
     result = recommend(working(1, date(2026, 5, 11), (10, 10, 10)), working(2, date(2026, 5, 18), (10, 10, 10)))
     assert result.action == "increase_weight"
     assert [(item.weight, item.minimum, item.maximum) for item in result.goals] == [(62.5, 6, 6)] * 3
-    assert result.evidence_session_ids == (1, 2)
+    assert result.evidence_session_ids == (2,)
 
 
-def test_one_top_execution_holds_upper_goal_until_confirmed():
+def test_one_complete_top_execution_is_sufficient():
     result = recommend(working(1, date(2026, 5, 18), (10, 10, 10)))
-    assert (result.action, result.reason_code) == ("maintain", "confirm_upper_range")
-    assert [item.minimum for item in result.goals] == [10] * 3
+    assert (result.action, result.reason_code) == ("increase_weight", "upper_range_confirmed")
+    assert [(item.weight, item.minimum) for item in result.goals] == [(62.5, 6)] * 3
 
 
 def test_rir_target_is_a_minimum_reserve_and_zero_remains_zero():
@@ -80,7 +80,7 @@ def test_confirmation_policy_can_require_three_exposures():
 
 
 @pytest.mark.parametrize("values", [
-    {"confirmations_required": 1}, {"max_history_gap_days": 0},
+    {"confirmations_required": 0}, {"max_history_gap_days": 0},
     {"max_relative_weight_increase": float("nan")}, {"max_relative_weight_increase": None},
 ])
 def test_invalid_policy_is_rejected(values):
@@ -115,23 +115,25 @@ def test_one_low_rir_set_blocks_increase_even_when_mean_equals_target():
     assert all((item.minimum, item.maximum) == (6, 10) for item in result.goals)
 
 
-def test_lower_bound_and_mixed_upper_range_are_not_silently_increased():
-    assert recommend(working(1, date(2026, 5, 18), (5, 8, 8))).reason_code == "below_range"
-    assert recommend(working(1, date(2026, 5, 18), (11, 9, 9))).reason_code == "mixed_range"
+def test_below_minimum_corrects_load_and_excess_reps_are_capped():
+    assert recommend(working(1, date(2026, 5, 18), (5, 8, 8))).reason_code == "minimum_not_met"
+    result = recommend(working(1, date(2026, 5, 18), (11, 9, 9)))
+    assert result.reason_code == "one_more_rep"
+    assert [g.minimum for g in result.goals] == [10, 10, 9]
 
 
-def test_partial_or_changed_load_previous_session_does_not_confirm_top():
+def test_prior_partial_or_changed_load_does_not_override_the_latest_complete_success():
     latest = working(2, date(2026, 5, 18), (10, 10, 10))
-    assert recommend(working(1, date(2026, 5, 11), (10, 10)), latest).reason_code == "confirm_upper_range"
-    assert recommend(working(1, date(2026, 5, 11), (10, 10, 10), weight=55.), latest).reason_code == "confirm_upper_range"
+    assert recommend(working(1, date(2026, 5, 11), (10, 10)), latest).reason_code == "upper_range_confirmed"
+    assert recommend(working(1, date(2026, 5, 11), (10, 10, 10), weight=55.), latest).reason_code == "upper_range_confirmed"
 
 
-def test_mixed_loads_preserve_each_set_load_without_flattening():
+def test_ascending_trials_require_manual_working_start():
     entry = working(1, date(2026, 5, 18))
     entry = (entry[0], replace(entry[1], sets=(entry[1].sets[0], replace(entry[1].sets[1], weight=65), entry[1].sets[2])), entry[2])
     result = recommend(entry)
-    assert result.reason_code == "mixed_loads"
-    assert [item.weight for item in result.goals] == [60., 65., 60.]
+    assert result.reason_code == "manual_start"
+    assert not result.goals
 
 
 def test_large_step_is_not_rounded_to_an_unavailable_load():
@@ -193,12 +195,12 @@ def test_replacement_weight_step_is_not_copied_from_the_original():
 def test_new_context_and_new_block_do_not_reuse_old_confirmations():
     entries = (working(1, date(2026, 5, 11), (10, 10, 10)), working(2, date(2026, 5, 18), (10, 10, 10)))
     result = recommend_normal_workout(data(*entries), upcoming(), as_of=AS_OF, block_start=date(2026, 5, 15))[0]
-    assert result.reason_code == "confirm_upper_range"
+    assert result.reason_code == "upper_range_confirmed"
     changed = replace(PLAN, target_max=12)
     changed_result = recommend(*entries, target=upcoming(changed))
-    assert changed_result.reason_code == "reuse_exercise_baseline"
-    assert changed_result.action == "maintain"
-    assert all((item.weight, item.minimum, item.maximum) == (60., 6, 12) for item in changed_result.goals)
+    assert changed_result.reason_code == "manual_start"
+    assert changed_result.action == "insufficient_data"
+    assert not changed_result.goals
 
 
 def test_long_gap_and_same_day_confirmations_do_not_increase_load():
@@ -207,7 +209,7 @@ def test_long_gap_and_same_day_confirmations_do_not_increase_load():
     first = working(1, date(2026, 5, 11), (10, 10, 10))
     second = working(2, date(2026, 5, 18), (10, 10, 10))
     first = (replace(first[0], slot=replace(first[0].slot, performed_on=date(2026, 5, 18))), first[1], first[2])
-    assert recommend(first, second).reason_code == "confirm_upper_range"
+    assert recommend(first, second).reason_code == "upper_range_confirmed"
 
 
 def test_future_recorded_result_does_not_leak_into_recommendation():
@@ -221,7 +223,7 @@ def test_future_recorded_result_does_not_leak_into_recommendation():
 
 def test_no_block_past_goal_and_already_recorded_are_explicit():
     empty = data()
-    assert recommend_normal_workout(empty, upcoming(), as_of=AS_OF, block_start=None)[0].reason_code == "block_not_configured"
+    assert recommend_normal_workout(empty, upcoming(), as_of=AS_OF, block_start=None)[0].reason_code == "no_history"
     assert recommend_normal_workout(empty, upcoming(), as_of=AS_OF, block_start=date(2026, 6, 1))[0].reason_code == "before_block"
     with pytest.raises(ValueError, match="in the past"):
         recommend_normal_workout(empty, upcoming(day=date(2026, 5, 18)), as_of=AS_OF, block_start=BLOCK)
@@ -231,7 +233,7 @@ def test_no_block_past_goal_and_already_recorded_are_explicit():
 
 def test_timed_and_zero_load_exercises_do_not_get_implicit_weight_progression():
     timed = PlannedExercise(1, 3, 30, 60, "seconds", target_rir=2)
-    assert recommend(working(1, date(2026, 5, 18), (60, 60, 60), planned=timed, weight=0), target=upcoming(timed)).reason_code == "timed_exercise"
+    assert recommend(working(1, date(2026, 5, 18), (60, 60, 60), planned=timed, weight=0), target=upcoming(timed)).reason_code == "time_ceiling_manual"
     assert recommend(working(1, date(2026, 5, 11), (10, 10, 10), weight=0),
                      working(2, date(2026, 5, 18), (10, 10, 10), weight=0)).reason_code == "zero_load"
 
@@ -258,7 +260,7 @@ def test_readonly_database_service_loads_prior_month_and_returns_goals(schedule_
     result = load_normal_workout_recommendations(engine, plan.plan_id, slots[2].day_id, next_day, as_of=date(2024, 5, 7))[0]
     assert result.action == "increase_weight"
     assert result.goals[0].weight == 62.5
-    assert result.evidence_session_ids == (2, 3)
+    assert result.evidence_session_ids == (3,)
     with engine.connect() as connection:
         assert connection.execute(select(actual_sets)).mappings().all() == before
     with pytest.raises(ValueError, match="not scheduled"):

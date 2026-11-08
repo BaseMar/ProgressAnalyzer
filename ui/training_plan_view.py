@@ -81,7 +81,8 @@ class TrainingPlanView:
         return dict(uid=uid, exercise_id=item.exercise_id if item else None,
                     sets=item.set_count if item else 3, minimum=item.target_min if item else 6,
                     maximum=item.target_max if item else 10, unit=item.target_unit if item else "reps",
-                    rir=item.target_rir if item else None, increment=item.weight_increment if item else None)
+                    rir=item.target_rir if item else None, increment=item.weight_increment if item else None,
+                    history_key=item.history_key if item else None)
 
     def _day(self, day=None, uid=0):
         exercises = [self._exercise(item, index) for index, item in enumerate(day.exercises)] if day else [self._exercise()]
@@ -221,7 +222,7 @@ class TrainingPlanView:
                     for item in day["exercises"]:
                         if item["exercise_id"] not in self.labels:
                             raise ValueError(f'{day["name"] or "Workout"}: choose an exercise')
-                        exercises.append(PlannedExercise(item["exercise_id"], item["sets"], item["minimum"], item["maximum"], item["unit"], item["rir"], item["increment"]))
+                        exercises.append(PlannedExercise(item["exercise_id"], item["sets"], item["minimum"], item["maximum"], item["unit"], item["rir"], item["increment"], history_key=item.get("history_key")))
                     days.append(TrainingDay(day["name"].strip(), day["weekday"], tuple(exercises)))
                 progression = ProgressionSettings(store["block_start"], store["block_weeks"]) if store["progression_enabled"] else None
                 saved = self.dm.save_training_plan(TrainingPlanDraft(name.strip(), start, tuple(days), progression), plan_id=source.plan_id if source else None)

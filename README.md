@@ -328,8 +328,9 @@ own performance history, even when it covers the original plan position.
 <details>
 <summary>Comparison context, evidence and charts</summary>
 
-Comparisons match the workout name, weekday/order, exercise position, planned
+Comparisons match the stable plan-position identity, exercise order, planned
 and actual exercise IDs, unit, set count, target range and target RIR.
+Renaming a workout or changing its weekday preserves its stable identity.
 Identical prescriptions can span plan versions; changed contexts start a new
 history. Load-convention changes also establish a new baseline.
 
@@ -413,6 +414,8 @@ Weeks 1–6: ordinary training → Week 7: deload → next cycle
 Weeks are seven-day intervals from the start date, including midweek starts.
 Missed workouts do not move the schedule. Saving a revision preserves block
 settings unless you explicitly change them.
+Ordinary progression also works without a configured calendar; the calendar
+controls automatic deloads.
 
 ### Understand the next target
 
@@ -431,24 +434,24 @@ For a plan of **3 × 6–10 reps, RIR at least 2, weight step 2.5 kg**:
 
 | Recorded evidence | Default next target |
 | --- | --- |
-| At 60 kg: 8 / 8 / 7, every set RIR ≥ 2 | 60 kg: 8 / 8 / 8 — one extra rep in total. |
-| At 60 kg: 10 / 10 / 10 once | Repeat the upper range to confirm it. |
-| Same upper-range result on two consecutive qualifying days | 62.5 kg: 6 / 6 / 6. |
-| Any set below the rep minimum or target reserve | Keep the logged loads and original range. |
+| At 60 kg: 8 / 8 / 7, every set RIR ≥ 2 | 60 kg: 9 / 8 / 7 — one extra rep in total. |
+| 60 × 10 / 55 × 10 / 55 × 10, every set RIR ≥ 2 | 60 × 10 / 60 × 6 / 60 × 6 — equalize lighter sets first. |
+| At 60 kg: 10 / 10 / 10 once, every set RIR ≥ 2 | 62.5 kg: 6 / 6 / 6 — one complete result is sufficient. |
+| Reserve below target above the rep minimum | Retain loads; finish earlier within the range to meet reserve. |
+| Failure to meet reserve at the rep minimum | Reduce the affected set by one available step after that first execution. |
 | Incomplete or missing evidence | A reason for needing more data. |
 
-The extra rep goes to the lowest-repetition set; the first set wins a tie.
-The app requires a common working load for automatic increases.
+The extra rep goes to the first set below the ceiling. Every set must reach
+the ceiling with enough reserve before load progression. Different loads first
+move toward the established first-set load, with a 10% limit on each raised set.
+Large gaps are closed in equipment steps over multiple successful executions.
 
-Changing RIR, ranges or exercise order preserves the exercise's recorded loads
-as **Starting loads** for the new prescription. When that exercise has no local
-execution, a linked execution of the same catalog exercise in another workout
-can supply the starting loads. Each card identifies the source date and workout.
-Adjust those loads to meet the new range and reserve; the older prescription
-does not supply confirmations for an automatic increase. Incomplete, stale or
-unknown-effort evidence remains unavailable for numeric targets.
+Changing RIR, ranges or exercise order retains source history for review, but
+the working start is chosen manually. A card identifies source dates and workouts
+without prescribing a later heavy trial as a new first working set. Incomplete,
+stale or unknown-effort evidence remains unavailable for numeric increases.
 
-A linked session can also supply starting loads for an exact catalog exercise
+A linked session can also supply historical evidence for an exact catalog exercise
 that was recorded outside its older plan version. The source is dated by the
 actual workout day, even when assigned to an earlier planned day. This does not
 infer a replacement or credit that exercise towards historical plan coverage.
@@ -456,8 +459,11 @@ infer a replacement or credit that exercise towards historical plan coverage.
 Confirmed alternatives remain selectable after a plan revision. Select the
 actual exercise in **Use a confirmed alternative** to use its own history.
 
-**Bodyweight/assisted and timed load progression remain manual.**
-The app does not assume future body mass or guess how much assistance to remove.
+**Bodyweight/assisted load selection remains manual; repetitions can progress.**
+Time increases by up to five seconds in one set within its range. At the ceiling,
+a new range or load is chosen manually. Future body mass and assistance are not
+invented. Legacy bodyweight records keep their original meaning; their kilograms
+are not copied into a future total-mass or added-weight target.
 
 ### Deload example
 
@@ -465,27 +471,29 @@ Using the same plan and a complete ordinary log of 60 kg × 10 / 10 / 10:
 
 ```text
 Ordinary: 3 × 6–10 at 60 kg, RIR ≥ 2
-Deload:   2 × 6    at 52.5 kg, RIR ≥ 4
+Deload:   3 × 10   at 40 kg, target RIR 3–4
 Return:   resume the last comparable ordinary loads and original range
 ```
 
-The default keeps half the planned sets, rounded up with at least one set,
-and uses the lower rep bound. It reduces load by at least 10% in whole equipment
-steps, stopping if that would exceed 20% or make the load non-positive.
-Here three 2.5 kg steps give a 12.5% reduction.
+The chosen policy keeps every set and the last ordinary session's recorded
+repetitions. It reduces each load by 30–40% in whole equipment steps. When no
+positive setting fits that interval, the deload load is selected manually.
+Here eight 2.5 kg steps give a 33.3% reduction.
 
-Target reserve becomes `max(4, original target RIR + 2)`.
+Target reserve is 3–4 RIR.
 These are suggested targets, not a prediction of the reserve you will achieve.
 
 <details>
 <summary>Recommendation safeguards and developer API</summary>
 
-- Default progression needs two upper-range confirmations on different days,
+- Default progression needs one complete upper-range execution,
   a maximum 21-day evidence gap and a weight step no greater than 10% of the load.
   These are configurable application guards.
 - Complete working sets, recorded RIR and target RIR are needed for rep increases.
-  Mixed per-set loads keep individual loads/ranges. Missing evidence or a changed
-  context never creates a confirmation.
+  Mixed per-set loads are equalized before raising the common load. Missing
+  evidence or a changed prescription never creates a confirmation.
+- Four comparable executions without output or confirmed reserve improvement
+  flag a possible plateau. A single RIR estimate does not establish a trend.
 - Deload uses the latest comparable normal execution in the same cycle.
   Deload logs do not compound reductions or establish ordinary baselines.
 - Return uses the immediately preceding cycle's comparable normal history,
@@ -494,8 +502,10 @@ These are suggested targets, not a prediction of the reserve you will achieve.
   prevent reuse.
 - A moved planned deload remains a deload. Normal work actually performed during
   deload is excluded from normal baselines as well.
-- Future records after `as_of` are not evidence. Unconfigured/not-started blocks
-  get a setup message; unavailable equipment steps produce no invented load.
+- Future records after `as_of` are not evidence. Ordinary targets do not require
+  a configured block; unavailable equipment steps produce no invented load.
+- Multiple recorded exercise entries matching a single planned position need
+  an explicit match before increasing the target.
 - Explicit alternatives use their own history and weight steps. A preview choice
   is temporary and does not edit the plan or confirm a future replacement.
 
@@ -503,6 +513,8 @@ The general API is
 `DataManager.load_workout_recommendations(plan_id, day_id, scheduled_date, as_of=...)`.
 It returns immutable `WorkoutRecommendation` / per-exercise targets with dates,
 block phase, reasons and evidence IDs.
+It also carries `rules_version` and per-exercise limitations/notices.
+The full chosen policy is documented in [the recommendation rules](docs/progression-redesign-rules.md).
 
 `load_normal_workout_recommendations` is a compatibility wrapper for normal dates.
 Pure rules live in `metrics.progression`; use `recommend_workout` for arbitrary
@@ -820,6 +832,7 @@ requested, never during app startup.
 | 004 | Optional set-purpose corrections. |
 | 005 | Versioned progression/block settings. |
 | 006 | Explicit set loads and body-mass snapshots. |
+| 007 | Stable plan-position identities across revisions, without changing recorded workouts. |
 
 `python -m db.migrate` previews pending revisions without writing.
 `python -m db.migrate --apply` applies them and records successful revisions.
