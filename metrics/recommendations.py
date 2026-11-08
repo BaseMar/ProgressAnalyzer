@@ -7,7 +7,7 @@ from math import isfinite
 from metrics.load_metrics import recorded_load, same_loads
 from metrics.plan_performance import comparison_context, compute_plan_performance
 from metrics.progression_rules import session_decision, set_goal, weight_step_problem
-from metrics.recommendation_history import recommendation_history, with_recorded_baselines
+from metrics.recommendation_history import changed_context_reason, recommendation_history, with_recorded_baselines
 from metrics.training_block import deload_exercise_target, is_deload_workout, training_block_phase
 from models.progression import DeloadPolicy, ExerciseRecommendation, ProgressionPolicy, WorkoutRecommendation
 
@@ -118,7 +118,7 @@ def recommend_normal_workout(data, upcoming, *, as_of, block_start=None,
         if baseline_only:
             code = "changed_set_count" if len(latest["sets"]) != planned.set_count else "manual_start"
             output.append(decision("insufficient_data", code,
-                "The workout, exercise order or prescription changed. Review the source history and choose the working start manually; old loads are not prescribed as a new start.", evidence=evidence))
+                changed_context_reason(latest, context, upcoming.slot.name), evidence=evidence))
             continue
         step = planned.weight_increment if actual_id == planned.exercise_id else replacement_weight_steps.get(actual_id)
         manual_load = actual_id in data.manual_load_exercise_ids
@@ -207,7 +207,7 @@ def recommend_workout(data, upcoming, *, as_of, settings, policy=ProgressionPoli
             continue
         if baseline_only or len(latest["sets"]) != planned.set_count:
             output.append(replace(result, action="insufficient_data", goals=(), reason_code="manual_start",
-                reason="The prescription or context changed. Choose the new working start manually using the source history."))
+                reason=changed_context_reason(latest, context, upcoming.slot.name)))
             continue
         if phase.phase == "normal":
             goals = tuple(set_goal(s, planned.target_min, planned.target_max, unit=planned.target_unit) for s in latest["sets"])

@@ -15,6 +15,7 @@ from models.plan_adherence import PlannedTarget, PlannedWorkout
 from models.training_insights import WorkoutPreview
 from ui.utils.ui_helpers import section_header
 from ui.utils.copy_workout import copy_workout
+from ui.manual_start import MANUAL_START_REASONS, choose_starting_loads, prescription_summary, reference_html
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,8 @@ def approved_alternatives(history, slot, planned_exercises, *, as_of):
 
 
 def recommendation_note(item):
+    if item.reason_code in ("manual_start", "changed_set_count", "history_gap", "manual_start_selected"):
+        return item.reason
     notes = {
         "one_more_rep": "Try one additional total rep in the first set below the ceiling; retain per-set loads and reserve.",
         "upper_range_confirmed": "All sets reached the ceiling at one common load. One complete result is enough: add one equipment step.",
@@ -55,8 +58,8 @@ def recommendation_note(item):
         "weight_step_not_supported": "The available weight step is too large for an automatic increase.",
         "scheduled_deload": "Lighter week: same sets and recorded repetitions, 30–40% less load, target RIR 3–4.",
         "resume_after_deload": "Return to the last ordinary loads. Establish progression again in this block.",
-        "no_history": "Log and link a comparable workout to establish a baseline.",
-        "no_normal_baseline": "Log and link a normal workout for this exercise to establish a baseline.",
+        "no_history": "Choose working loads using the recorded results below. Log and link the completed workout to establish a baseline.",
+        "no_normal_baseline": "No comparable normal workout is linked in this block. Review any earlier records below and choose working loads manually. Log and link the completed workout to establish a baseline.",
         "reuse_exercise_baseline": "Starting loads from this exercise's history. Use the current range and RIR; adjust the load as needed. A changed workout or prescription needs a new execution before automatic increases.",
         "changed_set_count": "History is available, but the set count changed. Choose loads for the new sets manually.",
         "incomplete_sets": "Review the latest linked workout: its matching working-set count is incomplete.",
@@ -119,6 +122,12 @@ class NextWorkoutView:
             result = self.dm.load_workout_recommendations(plan_id, slot.day_id, slot.scheduled_date, as_of=as_of)
             version = next(version for version in versions if version.version_id == slot.version_id)
             self._heading(slot, result.block, version.draft.progression)
+            st.caption(f"Plan version {version.version_number} · effective from {version.draft.effective_from:%d %b %Y}.")
+            next_versions = sorted((v for v in versions if v.draft.effective_from > slot.scheduled_date),
+                                   key=lambda v: v.draft.effective_from)
+            if next_versions:
+                next_version = next_versions[0]
+                st.caption(f"Plan version {next_version.version_number} starts on {next_version.draft.effective_from:%d %b %Y}; it does not change this workout.")
             st.caption("Today and upcoming dates · independent of Analysis and History filters · linked workouts are excluded.")
             if result.block.phase == "unconfigured":
                 st.caption("Ordinary progression is available. Configure the calendar in Plan to schedule automatic deloads.")
@@ -139,6 +148,14 @@ class NextWorkoutView:
             upcoming = PlannedWorkout(slot, tuple(
                 PlannedTarget(item.plan_exercise_id, exercise)
                 for item, exercise in zip(result.exercises, planned.exercises)))
+            references = self.dm.load_recommendation_references(
+                {item.actual_exercise_id for item in result.exercises if item.reason_code in MANUAL_START_REASONS}, as_of=as_of)
+            result = choose_starting_loads(result, upcoming, self.names, references)
+            prescriptions = {target.plan_exercise_id: target.exercise for target in upcoming.targets}
+
+            def exercise_card(item):
+                return self._exercise(item, prescriptions[item.plan_exercise_id], references.get(item.actual_exercise_id, ()))
+
             template = workout_template(upcoming, result, self.names)
             copy_workout(template, key=f'copy_workout_{plan_id}_{slot.day_id}_{slot.scheduled_date}')
             with st.expander('Podgląd do skopiowania'):
@@ -152,11 +169,11 @@ class NextWorkoutView:
                         f"{gap.count} exercise(s) — {recommendation_note(gap.example)}" for gap in focus.gaps[:2])
                         + (" Further setup details are in Full workout." if len(focus.gaps) > 2 else ""))
                 if focus.visible:
-                    st.markdown('<div class="recommendation-list">' + ''.join(self._exercise(item) for item in focus.visible) + '</div>', unsafe_allow_html=True)
+                    st.markdown('<div class="recommendation-list">' + ''.join(exercise_card(item) for item in focus.visible) + '</div>', unsafe_allow_html=True)
                 with st.expander(f"Full workout · {focus.total} exercises"):
-                    st.markdown('<div class="recommendation-list">' + ''.join(self._exercise(item) for item in result.exercises) + '</div>', unsafe_allow_html=True)
+                    st.markdown('<div class="recommendation-list">' + ''.join(exercise_card(item) for item in result.exercises) + '</div>', unsafe_allow_html=True)
             else:
-                st.markdown('<div class="recommendation-list">' + ''.join(self._exercise(item) for item in result.exercises) + '</div>', unsafe_allow_html=True)
+                st.markdown('<div class="recommendation-list">' + ''.join(exercise_card(item) for item in result.exercises) + '</div>', unsafe_allow_html=True)
             with st.expander("Why these targets?"):
                 st.caption("RIR means repetitions in reserve. Working sets are inferred automatically from RIR and sequence; explicit corrections take priority. Deload and timed work use their own context. Targets are rule-based suggestions.")
                 for item in result.exercises:
@@ -208,7 +225,7 @@ class NextWorkoutView:
                     steps[actual] = value
         return substitutions, steps
 
-    def _exercise(self, item):
+    def _exercise(self, item, planned=None, references=()):
         label = {"increase_reps": "Add a rep", "increase_time": "Add time", "equalize_weight": "Equalize loads",
                  "increase_weight": "Increase load", "reduce_weight": "Reduce affected set", "maintain": "Keep load",
                  "deload": "Deload", "insufficient_data": "More data needed"}[item.action]
@@ -216,8 +233,10 @@ class NextWorkoutView:
             label = "Return after deload"
         if item.reason_code == "reuse_exercise_baseline":
             label = "Starting loads"
-        if item.reason_code == "manual_start":
+        if item.reason_code in MANUAL_START_REASONS:
             label = "Choose starting load"
+        if item.reason_code == "manual_start_selected":
+            label = "Starting loads selected"
         if item.reason_code in ("deload_load_not_supported", "deload_timed_not_supported", "bodyweight_load_manual", "mixed_load_convention"):
             label = "Manual target"
         original = f'<small>Instead of {escape(self._name(item.planned_exercise_id))}</small>' if item.actual_exercise_id != item.planned_exercise_id else ""
@@ -227,8 +246,11 @@ class NextWorkoutView:
             sources.append(f'{day:%d %b %Y}' + (f' · {workout}' if workout else '') + f' · session #{sid}')
         evidence = f'<p class="recommendation-source">Based on: {escape("; ".join(sources))}</p>' if sources else ""
         notices = ''.join(f'<p>{escape(notice)}</p>' for notice in item.notices)
+        goal = goal_summary(item)
+        if not item.goals and planned is not None and item.reason_code in MANUAL_START_REASONS:
+            goal = prescription_summary(planned) + ' · choose working loads'
         return ('<div class="recommendation-exercise"><div class="recommendation-exercise-top">'
                 f'<div><strong>{escape(self._name(item.actual_exercise_id))}</strong>{original}</div>'
                 f'<span class="recommendation-action recommendation-action--{item.action}">{label}</span></div>'
-                f'<div class="recommendation-goal">{escape(goal_summary(item))}</div>'
-                f'<p>{escape(recommendation_note(item))}</p>{notices}{evidence}</div>')
+                f'<div class="recommendation-goal">{escape(goal)}</div>'
+                f'<p>{escape(recommendation_note(item))}</p>{notices}{evidence}{reference_html(references)}</div>')

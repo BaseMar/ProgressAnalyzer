@@ -44,6 +44,25 @@ def workout_exercise_identity(context):
     return context[0], context[1], context[2], context[4], context[6]
 
 
+def changed_context_reason(latest, context, workout):
+    """Explain the actual prescription changes instead of a generic reset."""
+    previous = latest['context']
+    changes = []
+    if latest['workout'] != workout:
+        changes.append(f"Source workout: {latest['workout']}; upcoming workout: {workout}.")
+    if previous[3] != context[3]:
+        changes.append(f"Exercise position changed: {previous[3]} → {context[3]}.")
+    if previous[7] != context[7]:
+        changes.append(f"Working sets changed: {previous[7]} → {context[7]}.")
+    if previous[8:10] != context[8:10]:
+        changes.append(f"Target range changed: {previous[8]}–{previous[9]} → {context[8]}–{context[9]} {context[6]}.")
+    if previous[10] != context[10]:
+        changes.append(f"Target RIR changed: {previous[10]} → {context[10]}.")
+    if not changes:
+        changes.append("No established ordinary execution for this exercise in the current plan position.")
+    return " ".join(changes) + " Choose the working loads manually using the recorded results below. Log and link the completed workout to establish the new baseline."
+
+
 def recommendation_history(performances, context, *, as_of, block_start):
     """Return strict history or a baseline of the exact same actual exercise.
 

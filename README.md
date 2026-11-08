@@ -451,6 +451,15 @@ the working start is chosen manually. A card identifies source dates and workout
 without prescribing a later heavy trial as a new first working set. Incomplete,
 stale or unknown-effort evidence remains unavailable for numeric increases.
 
+Manual-start cards show the current sets, range and RIR, the specific context
+changes, and the latest raw results even before the plan/block or without a plan
+link. Repeated entries stay separate. **Choose starting loads** lets you enter
+per-set loads for this preview and the copied workout note. These choices stay
+in the current session and selected workout; they do not rewrite history or
+establish progression evidence. Log and link the actual completed workout to
+establish the new baseline. The preview also identifies the applicable plan
+version and the next version's effective date.
+
 A linked session can also supply historical evidence for an exact catalog exercise
 that was recorded outside its older plan version. The source is dated by the
 actual workout day, even when assigned to an earlier planned day. This does not

@@ -73,6 +73,15 @@ braku bazy, rosnących ciężarów po pierwszej serii wskazujących na szukanie 
 istotnie zmienionej kolejności, zakresu, RIR lub struktury serii. Pokazujemy sesje
 źródłowe, ale nie przepisujemy późniejszej cięższej próby jako nowego startu.
 
+Ręczny start nie oznacza pustej karty. Pokazujemy planowane serie, zakres i RIR,
+konkretną zmianę parametrów oraz ostatnie surowe wyniki tego samego ćwiczenia,
+także sprzed początku planu/bloku lub bez powiązania. Te dodatkowe wyniki są
+informacją do ręcznego wyboru, nie dowodem spełnienia warunków progresji.
+Powtórzone wpisy pozostają osobne. Użytkownik może wybrać ciężar każdej serii
+w podglądzie i skopiować go do notatki; wybór dotyczy wyłącznie wybranego treningu
+w bieżącej sesji aplikacji. Dopiero zapisane i powiązane faktyczne wykonanie
+ustanawia bazę. Widok podaje obowiązującą wersję planu i datę następnej wersji.
+
 Zwykła progresja już ustalonej bazy nadal może automatycznie zmieniać cele zgodnie
 z regułami. Brak kalendarza bloków nie wyłącza zwykłych rekomendacji.
 

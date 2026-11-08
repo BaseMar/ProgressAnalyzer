@@ -163,7 +163,7 @@ def test_confirmed_alternative_uses_own_history_step_and_resets_for_another_date
     engine, _, _, _ = schedule_data
     plan = seed(schedule_data, actual_id=2)
     app = start_app(engine, plan)
-    assert "More data needed" in exercise_html(app)
+    assert "Choose starting load" in exercise_html(app)
     selector = next(item for item in app.selectbox if item.key.endswith("_exercise"))
     selector.select(2).run()
     assert not app.exception

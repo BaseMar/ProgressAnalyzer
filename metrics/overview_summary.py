@@ -5,12 +5,13 @@ from models.overview import OverviewConclusion, RecommendationGap, WorkoutFocus
 
 def workout_focus(recommendation):
     """Two useful targets by default; the whole prescription remains reachable."""
-    ready = tuple(item for item in recommendation.exercises if item.goals and item.action != "insufficient_data")
+    ready = tuple(item for item in recommendation.exercises if item.goals and
+                  (item.action != "insufficient_data" or item.reason_code == "manual_start_selected"))
     changes = tuple(item for item in ready if item.action in ("increase_reps", "increase_time", "equalize_weight", "increase_weight", "reduce_weight", "deload")
                     or item.reason_code == "resume_after_deload")
     missing = {}
     for item in recommendation.exercises:
-        if item.action == "insufficient_data" or not item.goals:
+        if (item.action == "insufficient_data" and item.reason_code != "manual_start_selected") or not item.goals:
             missing.setdefault(item.reason_code, []).append(item)
     gaps = tuple(RecommendationGap(len(items), items[0]) for items in missing.values())
     return WorkoutFocus((changes or ready)[:2], len(ready), len(recommendation.exercises), gaps)

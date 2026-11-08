@@ -7,6 +7,7 @@ from sqlalchemy import text
 from db.connection import get_engine
 from db.set_loads import insert_set_load, save_session_set_loads, set_load_storage_ready, suggest_body_mass
 from db.progression import load_normal_workout_recommendations, load_workout_recommendations
+from db.recommendation_references import load_recommendation_references
 from db.training_context import load_deload_exercise_ids
 from db.training_plans import (
     load_effective_training_plan, load_training_plan_version, load_training_plan_versions, load_training_plans,
@@ -89,6 +90,9 @@ class DataManager:
 
     def load_workout_recommendations(self, plan_id, day_id, scheduled_date, *, as_of, **options):
         return load_workout_recommendations(self.engine, plan_id, day_id, scheduled_date, as_of=as_of, **options)
+
+    def load_recommendation_references(self, exercise_ids, *, as_of):
+        return load_recommendation_references(self.engine, exercise_ids, as_of=as_of)
 
     def save_exercise_match(self, session_id, plan_exercise_id, workout_exercise_id):
         return save_exercise_match(self.engine, session_id, plan_exercise_id, workout_exercise_id)
