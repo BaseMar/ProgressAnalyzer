@@ -60,6 +60,22 @@ Nowy mechanizm nie zmienia surowych wartości i nie proponuje ich jako przyszłe
 masy ciała lub dodatkowego obciążenia. Osobny test sprawdza również niejednoznaczne
 powtórzone wystąpienie ćwiczenia w jednej sesji.
 
+## Uzupełnienie: ręczny start z widoczną historią
+
+Wydanie [`b08e42d`](https://github.com/BaseMar/ProgressAnalyzer/commit/b08e42dbc5ac70c9bd60b87faa257e64c9d5aa89)
+uzupełnia karty o ostatnie surowe wyniki także sprzed początku planu/bloku i bez
+powiązania, konkretne różnice parametrów oraz zakres, serie i RIR bieżącego planu.
+Osobne powtórzone wpisy pozostają rozdzielone. Ręczny wybór ciężarów trafia do
+podglądu i notatki; nie zapisuje treningu ani nie tworzy dowodu progresji.
+Widać obowiązującą wersję planu i datę następnej wersji.
+
+Pełny zestaw po poprawce: **513 testów przeszło, 0 pominiętych**, w tym PostgreSQL.
+[CI poprawki](https://github.com/BaseMar/ProgressAnalyzer/actions/runs/42474397040)
+zakończyło się sukcesem. Lokalny Chrome oraz publiczna aplikacja potwierdziły
+wybór ciężarów, stare wyniki, przyczynę zmiany RIR, daty wersji planu i brak
+poziomego przepełnienia przy szerokości 390 px. Próby przeglądarkowe zmieniały
+wyłącznie podgląd w testowej sesji; nie zapisywały wyników do bazy.
+
 ## Powrót do poprzedniego działania
 
 Poprzedni kod aplikacji: `4039b72db4ebf7b46c9ba4434bfeac46db35d8ba`.
