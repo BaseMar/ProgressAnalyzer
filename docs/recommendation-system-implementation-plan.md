@@ -1,9 +1,9 @@
 # Plan wdrożenia systemu rekomendacji
 
-Data: 8 listopada 2026. Status: realizacja rozpoczęta na polecenie użytkownika.
+Data: 8 listopada 2026. Status: wszystkie osiem etapów ukończone i opublikowane.
 Podstawa: [zatwierdzone zasady v1.0](progression-redesign-rules.md).
-Plan rozpisuje kolejność prac. Samo jego utworzenie nie oznacza zatwierdzenia
-wszystkich progów ani publikacji zmian.
+Poniższy plan dokumentuje wykonany zakres i kryteria odbioru. Zatwierdzone reguły
+działają w publicznej aplikacji; szczegóły sprawdzeń zawiera raport walidacji.
 
 ## Stan realizacji
 
@@ -16,7 +16,7 @@ wszystkich progów ani publikacji zmian.
 | 5. Wyjątki | Ukończony w uzgodnionym zakresie | Korekty, zastój, długa przerwa, deload/powrót, czas i ręczny ciężar/asysta. |
 | 6. Interfejs | Ukończony | Spójne cele i komunikaty, źródła i eksport; przeglądarka 1440 px oraz 390 px. |
 | 7. Plan i historia | Ukończony | Zatwierdzona wersja 6 (ID 15) od 10 listopada, 36 pozycji; porównanie 72 przyszłych decyzji na zapisanej historii. |
-| 8. Publikacja | W toku | Przygotowane wydanie; pozostały push, CI i kontrola publicznej aplikacji. |
+| 8. Publikacja | Ukończony | Wydanie `a543c83` wysłane na main; CI zakończone sukcesem, nowe reguły i cztery widoki sprawdzone w publicznej aplikacji na komputerze i telefonie. |
 
 Weryfikacja: 504 testy lokalne i 5 osobnych testów PostgreSQL przeszło.
 PostgreSQL używał wydzielonych schematów wycofanych po każdym teście. Kompilacja

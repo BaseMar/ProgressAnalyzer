@@ -1,6 +1,6 @@
 # Walidacja przebudowy rekomendacji — 8 listopada 2026
 
-Status: implementacja i konfiguracja zweryfikowane; trwa publikacja.
+Status: wszystkie osiem etapów ukończone; implementacja, konfiguracja i publiczne wydanie zweryfikowane.
 
 ## Wynik implementacji
 
@@ -23,7 +23,15 @@ obniża ciężary o 30–40% i wyznacza cel RIR 3–4. Szczegóły zawiera
 | Chrome 1440 px: Overview, Analysis, Plan, History | Bez wyjątków aplikacji i błędów JS. |
 | Otwarcie importu i pełnego treningu | Przeszło, bez zapisywania testowych danych do rzeczywistej historii. |
 | Chrome 390 px: pełny trening Overview | Bez poziomego przepełnienia i wyjątków. |
-| Publiczne wydanie i CI | Do uzupełnienia po publikacji. |
+| Publiczne wydanie i CI | Commit `a543c83` na main, CI zakończone sukcesem; nowe reguły potwierdzone w publicznej aplikacji. |
+
+Wydanie aplikacji: [`a543c83`](https://github.com/BaseMar/ProgressAnalyzer/commit/a543c830704c103b70ad5d8b69dbd3a9575e70f4).
+[CI wydania](https://github.com/BaseMar/ProgressAnalyzer/actions/runs/42472144063)
+zakończyło się sukcesem. W [publicznej aplikacji](https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app/)
+ponownie sprawdzono cztery widoki, otwarcie importu, pełny trening oraz szerokość
+390 px, bez wyjątków aplikacji, błędów JavaScript i poziomego przepełnienia.
+Rozwinięte wyjaśnienie celów potwierdziło nowe zasady: jeden pełny sukces,
+wyrównywanie, limit 10% na serię oraz deload z zachowaniem serii/powtórzeń i RIR 3–4.
 
 Migracja zachowała 127 sesji, 884 zapisane wystąpienia ćwiczeń, 2531 serii,
 5 poprzednich wersji planu, 25 dni planu i 174 poprzednie pozycje planu.
