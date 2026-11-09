@@ -1,6 +1,8 @@
+"""Convert storage rows into domain models; no database access or caching."""
 import pandas as pd
 
 from models.set_load import SetLoad
+from models.plan_adherence import RecordedExercise
 
 from models import (
     BodyComposition,
@@ -59,6 +61,17 @@ def map_exercise(row: dict) -> Exercise:
         primary_muscle_group_id=None,
         body_part=row.get("body_part"),
     )
+
+
+def map_recorded_exercises(exercise_rows, set_rows) -> tuple[RecordedExercise, ...]:
+    """Group already ordered set rows while preserving recorded entry identity."""
+    sets = {row["workout_exercise_id"]: [] for row in exercise_rows}
+    for row in set_rows:
+        sets[row["workout_exercise_id"]].append(map_workout_set({
+            **row, "repetitions": row["repetitions"] or 0, "weight": row["weight"] or 0.,
+        }))
+    return tuple(RecordedExercise(row["workout_exercise_id"], row["session_id"], row["exercise_id"],
+                                  tuple(sets[row["workout_exercise_id"]])) for row in exercise_rows)
 
 
 def map_exercise_muscle_target(row: dict) -> ExerciseMuscleTarget:

@@ -3,7 +3,7 @@ from typing import Tuple
 import pandas as pd
 
 from metrics.input import MetricsInput
-from metrics.body_metrics import to_date
+from metrics.utils.dates import to_date
 
 
 def filter_data_by_month(

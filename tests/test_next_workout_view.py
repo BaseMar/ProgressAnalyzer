@@ -258,7 +258,7 @@ from sqlalchemy.exc import OperationalError
 from ui.next_workout_view import NextWorkoutView
 def fail(*args):
     raise OperationalError("schedule read", {}, Exception("unavailable"))
-manager = SimpleNamespace(load_scheduled_workouts=fail)
+manager = SimpleNamespace(prepare_plan_context=lambda *args, **kwargs: fail())
 version = SimpleNamespace(draft=SimpleNamespace(effective_from=date.today()))
 NextWorkoutView(manager).render(1, [version])
 st.caption("Historical analysis remains visible")

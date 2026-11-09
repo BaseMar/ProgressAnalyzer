@@ -9,7 +9,7 @@ import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
-APPLICATION_DIRECTORIES = {'db', 'metrics', 'models', 'ui'}
+APPLICATION_DIRECTORIES = {'db', 'metrics', 'models', 'services', 'ui'}
 
 
 def tracked_python_files(root):

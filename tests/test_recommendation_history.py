@@ -15,7 +15,7 @@ from db.training_plans import save_training_plan, load_training_plan_versions
 from db.plan_schedule import load_scheduled_workouts, assign_scheduled_session
 from db.plan_adherence import load_plan_adherence, save_exercise_match, actual_exercises, actual_sets
 from data_manager import DataManager
-from ui.next_workout_view import approved_alternatives
+from metrics.recommendation_history import approved_alternatives
 from test_plan_schedule import schedule_data
 from test_plan_performance import data
 from test_progression import PLAN, AS_OF, BLOCK, recommend, upcoming, working

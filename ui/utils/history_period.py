@@ -3,7 +3,7 @@ from datetime import date
 
 import pandas as pd
 import streamlit as st
-from metrics.body_metrics import to_date
+from metrics.utils.dates import to_date
 
 
 def select_analysis_month(input_data):

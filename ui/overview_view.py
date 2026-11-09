@@ -36,7 +36,9 @@ class OverviewView:
                 st.info("Save a plan version to start the overview.")
                 return None, ()
             start = as_of - timedelta(days=27)
-            history = self.dm.load_plan_performance(plan_id, start, as_of)
+            preview_end = max(as_of, min(version.draft.effective_from for version in versions)) + timedelta(days=28)
+            context = self.dm.prepare_plan_context(plan_id, start, preview_end, as_of=as_of, versions=versions)
+            history = context.history
         except SQLAlchemyError:
             logger.exception("Unable to load current plan overview")
             st.error("The plan overview could not be loaded. Your recorded sessions remain available in History.")
@@ -51,7 +53,8 @@ class OverviewView:
             # The placeholder above stays first in the page; prepare targets once
             # so the conclusion and annotations use the user's actual preview.
             with next_workout:
-                preview = NextWorkoutView(self.dm, self.names).render(plan_id, versions, history=history, as_of=as_of, compact=True)
+                preview = NextWorkoutView(self.dm, self.names).render(plan_id, versions, context=context,
+                    history=history, as_of=as_of, compact=True)
             report = compute_training_insights(history, as_of=as_of, start=start, end=as_of,
                 settings_by_version=settings, preview=preview, date_basis="performed")
             with attention:

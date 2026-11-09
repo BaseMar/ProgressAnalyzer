@@ -45,4 +45,4 @@ jobs:
       - name: Run unit, Streamlit and PostgreSQL tests
         run: python -m pytest --junitxml=test-results.xml
       - name: Compile application modules
-        run: python -m compileall -q db metrics models ui streamlit_app.py data_loader.py data_manager.py mapper.py
+        run: python -m compileall -q db metrics models services ui streamlit_app.py data_loader.py data_manager.py mapper.py

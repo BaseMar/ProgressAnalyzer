@@ -6,6 +6,27 @@ from db.exercise_muscle_resolver import MuscleTarget, resolve_exercise
 from db.set_loads import load_sql_parts
 
 
+def get_workout_exercises(engine) -> pd.DataFrame:
+    query = text("SELECT workout_exercise_id, session_id, exercise_id FROM workout_exercises")
+    with engine.connect() as connection:
+        return pd.read_sql(query, connection)
+
+
+def get_exercise_muscle_targets(engine) -> pd.DataFrame:
+    """Return optional muscle mappings, preserving reads on older schemas."""
+    query = text("""
+        SELECT exercise_id, muscle_group, muscle_name, role, set_factor
+        FROM exercise_muscle_map
+        ORDER BY exercise_id, muscle_group, muscle_name
+    """)
+    try:
+        with engine.connect() as connection:
+            return pd.read_sql(query, connection)
+    except Exception:
+        logging.getLogger(__name__).exception("load_exercise_muscle_targets failed")
+        return pd.DataFrame(columns=["exercise_id", "muscle_group", "muscle_name", "role", "set_factor"])
+
+
 def get_workout_sessions(engine) -> pd.DataFrame:
     query = text("""
         SELECT ws.session_id, ws.session_date, ws.start_time, ws.end_time

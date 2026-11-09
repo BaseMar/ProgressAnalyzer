@@ -1,9 +1,9 @@
 from collections import defaultdict
-from datetime import date, datetime
 from statistics import mean
 from typing import Any
 
 from metrics.input import MetricsInput
+from metrics.utils.dates import to_date
 
 
 EMPTY_BODY_METRICS = {
@@ -14,19 +14,6 @@ EMPTY_BODY_METRICS = {
     "insights": [],
     "deltas": {},
 }
-
-
-def to_date(value: Any) -> date:
-    """Normalize date-like values to ``datetime.date`` for reliable joins."""
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
-        return value
-    if hasattr(value, "date"):
-        return value.date()
-    if isinstance(value, str):
-        return datetime.fromisoformat(value).date()
-    raise TypeError(f"Unsupported date value: {value!r}")
 
 
 def _empty_body_metrics() -> dict[str, Any]:

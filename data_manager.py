@@ -1,13 +1,16 @@
 import logging
 from functools import wraps
 from typing import Any, Dict, List
-from datetime import date, time, timedelta
+from datetime import date, time
 import pandas as pd
-from sqlalchemy import text
 
 from db.connection import get_engine
-from db.set_loads import insert_set_load, save_session_set_loads, set_load_storage_ready, suggest_body_mass
-from db.progression import load_normal_workout_recommendations, load_workout_recommendations
+from db.set_loads import save_session_set_loads, set_load_storage_ready, suggest_body_mass
+from db.workout_sessions import save_workout_session
+from services.recommendations import (
+    load_normal_workout_recommendations, load_workout_recommendations,
+    prepare_plan_context, recommend_prepared_workout,
+)
 from db.recommendation_references import load_recommendation_references
 from db.starting_loads import load_starting_loads, save_starting_loads, starting_load_storage_ready
 from db.training_context import load_deload_exercise_ids
@@ -16,8 +19,7 @@ from db.training_plans import (
     save_training_plan, training_plan_storage_ready,
 )
 from models.training_plan import TrainingPlanDraft, TrainingPlanVersion
-from models.set_load import SetLoad
-from db.set_classifications import classifications, classification_storage_ready, load_session_sets, save_set_classifications
+from db.set_classifications import classification_storage_ready, load_session_sets, save_set_classifications
 from db.plan_adherence import adherence_storage_ready, load_plan_adherence, load_plan_performance, save_exercise_match, remove_exercise_match
 from db.plan_schedule import (
     plan_schedule_storage_ready, load_scheduled_workouts, load_scheduled_workout_targets,
@@ -29,6 +31,8 @@ from db.queries import (
     get_body_composition,
     get_body_measurements,
     get_exercises,
+    get_exercise_muscle_targets,
+    get_workout_exercises,
     get_sets_raw,
     get_workout_sessions,
     insert_body_composition,
@@ -53,15 +57,15 @@ def _refresh_after_write(method):
 
 
 class DataManager:
-    """Database access wrapper that returns query results as Pandas DataFrames.
+    """UI-facing facade for storage and application services.
 
-    This class encapsulates calls to the lower-level SQL query helpers and exposes
-    convenience methods used by the application UI and services.
+    SQL and transactions belong to db modules, recommendation orchestration to
+    services, and domain conversion to mapper. Successful writes refresh input.
     """
 
-    def __init__(self):
-        """Initialize the DataManager and create/cache the DB engine."""
-        self.engine = get_engine()
+    def __init__(self, *, engine=None):
+        """Use the configured engine, or an explicit engine for isolated callers."""
+        self.engine = get_engine() if engine is None else engine
 
     def load_sessions(self) -> pd.DataFrame:
         """Load all workout sessions from the database."""
@@ -101,6 +105,12 @@ class DataManager:
 
     def load_plan_performance(self, plan_id, start, end):
         return load_plan_performance(self.engine, plan_id, start, end)
+
+    def prepare_plan_context(self, plan_id, start, end, *, as_of, versions=None):
+        return prepare_plan_context(self.engine, plan_id, start, end, as_of=as_of, versions=versions)
+
+    def recommend_prepared_workout(self, prepared, **options):
+        return recommend_prepared_workout(self.engine, prepared, **options)
 
     def load_normal_workout_recommendations(self, plan_id, day_id, scheduled_date, *, as_of, **options):
         return load_normal_workout_recommendations(self.engine, plan_id, day_id, scheduled_date, as_of=as_of, **options)
@@ -171,21 +181,7 @@ class DataManager:
 
     def load_exercise_muscle_targets(self) -> pd.DataFrame:
         """Load detailed exercise-to-muscle mappings if the mapping table exists."""
-        query = text(
-            """
-            SELECT exercise_id, muscle_group, muscle_name, role, set_factor
-            FROM exercise_muscle_map
-            ORDER BY exercise_id, muscle_group, muscle_name
-            """
-        )
-        try:
-            with self.engine.connect() as conn:
-                return pd.read_sql(query, conn)
-        except Exception:
-            logger.exception("load_exercise_muscle_targets failed")
-            return pd.DataFrame(
-                columns=["exercise_id", "muscle_group", "muscle_name", "role", "set_factor"]
-            )
+        return get_exercise_muscle_targets(self.engine)
 
     def load_sets_ui(self) -> pd.DataFrame:
         """Sets prepared for UI (joins, names, volume)."""
@@ -238,81 +234,8 @@ class DataManager:
 
     @_refresh_after_write
     def add_workout_session(self, session_date, notes, exercises_data, session_start=None, session_end=None):
-        """Save every exercise and load snapshot atomically, appending to the day."""
-        day = pd.Timestamp(session_date).date()
-        if pd.isna(day) or not exercises_data or any(not item.get("sets") for item in exercises_data):
-            raise ValueError("Choose a workout date and add at least one set per exercise")
-        explicit = False
-        for exercise in exercises_data:
-            for item in exercise["sets"]:
-                load = item.get("load")
-                if load is not None:
-                    explicit = True
-                    if not isinstance(load, SetLoad) or item["weight"] != load.external_weight_kg:
-                        raise ValueError("Set weight must match its explicit external weight")
-        if explicit and not self.set_load_storage_ready():
-            raise ValueError("Bodyweight load entry needs database setup (migration 006_set_loads)")
-        try:
-            with self.engine.begin() as conn:
-                row = conn.execute(text("SELECT session_id FROM workout_sessions "
-                    "WHERE session_date >= :day AND session_date < :next_day ORDER BY session_id DESC"),
-                    {"day": day, "next_day": day + timedelta(days=1)}).first()
-                if row:
-                    session_id = row[0]
-                else:
-                    session_id = conn.execute(text("""
-                        INSERT INTO workout_sessions (session_date, notes, start_time, end_time)
-                        VALUES (:date, :notes, :start_time, :end_time) RETURNING session_id
-                    """), {"date": day, "notes": notes, "start_time": session_start, "end_time": session_end}).scalar_one()
-                for exercise in exercises_data:
-                    if exercise.get("exercise_id") is not None:
-                        res = conn.execute(text("SELECT exercise_id FROM exercises WHERE exercise_id=:id"),
-                                           {"id": exercise["exercise_id"]}).fetchone()
-                    else:
-                        res = conn.execute(text("SELECT exercise_id FROM exercises WHERE exercise_name=:name"),
-                                           {"name": exercise["name"]}).fetchone()
-                    if not res:
-                        raise ValueError("Exercise not found")
-                    exercise_id = res[0]
-
-                    insert_we = text(
-                        "INSERT INTO workout_exercises (session_id, exercise_id) VALUES (:sid, :eid) RETURNING workout_exercise_id;")
-                    workout_ex_id = conn.execute(
-                        insert_we, {"sid": session_id, "eid": exercise_id}
-                    ).scalar()
-
-                    for idx, s in enumerate(exercise["sets"], start=1):
-                        ins_set = text(
-                            """
-                            INSERT INTO workout_sets
-                                (workout_exercise_id, set_number, repetitions, weight, duration_seconds, RIR)
-                            VALUES
-                                (:weid, :num, :reps, :weight, :duration_seconds, :rir)
-                            RETURNING set_id
-                            """
-                        )
-                        result = conn.execute(
-                            ins_set,
-                            {
-                                "weid": workout_ex_id,
-                                "num": idx,
-                                "reps": s["reps"],
-                                "weight": s["weight"],
-                                "duration_seconds": s.get("duration_seconds"),
-                                "rir": s["rir"],
-                            },
-                        )
-                        set_id = result.scalar_one()
-                        if s.get("load") is not None:
-                            insert_set_load(conn, set_id, s["load"])
-                        if s.get("is_warmup") is not None:
-                            if type(s["is_warmup"]) is not bool:
-                                raise ValueError("Invalid set classification")
-                            conn.execute(classifications.insert().values(set_id=set_id, is_warmup=s["is_warmup"]))
-            return True
-        except Exception:
-            logger.exception("add_workout_session failed")
-            raise
+        """Persist a workout, then refresh the shared input cache."""
+        return save_workout_session(self.engine, session_date, notes, exercises_data, session_start, session_end)
 
     @_refresh_after_write
     def add_body_measurements(self, data: dict) -> bool:
@@ -345,14 +268,7 @@ class DataManager:
         return get_sets_raw(self.engine)
 
     def load_workout_exercises(self) -> pd.DataFrame:
-        query = text(
-            """
-            SELECT workout_exercise_id, session_id, exercise_id
-            FROM workout_exercises
-            """
-        )
-        with self.engine.connect() as conn:
-            return pd.read_sql(query, conn)
+        return get_workout_exercises(self.engine)
 
     @_refresh_after_write
     def delete_session(self, session_id: int) -> bool:

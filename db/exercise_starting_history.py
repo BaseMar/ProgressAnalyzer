@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
 
-from db.plan_adherence import _recorded, actual_exercises
+from db.recorded_workouts import load_recorded_exercises, actual_exercises
 from db.plan_schedule import links, sessions
 from db.training_context import load_deload_exercise_ids
 from db.training_plans import days
@@ -26,7 +26,7 @@ def load_exercise_starting_history(engine, exercise_ids, *, as_of):
         sessions.c.session_id.desc(), actual_exercises.c.workout_exercise_id)
     with engine.connect() as connection:
         rows = connection.execute(query).mappings().all()
-        recorded = {item.workout_exercise_id: item for item in _recorded(connection,
+        recorded = {item.workout_exercise_id: item for item in load_recorded_exercises(connection,
             {row['session_id'] for row in rows}, exercise_ids=exercise_ids)}
     deload_ids = load_deload_exercise_ids(engine, as_of=as_of)
     result = {}

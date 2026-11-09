@@ -3,7 +3,7 @@ from datetime import date
 
 from sqlalchemy import func, select
 
-from db.plan_adherence import _recorded, actual_exercises
+from db.recorded_workouts import load_recorded_exercises, actual_exercises
 from db.plan_schedule import links, sessions
 from db.training_plans import days
 from db.read_cache import read_cached
@@ -31,7 +31,7 @@ def load_recommendation_references(engine, exercise_ids, *, as_of):
             .outerjoin(links, links.c.session_id == ranked.c.session_id)
             .outerjoin(days, days.c.day_id == links.c.day_id)
             .where(ranked.c.recency == 1).order_by(ranked.c.workout_exercise_id)).mappings().all()
-        records = {item.workout_exercise_id: item for item in _recorded(
+        records = {item.workout_exercise_id: item for item in load_recorded_exercises(
             connection, {row["session_id"] for row in rows})}
     result = {}
     for row in rows:

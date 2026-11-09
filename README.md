@@ -736,9 +736,12 @@ flowchart LR
 | --- | --- |
 | `streamlit_app.py`, `ui/` | Navigation, forms and presentation. |
 | `metrics/` | Calculations and decision rules, independent of Streamlit. |
-| `models/` | Immutable workout, plan and recommendation types. |
-| `data_loader.py`, `mapper.py` | Convert database rows into structured inputs. |
-| `data_manager.py`, `db/` | Database access, imports, transactions and migrations. |
+| `models/` | Immutable workout, plan, read-context and recommendation types. |
+| `services/` | Prepare shared plan inputs and coordinate recommendation workflows. |
+| `mapper.py` | Convert storage rows into domain objects without reading the database. |
+| `data_loader.py` | Assemble and cache the shared calculation input. |
+| `data_manager.py` | UI-facing facade and input-cache invalidation after successful writes. |
+| `db/` | SQL readers, persistence, transactions and migrations. |
 
 Keeping calculations separate from the interface lets tests check a rule
 without opening the dashboard. Views can reshape prepared results for charts;
@@ -755,6 +758,9 @@ a portable synthetic benchmark and optional read-only PostgreSQL measurements.
 The [data access and cache optimization report](docs/data-access-optimization.md)
 compares stage 4 against that baseline and documents cache lifetime, write
 invalidation and behavior-preservation checks.
+
+The [project structure guide](docs/project-structure.md) describes the stage 5
+module boundaries, shared recommendation context and retained compatibility APIs.
 
 ## Language and Terminology
 
@@ -915,7 +921,7 @@ transaction rollback and Streamlit views.
 
 ```powershell
 python -m pytest
-python -m compileall -q db metrics models ui streamlit_app.py data_loader.py data_manager.py mapper.py
+python -m compileall -q db metrics models services ui streamlit_app.py data_loader.py data_manager.py mapper.py
 ```
 
 Five PostgreSQL integration cases need a separate test database.

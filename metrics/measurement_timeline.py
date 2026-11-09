@@ -1,5 +1,5 @@
 """Recorded body values by actual date, including first and measurement-only logs."""
-from metrics.body_metrics import to_date
+from metrics.utils.dates import to_date
 
 
 def measurement_timeline(input_data):

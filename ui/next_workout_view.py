@@ -6,31 +6,16 @@ import logging
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
-from metrics.plan_performance import comparison_context, compute_plan_performance
 from metrics.overview_summary import workout_focus
 from metrics.utils.recommendation_text import goal_summary
-from metrics.recommendation_history import workout_exercise_identity
+from metrics.recommendation_history import approved_alternatives
 from metrics.workout_template import workout_template
-from models.plan_adherence import PlannedTarget, PlannedWorkout
 from models.training_insights import WorkoutPreview
 from ui.utils.ui_helpers import section_header
 from ui.utils.copy_workout import copy_workout
 from ui.manual_start import MANUAL_START_REASONS, choose_starting_loads, prescription_summary, reference_html
 
 logger = logging.getLogger(__name__)
-
-
-def approved_alternatives(history, slot, planned_exercises, *, as_of):
-    """Explicit logged alternatives for this workout survive target/order changes."""
-    rows = compute_plan_performance(history, as_of=as_of)
-    return {
-        position: sorted({row["actual_exercise_id"] for row in rows
-            if row["actual_exercise_id"] != planned.exercise_id and row["sets"]
-            and row["performed_on"] is not None and row["performed_on"] <= as_of
-            and workout_exercise_identity(row["context"]) == workout_exercise_identity(
-                comparison_context(slot, position, planned, row["actual_exercise_id"]))})
-        for position, planned in enumerate(planned_exercises, start=1)
-    }
 
 
 def recommendation_note(item):
@@ -88,11 +73,11 @@ class NextWorkoutView:
     def _name(self, exercise_id):
         return self.names.get(exercise_id, f"Exercise #{exercise_id}")
 
-    def render(self, plan_id, versions, *, history=None, as_of=None, compact=False):
+    def render(self, plan_id, versions, *, context=None, history=None, as_of=None, compact=False):
         as_of = as_of or date.today()
         section_header("Next workout")
         try:
-            return self._render(plan_id, versions, history, as_of, compact=compact)
+            return self._render(plan_id, versions, history, as_of, context=context, compact=compact)
         except SQLAlchemyError:
             logger.exception("Unable to load next-workout recommendations")
             st.error("Next-workout targets could not be loaded. Your recorded history is still available.")
@@ -100,13 +85,18 @@ class NextWorkoutView:
             logger.exception("Next-workout selection is no longer valid")
             st.info("The plan or workout assignment changed. Refresh this view to select the next workout.")
 
-    def _render(self, plan_id, versions, history, as_of, *, compact=False):
+    def _render(self, plan_id, versions, history, as_of, *, context=None, compact=False):
         if not versions:
             st.info("Save a Training Plan to see the next workout.")
             return
         first = max(as_of, min(version.draft.effective_from for version in versions))
-        slots = self.dm.load_scheduled_workouts(plan_id, as_of, first + timedelta(days=28))
-        slots = sorted((slot for slot in slots if slot.session_id is None),
+        end = first + timedelta(days=28)
+        if context is None:
+            context = self.dm.prepare_plan_context(plan_id, as_of, end, as_of=as_of, versions=versions)
+        if context.plan_id != plan_id or context.as_of != as_of:
+            raise ValueError("The preview context must use the selected plan and cutoff date")
+        slots = sorted((item.slot for item in context.history.workouts
+                        if as_of <= item.slot.scheduled_date <= end and item.slot.session_id is None),
                        key=lambda slot: (slot.scheduled_date, slot.position, slot.day_id))
         if not slots:
             st.info("All workouts in the upcoming four-week window are already linked.")
@@ -119,7 +109,8 @@ class NextWorkoutView:
             selected = st.selectbox("Upcoming workout", list(choices), key=selection_key,
                 format_func=lambda key: f'{choices[key].scheduled_date:%a, %d %b %Y} · {choices[key].name}')
             slot = choices[selected]
-            result = self.dm.load_workout_recommendations(plan_id, slot.day_id, slot.scheduled_date, as_of=as_of)
+            prepared = context.prepare_workout(slot.day_id, slot.scheduled_date)
+            result = self.dm.recommend_prepared_workout(prepared)
             version = next(version for version in versions if version.version_id == slot.version_id)
             self._heading(slot, result.block, version.draft.progression)
             st.caption(f"Plan version {version.version_number} · effective from {version.draft.effective_from:%d %b %Y}.")
@@ -139,15 +130,13 @@ class NextWorkoutView:
                 return
             planned = version.draft.days[slot.position - 1]
             if history is None:
-                history = self.dm.load_plan_performance(plan_id, as_of, slot.scheduled_date)
+                history = context.history
             alternatives = approved_alternatives(history, slot, planned.exercises, as_of=as_of)
             substitutions, steps = self._alternatives(plan_id, slot, result.exercises, alternatives)
             if substitutions:
-                result = self.dm.load_workout_recommendations(plan_id, slot.day_id, slot.scheduled_date,
-                    as_of=as_of, substitutions=substitutions, replacement_weight_steps=steps)
-            upcoming = PlannedWorkout(slot, tuple(
-                PlannedTarget(item.plan_exercise_id, exercise)
-                for item, exercise in zip(result.exercises, planned.exercises)))
+                result = self.dm.recommend_prepared_workout(prepared,
+                    substitutions=substitutions, replacement_weight_steps=steps)
+            upcoming = prepared.upcoming
             references = self.dm.load_recommendation_references(
                 {item.actual_exercise_id for item in result.exercises if item.reason_code in MANUAL_START_REASONS}, as_of=as_of)
             result = choose_starting_loads(result, upcoming, self.names, references, self.dm)

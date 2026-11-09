@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from data_manager import DataManager
 from db.migrations import v006_set_loads
-from db.plan_adherence import _recorded, actual_exercises, actual_sets
+from db.recorded_workouts import load_recorded_exercises, actual_exercises, actual_sets
 from db.queries import get_all_sets, get_sets_raw
 from db.set_classifications import load_session_sets
 from db.set_loads import loads, save_session_set_loads, set_load_storage_ready
@@ -102,7 +102,7 @@ def test_roundtrip_through_raw_ui_session_and_plan_readers(schedule_data):
         assert [row.load.total_load_kg for row in explicit] == [90, 60]
         assert [row.weight for row in explicit] == [10, 0]
     with engine.connect() as connection:
-        recorded = _recorded(connection, {1, 2})
+        recorded = load_recorded_exercises(connection, {1, 2})
     by_id = {row.workout_exercise_id: row for row in recorded}
     assert by_id[100].sets[0].load == SetLoad("bodyweight", 10, 80)
     assert by_id[200].sets[0].load is None
@@ -129,7 +129,7 @@ def test_migration_preserves_existing_weights_and_optional_schema_readers(schedu
         assert frame.load_type.isna().all()
         assert all(map_workout_set(row).load is None for row in frame.to_dict("records"))
     with engine.connect() as connection:
-        assert _recorded(connection, {1})[0].sets[0].load is None
+        assert load_recorded_exercises(connection, {1})[0].sets[0].load is None
     with pytest.raises(ValueError, match="migration"):
         save_session_set_loads(engine, 1, {1: SetLoad("bodyweight", 0, 80)})
     with engine.begin() as connection:

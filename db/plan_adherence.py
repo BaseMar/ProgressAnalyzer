@@ -3,73 +3,30 @@
 from dataclasses import replace
 from datetime import date
 
-from sqlalchemy import Column, Integer, Float, MetaData, String, Table, func, literal, select
+from sqlalchemy import Column, Integer, MetaData, Table, func, select
 from sqlalchemy.exc import IntegrityError
 
 from db.migrations.v003_exercise_matches import define_table
 from db.read_cache import has_table, read_cached
 from db.plan_schedule import links, load_scheduled_workouts, sessions
 from db.training_plans import exercises as targets, versions, days, exercise_lineage
-from db.set_classifications import classifications
-from db.set_loads import loads
-from mapper import map_workout_set
+from db.recorded_workouts import actual_exercises, actual_sets, catalog_exercises, load_recorded_exercises
 from metrics.plan_adherence import compatible_set
 from metrics.load_metrics import suggested_load_type
 from models.plan_adherence import (
-    ExerciseMatch, PlanAdherenceInput, PlannedTarget, PlannedWorkout, RecordedExercise,
+    ExerciseMatch, PlanAdherenceInput, PlannedTarget, PlannedWorkout,
 )
 from models.training_plan import PlannedExercise
 
 metadata = MetaData()
 Table("training_plan_session_links", metadata, Column("session_id", Integer, primary_key=True))
 Table("training_plan_exercises", metadata, Column("plan_exercise_id", Integer, primary_key=True))
-actual_exercises = Table("workout_exercises", metadata,
-    Column("workout_exercise_id", Integer, primary_key=True),
-    Column("session_id", Integer), Column("exercise_id", Integer),
-)
-actual_sets = Table("workout_sets", metadata,
-    Column("set_id", Integer, primary_key=True),
-    Column("workout_exercise_id", Integer), Column("set_number", Integer),
-    Column("repetitions", Integer), Column("weight", Float),
-    Column("rir", Integer), Column("duration_seconds", Integer),
-)
-catalog_exercises = Table("exercises", metadata, Column("exercise_id", Integer, primary_key=True),
-                          Column("exercise_name", String))
 matches = define_table(metadata)
 
 
 def adherence_storage_ready(engine):
     with engine.connect() as connection:
         return has_table(connection, matches.name)
-
-
-@read_cached
-def _recorded(connection, session_ids, *, exercise_ids=None):
-    if not session_ids:
-        return ()
-    exercise_filter = [actual_exercises.c.session_id.in_(session_ids)]
-    if exercise_ids is not None:
-        exercise_filter.append(actual_exercises.c.exercise_id.in_(exercise_ids))
-    exercises = connection.execute(select(actual_exercises).where(*exercise_filter)).mappings().all()
-    load_fields = ("load_type", "body_mass_kg", "assistance_kg")
-    load_storage = has_table(connection, loads.name)
-    columns = [loads.c[name] if load_storage else literal(None).label(name) for name in load_fields]
-    query = select(actual_sets, classifications.c.is_warmup, *columns).outerjoin(
-        classifications, classifications.c.set_id == actual_sets.c.set_id,
-    ).join(
-        actual_exercises, actual_sets.c.workout_exercise_id == actual_exercises.c.workout_exercise_id,
-    )
-    if load_storage:
-        query = query.outerjoin(loads, loads.c.set_id == actual_sets.c.set_id)
-    rows = connection.execute(query.where(*exercise_filter)
-                              .order_by(actual_sets.c.set_number)).mappings().all()
-    sets = {row["workout_exercise_id"]: [] for row in exercises}
-    for row in rows:
-        sets[row["workout_exercise_id"]].append(map_workout_set({
-            **row, "repetitions": row["repetitions"] or 0, "weight": row["weight"] or 0.,
-        }))
-    return tuple(RecordedExercise(row["workout_exercise_id"], row["session_id"], row["exercise_id"],
-                                  tuple(sets[row["workout_exercise_id"]])) for row in exercises)
 
 
 @read_cached
@@ -110,7 +67,7 @@ def load_plan_adherence(engine, plan_id, start, end) -> PlanAdherenceInput:
     session_ids = {slot.session_id for slot in slots if slot.session_id is not None}
     by_day = _plan_targets(engine, plan_id) if slots else {}
     with engine.connect() as connection:
-        recorded = _recorded(connection, session_ids)
+        recorded = load_recorded_exercises(connection, session_ids)
         confirmed = _confirmed(connection, session_ids)
         manual_ids = _manual_load_ids(connection)
     return PlanAdherenceInput(tuple(PlannedWorkout(slot, tuple(by_day.get(slot.day_id, ()))) for slot in slots),
@@ -163,7 +120,7 @@ def save_exercise_match(engine, session_id, plan_exercise_id, workout_exercise_i
                 targets.c.plan_exercise_id == plan_exercise_id,
                 targets.c.day_id == assignment["day_id"],
             )).mappings().one_or_none()
-            actual = next((item for item in _recorded(connection, [session_id])
+            actual = next((item for item in load_recorded_exercises(connection, [session_id])
                            if item.workout_exercise_id == workout_exercise_id), None)
             if planned is None or actual is None:
                 raise ValueError("Choose a planned position and an exercise from its linked session")

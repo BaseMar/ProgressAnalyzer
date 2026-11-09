@@ -3,8 +3,21 @@ from collections import Counter
 from dataclasses import replace
 from datetime import date
 
-from metrics.plan_performance import compute_plan_performance
+from metrics.plan_performance import comparison_context, compute_plan_performance
 from models.plan_adherence import PlannedTarget
+
+
+def approved_alternatives(history, slot, planned_exercises, *, as_of):
+    """Explicit logged alternatives for this workout survive target/order changes."""
+    rows = compute_plan_performance(history, as_of=as_of)
+    return {
+        position: sorted({row["actual_exercise_id"] for row in rows
+            if row["actual_exercise_id"] != planned.exercise_id and row["sets"]
+            and row["performed_on"] is not None and row["performed_on"] <= as_of
+            and workout_exercise_identity(row["context"]) == workout_exercise_identity(
+                comparison_context(slot, position, planned, row["actual_exercise_id"]))})
+        for position, planned in enumerate(planned_exercises, start=1)
+    }
 
 
 def with_recorded_baselines(data, performances, planned, actual_id, *, as_of):

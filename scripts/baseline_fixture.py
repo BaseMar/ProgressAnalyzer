@@ -8,7 +8,8 @@ from sqlalchemy.pool import StaticPool
 
 from db.exercise_history_load_settings import confirm_legacy_body_mass_history
 from db.migrate import migrate
-from db.plan_adherence import actual_exercises, actual_sets, save_exercise_match
+from db.plan_adherence import save_exercise_match
+from db.recorded_workouts import actual_exercises, actual_sets
 from db.plan_schedule import assign_scheduled_session, load_scheduled_workouts
 from db.set_classifications import classifications
 from db.set_loads import insert_set_load
