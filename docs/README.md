@@ -29,6 +29,10 @@ synthetic semantic reference is [project_baseline.json](../tests/fixtures/projec
 The [archive index](archive/README.md#cleanup-measurements) maps each measurement
 to its report. Baseline data should not be regenerated to hide a behavior change.
 
+The [final cleanup validation](archive/final-cleanup-validation.md) records the
+stage 9 acceptance results, performance comparison, browser coverage and remaining
+limits for its stated application commit.
+
 ## Keep documentation current
 
 When behavior changes, update its maintained guide and verify the corresponding

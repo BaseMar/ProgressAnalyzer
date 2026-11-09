@@ -31,9 +31,11 @@ Current policy lives in [recommendation rules](../progression-rules.md),
 | 5: structure | [Module ownership and prepared inputs](project-structure.md) | [stage-5.json](../baselines/stage-5.json) |
 | 6: retirement | [Removed implementations and retained coverage](code-retirement.md) | [stage-6.json](../baselines/stage-6.json) |
 | 7: dependencies/checks | [Fresh-environment and CI verification](dependency-tooling-verification.md) | [stage-7.json](../baselines/stage-7.json) |
+| 8: documentation | Maintained [topic map](../README.md) and archived delivery records | Commit `4319cbf` |
+| 9: final acceptance | [Tests, performance, browser and data-integrity validation](final-cleanup-validation.md) | [stage-9.json](../baselines/stage-9.json) |
 
-Stage 8 consolidates documentation. The maintained topic map is in the
-[documentation index](../README.md); stage 9 remains final acceptance.
+All nine cleanup stages are complete. The [final validation report](final-cleanup-validation.md)
+defines the acceptance scope and remaining product limitations.
 
 ## Reading the evidence
 
