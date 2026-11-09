@@ -1,7 +1,7 @@
 # Local setup and database migrations
 
-All commands below run from the repository root. The activation example uses
-Windows PowerShell; Python module commands are the same on other platforms.
+After cloning, run Python commands from the repository root. The activation
+example uses Windows PowerShell; Python module commands are the same on other platforms.
 The public demo has one shared dataset; there is no authentication or user-data
 isolation. See [architecture](architecture.md#data-model) for storage ownership.
 
@@ -18,7 +18,8 @@ create a ready-to-use database. For a quick look, use the [live demo](https://pr
 
 ## Set up locally
 
-These activation commands are for Windows PowerShell:
+Start in the folder where you want to clone the project. These activation
+commands are for Windows PowerShell:
 
 ```powershell
 git clone https://github.com/BaseMar/ProgressAnalyzer.git
