@@ -2,6 +2,7 @@
 Strength-related helper functions used across multiple metrics.
 """
 
+
 def estimate_1rm(weight: float, reps: int) -> float:
     """
     Estimate one-repetition maximum (1RM) using the Epley formula.

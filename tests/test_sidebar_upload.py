@@ -14,10 +14,21 @@ def test_dead_hang_log_keeps_seconds_working_labels_and_missing_rir(monkeypatch)
     warnings = []
     monkeypatch.setattr("ui.sidebar_upload.st.sidebar", SimpleNamespace(warning=warnings.append))
     parsed = _upload()._parse_txt("1. Dead hang\nWorking: 30s / 45s / 1:00\n")
-    assert parsed == [{"name": "Dead hang", "sets": [
-        {"reps": seconds, "weight": 0., "duration_seconds": seconds, "rir": None, "is_warmup": False}
-        for seconds in (30, 45, 60)
-    ]}]
+    assert parsed == [
+        {
+            "name": "Dead hang",
+            "sets": [
+                {
+                    "reps": seconds,
+                    "weight": 0.0,
+                    "duration_seconds": seconds,
+                    "rir": None,
+                    "is_warmup": False,
+                }
+                for seconds in (30, 45, 60)
+            ],
+        }
+    ]
     assert warnings == []
 
 
@@ -54,12 +65,7 @@ def test_parse_txt_reads_sets_and_rir_values(monkeypatch):
     )
 
     parsed = upload._parse_txt(
-        "1. Bench Press\n"
-        "10x100 / 8x110\n"
-        "RIR: 2 / 1\n"
-        "2. Row\n"
-        "12x60\n"
-        "RIR: 3\n"
+        "1. Bench Press\n10x100 / 8x110\nRIR: 2 / 1\n2. Row\n12x60\nRIR: 3\n"
     )
 
     assert parsed == [
@@ -84,11 +90,7 @@ def test_parse_txt_reads_duration_sets_for_plank(monkeypatch):
         SimpleNamespace(warning=warnings.append),
     )
 
-    parsed = upload._parse_txt(
-        "1. Plank\n"
-        "45s / 1:00 / 75 sekund\n"
-        "RIR: 2 / 1 / 0\n"
-    )
+    parsed = upload._parse_txt("1. Plank\n45s / 1:00 / 75 sekund\nRIR: 2 / 1 / 0\n")
 
     assert parsed == [
         {
@@ -165,11 +167,7 @@ def test_parse_txt_keeps_sets_when_rir_is_missing(monkeypatch):
         SimpleNamespace(warning=warnings.append),
     )
 
-    parsed = upload._parse_txt(
-        "1) Bench Press\n"
-        "Serie: 10 x 100 kg, 8x110, 6x115\n"
-        "RIR: 2/1\n"
-    )
+    parsed = upload._parse_txt("1) Bench Press\nSerie: 10 x 100 kg, 8x110, 6x115\nRIR: 2/1\n")
 
     assert parsed == [
         {
@@ -229,12 +227,7 @@ def test_parse_txt_reads_unnumbered_inline_and_multiline_blocks(monkeypatch):
         SimpleNamespace(warning=warnings.append),
     )
 
-    parsed = upload._parse_txt(
-        "Bench Press: 10x100/8x110 RIR 2/1\n\n"
-        "Row\n"
-        "12x60\n"
-        "RIR 3\n"
-    )
+    parsed = upload._parse_txt("Bench Press: 10x100/8x110 RIR 2/1\n\nRow\n12x60\nRIR 3\n")
 
     assert parsed == [
         {

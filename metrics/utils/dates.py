@@ -1,4 +1,5 @@
 """Normalize recorded dates without importing measurement summary calculations."""
+
 from datetime import date, datetime
 from typing import Any
 

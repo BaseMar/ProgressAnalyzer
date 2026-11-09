@@ -22,7 +22,9 @@ class PlannedExercise:
     history_key: str | None = field(default=None, compare=False)
 
     def __post_init__(self):
-        if self.history_key is not None and (not isinstance(self.history_key, str) or not self.history_key.strip()):
+        if self.history_key is not None and (
+            not isinstance(self.history_key, str) or not self.history_key.strip()
+        ):
             raise ValueError("Exercise history key must be a non-empty string or None")
         for label in ("exercise_id", "set_count", "target_min", "target_max"):
             _positive_int(getattr(self, label), label)
@@ -30,11 +32,14 @@ class PlannedExercise:
             raise ValueError("Target minimum cannot exceed maximum")
         if self.target_unit not in ("reps", "seconds"):
             raise ValueError("Target unit must be reps or seconds")
-        if self.target_rir is not None and (type(self.target_rir) is not int or self.target_rir < 0):
+        if self.target_rir is not None and (
+            type(self.target_rir) is not int or self.target_rir < 0
+        ):
             raise ValueError("Target RIR must be a non-negative integer or None")
         if self.weight_increment is not None and (
             isinstance(self.weight_increment, bool)
-            or not isfinite(self.weight_increment) or self.weight_increment <= 0
+            or not isfinite(self.weight_increment)
+            or self.weight_increment <= 0
         ):
             raise ValueError("Weight increment must be finite and positive")
 

@@ -2,14 +2,14 @@ from datetime import date
 
 import pytest
 
+from metrics.exercise_metrics import compute_exercise_metrics
 from metrics.input import MetricsInput
+from metrics.utils import estimate_1rm
 from models.exercise import Exercise
 from models.exercise_muscle_target import ExerciseMuscleTarget
 from models.workout_exercise import WorkoutExercise
 from models.workout_session import WorkoutSession
 from models.workout_set import WorkoutSet
-from metrics.exercise_metrics import compute_exercise_metrics
-from metrics.utils import estimate_1rm
 
 
 def test_estimate_1rm_uses_epley_formula():

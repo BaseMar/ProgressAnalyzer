@@ -1,6 +1,7 @@
-import re
 import hashlib
+import re
 from datetime import datetime
+
 import pandas as pd
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
@@ -50,7 +51,9 @@ class SidebarUpload:
 
         content = file.getvalue().decode("utf-8")
         digest = hashlib.sha256(content.encode("utf-8")).hexdigest()[:12]
-        if file.name != st.session_state.uploaded_file_name or digest != st.session_state.get("uploaded_file_digest"):
+        if file.name != st.session_state.uploaded_file_name or digest != st.session_state.get(
+            "uploaded_file_digest"
+        ):
             st.session_state.uploaded_file_name = file.name
             st.session_state["uploaded_file_digest"] = digest
             st.session_state.adding_exercise = False
@@ -81,7 +84,9 @@ class SidebarUpload:
 
     def _review_loads(self, parsed, workout_date, scope):
         if not self.dm.set_load_storage_ready():
-            self.ui.caption("Load details need database setup. Import will preserve the original kg values.")
+            self.ui.caption(
+                "Load details need database setup. Import will preserve the original kg values."
+            )
             return parsed
         output = []
         with self.ui.expander("Review body mass and load types"):
@@ -91,10 +96,22 @@ class SidebarUpload:
                 settings = render_load_inputs(self.dm, workout_date, key=key)
                 sets = [dict(item) for item in exercise["sets"]]
                 if settings[0] != "legacy":
-                    frame = pd.DataFrame({"Set": range(1, len(sets) + 1), "kg": [item["weight"] for item in sets]})
-                    edited = st.data_editor(frame, key=f"{key}_weights", hide_index=True, disabled=["Set"],
-                        column_config={"kg": st.column_config.NumberColumn(
-                            "Weight (kg)" if settings[0] == "external" else "Additional kg", min_value=0., required=True)})
+                    frame = pd.DataFrame(
+                        {"Set": range(1, len(sets) + 1), "kg": [item["weight"] for item in sets]}
+                    )
+                    edited = st.data_editor(
+                        frame,
+                        key=f"{key}_weights",
+                        hide_index=True,
+                        disabled=["Set"],
+                        column_config={
+                            "kg": st.column_config.NumberColumn(
+                                "Weight (kg)" if settings[0] == "external" else "Additional kg",
+                                min_value=0.0,
+                                required=True,
+                            )
+                        },
+                    )
                     for item, weight in zip(sets, edited["kg"]):
                         item["weight"] = float(weight)
                         item["load"] = make_set_load(settings, weight)
@@ -142,10 +159,20 @@ class SidebarUpload:
             self.ui.warning("Time range not found in file. Importing without time data.")
 
         try:
-            self.dm.add_workout_session(workout_date, "Imported", [
-                {"name": original_map[normalize(ex["name"])], "exercise_id": normalized_map[normalize(ex["name"])],
-                 "sets": ex["sets"]} for ex in parsed
-            ], start_time, end_time)
+            self.dm.add_workout_session(
+                workout_date,
+                "Imported",
+                [
+                    {
+                        "name": original_map[normalize(ex["name"])],
+                        "exercise_id": normalized_map[normalize(ex["name"])],
+                        "sets": ex["sets"],
+                    }
+                    for ex in parsed
+                ],
+                start_time,
+                end_time,
+            )
 
             self.ui.success("Workout imported successfully!")
             st.session_state["history_workout_notice"] = "Workout imported successfully!"
@@ -164,58 +191,55 @@ class SidebarUpload:
 
     def _new_exercise_form(self, suggested_name):
         """Form to handle exercise that doesn't exist in database.
-        
+
         First shows similar exercises, then all exercises from database, then allows creating new one.
         """
         self.ui.warning(f"Exercise '{suggested_name}' not found in database")
 
         exercises_db = self.dm.load_exercises()
-        
+
         similar = self._find_similar_exercises(suggested_name, exercises_db)
-        
+
         if similar:
             self.ui.info("Did you mean? (showing similar exercises)")
             suggested_names = [row.exercise_name for row in similar]
             selected_exercise = self.ui.selectbox(
-                "Select existing exercise:",
-                options=suggested_names,
-                key="similar_exercise_select"
+                "Select existing exercise:", options=suggested_names, key="similar_exercise_select"
             )
-            
+
             if self.ui.button("Use selected exercise", icon=":material/check:"):
                 st.session_state.exercise_mapping[suggested_name] = selected_exercise
                 st.session_state.adding_exercise = False
                 st.session_state.pending_exercise = None
                 st.rerun()
                 return
-            
+
             self.ui.divider()
-        
+
         self.ui.subheader("Or choose from all exercises")
         all_exercise_names = sorted([row.exercise_name for row in exercises_db.itertuples()])
         selected_exercise_all = self.ui.selectbox(
-            "Select exercise from database:",
-            options=all_exercise_names,
-            key="all_exercises_select"
+            "Select exercise from database:", options=all_exercise_names, key="all_exercises_select"
         )
-        
+
         if self.ui.button("Use this exercise", icon=":material/check:"):
             st.session_state.exercise_mapping[suggested_name] = selected_exercise_all
             st.session_state.adding_exercise = False
             st.session_state.pending_exercise = None
             st.rerun()
             return
-        
+
         self.ui.divider()
         self.ui.caption("Or add new exercise below")
-        
+
         self.ui.subheader("Add new exercise")
         name = self.ui.text_input("Exercise name", value=suggested_name, key="new_exercise_name")
-        resolution = resolve_exercise(name.strip(), allow_web=False) if name and name.strip() else None
+        resolution = (
+            resolve_exercise(name.strip(), allow_web=False) if name and name.strip() else None
+        )
         if resolution:
             target_summary = ", ".join(
-                f"{target.muscle_group} ({target.role})"
-                for target in resolution.targets
+                f"{target.muscle_group} ({target.role})" for target in resolution.targets
             )
             self.ui.caption(
                 f"Detected: {resolution.category} / {resolution.body_part} | {target_summary}"
@@ -235,13 +259,13 @@ class SidebarUpload:
                     return
 
                 self.ui.success("Exercise added!")
-                
+
                 st.session_state.adding_exercise = False
                 st.session_state.pending_exercise = None
                 st.rerun()
             except Exception as e:
                 self.ui.error(f"Failed to add exercise: {str(e)}")
-        
+
         if self.ui.button("Cancel", icon=":material/close:", width="stretch"):
             st.session_state.adding_exercise = False
             st.session_state.pending_exercise = None
@@ -252,25 +276,27 @@ class SidebarUpload:
         """Find exercises with similar normalized names."""
         query_norm = normalize(query)
         similar = []
-        
+
         for row in exercises_df.itertuples():
             exercise_norm = normalize(row.exercise_name)
-            
-            if (query_norm in exercise_norm or 
-                exercise_norm in query_norm or 
-                self._similarity_score(query_norm, exercise_norm) > 0.6):
+
+            if (
+                query_norm in exercise_norm
+                or exercise_norm in query_norm
+                or self._similarity_score(query_norm, exercise_norm) > 0.6
+            ):
                 similar.append(row)
-        
+
         return similar
 
     def _similarity_score(self, s1: str, s2: str) -> float:
         """Simple similarity score between two strings (0-1)."""
         if s1 == s2:
             return 1.0
-        
+
         matches = sum(c1 == c2 for c1, c2 in zip(s1, s2))
         max_len = max(len(s1), len(s2))
-        
+
         return matches / max_len if max_len > 0 else 0.0
 
     def _parse_txt(self, text: str):
@@ -347,11 +373,7 @@ class SidebarUpload:
             next_line = lines[index + 1].strip() if index + 1 < len(lines) else ""
             inline_name, inline_data = self._split_name_and_inline_data(line)
 
-            if (
-                inline_name
-                and inline_data
-                and not self._is_metadata_line(line)
-            ):
+            if inline_name and inline_data and not self._is_metadata_line(line):
                 blocks.append((inline_name, [inline_data]))
                 index += 1
                 continue
@@ -394,7 +416,11 @@ class SidebarUpload:
             return self._clean_exercise_name(line), ""
 
         first_match = matches[0]
-        marker = re.search(r"\b(warm[- ]?up|rozgrzewka|working|robocze)\s*:\s*$", line[:first_match.start()], re.IGNORECASE)
+        marker = re.search(
+            r"\b(warm[- ]?up|rozgrzewka|working|robocze)\s*:\s*$",
+            line[: first_match.start()],
+            re.IGNORECASE,
+        )
         data_start = marker.start() if marker else first_match.start()
         name = self._clean_exercise_name(line[:data_start])
         if not name:
@@ -410,15 +436,15 @@ class SidebarUpload:
         for line in lines:
             if not line:
                 continue
-            if re.match(r'^(?:cel|target|plan)\s*:', line, re.IGNORECASE):
+            if re.match(r"^(?:cel|target|plan)\s*:", line, re.IGNORECASE):
                 continue
             # Accept English exports and previously saved Polish notes.
-            if re.match(r'^(?:results?|wynik)\s*:', line, re.IGNORECASE):
-                for part in line.split(':', 1)[1].split('/'):
+            if re.match(r"^(?:results?|wynik)\s*:", line, re.IGNORECASE):
+                for part in line.split(":", 1)[1].split("/"):
                     tokens = self._parse_work_tokens(part)
                     if tokens:
                         set_tokens.extend(tokens)
-                    elif re.search(r'_+\s*(?:x|s\b)|\d+\s*x\s*_+', part, re.IGNORECASE):
+                    elif re.search(r"_+\s*(?:x|s\b)|\d+\s*x\s*_+", part, re.IGNORECASE):
                         # Keep the RIR position of an unfilled template set.
                         set_tokens.append(None)
             else:
@@ -481,7 +507,9 @@ class SidebarUpload:
                     tokens.append(
                         {
                             "reps": duration_seconds,
-                            "weight": float((match.groupdict().get('weight') or '0').replace(',', '.')),
+                            "weight": float(
+                                (match.groupdict().get("weight") or "0").replace(",", ".")
+                            ),
                             "duration_seconds": duration_seconds,
                         }
                     )
@@ -492,9 +520,18 @@ class SidebarUpload:
                             "weight": float(match.group("weight").replace(",", ".")),
                         }
                     )
-                labels = list(re.finditer(r"\b(warm[- ]?up|rozgrzewka|working|robocze)\s*:", line[:match.start()], re.IGNORECASE))
+                labels = list(
+                    re.finditer(
+                        r"\b(warm[- ]?up|rozgrzewka|working|robocze)\s*:",
+                        line[: match.start()],
+                        re.IGNORECASE,
+                    )
+                )
                 if labels:
-                    tokens[-1]["is_warmup"] = labels[-1].group(1).lower() not in ("working", "robocze")
+                    tokens[-1]["is_warmup"] = labels[-1].group(1).lower() not in (
+                        "working",
+                        "robocze",
+                    )
             except ValueError:
                 continue
 
@@ -552,8 +589,10 @@ class SidebarUpload:
 
         parts = re.split(r"\bRIR\b", line, maxsplit=1, flags=re.IGNORECASE)
         values = parts[1] if len(parts) > 1 else ""
-        return [None if value.startswith('_') or value == '?' else int(value)
-                for value in re.findall(r"-?\d+|_+|\?", values)]
+        return [
+            None if value.startswith("_") or value == "?" else int(value)
+            for value in re.findall(r"-?\d+|_+|\?", values)
+        ]
 
     def _contains_set_token(self, line: str) -> bool:
         return bool(self._parse_work_tokens(line))
@@ -562,19 +601,21 @@ class SidebarUpload:
         return bool(re.search(r"\bRIR\b", line, re.IGNORECASE))
 
     def _is_metadata_line(self, line: str) -> bool:
-        return bool(re.match(r"^\s*(time|date|workout|godzina|czas|data|trening)\b", line, re.IGNORECASE))
+        return bool(
+            re.match(r"^\s*(time|date|workout|godzina|czas|data|trening)\b", line, re.IGNORECASE)
+        )
 
     def _clean_exercise_name(self, name: str) -> str:
         return re.sub(r"\s+", " ", name).strip(" :-")
 
     def _parse_time_range(self, text: str):
         """Parse workout time range from text.
-        
+
         Expected format:
         Time: 10:30 - 12:45
 
         Legacy Polish labels and separators remain accepted on input.
-        
+
         Returns:
             tuple: (start_time, end_time) or (None, None) if not found
         """

@@ -4,13 +4,40 @@ import argparse
 
 from sqlalchemy import Column, DateTime, MetaData, String, Table, func, inspect, select, text
 
-from db.migrations import v001_training_plans, v002_plan_session_links, v003_exercise_matches, v004_set_classifications, v005_progression_settings, v006_set_loads, v007_recommendation_lineage, v008_starting_loads, v009_exercise_history_load_settings
+from db.migrations import (
+    v001_training_plans,
+    v002_plan_session_links,
+    v003_exercise_matches,
+    v004_set_classifications,
+    v005_progression_settings,
+    v006_set_loads,
+    v007_recommendation_lineage,
+    v008_starting_loads,
+    v009_exercise_history_load_settings,
+)
 
-MIGRATIONS = (v001_training_plans, v002_plan_session_links, v003_exercise_matches, v004_set_classifications, v005_progression_settings, v006_set_loads, v007_recommendation_lineage, v008_starting_loads, v009_exercise_history_load_settings)
+MIGRATIONS = (
+    v001_training_plans,
+    v002_plan_session_links,
+    v003_exercise_matches,
+    v004_set_classifications,
+    v005_progression_settings,
+    v006_set_loads,
+    v007_recommendation_lineage,
+    v008_starting_loads,
+    v009_exercise_history_load_settings,
+)
 metadata = MetaData()
-ledger = Table("schema_migrations", metadata,
+ledger = Table(
+    "schema_migrations",
+    metadata,
     Column("revision", String(100), primary_key=True),
-    Column("applied_at", DateTime(timezone=True), nullable=False, server_default=func.current_timestamp()),
+    Column(
+        "applied_at",
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.current_timestamp(),
+    ),
 )
 
 
@@ -44,6 +71,7 @@ def main():
     parser.add_argument("--apply", action="store_true", help="Apply pending migrations")
     args = parser.parse_args()
     from db.connection import get_engine
+
     revisions = migrate(get_engine(), apply=args.apply)
     print(("Applied: " if args.apply else "Pending: ") + (", ".join(revisions) or "none"))
 

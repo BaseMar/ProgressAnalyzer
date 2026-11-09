@@ -15,44 +15,49 @@ import streamlit as st
 VEGA_CONFIG: dict = {
     "background": "#222831",
     "axis": {
-        "gridColor":     "rgba(255,255,255,0.06)",
-        "domainColor":   "rgba(255,255,255,0.10)",
-        "tickColor":     "rgba(255,255,255,0.10)",
-        "labelColor":    "#9aa0a6",
-        "titleColor":    "#9aa0a6",
-        "labelFont":     "sans-serif",
+        "gridColor": "rgba(255,255,255,0.06)",
+        "domainColor": "rgba(255,255,255,0.10)",
+        "tickColor": "rgba(255,255,255,0.10)",
+        "labelColor": "#9aa0a6",
+        "titleColor": "#9aa0a6",
+        "labelFont": "sans-serif",
         "labelFontSize": 11,
     },
     "view": {"stroke": "transparent"},
 }
 
-ACCENT   = "#00ADB5"
-SURFACE  = "#393E46"
-BG       = "#222831"
-WARN     = "#ffc947"
-TEXT     = "#EEEEEE"
-MUTED    = "#9aa0a6"
-BORDER   = "rgba(255,255,255,0.07)"
-GRID     = "rgba(255,255,255,0.06)"
+ACCENT = "#00ADB5"
+SURFACE = "#393E46"
+BG = "#222831"
+WARN = "#ffc947"
+TEXT = "#EEEEEE"
+MUTED = "#9aa0a6"
+BORDER = "rgba(255,255,255,0.07)"
+GRID = "rgba(255,255,255,0.06)"
 
 PLOTLY_LAYOUT = dict(
-    paper_bgcolor = BG,
-    plot_bgcolor  = BG,
-    font          = dict(color=TEXT, family="sans-serif", size=12),
-    xaxis         = dict(gridcolor=GRID, linecolor=BORDER, tickcolor=BORDER, tickfont=dict(color=MUTED, size=11)),
-    yaxis         = dict(gridcolor=GRID, linecolor=BORDER, tickcolor=BORDER, tickfont=dict(color=MUTED, size=11)),
-    margin        = dict(l=8, r=8, t=36, b=8),
-    title_font    = dict(color=MUTED, size=11, family="sans-serif"),
-    showlegend    = False,
+    paper_bgcolor=BG,
+    plot_bgcolor=BG,
+    font=dict(color=TEXT, family="sans-serif", size=12),
+    xaxis=dict(
+        gridcolor=GRID, linecolor=BORDER, tickcolor=BORDER, tickfont=dict(color=MUTED, size=11)
+    ),
+    yaxis=dict(
+        gridcolor=GRID, linecolor=BORDER, tickcolor=BORDER, tickfont=dict(color=MUTED, size=11)
+    ),
+    margin=dict(l=8, r=8, t=36, b=8),
+    title_font=dict(color=MUTED, size=11, family="sans-serif"),
+    showlegend=False,
 )
+
 
 def format_number(value, decimals: int = 1) -> str:
     """Format a number with thousands separator using thin-space.
-    
+
     Args:
         value: Numeric value to format (or None to return dash)
         decimals: Number of decimal places (default 1)
-    
+
     Returns:
         Formatted string with thin-space thousands separator, or "—" if None/invalid
     """
@@ -63,27 +68,27 @@ def format_number(value, decimals: int = 1) -> str:
     except (TypeError, ValueError):
         return "—"
 
+
 def section_header(title: str) -> None:
     """Render a labelled horizontal rule as a section divider."""
     st.markdown(
-        f'<div class="section-header">'
-        f'<span>{title}</span>'
-        f'<div class="section-rule"></div>'
-        f'</div>',
+        f'<div class="section-header"><span>{title}</span><div class="section-rule"></div></div>',
         unsafe_allow_html=True,
     )
+
 
 def chart_label(text: str) -> None:
     """Render a small-caps label above a chart."""
     st.markdown(f'<p class="chart-label">{text}</p>', unsafe_allow_html=True)
 
+
 def page_title(eyebrow: str, title: str) -> None:
     """Render a teal eyebrow label + h1 page title."""
     st.markdown(
-        f'<div class="page-eyebrow">{eyebrow}</div>'
-        f'<h1 class="page-title">{title}</h1>',
+        f'<div class="page-eyebrow">{eyebrow}</div><h1 class="page-title">{title}</h1>',
         unsafe_allow_html=True,
     )
+
 
 def line_chart(
     df: pd.DataFrame,
@@ -117,7 +122,7 @@ def line_chart(
 
     spec = {
         "config": VEGA_CONFIG,
-        "width":  "container",
+        "width": "container",
         "height": height,
         "mark": {
             "type": "line",
@@ -141,4 +146,3 @@ def line_chart(
         width="stretch",
         key=key,
     )
-    

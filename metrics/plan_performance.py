@@ -1,8 +1,8 @@
 """Observed exercise performance and prescribed targets, without recommendations."""
 
 from datetime import date
-from metrics.load_metrics import load_comparison_problem, load_record, same_loads
 
+from metrics.load_metrics import load_comparison_problem, load_record, same_loads
 from metrics.plan_adherence import compute_plan_adherence
 from metrics.training_block import deload_adjusted_input, is_deload_workout
 from metrics.utils import set_duration_seconds, set_reps, set_weight
@@ -12,14 +12,29 @@ from models.progression import DeloadPolicy
 
 def comparison_context(slot, position, planned, actual_id):
     """Shared identity used by both analytical comparisons and progression."""
-    identity = (planned.history_key, None, None) if planned.history_key else (
-        slot.name, slot.scheduled_date.weekday(), slot.position)
-    return (*identity, position, planned.exercise_id,
-            actual_id, planned.target_unit, planned.set_count, planned.target_min, planned.target_max, planned.target_rir)
+    identity = (
+        (planned.history_key, None, None)
+        if planned.history_key
+        else (slot.name, slot.scheduled_date.weekday(), slot.position)
+    )
+    return (
+        *identity,
+        position,
+        planned.exercise_id,
+        actual_id,
+        planned.target_unit,
+        planned.set_count,
+        planned.target_min,
+        planned.target_max,
+        planned.target_rir,
+    )
 
 
 def _target_result(sets, planned, interpretations):
-    values = [set_duration_seconds(item) if planned.target_unit == "seconds" else set_reps(item) for item in sets]
+    values = [
+        set_duration_seconds(item) if planned.target_unit == "seconds" else set_reps(item)
+        for item in sets
+    ]
     in_range = sum(planned.target_min <= value <= planned.target_max for value in values)
     below = sum(value < planned.target_min for value in values)
     above = sum(value > planned.target_max for value in values)
@@ -41,17 +56,31 @@ def _target_result(sets, planned, interpretations):
     else:
         rir_status = "Mixed RIR"
     return {
-        "in_range": in_range, "below_range": below, "above_range": above, "missing_sets": missing,
+        "in_range": in_range,
+        "below_range": below,
+        "above_range": above,
+        "missing_sets": missing,
         "range_met": not missing and in_range == planned.set_count,
-        "rir_status": rir_status, "rir_known_sets": len(known),
+        "rir_status": rir_status,
+        "rir_known_sets": len(known),
         "avg_rir": sum(known) / len(known) if known and len(known) == len(sets) else None,
-        "progression_eligible": bool(sets) and all(meaning.progression_eligible for meaning in interpretations),
-        "sets": tuple({"reps": set_reps(item), "weight": set_weight(item), **load_record(item),
-                       "seconds": set_duration_seconds(item), "rir": item.rir,
-                       "is_warmup": item.is_warmup, "set_kind": meaning.kind,
-                       "classification_source": meaning.source, "classification_reason": meaning.reason,
-                       "progression_eligible": meaning.progression_eligible}
-                      for item, meaning in zip(sets, interpretations)),
+        "progression_eligible": bool(sets)
+        and all(meaning.progression_eligible for meaning in interpretations),
+        "sets": tuple(
+            {
+                "reps": set_reps(item),
+                "weight": set_weight(item),
+                **load_record(item),
+                "seconds": set_duration_seconds(item),
+                "rir": item.rir,
+                "is_warmup": item.is_warmup,
+                "set_kind": meaning.kind,
+                "classification_source": meaning.source,
+                "classification_reason": meaning.reason,
+                "progression_eligible": meaning.progression_eligible,
+            }
+            for item, meaning in zip(sets, interpretations)
+        ),
     }
 
 
@@ -59,8 +88,11 @@ def _comparison(current, previous):
     result = {"previous": previous, "reps_delta": None, "seconds_delta": None, "rir_delta": None}
     if not current["sets"]:
         excluded = current.get("excluded_set_kinds", ())
-        result["comparison"] = ("Light/low-effort work: outside ordinary progression assessment"
-                                if any(kind in excluded for kind in ("light", "low_effort")) else "No recorded sets")
+        result["comparison"] = (
+            "Light/low-effort work: outside ordinary progression assessment"
+            if any(kind in excluded for kind in ("light", "low_effort"))
+            else "No recorded sets"
+        )
     elif previous is None:
         result["comparison"] = "No previous comparable workout"
     elif current["missing_sets"] or previous["missing_sets"]:
@@ -70,22 +102,36 @@ def _comparison(current, previous):
     else:
         problem = load_comparison_problem(current["sets"], previous["sets"])
         if problem:
-            result["comparison"] = ("Not comparable: body mass or assistance is unknown" if problem == "unknown_load"
-                                    else "Not comparable: load convention changed")
+            result["comparison"] = (
+                "Not comparable: body mass or assistance is unknown"
+                if problem == "unknown_load"
+                else "Not comparable: load convention changed"
+            )
         elif not same_loads(current["sets"], previous["sets"]):
             result["comparison"] = "Load changed: inspect individual sets"
         else:
             field = "seconds" if current["unit"] == "seconds" else "reps"
-            delta = sum(item[field] for item in current["sets"]) - sum(item[field] for item in previous["sets"])
+            delta = sum(item[field] for item in current["sets"]) - sum(
+                item[field] for item in previous["sets"]
+            )
             result[f"{field}_delta"] = delta
-            result["comparison"] = f'{"More" if delta > 0 else "Fewer" if delta < 0 else "Same"} {"seconds" if field == "seconds" else "reps"} at the same load'
+            result["comparison"] = (
+                f"{'More' if delta > 0 else 'Fewer' if delta < 0 else 'Same'} {'seconds' if field == 'seconds' else 'reps'} at the same load"
+            )
         if current["avg_rir"] is not None and previous["avg_rir"] is not None:
             result["rir_delta"] = current["avg_rir"] - previous["avg_rir"]
     return result
 
 
-def compute_plan_performance(data: PlanAdherenceInput, *, as_of: date, start: date | None = None, end: date | None = None,
-                             settings_by_version=None, deload_policy=DeloadPolicy()) -> list[dict]:
+def compute_plan_performance(
+    data: PlanAdherenceInput,
+    *,
+    as_of: date,
+    start: date | None = None,
+    end: date | None = None,
+    settings_by_version=None,
+    deload_policy=DeloadPolicy(),
+) -> list[dict]:
     """Compare consecutive logged executions of the same plan context.
 
     Context includes workout name/weekday/order, exercise position, actual
@@ -97,13 +143,19 @@ def compute_plan_performance(data: PlanAdherenceInput, *, as_of: date, start: da
     settings_by_version = settings_by_version or {}
     adjusted = deload_adjusted_input(data, settings_by_version, deload_policy, as_of=as_of)
     effective = {(item.slot.day_id, item.slot.scheduled_date): item for item in adjusted.workouts}
-    adherence = compute_plan_adherence(adjusted, as_of=as_of, settings_by_version=settings_by_version)
+    adherence = compute_plan_adherence(
+        adjusted, as_of=as_of, settings_by_version=settings_by_version
+    )
     rows = {(row["day_id"], row["scheduled_date"]): row for row in adherence["workouts"]}
     session_order = {sid: index for index, sid in enumerate(data.session_order)}
-    ordered = sorted(data.workouts, key=lambda item: (
-        item.slot.performed_on or date.max,
-        session_order.get(item.slot.session_id, item.slot.session_id or 0), item.slot.day_id,
-    ))
+    ordered = sorted(
+        data.workouts,
+        key=lambda item: (
+            item.slot.performed_on or date.max,
+            session_order.get(item.slot.session_id, item.slot.session_id or 0),
+            item.slot.day_id,
+        ),
+    )
     history = {}
     output = []
     for workout in ordered:
@@ -117,13 +169,20 @@ def compute_plan_performance(data: PlanAdherenceInput, *, as_of: date, start: da
             expected = effective[(slot.day_id, slot.scheduled_date)].targets[position - 1].exercise
             current = {
                 "context": context,
-                "day_id": slot.day_id, "version_id": slot.version_id, "plan_exercise_id": target.plan_exercise_id,
-                "scheduled_date": slot.scheduled_date, "performed_on": slot.performed_on,
-                "session_id": slot.session_id, "workout": slot.name,
-                "planned_exercise_id": planned.exercise_id, "actual_exercise_id": actual_id,
+                "day_id": slot.day_id,
+                "version_id": slot.version_id,
+                "plan_exercise_id": target.plan_exercise_id,
+                "scheduled_date": slot.scheduled_date,
+                "performed_on": slot.performed_on,
+                "session_id": slot.session_id,
+                "workout": slot.name,
+                "planned_exercise_id": planned.exercise_id,
+                "actual_exercise_id": actual_id,
                 "training_phase": "deload" if deload else "normal",
-                "unit": expected.target_unit, "planned_sets": expected.set_count,
-                "target_min": expected.target_min, "target_max": expected.target_max,
+                "unit": expected.target_unit,
+                "planned_sets": expected.set_count,
+                "target_min": expected.target_min,
+                "target_max": expected.target_max,
                 "target_rir": expected.target_rir,
                 "excluded_set_kinds": detail["excluded_set_kinds"],
                 "ambiguous_recorded_exercises": detail["ambiguous_recorded_exercises"],
@@ -132,10 +191,19 @@ def compute_plan_performance(data: PlanAdherenceInput, *, as_of: date, start: da
             previous = history.get(context) if current["sets"] else None
             comparison = _comparison(current, previous)
             if deload:
-                comparison = {"previous": None, "reps_delta": None, "seconds_delta": None, "rir_delta": None,
-                              "comparison": "Deload: reduced training demand; excluded from progression comparisons"}
+                comparison = {
+                    "previous": None,
+                    "reps_delta": None,
+                    "seconds_delta": None,
+                    "rir_delta": None,
+                    "comparison": "Deload: reduced training demand; excluded from progression comparisons",
+                }
             output.append({**current, **comparison})
             if current["sets"] and not deload:
                 history[context] = current
-    return [row for row in output if (start is None or row["scheduled_date"] >= start)
-            and (end is None or row["scheduled_date"] <= end)]
+    return [
+        row
+        for row in output
+        if (start is None or row["scheduled_date"] >= start)
+        and (end is None or row["scheduled_date"] <= end)
+    ]

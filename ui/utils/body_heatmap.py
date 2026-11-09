@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import base64
-from io import BytesIO
 from html import escape
+from io import BytesIO
 from pathlib import Path
 
 import numpy as np
@@ -12,7 +12,6 @@ import streamlit.components.v1 as components
 from PIL import Image, ImageDraw
 
 from ui.utils.ui_helpers import ACCENT, MUTED, SURFACE, TEXT, chart_label
-
 
 BODY_IMAGE_PATH = Path(__file__).resolve().parents[1] / "wzorzec" / "human_body.png"
 STATUS_META = {
@@ -300,10 +299,7 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
 
 
 def _overlay_status_signature(heatmap_df: pd.DataFrame) -> tuple[tuple[str, str], ...]:
-    return tuple(
-        (str(row["Body Part"]), str(row["Status"]))
-        for _, row in heatmap_df.iterrows()
-    )
+    return tuple((str(row["Body Part"]), str(row["Status"])) for _, row in heatmap_df.iterrows())
 
 
 @st.cache_data(show_spinner=False)
@@ -340,11 +336,7 @@ def _body_fill_mask(mtime_ns: int) -> np.ndarray:
     min_channel = pixels.min(axis=2)
     mean_channel = pixels.mean(axis=2)
 
-    fill_mask = (
-        (mean_channel > 120)
-        & (mean_channel < 235)
-        & ((max_channel - min_channel) < 28)
-    )
+    fill_mask = (mean_channel > 120) & (mean_channel < 235) & ((max_channel - min_channel) < 28)
     return fill_mask & ~_excluded_overlay_mask(fill_mask.shape)
 
 

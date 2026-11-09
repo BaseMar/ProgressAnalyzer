@@ -1,21 +1,31 @@
 """Overview indicators stay interpretable without double-counting future work."""
+
 from dataclasses import replace
 from datetime import date, timedelta
 
 import pytest
 
-from test_plan_adherence import TODAY, example
 from metrics.plan_adherence import compute_plan_adherence
 from metrics.plan_performance import compute_plan_performance
 from metrics.plan_summary import summarize_plan
+from test_plan_adherence import TODAY, example
 from ui.utils.plan_charts import exercise_history_chart, weekly_execution_chart
 
 
 def test_range_percentage_uses_logged_sets_while_coverage_uses_plan():
     data = example(count=2)
-    data = replace(data, recorded=(replace(data.recorded[0], sets=(
-        data.recorded[0].sets[0], replace(data.recorded[0].sets[1], repetitions=3),
-    )),))
+    data = replace(
+        data,
+        recorded=(
+            replace(
+                data.recorded[0],
+                sets=(
+                    data.recorded[0].sets[0],
+                    replace(data.recorded[0].sets[1], repetitions=3),
+                ),
+            ),
+        ),
+    )
     report = compute_plan_adherence(data, as_of=TODAY)
     performance = compute_plan_performance(data, as_of=TODAY)
     summary = summarize_plan(report, performance)
@@ -29,8 +39,15 @@ def test_range_percentage_uses_logged_sets_while_coverage_uses_plan():
 
 def test_unperformed_future_workout_is_not_added_to_weekly_chart_or_indicators():
     data = example()
-    future = replace(data.workouts[0], slot=replace(data.workouts[0].slot,
-        scheduled_date=TODAY + timedelta(days=14), session_id=None, performed_on=None))
+    future = replace(
+        data.workouts[0],
+        slot=replace(
+            data.workouts[0].slot,
+            scheduled_date=TODAY + timedelta(days=14),
+            session_id=None,
+            performed_on=None,
+        ),
+    )
     data = replace(data, workouts=(*data.workouts, future))
     report = compute_plan_adherence(data, as_of=TODAY)
     performance = compute_plan_performance(data, as_of=TODAY)
@@ -46,9 +63,20 @@ def test_saturday_arm_day_performed_on_wednesday_counts_on_friday_without_duplic
     friday = date(2026, 11, 6)
     saturday = date(2026, 11, 7)
     data = example()
-    data = replace(data, workouts=(replace(data.workouts[0], slot=replace(
-        data.workouts[0].slot, scheduled_date=saturday, performed_on=date(2026, 11, 4), name="Arm Day",
-    )),))
+    data = replace(
+        data,
+        workouts=(
+            replace(
+                data.workouts[0],
+                slot=replace(
+                    data.workouts[0].slot,
+                    scheduled_date=saturday,
+                    performed_on=date(2026, 11, 4),
+                    name="Arm Day",
+                ),
+            ),
+        ),
+    )
     overview = None
     for as_of in (friday, saturday, saturday + timedelta(days=1)):
         report = compute_plan_adherence(data, as_of=as_of)
@@ -58,7 +86,9 @@ def test_saturday_arm_day_performed_on_wednesday_counts_on_friday_without_duplic
         assert current["set_pct"] == 100
         assert current["recorded_sets"] == 3
         assert current["in_range"] == 3
-        assert current["weeks"] == [dict(week=date(2026, 11, 2), complete=1, partial=0, unmatched=0, unlinked=0)]
+        assert current["weeks"] == [
+            dict(week=date(2026, 11, 2), complete=1, partial=0, unmatched=0, unlinked=0)
+        ]
         if overview is not None:
             assert current == overview
         overview = current
@@ -88,11 +118,18 @@ def test_exercise_chart_shows_previous_context_and_target_band():
 @pytest.mark.parametrize("load", [0, 50])
 def test_target_band_covers_each_session_in_data_coordinates(point_count, load):
     base = compute_plan_performance(example(), as_of=TODAY)[0]
-    rows = [dict(base, session_id=index + 1, previous=None,
-                 performed_on=base["performed_on"] + timedelta(days=index * 7),
-                 sets=tuple(dict(item, weight=load) for item in base["sets"]),
-                 target_min=6 + index, target_max=10 + index)
-            for index in range(point_count)]
+    rows = [
+        dict(
+            base,
+            session_id=index + 1,
+            previous=None,
+            performed_on=base["performed_on"] + timedelta(days=index * 7),
+            sets=tuple(dict(item, weight=load) for item in base["sets"]),
+            target_min=6 + index,
+            target_max=10 + index,
+        )
+        for index in range(point_count)
+    ]
     fig = exercise_history_chart(rows)
     bounds = fig.layout.xaxis.range
     assert bounds == (-0.5, point_count - 0.5)

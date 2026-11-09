@@ -1,0 +1,889 @@
+{
+  "schema_version": 1,
+  "application_parent_commit": "5cc798c55484622dba8fb6d8c9ea1dc0cf98a678",
+  "measured_working_tree_dirty": true,
+  "as_of": "2026-11-09",
+  "comparison_baseline": "docs/baselines/stage-6.json",
+  "environment": {
+    "python": "3.12.2",
+    "streamlit": "1.66.1",
+    "sqlalchemy": "2.0.44",
+    "pandas": "2.3.3",
+    "numpy": "2.3.5",
+    "plotly": "6.5.0",
+    "platform": "Windows",
+    "machine": "AMD64",
+    "logical_cpus": 4
+  },
+  "method": {
+    "runner": "Streamlit AppTest using streamlit_app.py",
+    "warm_samples": 3,
+    "analysis_period": "All time",
+    "sequential_measurements": true,
+    "synthetic_before_development_tools": true,
+    "live_after_tests": true,
+    "description": "Stage 3 cache-cold/warm and SQL definitions; no browser rendering."
+  },
+  "dependencies": {
+    "runtime_manifest": "requirements.txt",
+    "development_manifest": "requirements-dev.txt",
+    "runtime_direct_dependencies": 8,
+    "development_only_direct_dependencies": 2,
+    "removed_runtime_declarations": [
+      "pytest",
+      "psycopg[binary]",
+      "pyodbc"
+    ],
+    "runtime_versions_match_stage6": true,
+    "full_transitive_lock": false,
+    "fresh_runtime_resolved_packages": {
+      "Jinja2": "3.1.6",
+      "MarkupSafe": "3.0.4",
+      "SQLAlchemy": "2.0.44",
+      "altair": "6.3.0",
+      "anyio": "4.16.0",
+      "attrs": "26.1.0",
+      "certifi": "2026.10.23",
+      "charset-normalizer": "3.5.2",
+      "click": "8.5.1",
+      "greenlet": "3.5.6",
+      "h11": "0.16.0",
+      "idna": "3.20",
+      "itsdangerous": "2.2.0",
+      "jsonschema": "4.26.0",
+      "jsonschema-specifications": "2025.9.1",
+      "narwhals": "2.28.0",
+      "numpy": "2.3.5",
+      "packaging": "26.3",
+      "pandas": "2.3.3",
+      "pillow": "12.0.0",
+      "pip": "24.0",
+      "plotly": "6.5.0",
+      "protobuf": "7.36.2",
+      "psycopg2-binary": "2.9.11",
+      "pyarrow": "26.0.1",
+      "pydeck": "0.9.3",
+      "python-dateutil": "4.0.0",
+      "python-dotenv": "1.2.1",
+      "python-multipart": "0.0.33",
+      "pytz": "2026.6",
+      "referencing": "0.37.0",
+      "requests": "2.34.2",
+      "rpds-py": "2026.9.1",
+      "starlette": "1.10.0",
+      "streamlit": "1.66.1",
+      "typing_extensions": "4.16.0",
+      "tzdata": "2026.6",
+      "urllib3": "2.8.0",
+      "uvicorn": "0.54.0",
+      "watchdog": "6.0.0",
+      "websockets": "17.4"
+    },
+    "fresh_runtime_pip_check_passed": true,
+    "fresh_runtime_synthetic_benchmark_passed": true,
+    "plain_postgresql_url_dialect_driver": "psycopg2",
+    "development_pip_check_passed": true
+  },
+  "quality_checks": {
+    "ruff_version": "0.17.4",
+    "lint_passed": true,
+    "format_check_passed": true,
+    "tracked_python_files_checked": 159,
+    "python_311_syntax_passed": true,
+    "compilation_passed": true,
+    "devcontainer_json_parsed": true,
+    "devcontainer_started_locally": false,
+    "ci_python_versions": [
+      "3.11",
+      "3.12"
+    ]
+  },
+  "tests": {
+    "passed": 566,
+    "skipped": 6,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 56.923
+  },
+  "structure_counts": {
+    "application_python_files": 110,
+    "test_python_files": 45,
+    "tooling_python_files": 4,
+    "application_import_closure": 106,
+    "command_line_only": 3,
+    "review": 1,
+    "application_source_lines": 13057
+  },
+  "semantic_reference": "tests/fixtures/project_baseline.json",
+  "semantic_reference_unchanged": true,
+  "datasets": {
+    "synthetic_sqlite": {
+      "counts": {
+        "body_composition": 24,
+        "body_measurements": 24,
+        "exercise_history_load_settings": 1,
+        "exercise_muscle_map": 10,
+        "exercises": 10,
+        "recommendation_starting_loads": 0,
+        "schema_migrations": 9,
+        "training_plan_days": 10,
+        "training_plan_exercise_lineage": 60,
+        "training_plan_exercise_matches": 1,
+        "training_plan_exercises": 60,
+        "training_plan_progression": 2,
+        "training_plan_session_links": 120,
+        "training_plan_versions": 2,
+        "training_plans": 1,
+        "workout_exercises": 722,
+        "workout_sessions": 122,
+        "workout_set_classifications": 1944,
+        "workout_set_loads": 216,
+        "workout_sets": 1950
+      },
+      "database_unchanged": true,
+      "read_only_verified": true,
+      "display_outputs_unchanged": {
+        "overview": true,
+        "analysis_plan_progress": true,
+        "analysis_recorded_exercises": true,
+        "analysis_consistency": true,
+        "analysis_muscle_map": true,
+        "analysis_set_allocation": true,
+        "analysis_measurements": true,
+        "plan": true,
+        "history": true
+      },
+      "renders": {
+        "overview": {
+          "warm_median_ms": 269.019,
+          "warm_samples": [
+            {
+              "elapsed_ms": 296.108,
+              "sql_count": 28,
+              "sql_ms": 5.235
+            },
+            {
+              "elapsed_ms": 227.332,
+              "sql_count": 28,
+              "sql_ms": 6.074
+            },
+            {
+              "elapsed_ms": 269.019,
+              "sql_count": 28,
+              "sql_ms": 4.737
+            }
+          ],
+          "warm_sql_median_ms": 5.235,
+          "warm_sql_counts": [
+            28
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 1190.768,
+            "sql_count": 37,
+            "sql_ms": 8.196
+          }
+        },
+        "analysis_plan_progress": {
+          "warm_median_ms": 239.613,
+          "warm_samples": [
+            {
+              "elapsed_ms": 293.834,
+              "sql_count": 23,
+              "sql_ms": 2.84
+            },
+            {
+              "elapsed_ms": 237.787,
+              "sql_count": 23,
+              "sql_ms": 2.889
+            },
+            {
+              "elapsed_ms": 239.613,
+              "sql_count": 23,
+              "sql_ms": 3.25
+            }
+          ],
+          "warm_sql_median_ms": 2.889,
+          "warm_sql_counts": [
+            23
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 643.023,
+            "sql_count": 32,
+            "sql_ms": 5.921
+          }
+        },
+        "analysis_recorded_exercises": {
+          "warm_median_ms": 64.513,
+          "warm_samples": [
+            {
+              "elapsed_ms": 67.33,
+              "sql_count": 0,
+              "sql_ms": 0
+            },
+            {
+              "elapsed_ms": 64.513,
+              "sql_count": 0,
+              "sql_ms": 0
+            },
+            {
+              "elapsed_ms": 64.312,
+              "sql_count": 0,
+              "sql_ms": 0
+            }
+          ],
+          "warm_sql_median_ms": 0,
+          "warm_sql_counts": [
+            0
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 470.268,
+            "sql_count": 10,
+            "sql_ms": 3.64
+          }
+        },
+        "analysis_consistency": {
+          "warm_median_ms": 140.95,
+          "warm_samples": [
+            {
+              "elapsed_ms": 194.457,
+              "sql_count": 23,
+              "sql_ms": 3.149
+            },
+            {
+              "elapsed_ms": 138.001,
+              "sql_count": 23,
+              "sql_ms": 3.051
+            },
+            {
+              "elapsed_ms": 140.95,
+              "sql_count": 23,
+              "sql_ms": 3.19
+            }
+          ],
+          "warm_sql_median_ms": 3.149,
+          "warm_sql_counts": [
+            23
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 471.113,
+            "sql_count": 32,
+            "sql_ms": 5.98
+          }
+        },
+        "analysis_muscle_map": {
+          "warm_median_ms": 91.327,
+          "warm_samples": [
+            {
+              "elapsed_ms": 91.854,
+              "sql_count": 12,
+              "sql_ms": 0.704
+            },
+            {
+              "elapsed_ms": 89.88,
+              "sql_count": 12,
+              "sql_ms": 0.605
+            },
+            {
+              "elapsed_ms": 91.327,
+              "sql_count": 12,
+              "sql_ms": 0.623
+            }
+          ],
+          "warm_sql_median_ms": 0.623,
+          "warm_sql_counts": [
+            12
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 1187.301,
+            "sql_count": 21,
+            "sql_ms": 4.01
+          }
+        },
+        "analysis_set_allocation": {
+          "warm_median_ms": 117.817,
+          "warm_samples": [
+            {
+              "elapsed_ms": 163.413,
+              "sql_count": 12,
+              "sql_ms": 0.663
+            },
+            {
+              "elapsed_ms": 117.817,
+              "sql_count": 12,
+              "sql_ms": 0.845
+            },
+            {
+              "elapsed_ms": 115.598,
+              "sql_count": 12,
+              "sql_ms": 0.618
+            }
+          ],
+          "warm_sql_median_ms": 0.663,
+          "warm_sql_counts": [
+            12
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 517.549,
+            "sql_count": 21,
+            "sql_ms": 3.713
+          }
+        },
+        "analysis_measurements": {
+          "warm_median_ms": 26.499,
+          "warm_samples": [
+            {
+              "elapsed_ms": 26.046,
+              "sql_count": 0,
+              "sql_ms": 0
+            },
+            {
+              "elapsed_ms": 26.499,
+              "sql_count": 0,
+              "sql_ms": 0
+            },
+            {
+              "elapsed_ms": 27.469,
+              "sql_count": 0,
+              "sql_ms": 0
+            }
+          ],
+          "warm_sql_median_ms": 0,
+          "warm_sql_counts": [
+            0
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 372.343,
+            "sql_count": 10,
+            "sql_ms": 5.116
+          }
+        },
+        "plan": {
+          "warm_median_ms": 29.426,
+          "warm_samples": [
+            {
+              "elapsed_ms": 29.426,
+              "sql_count": 11,
+              "sql_ms": 0.72
+            },
+            {
+              "elapsed_ms": 29.251,
+              "sql_count": 11,
+              "sql_ms": 0.831
+            },
+            {
+              "elapsed_ms": 29.894,
+              "sql_count": 11,
+              "sql_ms": 0.701
+            }
+          ],
+          "warm_sql_median_ms": 0.72,
+          "warm_sql_counts": [
+            11
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 355.601,
+            "sql_count": 20,
+            "sql_ms": 3.944
+          }
+        },
+        "history": {
+          "warm_median_ms": 81.63,
+          "warm_samples": [
+            {
+              "elapsed_ms": 81.63,
+              "sql_count": 16,
+              "sql_ms": 1.01
+            },
+            {
+              "elapsed_ms": 70.085,
+              "sql_count": 16,
+              "sql_ms": 0.997
+            },
+            {
+              "elapsed_ms": 120.17,
+              "sql_count": 16,
+              "sql_ms": 1.158
+            }
+          ],
+          "warm_sql_median_ms": 1.01,
+          "warm_sql_counts": [
+            16
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 415.947,
+            "sql_count": 25,
+            "sql_ms": 4.745
+          }
+        },
+        "workout_switch": {
+          "warm_median_ms": 220.383,
+          "warm_samples": [
+            {
+              "elapsed_ms": 220.383,
+              "sql_count": 28,
+              "sql_ms": 5.178
+            },
+            {
+              "elapsed_ms": 277.163,
+              "sql_count": 28,
+              "sql_ms": 5.113
+            },
+            {
+              "elapsed_ms": 216.402,
+              "sql_count": 28,
+              "sql_ms": 5.255
+            }
+          ],
+          "warm_sql_median_ms": 5.178,
+          "warm_sql_counts": [
+            28
+          ],
+          "warm_sql_counts_unchanged": true
+        }
+      },
+      "calculations": {
+        "exercise_metrics": {
+          "samples_ms": [
+            35.968,
+            35.622,
+            35.714
+          ],
+          "median_ms": 35.714
+        },
+        "plan_adherence": {
+          "samples_ms": [
+            15.692,
+            15.138,
+            16.159
+          ],
+          "median_ms": 15.692
+        },
+        "plan_performance": {
+          "samples_ms": [
+            37.034,
+            37.002,
+            38.292
+          ],
+          "median_ms": 37.034
+        },
+        "training_insights": {
+          "samples_ms": [
+            39.9,
+            40.193,
+            41.468
+          ],
+          "median_ms": 40.193
+        },
+        "muscle_allocation": {
+          "samples_ms": [
+            0.065,
+            0.046,
+            0.044
+          ],
+          "median_ms": 0.046
+        },
+        "measurements": {
+          "samples_ms": [
+            0.164,
+            0.129,
+            0.127
+          ],
+          "median_ms": 0.129
+        }
+      }
+    },
+    "live_postgresql": {
+      "counts": {
+        "body_composition": 10,
+        "body_measurements": 9,
+        "exercise_history_load_settings": 2,
+        "exercise_muscle_map": 190,
+        "exercises": 60,
+        "recommendation_starting_loads": 4,
+        "schema_migrations": 9,
+        "training_plan_days": 30,
+        "training_plan_exercise_lineage": 210,
+        "training_plan_exercise_matches": 4,
+        "training_plan_exercises": 210,
+        "training_plan_progression": 5,
+        "training_plan_session_links": 5,
+        "training_plan_versions": 6,
+        "training_plans": 1,
+        "workout_exercises": 884,
+        "workout_sessions": 127,
+        "workout_set_classifications": 37,
+        "workout_set_loads": 3,
+        "workout_sets": 2531
+      },
+      "database_unchanged": true,
+      "read_only_verified": true,
+      "display_outputs_unchanged": {
+        "overview": true,
+        "analysis_plan_progress": true,
+        "analysis_recorded_exercises": true,
+        "analysis_consistency": true,
+        "analysis_muscle_map": true,
+        "analysis_set_allocation": true,
+        "analysis_measurements": true,
+        "plan": true,
+        "history": true
+      },
+      "renders": {
+        "overview": {
+          "warm_median_ms": 2722.117,
+          "warm_samples": [
+            {
+              "elapsed_ms": 2770.896,
+              "sql_count": 28,
+              "sql_ms": 1244.019
+            },
+            {
+              "elapsed_ms": 2722.117,
+              "sql_count": 28,
+              "sql_ms": 1237.306
+            },
+            {
+              "elapsed_ms": 2719.888,
+              "sql_count": 28,
+              "sql_ms": 1249.253
+            }
+          ],
+          "warm_sql_median_ms": 1244.019,
+          "warm_sql_counts": [
+            28
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 5540.45,
+            "sql_count": 37,
+            "sql_ms": 1944.931
+          }
+        },
+        "analysis_plan_progress": {
+          "warm_median_ms": 2171.639,
+          "warm_samples": [
+            {
+              "elapsed_ms": 2171.639,
+              "sql_count": 23,
+              "sql_ms": 1009.623
+            },
+            {
+              "elapsed_ms": 2233.042,
+              "sql_count": 23,
+              "sql_ms": 1031.475
+            },
+            {
+              "elapsed_ms": 2140.068,
+              "sql_count": 23,
+              "sql_ms": 996.093
+            }
+          ],
+          "warm_sql_median_ms": 1009.623,
+          "warm_sql_counts": [
+            23
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 4299.995,
+            "sql_count": 33,
+            "sql_ms": 1858.934
+          }
+        },
+        "analysis_recorded_exercises": {
+          "warm_median_ms": 88.824,
+          "warm_samples": [
+            {
+              "elapsed_ms": 88.824,
+              "sql_count": 0,
+              "sql_ms": 0
+            },
+            {
+              "elapsed_ms": 87.344,
+              "sql_count": 0,
+              "sql_ms": 0
+            },
+            {
+              "elapsed_ms": 111.783,
+              "sql_count": 0,
+              "sql_ms": 0
+            }
+          ],
+          "warm_sql_median_ms": 0,
+          "warm_sql_counts": [
+            0
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 2317.548,
+            "sql_count": 10,
+            "sql_ms": 679.289
+          }
+        },
+        "analysis_consistency": {
+          "warm_median_ms": 2095.781,
+          "warm_samples": [
+            {
+              "elapsed_ms": 2099.562,
+              "sql_count": 23,
+              "sql_ms": 1000.486
+            },
+            {
+              "elapsed_ms": 2093.936,
+              "sql_count": 23,
+              "sql_ms": 1012.689
+            },
+            {
+              "elapsed_ms": 2095.781,
+              "sql_count": 23,
+              "sql_ms": 1009.004
+            }
+          ],
+          "warm_sql_median_ms": 1009.004,
+          "warm_sql_counts": [
+            23
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 4292.813,
+            "sql_count": 32,
+            "sql_ms": 1698.352
+          }
+        },
+        "analysis_muscle_map": {
+          "warm_median_ms": 1050.906,
+          "warm_samples": [
+            {
+              "elapsed_ms": 1042.637,
+              "sql_count": 12,
+              "sql_ms": 517.23
+            },
+            {
+              "elapsed_ms": 1050.906,
+              "sql_count": 12,
+              "sql_ms": 509.164
+            },
+            {
+              "elapsed_ms": 1131.617,
+              "sql_count": 12,
+              "sql_ms": 509.479
+            }
+          ],
+          "warm_sql_median_ms": 509.479,
+          "warm_sql_counts": [
+            12
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 3970.735,
+            "sql_count": 21,
+            "sql_ms": 1158.084
+          }
+        },
+        "analysis_set_allocation": {
+          "warm_median_ms": 1056.106,
+          "warm_samples": [
+            {
+              "elapsed_ms": 1056.106,
+              "sql_count": 12,
+              "sql_ms": 524.945
+            },
+            {
+              "elapsed_ms": 1050.163,
+              "sql_count": 12,
+              "sql_ms": 525.843
+            },
+            {
+              "elapsed_ms": 1089.077,
+              "sql_count": 12,
+              "sql_ms": 512.484
+            }
+          ],
+          "warm_sql_median_ms": 524.945,
+          "warm_sql_counts": [
+            12
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 3213.11,
+            "sql_count": 21,
+            "sql_ms": 1192.311
+          }
+        },
+        "analysis_measurements": {
+          "warm_median_ms": 35.882,
+          "warm_samples": [
+            {
+              "elapsed_ms": 36.949,
+              "sql_count": 0,
+              "sql_ms": 0
+            },
+            {
+              "elapsed_ms": 34.707,
+              "sql_count": 0,
+              "sql_ms": 0
+            },
+            {
+              "elapsed_ms": 35.882,
+              "sql_count": 0,
+              "sql_ms": 0
+            }
+          ],
+          "warm_sql_median_ms": 0,
+          "warm_sql_counts": [
+            0
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 2377.893,
+            "sql_count": 10,
+            "sql_ms": 735.393
+          }
+        },
+        "plan": {
+          "warm_median_ms": 909.321,
+          "warm_samples": [
+            {
+              "elapsed_ms": 909.321,
+              "sql_count": 11,
+              "sql_ms": 482.125
+            },
+            {
+              "elapsed_ms": 920.213,
+              "sql_count": 11,
+              "sql_ms": 494.62
+            },
+            {
+              "elapsed_ms": 895.781,
+              "sql_count": 11,
+              "sql_ms": 474.663
+            }
+          ],
+          "warm_sql_median_ms": 482.125,
+          "warm_sql_counts": [
+            11
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 3030.443,
+            "sql_count": 20,
+            "sql_ms": 1131.53
+          }
+        },
+        "history": {
+          "warm_median_ms": 2140.26,
+          "warm_samples": [
+            {
+              "elapsed_ms": 2118.612,
+              "sql_count": 22,
+              "sql_ms": 968.844
+            },
+            {
+              "elapsed_ms": 2154.964,
+              "sql_count": 22,
+              "sql_ms": 969.741
+            },
+            {
+              "elapsed_ms": 2140.26,
+              "sql_count": 22,
+              "sql_ms": 954.22
+            }
+          ],
+          "warm_sql_median_ms": 968.844,
+          "warm_sql_counts": [
+            22
+          ],
+          "warm_sql_counts_unchanged": true,
+          "cold": {
+            "elapsed_ms": 4165.507,
+            "sql_count": 32,
+            "sql_ms": 1764.64
+          }
+        },
+        "workout_switch": {
+          "warm_median_ms": 2730.681,
+          "warm_samples": [
+            {
+              "elapsed_ms": 2730.372,
+              "sql_count": 28,
+              "sql_ms": 1233.724
+            },
+            {
+              "elapsed_ms": 2795.075,
+              "sql_count": 28,
+              "sql_ms": 1220.213
+            },
+            {
+              "elapsed_ms": 2730.681,
+              "sql_count": 28,
+              "sql_ms": 1220.313
+            }
+          ],
+          "warm_sql_median_ms": 1220.313,
+          "warm_sql_counts": [
+            28
+          ],
+          "warm_sql_counts_unchanged": true
+        }
+      },
+      "calculations": {
+        "exercise_metrics": {
+          "samples_ms": [
+            57.193,
+            61.405,
+            57.244
+          ],
+          "median_ms": 57.244
+        },
+        "plan_adherence": {
+          "samples_ms": [
+            0.81,
+            0.692,
+            0.761
+          ],
+          "median_ms": 0.761
+        },
+        "plan_performance": {
+          "samples_ms": [
+            2.604,
+            1.718,
+            1.283
+          ],
+          "median_ms": 1.718
+        },
+        "training_insights": {
+          "samples_ms": [
+            2.446,
+            2.275,
+            2.639
+          ],
+          "median_ms": 2.446
+        },
+        "muscle_allocation": {
+          "samples_ms": [
+            0.276,
+            0.216,
+            0.265
+          ],
+          "median_ms": 0.265
+        },
+        "measurements": {
+          "samples_ms": [
+            0.066,
+            0.047,
+            0.046
+          ],
+          "median_ms": 0.047
+        }
+      }
+    }
+  }
+}

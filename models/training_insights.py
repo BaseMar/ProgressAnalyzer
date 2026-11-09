@@ -1,4 +1,5 @@
 """Immutable, auditable observations; no effectiveness score or diagnoses."""
+
 from dataclasses import dataclass
 from datetime import date
 from typing import Literal

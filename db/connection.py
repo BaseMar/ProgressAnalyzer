@@ -5,6 +5,7 @@ import streamlit as st
 from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
+
 from db.read_cache import install_read_invalidation
 
 env_path = find_dotenv(usecwd=True)
@@ -45,6 +46,6 @@ def get_engine() -> Engine:
         install_read_invalidation(engine)
         logger.info("Connected to database (SQLAlchemy)")
         return engine
-    except Exception as ex:
+    except Exception:
         logger.exception("Error creating SQLAlchemy engine")
         raise

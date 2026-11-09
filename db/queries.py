@@ -1,4 +1,5 @@
 import logging
+
 import pandas as pd
 from sqlalchemy import text
 
@@ -24,7 +25,9 @@ def get_exercise_muscle_targets(engine) -> pd.DataFrame:
             return pd.read_sql(query, connection)
     except Exception:
         logging.getLogger(__name__).exception("load_exercise_muscle_targets failed")
-        return pd.DataFrame(columns=["exercise_id", "muscle_group", "muscle_name", "role", "set_factor"])
+        return pd.DataFrame(
+            columns=["exercise_id", "muscle_group", "muscle_name", "role", "set_factor"]
+        )
 
 
 def get_workout_sessions(engine) -> pd.DataFrame:
@@ -39,6 +42,7 @@ def get_workout_sessions(engine) -> pd.DataFrame:
 
     df["session_date"] = pd.to_datetime(df["session_date"])
     return df
+
 
 def get_exercises(engine) -> pd.DataFrame:
     """Retrieve all exercises from the database with their associated body part and category.
@@ -55,6 +59,7 @@ def get_exercises(engine) -> pd.DataFrame:
     with engine.connect() as conn:
         df = pd.read_sql(query, conn)
     return df
+
 
 def get_all_sets(engine) -> pd.DataFrame:
     """Retrieve detailed information about all workout sets."""
@@ -88,6 +93,7 @@ def get_all_sets(engine) -> pd.DataFrame:
         df = pd.read_sql(query, conn)
     return df
 
+
 def get_body_measurements(engine) -> pd.DataFrame:
     """Retrieve body measurements records from the database.
 
@@ -105,6 +111,7 @@ def get_body_measurements(engine) -> pd.DataFrame:
         df = pd.read_sql(query, conn)
     return df
 
+
 def get_body_composition(engine) -> pd.DataFrame:
     """Retrieve body composition records from the database.
 
@@ -121,6 +128,7 @@ def get_body_composition(engine) -> pd.DataFrame:
     with engine.connect() as conn:
         df = pd.read_sql(query, conn)
     return df
+
 
 def insert_exercise(
     engine,
@@ -170,7 +178,9 @@ def insert_exercise(
         return False
 
 
-def upsert_exercise_muscle_targets(conn, exercise_id: int, muscle_targets: list[MuscleTarget]) -> None:
+def upsert_exercise_muscle_targets(
+    conn, exercise_id: int, muscle_targets: list[MuscleTarget]
+) -> None:
     if not muscle_targets:
         return
 
@@ -216,6 +226,7 @@ def upsert_exercise_muscle_targets(conn, exercise_id: int, muscle_targets: list[
         ],
     )
 
+
 def insert_body_measurements(engine, data):
     """Insert a body measurements record into the body_measurements table.
 
@@ -230,6 +241,7 @@ def insert_body_measurements(engine, data):
     )
     with engine.begin() as conn:
         conn.execute(query, data)
+
 
 def insert_body_composition(engine, data):
     """Insert a body composition record into the body_composition table.
@@ -246,6 +258,7 @@ def insert_body_composition(engine, data):
     )
     with engine.begin() as conn:
         conn.execute(query, data)
+
 
 def get_sets_raw(engine) -> pd.DataFrame:
     with engine.connect() as conn:
@@ -265,17 +278,21 @@ def get_sets_raw(engine) -> pd.DataFrame:
         """)
         return pd.read_sql(query, conn)
 
+
 def delete_workout_session(engine, session_id):
     """Delete session with exercises and series"""
-    safe_session_id = int(session_id) 
+    safe_session_id = int(session_id)
 
-    queries = (text("""
+    queries = (
+        text("""
         DELETE FROM workout_sets 
         WHERE workout_exercise_id IN (
             SELECT workout_exercise_id FROM workout_exercises WHERE session_id = :sid
         )
-    """), text("DELETE FROM workout_exercises WHERE session_id = :sid"),
-        text("DELETE FROM workout_sessions WHERE session_id = :sid"))
+    """),
+        text("DELETE FROM workout_exercises WHERE session_id = :sid"),
+        text("DELETE FROM workout_sessions WHERE session_id = :sid"),
+    )
 
     try:
         with engine.begin() as conn:

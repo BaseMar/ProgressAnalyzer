@@ -28,10 +28,10 @@ from metrics.input import MetricsInput
 @st.cache_data(ttl=300, show_spinner="Loading workout data…")
 def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
     """Load all application data from database.
-    
+
     This is the main entry point for data loading. Data is cached automatically
     by Streamlit to avoid redundant database queries.
-    
+
     Returns:
         Tuple of:
         - MetricsInput: structured domain objects for metrics computation
@@ -41,7 +41,9 @@ def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
     sets_df = dm.load_sets_ui()
 
     sessions = [map_workout_session(row) for row in dm.load_sessions().to_dict("records")]
-    workout_exercises = [map_workout_exercise(row) for row in dm.load_workout_exercises().to_dict("records")]
+    workout_exercises = [
+        map_workout_exercise(row) for row in dm.load_workout_exercises().to_dict("records")
+    ]
     sets = [map_workout_set(row) for row in dm.load_sets_raw().to_dict("records")]
     exercises = [map_exercise(row) for row in dm.load_exercises().to_dict("records")]
     exercise_muscle_targets = [
@@ -68,5 +70,5 @@ def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
         body_composition=body_composition,
         deload_exercise_ids=dm.load_deload_exercise_ids(),
     )
-    
+
     return metrics_input, sets_df

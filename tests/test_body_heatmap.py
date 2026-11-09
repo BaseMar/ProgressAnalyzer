@@ -1,5 +1,6 @@
 import pandas as pd
 
+from metrics.muscle_distribution import build_weekly_distribution, status_from_plan
 from ui.utils.body_heatmap import (
     BODY_IMAGE_PATH,
     MUSCLE_GROUP_SEEDS,
@@ -7,7 +8,6 @@ from ui.utils.body_heatmap import (
     _excluded_overlay_mask,
     _mask_from_seeds,
 )
-from metrics.muscle_distribution import build_weekly_distribution, status_from_plan
 
 
 def test_excluded_overlay_mask_covers_hands_and_feet():

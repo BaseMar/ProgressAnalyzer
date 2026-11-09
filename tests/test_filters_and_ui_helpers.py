@@ -74,8 +74,20 @@ def test_body_parts_view_builds_weighted_bodypart_dataframe():
 def test_body_parts_chart_helpers_return_stable_outputs():
     body_df = pd.DataFrame(
         [
-            {"Body Part": "Chest", "Total_Sets": 4.0, "Total_Volume": 4000.0, "Sessions": 1, "Avg_1RM": 120.0},
-            {"Body Part": "Back", "Total_Sets": 2.0, "Total_Volume": 1000.0, "Sessions": 1, "Avg_1RM": 90.0},
+            {
+                "Body Part": "Chest",
+                "Total_Sets": 4.0,
+                "Total_Volume": 4000.0,
+                "Sessions": 1,
+                "Avg_1RM": 120.0,
+            },
+            {
+                "Body Part": "Back",
+                "Total_Sets": 2.0,
+                "Total_Volume": 1000.0,
+                "Sessions": 1,
+                "Avg_1RM": 90.0,
+            },
         ]
     )
 

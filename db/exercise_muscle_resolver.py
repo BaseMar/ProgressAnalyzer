@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import re
-from html import unescape
 from dataclasses import dataclass
+from html import unescape
 from typing import Callable
 from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
 
 from db.specific_exercise_rules import SPECIFIC_EXERCISE_RULES, SpecificExerciseRule
-
 
 ROLE_FACTOR = {
     "primary": 1.0,
@@ -372,7 +371,20 @@ _RULES: list[tuple[Callable[[str], bool], Callable[[str], ExerciseResolution]]] 
     (_has_any("rear delt", "face pull", "reverse pec deck", "pec deck reverse"), _rear_delt),
     (_has_any("lateral raise"), _lateral_raise),
     (_has_any("fly", "crossover", "pec dec", "pec deck"), _fly),
-    (_has_any("bench", "chest press", "incline press", "decline press", "flat press", "dumbbell press", "dumbell press", "push up", "dip"), _press),
+    (
+        _has_any(
+            "bench",
+            "chest press",
+            "incline press",
+            "decline press",
+            "flat press",
+            "dumbbell press",
+            "dumbell press",
+            "push up",
+            "dip",
+        ),
+        _press,
+    ),
     (_has_any("curl"), _curl),
     (_has_any("hip thrust", "glute bridge"), _hip_thrust),
     (_has_any("deadlift", "romanian", "rdl", "good morning", "hip hinge"), _hinge),
@@ -438,9 +450,7 @@ def _resolve_from_web(name: str) -> ExerciseResolution | None:
         return None
 
     source = f"Auto-resolved from web search snippets for '{name}' muscles worked."
-    targets = [
-        _target(primary_group, _GROUP_MUSCLE_NAMES[primary_group], "primary", source)
-    ]
+    targets = [_target(primary_group, _GROUP_MUSCLE_NAMES[primary_group], "primary", source)]
     for group, score in sorted(scores.items(), key=lambda item: item[1], reverse=True):
         if group == primary_group or score < 1:
             continue

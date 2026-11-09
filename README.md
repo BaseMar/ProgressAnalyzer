@@ -3,7 +3,7 @@
 A training dashboard that turns workout notes into a clearer next step:
 **see what changed, compare it with your plan, and decide what to do next.**
 
-![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
+![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red)
 ![Tests](https://img.shields.io/badge/tests-pytest-green)
 ![Database](https://img.shields.io/badge/database-PostgreSQL%20%2F%20Supabase-blue)
@@ -86,11 +86,11 @@ More views, including mobile layouts, are in [Screenshots](#screenshots).
 
 | Layer | Tools |
 | --- | --- |
-| Application | Python 3.11+, Streamlit |
+| Application | Python 3.11 / 3.12, Streamlit |
 | Calculations | Pandas, NumPy |
 | Charts and muscle map | Plotly, Pillow |
 | Storage | PostgreSQL / Supabase, SQLAlchemy, psycopg2 |
-| Verification and hosting | Pytest, GitHub Actions, Streamlit Community Cloud |
+| Verification and hosting | Pytest, Ruff, GitHub Actions, Streamlit Community Cloud |
 
 ## What It Does
 
@@ -765,6 +765,9 @@ module boundaries, shared recommendation context and retained compatibility APIs
 The [code retirement report](docs/code-retirement.md) lists the legacy modules
 and view branches removed in stage 6, with the test migration and validation results.
 
+The [development tools guide](docs/development-tools.md) describes runtime and
+development dependencies, shared formatting/lint rules and the stage 7 checks.
+
 ## Language and Terminology
 
 English is used throughout the interface, generated workout notes, documentation,
@@ -833,7 +836,7 @@ Draft types live in `models/training_plan.py`.
 
 ### Requirements
 
-- Python 3.11 or newer.
+- Python 3.11 or 3.12, both tested in CI.
 - An existing PostgreSQL-compatible database with the expected workout and
   body-tracking tables.
 - Dependencies listed in `requirements.txt`.
@@ -868,8 +871,10 @@ python -m db.migrate --apply
 streamlit run streamlit_app.py
 ```
 
-Streamlit is pinned to **1.66.1** so local installs and Community Cloud use
-the same renderer. Reinstall requirements after dependency changes.
+Direct runtime dependencies are pinned in `requirements.txt`, including
+Streamlit **1.66.1**, so local installs and Community Cloud use the same renderer.
+Reinstall requirements after dependency changes. Development tools are installed
+separately through `requirements-dev.txt`, which includes the runtime manifest.
 A missing connection or missing base tables prevents startup data loading.
 
 ## Database Migrations
@@ -922,12 +927,24 @@ python -m db.seed_exercise_muscle_map
 Tests cover calculations, model validation, parsing, filters, plan versions,
 transaction rollback and Streamlit views.
 
+Install the development dependencies into your activated virtual environment,
+then run the same checks as CI:
+
 ```powershell
+python -m pip install -r requirements-dev.txt
+python -m pip check
+python -m ruff check .
+python -m ruff format --check .
 python -m pytest
-python -m compileall -q db metrics models services ui streamlit_app.py data_loader.py data_manager.py mapper.py
+python -m compileall -q db metrics models services ui scripts streamlit_app.py data_loader.py data_manager.py mapper.py
 ```
 
-Five PostgreSQL integration cases need a separate test database.
+Use `python -m ruff format .` to apply the shared Python format. Import sorting
+is included in Ruff's lint rules; `python -m ruff check --fix .` applies safe fixes.
+See the [development tools guide](docs/development-tools.md) for the rule scope
+and dependency update procedure.
+
+Six PostgreSQL integration cases need a separate test database.
 Without it, they are skipped while unit, SQLite and Streamlit tests still run.
 
 <details>
@@ -944,7 +961,7 @@ Each case creates a unique schema, applies all migrations, uses synthetic
 logs and rolls the schema back afterward. The tests never fall back to the app's
 `DATABASE_URL`.
 
-The [Tests workflow](.github/workflows/tests.yml) uses Python 3.12 and disposable
+The [Tests workflow](.github/workflows/tests.yml) uses Python 3.11 and 3.12 with disposable
 PostgreSQL 16 on pushes to `main` and pull requests.
 Browser/release checks are recorded in [release-validation.md](docs/release-validation.md).
 
@@ -961,7 +978,7 @@ Planned improvements:
 - a complete database bootstrap and anonymized sample data;
 - Docker Compose for repeatable local setup;
 - authentication and data isolation for multiple users;
-- broader free-form import coverage and linting in CI.
+- broader free-form import coverage.
 
 Implementation notes:
 [analytics redesign](docs/analytics-redesign-plan.md) ·

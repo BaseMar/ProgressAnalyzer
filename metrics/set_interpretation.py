@@ -1,9 +1,10 @@
 """Transparent effort policy. Interpret records without rewriting labels or RIR."""
+
 from collections import defaultdict
 from math import isfinite
 
-from models.set_interpretation import SetInterpretation
 from metrics.load_metrics import load_type, total_load_kg
+from models.set_interpretation import SetInterpretation
 
 
 def _number(value):
@@ -44,7 +45,9 @@ def interpret_sets(sets, *, deload_exercise_ids=frozenset()):
         groups[item.workout_exercise_id].append(item)
     first_work = {}
     for exercise_id, items in groups.items():
-        working = sorted((item for item in items if _known_working(item)), key=lambda item: item.set_number)
+        working = sorted(
+            (item for item in items if _known_working(item)), key=lambda item: item.set_number
+        )
         if working:
             first_work[exercise_id] = working[0]
     output = []
@@ -58,8 +61,14 @@ def interpret_sets(sets, *, deload_exercise_ids=frozenset()):
             continue
         deload = item.workout_exercise_id in deload_exercise_ids
         if _timed(item):
-            output.append(SetInterpretation("deload" if deload else "timed", "plan" if deload else "duration",
-                                            "scheduled_deload" if deload else "duration_recorded", not deload))
+            output.append(
+                SetInterpretation(
+                    "deload" if deload else "timed",
+                    "plan" if deload else "duration",
+                    "scheduled_deload" if deload else "duration_recorded",
+                    not deload,
+                )
+            )
             continue
         rir = _number(item.rir)
         if item.rir is not None and (rir is None or rir < 0):
@@ -67,7 +76,9 @@ def interpret_sets(sets, *, deload_exercise_ids=frozenset()):
         elif deload:
             output.append(SetInterpretation("deload", "plan", "scheduled_deload"))
         elif item.is_warmup is False:
-            output.append(SetInterpretation("working", "explicit", "explicit_working", rir is not None))
+            output.append(
+                SetInterpretation("working", "explicit", "explicit_working", rir is not None)
+            )
         elif rir is None:
             output.append(SetInterpretation("unknown", "unknown", "missing_rir"))
         elif rir <= 3:
@@ -76,11 +87,21 @@ def interpret_sets(sets, *, deload_exercise_ids=frozenset()):
             first = first_work.get(item.workout_exercise_id)
             first_load = total_load_kg(first) if first is not None else None
             actual_load = total_load_kg(item)
-            warmup = (first is not None and first.set_number > item.set_number
-                      and first_load is not None and actual_load is not None
-                      and load_type(first) == load_type(item) and actual_load < first_load)
-            output.append(SetInterpretation("warmup" if warmup else "light", "sequence" if warmup else "rir",
-                                            "lighter_before_working" if warmup else "rir_4_5"))
+            warmup = (
+                first is not None
+                and first.set_number > item.set_number
+                and first_load is not None
+                and actual_load is not None
+                and load_type(first) == load_type(item)
+                and actual_load < first_load
+            )
+            output.append(
+                SetInterpretation(
+                    "warmup" if warmup else "light",
+                    "sequence" if warmup else "rir",
+                    "lighter_before_working" if warmup else "rir_4_5",
+                )
+            )
         else:
             output.append(SetInterpretation("low_effort", "rir", "rir_above_5"))
     return tuple(output)

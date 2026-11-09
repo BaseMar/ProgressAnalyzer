@@ -8,10 +8,9 @@ from sqlalchemy.pool import StaticPool
 from streamlit.testing.v1 import AppTest
 
 from db.migrate import migrate
-from db.training_plans import load_training_plans, load_training_plan_versions
+from db.training_plans import load_training_plan_versions, load_training_plans
 
-
-APP = '''
+APP = """
 import streamlit as st
 from data_manager import DataManager
 from models.exercise import Exercise
@@ -23,31 +22,38 @@ TrainingPlanView([
     Exercise(1, "Bench Press", None, "Chest"),
     Exercise(2, "Plank", None, "Abs"),
 ], manager).render()
-'''
+"""
 
 
 @pytest.fixture
 def plan_engine():
-    engine = create_engine("sqlite://", future=True, poolclass=StaticPool,
-                           connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite://", future=True, poolclass=StaticPool, connect_args={"check_same_thread": False}
+    )
 
     @event.listens_for(engine, "connect")
     def configure(connection, _):
         connection.execute("PRAGMA foreign_keys=ON")
 
     metadata = MetaData()
-    catalog = Table("exercises", metadata,
-        Column("exercise_id", Integer, primary_key=True), Column("exercise_name", String),
+    catalog = Table(
+        "exercises",
+        metadata,
+        Column("exercise_id", Integer, primary_key=True),
+        Column("exercise_name", String),
     )
     Table("workout_sessions", metadata, Column("session_id", Integer, primary_key=True))
     Table("workout_exercises", metadata, Column("workout_exercise_id", Integer, primary_key=True))
     Table("workout_sets", metadata, Column("set_id", Integer, primary_key=True))
     with engine.begin() as connection:
         metadata.create_all(connection)
-        connection.execute(catalog.insert(), [
-            {"exercise_id": 1, "exercise_name": "Bench Press"},
-            {"exercise_id": 2, "exercise_name": "Plank"},
-        ])
+        connection.execute(
+            catalog.insert(),
+            [
+                {"exercise_id": 1, "exercise_name": "Bench Press"},
+                {"exercise_id": 2, "exercise_name": "Plank"},
+            ],
+        )
     yield engine
     engine.dispose()
 
@@ -64,7 +70,13 @@ def start_app(engine, ready=True):
 
 def edit_rows(app, key, changes):
     prefix = key.removesuffix("_exercises") + "_ex_0"
-    fields = {"Sets": "sets", "From": "minimum", "To": "maximum", "RIR": "rir", "Increment": "increment"}
+    fields = {
+        "Sets": "sets",
+        "From": "minimum",
+        "To": "maximum",
+        "RIR": "rir",
+        "Increment": "increment",
+    }
     for name, value in changes.items():
         if name == "Exercise":
             app.selectbox(key=f"{prefix}_exercise_id").select(1 if value.startswith("Bench") else 2)
@@ -125,9 +137,17 @@ def test_add_and_remove_workouts_keeps_remaining_inputs_and_time_targets(plan_en
     assert app.text_input(key="plan_editor_new_name").value == "Core"
     app.text_input(key="plan_editor_new_day_1_name").set_value("Core A")
     app.selectbox(key="plan_editor_new_day_1_weekday").select(2)
-    edit_rows(app, "plan_editor_new_day_1_exercises", {
-        "Exercise": "Plank · #2", "From": 30, "To": 60, "Unit": "seconds", "RIR": 2,
-    })
+    edit_rows(
+        app,
+        "plan_editor_new_day_1_exercises",
+        {
+            "Exercise": "Plank · #2",
+            "From": 30,
+            "To": 60,
+            "Unit": "seconds",
+            "RIR": 2,
+        },
+    )
     app.selectbox(key="plan_editor_new_active_day").select(0).run()
     app.button(key="plan_editor_new_day_0_remove").click().run()
     assert not app.exception
@@ -145,9 +165,15 @@ def test_invalid_range_stays_in_editor_and_does_not_save(plan_engine):
     app = start_app(plan_engine)
     app.text_input(key="plan_editor_new_name").set_value("Upper")
     app.text_input(key="plan_editor_new_day_0_name").set_value("Upper A")
-    edit_rows(app, "plan_editor_new_day_0_exercises", {
-        "Exercise": "Bench Press · #1", "From": 12, "To": 6,
-    })
+    edit_rows(
+        app,
+        "plan_editor_new_day_0_exercises",
+        {
+            "Exercise": "Bench Press · #1",
+            "From": 12,
+            "To": 6,
+        },
+    )
     app.button(key="plan_editor_new_save").click().run()
     assert not app.exception
     assert "minimum cannot exceed" in app.error[0].value

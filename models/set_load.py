@@ -1,4 +1,5 @@
 """Explicit load convention and a body-mass snapshot for one recorded set."""
+
 from dataclasses import dataclass
 from math import isfinite
 
@@ -18,6 +19,7 @@ class SetLoad:
     is a measured counterweight in kg, not a guessed resistance-band value.
     The total estimates supported system mass, not force in individual muscles.
     """
+
     load_type: str
     external_weight_kg: float = 0.0
     body_mass_kg: float | None = None

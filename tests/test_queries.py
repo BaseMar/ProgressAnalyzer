@@ -86,7 +86,9 @@ def test_insert_exercise_resolves_t_bar_row_as_compound_pull():
         "Lower Back",
     }
     assert next(row for row in muscle_params if row["muscle_group"] == "Back")["role"] == "primary"
-    assert next(row for row in muscle_params if row["muscle_group"] == "Biceps")["role"] == "secondary"
+    assert (
+        next(row for row in muscle_params if row["muscle_group"] == "Biceps")["role"] == "secondary"
+    )
 
 
 def test_insert_exercise_resolves_hanging_leg_raise_specific_targets():
@@ -109,4 +111,7 @@ def test_insert_exercise_resolves_hanging_leg_raise_specific_targets():
         "Back",
     }
     assert next(row for row in muscle_params if row["muscle_group"] == "Abs")["role"] == "primary"
-    assert next(row for row in muscle_params if row["muscle_group"] == "Forearms")["role"] == "stabilizer"
+    assert (
+        next(row for row in muscle_params if row["muscle_group"] == "Forearms")["role"]
+        == "stabilizer"
+    )

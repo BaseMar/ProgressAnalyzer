@@ -13,16 +13,36 @@ from mapper import (
 
 
 def test_recorded_mapper_preserves_repeated_entries_empty_entries_and_set_snapshots():
-    entries = [dict(workout_exercise_id=entry, session_id=1, exercise_id=3) for entry in (10, 11, 12)]
-    rows = [dict(workout_exercise_id=10, set_number=1, repetitions=8, weight=0., rir=None,
-                 is_warmup=False, load_type='bodyweight', body_mass_kg=80., assistance_kg=0.),
-            dict(workout_exercise_id=11, set_number=1, repetitions=None, weight=None, rir=None,
-                 duration_seconds=35, is_warmup=None)]
+    entries = [
+        dict(workout_exercise_id=entry, session_id=1, exercise_id=3) for entry in (10, 11, 12)
+    ]
+    rows = [
+        dict(
+            workout_exercise_id=10,
+            set_number=1,
+            repetitions=8,
+            weight=0.0,
+            rir=None,
+            is_warmup=False,
+            load_type="bodyweight",
+            body_mass_kg=80.0,
+            assistance_kg=0.0,
+        ),
+        dict(
+            workout_exercise_id=11,
+            set_number=1,
+            repetitions=None,
+            weight=None,
+            rir=None,
+            duration_seconds=35,
+            is_warmup=None,
+        ),
+    ]
     recorded = map_recorded_exercises(entries, rows)
     assert [item.workout_exercise_id for item in recorded] == [10, 11, 12]
-    assert recorded[0].sets[0].load.body_mass_kg == 80.
+    assert recorded[0].sets[0].load.body_mass_kg == 80.0
     assert recorded[0].sets[0].rir is None and recorded[0].sets[0].is_warmup is False
-    assert recorded[1].sets[0].duration_seconds == 35 and recorded[1].sets[0].weight == 0.
+    assert recorded[1].sets[0].duration_seconds == 35 and recorded[1].sets[0].weight == 0.0
     assert recorded[2].sets == ()
 
 
@@ -56,9 +76,7 @@ def test_training_row_mappers_return_domain_models():
 
 
 def test_exercise_and_muscle_mappers_return_expected_values():
-    exercise = map_exercise(
-        {"exercise_id": 2, "exercise_name": "Row", "body_part": "Back"}
-    )
+    exercise = map_exercise({"exercise_id": 2, "exercise_name": "Row", "body_part": "Back"})
     target = map_exercise_muscle_target(
         {
             "exercise_id": 2,

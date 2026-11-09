@@ -1,38 +1,65 @@
 """Shared load controls for manual entry, import review and history corrections."""
+
 import streamlit as st
 
+from metrics.load_metrics import suggested_load_type as suggested_load_type
 from models.set_load import SetLoad
-from metrics.load_metrics import suggested_load_type
 
 LOAD_LABELS = {
-    "legacy": "Original log", "external": "External weight",
-    "bodyweight": "Bodyweight", "assisted_bodyweight": "Assisted bodyweight",
+    "legacy": "Original log",
+    "external": "External weight",
+    "bodyweight": "Bodyweight",
+    "assisted_bodyweight": "Assisted bodyweight",
 }
 
 
-def render_load_inputs(manager, workout_date, *, key, current=None, default="legacy", allow_legacy=True):
+def render_load_inputs(
+    manager, workout_date, *, key, current=None, default="legacy", allow_legacy=True
+):
     options = list(LOAD_LABELS) if allow_legacy else list(LOAD_LABELS)[1:]
-    kind = st.selectbox("Load type", options, index=options.index(default),
-                        format_func=LOAD_LABELS.get, key=f"{key}_kind")
+    kind = st.selectbox(
+        "Load type",
+        options,
+        index=options.index(default),
+        format_func=LOAD_LABELS.get,
+        key=f"{key}_kind",
+    )
     if kind == "legacy":
         return kind, None, None
     if kind == "external":
         return kind, None, 0.0
     suggestion = manager.suggest_body_mass(workout_date)
-    initial = current.body_mass_kg if current is not None and current.load_type == kind else (
-        suggestion["weight"] if suggestion else None)
+    initial = (
+        current.body_mass_kg
+        if current is not None and current.load_type == kind
+        else (suggestion["weight"] if suggestion else None)
+    )
     # A different workout date must refresh the measurement suggestion.
-    body = st.number_input("Body mass (kg)", min_value=0.1, value=initial, step=0.1,
-                           key=f"{key}_{workout_date}_{kind}_body", format="%.1f")
+    body = st.number_input(
+        "Body mass (kg)",
+        min_value=0.1,
+        value=initial,
+        step=0.1,
+        key=f"{key}_{workout_date}_{kind}_body",
+        format="%.1f",
+    )
     if suggestion:
         st.caption(f"Last measurement: {suggestion['weight']:g} kg · {suggestion['date']:%Y-%m-%d}")
     else:
         st.caption("No earlier body-mass measurement.")
     assistance = 0.0
     if kind == "assisted_bodyweight":
-        initial_assistance = current.assistance_kg if current is not None and current.load_type == kind else None
-        assistance = st.number_input("Assistance (kg)", min_value=0.1, value=initial_assistance,
-            step=0.5, key=f"{key}_assistance", help="Measured counterweight. Leave blank for unknown support, such as an unmeasured resistance band.")
+        initial_assistance = (
+            current.assistance_kg if current is not None and current.load_type == kind else None
+        )
+        assistance = st.number_input(
+            "Assistance (kg)",
+            min_value=0.1,
+            value=initial_assistance,
+            step=0.5,
+            key=f"{key}_assistance",
+            help="Measured counterweight. Leave blank for unknown support, such as an unmeasured resistance band.",
+        )
     return kind, body, assistance
 
 

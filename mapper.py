@@ -1,8 +1,6 @@
 """Convert storage rows into domain models; no database access or caching."""
-import pandas as pd
 
-from models.set_load import SetLoad
-from models.plan_adherence import RecordedExercise
+import pandas as pd
 
 from models import (
     BodyComposition,
@@ -13,6 +11,8 @@ from models import (
     WorkoutSession,
     WorkoutSet,
 )
+from models.plan_adherence import RecordedExercise
+from models.set_load import SetLoad
 
 MEASUREMENT_COLUMNS = ("chest", "waist", "abdomen", "hips", "thigh", "calf", "biceps")
 
@@ -38,9 +38,12 @@ def map_workout_set(row: dict) -> WorkoutSet:
     load = None
     if not pd.isna(row.get("load_type")):
         load = SetLoad(
-            load_type=row["load_type"], external_weight_kg=float(row["weight"]),
+            load_type=row["load_type"],
+            external_weight_kg=float(row["weight"]),
             body_mass_kg=None if pd.isna(row.get("body_mass_kg")) else float(row["body_mass_kg"]),
-            assistance_kg=None if pd.isna(row.get("assistance_kg")) else float(row["assistance_kg"]),
+            assistance_kg=None
+            if pd.isna(row.get("assistance_kg"))
+            else float(row["assistance_kg"]),
         )
     return WorkoutSet(
         workout_exercise_id=row["workout_exercise_id"],
@@ -67,11 +70,24 @@ def map_recorded_exercises(exercise_rows, set_rows) -> tuple[RecordedExercise, .
     """Group already ordered set rows while preserving recorded entry identity."""
     sets = {row["workout_exercise_id"]: [] for row in exercise_rows}
     for row in set_rows:
-        sets[row["workout_exercise_id"]].append(map_workout_set({
-            **row, "repetitions": row["repetitions"] or 0, "weight": row["weight"] or 0.,
-        }))
-    return tuple(RecordedExercise(row["workout_exercise_id"], row["session_id"], row["exercise_id"],
-                                  tuple(sets[row["workout_exercise_id"]])) for row in exercise_rows)
+        sets[row["workout_exercise_id"]].append(
+            map_workout_set(
+                {
+                    **row,
+                    "repetitions": row["repetitions"] or 0,
+                    "weight": row["weight"] or 0.0,
+                }
+            )
+        )
+    return tuple(
+        RecordedExercise(
+            row["workout_exercise_id"],
+            row["session_id"],
+            row["exercise_id"],
+            tuple(sets[row["workout_exercise_id"]]),
+        )
+        for row in exercise_rows
+    )
 
 
 def map_exercise_muscle_target(row: dict) -> ExerciseMuscleTarget:
@@ -88,7 +104,7 @@ def map_body_measurement(row: dict) -> list[BodyMeasurement]:
     """Map one DB row with multiple columns to a list of BodyMeasurement instances."""
     measurements = []
     date = row["measurement_date"]
-    
+
     for col in MEASUREMENT_COLUMNS:
         value = row.get(col)
         if value is not None:

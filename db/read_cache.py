@@ -1,4 +1,5 @@
 """Share read results within one render, never across users or Streamlit reruns."""
+
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import wraps
@@ -8,8 +9,7 @@ from weakref import WeakSet
 from sqlalchemy import event, inspect
 from sqlalchemy.engine import Connection, Engine
 
-
-_current = ContextVar('render_reads', default=None)
+_current = ContextVar("render_reads", default=None)
 _installed = WeakSet()
 _install_lock = Lock()
 
@@ -38,9 +38,14 @@ def _before_execute(connection, cursor, statement, parameters, context, executem
         return
     # Invalidate before a write so services also see their uncommitted changes.
     # Unknown statements invalidate conservatively, including data-changing CTEs.
-    sql = ' '.join(statement.upper().split())
-    control = sql in ('BEGIN', 'SET TRANSACTION READ ONLY', 'PRAGMA QUERY_ONLY=ON', 'PRAGMA QUERY_ONLY')
-    if not control and not sql.startswith(('SELECT ', 'SHOW ', 'PRAGMA MAIN.', 'PRAGMA TEMP.')):
+    sql = " ".join(statement.upper().split())
+    control = sql in (
+        "BEGIN",
+        "SET TRANSACTION READ ONLY",
+        "PRAGMA QUERY_ONLY=ON",
+        "PRAGMA QUERY_ONLY",
+    )
+    if not control and not sql.startswith(("SELECT ", "SHOW ", "PRAGMA MAIN.", "PRAGMA TEMP.")):
         cache.values.clear()
         cache.written.add(connection)
 
@@ -62,9 +67,9 @@ def install_read_invalidation(engine):
     with _install_lock:
         if engine in _installed:
             return
-        event.listen(engine, 'before_cursor_execute', _before_execute)
-        event.listen(engine, 'commit', _finish)
-        event.listen(engine, 'rollback', _finish)
+        event.listen(engine, "before_cursor_execute", _before_execute)
+        event.listen(engine, "commit", _finish)
+        event.listen(engine, "rollback", _finish)
         _installed.add(engine)
 
 
@@ -94,6 +99,7 @@ def read_cached(function):
     Callers treat returned domain objects/collections as read-only. Cached
     values are local to the current read_scope, with no TTL or global state.
     """
+
     @wraps(function)
     def wrapped(source, *args, **kwargs):
         cache = _current.get()
@@ -105,6 +111,7 @@ def read_cached(function):
         if key not in cache.values:
             cache.values[key] = function(source, *args, **kwargs)
         return cache.values[key]
+
     return wrapped
 
 

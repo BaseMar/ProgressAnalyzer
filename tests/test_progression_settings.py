@@ -1,4 +1,5 @@
 """Block configuration persists independently of plan-version effective dates."""
+
 from dataclasses import replace
 from datetime import date, datetime, timedelta
 
@@ -6,19 +7,39 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from test_training_plan_view import plan_engine, start_app, create_plan
 import db.migrate as migration_runner
 from db.training_plans import (
-    plans, versions, days, exercises, progression_settings,
-    load_training_plan_version, load_training_plan_versions, load_training_plans, save_training_plan,
+    days,
+    exercises,
+    load_training_plan_version,
+    load_training_plan_versions,
+    load_training_plans,
+    plans,
+    progression_settings,
+    save_training_plan,
+    versions,
 )
-from models.training_plan import PlannedExercise, ProgressionSettings, TrainingDay, TrainingPlanDraft
+from models.training_plan import (
+    PlannedExercise,
+    ProgressionSettings,
+    TrainingDay,
+    TrainingPlanDraft,
+)
+from test_training_plan_view import create_plan, start_app
+from test_training_plan_view import plan_engine as plan_engine
 
 
 def draft(settings=None):
-    return TrainingPlanDraft("Upper", date.today() - timedelta(days=28), (
-        TrainingDay("Upper A", 0, (PlannedExercise(1, 3, 6, 10, target_rir=2, weight_increment=2.5),)),
-    ), settings)
+    return TrainingPlanDraft(
+        "Upper",
+        date.today() - timedelta(days=28),
+        (
+            TrainingDay(
+                "Upper A", 0, (PlannedExercise(1, 3, 6, 10, target_rir=2, weight_increment=2.5),)
+            ),
+        ),
+        settings,
+    )
 
 
 @pytest.mark.parametrize("weeks", [6, 7, 8])
@@ -29,7 +50,11 @@ def test_settings_roundtrip_and_revision_omission_preserves_block(plan_engine, w
     assert first.draft.progression == settings
     assert load_training_plan_version(plan_engine, first.version_id) == first
     # Old clients may omit the new field when revising: do not reset the block.
-    second = save_training_plan(plan_engine, replace(first.draft, effective_from=date.today(), progression=None), plan_id=first.plan_id)
+    second = save_training_plan(
+        plan_engine,
+        replace(first.draft, effective_from=date.today(), progression=None),
+        plan_id=first.plan_id,
+    )
     assert second.draft.progression == settings
     assert second.draft.effective_from != settings.block_start
     assert load_training_plan_version(plan_engine, first.version_id) == first
@@ -37,11 +62,19 @@ def test_settings_roundtrip_and_revision_omission_preserves_block(plan_engine, w
 
 def test_explicit_block_change_creates_new_snapshot(plan_engine):
     migration_runner.migrate(plan_engine, apply=True)
-    first = save_training_plan(plan_engine, draft(ProgressionSettings(date.today() - timedelta(days=21), 6)))
+    first = save_training_plan(
+        plan_engine, draft(ProgressionSettings(date.today() - timedelta(days=21), 6))
+    )
     changed = ProgressionSettings(date.today(), 8)
-    second = save_training_plan(plan_engine, replace(first.draft, effective_from=date.today(), progression=changed), plan_id=first.plan_id)
+    second = save_training_plan(
+        plan_engine,
+        replace(first.draft, effective_from=date.today(), progression=changed),
+        plan_id=first.plan_id,
+    )
     assert second.draft.progression == changed
-    assert load_training_plan_version(plan_engine, first.version_id).draft.progression.block_weeks == 6
+    assert (
+        load_training_plan_version(plan_engine, first.version_id).draft.progression.block_weeks == 6
+    )
 
 
 @pytest.mark.parametrize("weeks", [0, 5, 9, True, 6.5, None])
@@ -61,7 +94,11 @@ def test_database_rejects_invalid_block_length(plan_engine):
     migration_runner.migrate(plan_engine, apply=True)
     saved = save_training_plan(plan_engine, draft())
     with pytest.raises(IntegrityError), plan_engine.begin() as connection:
-        connection.execute(progression_settings.insert().values(version_id=saved.version_id, block_start=date.today(), block_weeks=5))
+        connection.execute(
+            progression_settings.insert().values(
+                version_id=saved.version_id, block_start=date.today(), block_weeks=5
+            )
+        )
     assert load_training_plan_version(plan_engine, saved.version_id).draft.progression is None
 
 
@@ -71,13 +108,37 @@ def test_upgrade_preserves_legacy_plan_without_assuming_a_block(plan_engine, mon
         migration_runner.migrate(plan_engine, apply=True)
     with plan_engine.begin() as connection:
         plan_id = connection.execute(plans.insert().values()).inserted_primary_key[0]
-        version_id = connection.execute(versions.insert().values(
-            plan_id=plan_id, version_number=1, name="Legacy", effective_from=date.today(),
-        )).inserted_primary_key[0]
-        day_id = connection.execute(days.insert().values(version_id=version_id, name="Upper", weekday=0, position=1)).inserted_primary_key[0]
-        connection.execute(exercises.insert().values(day_id=day_id, exercise_id=1, position=1,
-            set_count=3, target_min=6, target_max=10, target_unit="reps", target_rir=2, weight_increment=1.25))
-    assert migration_runner.migrate(plan_engine, apply=True) == ["005_progression_settings", "006_set_loads", "007_recommendation_lineage", "008_starting_loads", "009_exercise_history_load_settings"]
+        version_id = connection.execute(
+            versions.insert().values(
+                plan_id=plan_id,
+                version_number=1,
+                name="Legacy",
+                effective_from=date.today(),
+            )
+        ).inserted_primary_key[0]
+        day_id = connection.execute(
+            days.insert().values(version_id=version_id, name="Upper", weekday=0, position=1)
+        ).inserted_primary_key[0]
+        connection.execute(
+            exercises.insert().values(
+                day_id=day_id,
+                exercise_id=1,
+                position=1,
+                set_count=3,
+                target_min=6,
+                target_max=10,
+                target_unit="reps",
+                target_rir=2,
+                weight_increment=1.25,
+            )
+        )
+    assert migration_runner.migrate(plan_engine, apply=True) == [
+        "005_progression_settings",
+        "006_set_loads",
+        "007_recommendation_lineage",
+        "008_starting_loads",
+        "009_exercise_history_load_settings",
+    ]
     assert migration_runner.migrate(plan_engine, apply=True) == []
     saved = load_training_plan_version(plan_engine, version_id)
     assert saved.draft.progression is None

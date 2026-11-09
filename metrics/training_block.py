@@ -1,4 +1,5 @@
 """Calendar-based, repeating blocks and temporary deload targets."""
+
 from dataclasses import replace
 from datetime import date, timedelta
 from math import ceil
@@ -20,17 +21,23 @@ def training_block_phase(on_date: date, settings: ProgressionSettings | None) ->
     cycle, offset = divmod(elapsed, length)
     start = settings.block_start + timedelta(days=cycle * length)
     deload = start + timedelta(days=length - 7)
-    return TrainingBlockPhase("deload" if offset >= length - 7 else "normal",
-                              cycle + 1, offset // 7 + 1, start,
-                              start + timedelta(days=length - 1), deload)
+    return TrainingBlockPhase(
+        "deload" if offset >= length - 7 else "normal",
+        cycle + 1,
+        offset // 7 + 1,
+        start,
+        start + timedelta(days=length - 1),
+        deload,
+    )
 
 
 def is_deload_workout(slot, settings, *, as_of=None):
     """A moved deload stays deload; ordinary work done during deload is excluded too."""
-    return (training_block_phase(slot.scheduled_date, settings).phase == "deload"
-            or (slot.performed_on is not None
-                and (as_of is None or slot.performed_on <= as_of)
-                and training_block_phase(slot.performed_on, settings).phase == "deload"))
+    return training_block_phase(slot.scheduled_date, settings).phase == "deload" or (
+        slot.performed_on is not None
+        and (as_of is None or slot.performed_on <= as_of)
+        and training_block_phase(slot.performed_on, settings).phase == "deload"
+    )
 
 
 def deload_exercise_target(planned, policy=DeloadPolicy()):
@@ -44,8 +51,20 @@ def deload_exercise_target(planned, policy=DeloadPolicy()):
 
 def deload_adjusted_input(data, settings_by_version, policy=DeloadPolicy(), *, as_of=None):
     """Use reduced counts/ranges in plan coverage, without writing new snapshots."""
-    return replace(data, workouts=tuple(
-        replace(workout, targets=tuple(replace(target, exercise=deload_exercise_target(target.exercise, policy))
-                                       for target in workout.targets))
-        if is_deload_workout(workout.slot, settings_by_version.get(workout.slot.version_id), as_of=as_of) else workout
-        for workout in data.workouts))
+    return replace(
+        data,
+        workouts=tuple(
+            replace(
+                workout,
+                targets=tuple(
+                    replace(target, exercise=deload_exercise_target(target.exercise, policy))
+                    for target in workout.targets
+                ),
+            )
+            if is_deload_workout(
+                workout.slot, settings_by_version.get(workout.slot.version_id), as_of=as_of
+            )
+            else workout
+            for workout in data.workouts
+        ),
+    )

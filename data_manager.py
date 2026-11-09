@@ -1,43 +1,62 @@
 import logging
+from datetime import date, time
 from functools import wraps
 from typing import Any, Dict, List
-from datetime import date, time
+
 import pandas as pd
 
 from db.connection import get_engine
-from db.set_loads import save_session_set_loads, set_load_storage_ready, suggest_body_mass
-from db.workout_sessions import save_workout_session
-from services.recommendations import (
-    load_workout_recommendations,
-    prepare_plan_context, recommend_prepared_workout,
+from db.plan_adherence import (
+    adherence_storage_ready,
+    load_plan_adherence,
+    load_plan_performance,
+    remove_exercise_match,
+    save_exercise_match,
 )
-from db.recommendation_references import load_recommendation_references
-from db.starting_loads import load_starting_loads, save_starting_loads, starting_load_storage_ready
-from db.training_context import load_deload_exercise_ids
-from db.training_plans import (
-    load_effective_training_plan, load_training_plan_versions, load_training_plans,
-    save_training_plan, training_plan_storage_ready,
-)
-from models.training_plan import TrainingPlanDraft, TrainingPlanVersion
-from db.set_classifications import classification_storage_ready, load_session_sets, save_set_classifications
-from db.plan_adherence import adherence_storage_ready, load_plan_adherence, load_plan_performance, save_exercise_match, remove_exercise_match
 from db.plan_schedule import (
-    plan_schedule_storage_ready, load_scheduled_workouts, load_scheduled_workout_targets,
-    load_plan_session_links, assign_scheduled_session, unassign_scheduled_session,
+    assign_scheduled_session,
+    load_plan_session_links,
+    load_scheduled_workout_targets,
+    load_scheduled_workouts,
+    plan_schedule_storage_ready,
+    unassign_scheduled_session,
 )
 from db.queries import (
     delete_workout_session,
     get_all_sets,
     get_body_composition,
     get_body_measurements,
-    get_exercises,
     get_exercise_muscle_targets,
-    get_workout_exercises,
+    get_exercises,
     get_sets_raw,
+    get_workout_exercises,
     get_workout_sessions,
     insert_body_composition,
     insert_body_measurements,
     insert_exercise,
+)
+from db.recommendation_references import load_recommendation_references
+from db.set_classifications import (
+    classification_storage_ready,
+    load_session_sets,
+    save_set_classifications,
+)
+from db.set_loads import save_session_set_loads, set_load_storage_ready, suggest_body_mass
+from db.starting_loads import load_starting_loads, save_starting_loads, starting_load_storage_ready
+from db.training_context import load_deload_exercise_ids
+from db.training_plans import (
+    load_effective_training_plan,
+    load_training_plan_versions,
+    load_training_plans,
+    save_training_plan,
+    training_plan_storage_ready,
+)
+from db.workout_sessions import save_workout_session
+from models.training_plan import TrainingPlanDraft, TrainingPlanVersion
+from services.recommendations import (
+    load_workout_recommendations,
+    prepare_plan_context,
+    recommend_prepared_workout,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,14 +64,17 @@ logger = logging.getLogger(__name__)
 
 def _refresh_after_write(method):
     """Invalidate the shared input cache only after a successful database write."""
+
     @wraps(method)
     def wrapped(*args, **kwargs):
         result = method(*args, **kwargs)
         if result is not False:
             # Delayed import avoids the loader/manager dependency cycle.
             from data_loader import load_data
+
             load_data.clear()
         return result
+
     return wrapped
 
 
@@ -107,13 +129,17 @@ class DataManager:
         return load_plan_performance(self.engine, plan_id, start, end)
 
     def prepare_plan_context(self, plan_id, start, end, *, as_of, versions=None):
-        return prepare_plan_context(self.engine, plan_id, start, end, as_of=as_of, versions=versions)
+        return prepare_plan_context(
+            self.engine, plan_id, start, end, as_of=as_of, versions=versions
+        )
 
     def recommend_prepared_workout(self, prepared, **options):
         return recommend_prepared_workout(self.engine, prepared, **options)
 
     def load_workout_recommendations(self, plan_id, day_id, scheduled_date, *, as_of, **options):
-        return load_workout_recommendations(self.engine, plan_id, day_id, scheduled_date, as_of=as_of, **options)
+        return load_workout_recommendations(
+            self.engine, plan_id, day_id, scheduled_date, as_of=as_of, **options
+        )
 
     def load_recommendation_references(self, exercise_ids, *, as_of):
         return load_recommendation_references(self.engine, exercise_ids, as_of=as_of)
@@ -154,7 +180,9 @@ class DataManager:
         return unassign_scheduled_session(self.engine, day_id, scheduled_date, session_id)
 
     @_refresh_after_write
-    def save_training_plan(self, draft: TrainingPlanDraft, *, plan_id: int | None = None) -> TrainingPlanVersion:
+    def save_training_plan(
+        self, draft: TrainingPlanDraft, *, plan_id: int | None = None
+    ) -> TrainingPlanVersion:
         return save_training_plan(self.engine, draft, plan_id=plan_id)
 
     def training_plan_storage_ready(self) -> bool:
@@ -166,7 +194,9 @@ class DataManager:
     def load_training_plan_versions(self, plan_id: int) -> list[TrainingPlanVersion]:
         return load_training_plan_versions(self.engine, plan_id)
 
-    def load_effective_training_plan(self, plan_id: int, on_date: date) -> TrainingPlanVersion | None:
+    def load_effective_training_plan(
+        self, plan_id: int, on_date: date
+    ) -> TrainingPlanVersion | None:
         return load_effective_training_plan(self.engine, plan_id, on_date)
 
     def load_exercises(self) -> pd.DataFrame:
@@ -217,19 +247,29 @@ class DataManager:
         sets_data: List[Dict[str, Any]],
         session_start: time,
         session_end: time,
-        *, exercise_id: int | None = None,
+        *,
+        exercise_id: int | None = None,
     ) -> bool:
         """Insert a complete workout session including exercise and sets.
 
         Returns True on success or re-raises the exception if the operation fails.
         """
-        return self.add_workout_session(session_date, notes,
-            [{"name": exercise_name, "exercise_id": exercise_id, "sets": sets_data}], session_start, session_end)
+        return self.add_workout_session(
+            session_date,
+            notes,
+            [{"name": exercise_name, "exercise_id": exercise_id, "sets": sets_data}],
+            session_start,
+            session_end,
+        )
 
     @_refresh_after_write
-    def add_workout_session(self, session_date, notes, exercises_data, session_start=None, session_end=None):
+    def add_workout_session(
+        self, session_date, notes, exercises_data, session_start=None, session_end=None
+    ):
         """Persist a workout, then refresh the shared input cache."""
-        return save_workout_session(self.engine, session_date, notes, exercises_data, session_start, session_end)
+        return save_workout_session(
+            self.engine, session_date, notes, exercises_data, session_start, session_end
+        )
 
     @_refresh_after_write
     def add_body_measurements(self, data: dict) -> bool:

@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 
-from models.workout_session import WorkoutSession
-from models.workout_exercise import WorkoutExercise
-from models.workout_set import WorkoutSet
+from models.body_composition import BodyComposition
+from models.body_measurement import BodyMeasurement
 from models.exercise import Exercise
 from models.exercise_muscle_target import ExerciseMuscleTarget
-from models.body_measurement import BodyMeasurement
-from models.body_composition import BodyComposition
+from models.workout_exercise import WorkoutExercise
+from models.workout_session import WorkoutSession
+from models.workout_set import WorkoutSet
 
 
 @dataclass(frozen=True)

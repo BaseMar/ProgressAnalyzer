@@ -1,5 +1,7 @@
 """Exercise the active storage-to-domain path on an isolated workload."""
+
 from datetime import time, timedelta
+
 from data_manager import DataManager
 from metrics.utils.dates import to_date
 from scripts.baseline_fixture import AS_OF, create_fixture
@@ -19,13 +21,19 @@ def test_active_loader_maps_sessions_body_columns_targets_and_load_snapshots():
         assert len(data.body_composition) == 2
         assert len(data.body_measurements) == 14
         assert {item.measurement_type for item in data.body_measurements} == {
-            'chest', 'waist', 'abdomen', 'hips', 'thigh', 'calf', 'biceps',
+            "chest",
+            "waist",
+            "abdomen",
+            "hips",
+            "thigh",
+            "calf",
+            "biceps",
         }
         assert any(item.is_warmup is True for item in data.sets)
         assert any(item.duration_seconds == 35 and item.rir is None for item in data.sets)
         assisted = next(item for item in data.sets if item.load is not None)
-        assert assisted.load.load_type == 'assisted_bodyweight'
-        assert assisted.load.body_mass_kg == 80. and assisted.load.assistance_kg == 20.
+        assert assisted.load.load_type == "assisted_bodyweight"
+        assert assisted.load.body_mass_kg == 80.0 and assisted.load.assistance_kg == 20.0
         manager = DataManager(engine=engine)
         assert len(manager.load_workout_exercises()) == len(data.workout_exercises)
     finally:

@@ -10,7 +10,6 @@ import streamlit as st
 from data_manager import DataManager
 from ui.utils.ui_helpers import line_chart, section_header
 
-
 METRIC_CONFIG = {
     "composition": {
         "Weight": {"col": "weight", "unit": "kg"},
@@ -50,8 +49,12 @@ class BodyMetricsView:
         df["date"] = pd.to_datetime(df["date"])
         df = df.sort_values("date")
 
-        available = {label: cfg for group in METRIC_CONFIG.values() for label, cfg in group.items()
-                     if cfg["col"] in df and df[cfg["col"]].notna().any()}
+        available = {
+            label: cfg
+            for group in METRIC_CONFIG.values()
+            for label, cfg in group.items()
+            if cfg["col"] in df and df[cfg["col"]].notna().any()
+        }
         if not available:
             st.info("No measurements in this period. Add a measurement in History.")
             return
@@ -64,14 +67,19 @@ class BodyMetricsView:
         delta = current[selected] - points.iloc[0][selected]
         change_unit = "pp" if cfg["unit"] == "%" else cfg["unit"]
         latest, change, recorded = st.columns(3)
-        latest.metric(f"Latest {selected.lower()}", f'{current[selected]:g} {cfg["unit"]}')
-        change.metric("Change in selected period", f'{delta:+g} {change_unit}' if len(points) > 1 else "—",
-                      help=f'Compared with the first available measurement on {points.iloc[0]["date"]:%d %b %Y}. Direction alone does not establish improvement.')
-        recorded.metric("Last measured", f'{current["date"]:%d %b %Y}')
+        latest.metric(f"Latest {selected.lower()}", f"{current[selected]:g} {cfg['unit']}")
+        change.metric(
+            "Change in selected period",
+            f"{delta:+g} {change_unit}" if len(points) > 1 else "—",
+            help=f"Compared with the first available measurement on {points.iloc[0]['date']:%d %b %Y}. Direction alone does not establish improvement.",
+        )
+        recorded.metric("Last measured", f"{current['date']:%d %b %Y}")
         if len(points) == 1:
             st.caption("One observation; no trend yet.")
         line_chart(points.set_index("date"), selected)
-        st.caption("These are recorded measurements. Direction alone does not establish improvement; device estimates may vary.")
+        st.caption(
+            "These are recorded measurements. Direction alone does not establish improvement; device estimates may vary."
+        )
         with st.expander("Measurement records"):
             st.dataframe(points, hide_index=True, width="stretch")
 
@@ -135,6 +143,7 @@ class BodyMetricsView:
                 return False
             try:
                 from math import isnan
+
                 return not (isinstance(val, float) and isnan(val))
             except ImportError:
                 return True
@@ -149,27 +158,35 @@ class BodyMetricsView:
                             return True
         return False
 
-    def _save_body_composition(self, date, weight, fat_pct, muscle_mass, fat_mass, water_mass) -> None:
+    def _save_body_composition(
+        self, date, weight, fat_pct, muscle_mass, fat_mass, water_mass
+    ) -> None:
         """Save body composition data to database."""
-        self.dm.add_body_composition({
-            "date": date,
-            "weight": weight,
-            "muscle_mass": muscle_mass,
-            "fat_mass": fat_mass,
-            "water_mass": water_mass,
-            "bf_percent": fat_pct,
-            "method": "SmartWatch",
-        })
+        self.dm.add_body_composition(
+            {
+                "date": date,
+                "weight": weight,
+                "muscle_mass": muscle_mass,
+                "fat_mass": fat_mass,
+                "water_mass": water_mass,
+                "bf_percent": fat_pct,
+                "method": "SmartWatch",
+            }
+        )
 
-    def _save_body_measurements(self, date, chest, waist, abdomen, hips, thigh, calf, biceps) -> None:
+    def _save_body_measurements(
+        self, date, chest, waist, abdomen, hips, thigh, calf, biceps
+    ) -> None:
         """Save body measurements data to database."""
-        self.dm.add_body_measurements({
-            "date": date,
-            "chest": chest,
-            "waist": waist,
-            "abdomen": abdomen,
-            "hips": hips,
-            "thigh": thigh,
-            "calf": calf,
-            "biceps": biceps,
-        })
+        self.dm.add_body_measurements(
+            {
+                "date": date,
+                "chest": chest,
+                "waist": waist,
+                "abdomen": abdomen,
+                "hips": hips,
+                "thigh": thigh,
+                "calf": calf,
+                "biceps": biceps,
+            }
+        )

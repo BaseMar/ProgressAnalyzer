@@ -7,18 +7,28 @@ import pytest
 from sqlalchemy import select
 from streamlit.testing.v1 import AppTest
 
-from test_plan_schedule import schedule_data
 from db.plan_adherence import (
-    actual_exercises, actual_sets, load_plan_adherence, matches,
-    remove_exercise_match, save_exercise_match,
+    actual_exercises,
+    actual_sets,
+    load_plan_adherence,
+    matches,
+    remove_exercise_match,
+    save_exercise_match,
 )
 from db.plan_schedule import assign_scheduled_session, unassign_scheduled_session
 from db.training_plans import save_training_plan
 from metrics.plan_adherence import compute_plan_adherence
-from models.plan_adherence import ExerciseMatch, PlanAdherenceInput, PlannedTarget, PlannedWorkout, RecordedExercise
+from models.plan_adherence import (
+    ExerciseMatch,
+    PlanAdherenceInput,
+    PlannedTarget,
+    PlannedWorkout,
+    RecordedExercise,
+)
 from models.scheduled_workout import ScheduledWorkout
 from models.training_plan import PlannedExercise, TrainingDay
 from models.workout_set import WorkoutSet
+from test_plan_schedule import schedule_data as schedule_data
 
 TODAY = date(2026, 5, 20)
 
@@ -26,9 +36,14 @@ TODAY = date(2026, 5, 20)
 def example(*, actual_id=1, count=3, approved=False):
     slot = ScheduledWorkout(10, 1, date(2026, 5, 18), "Upper", 1, date(2026, 5, 19))
     target = PlannedTarget(101, PlannedExercise(1, 3, 6, 10))
-    actual = RecordedExercise(201, 1, actual_id, tuple(WorkoutSet(201, index, 8, 50., None) for index in range(count)))
-    return PlanAdherenceInput((PlannedWorkout(slot, (target,)),), (actual,),
-                              (ExerciseMatch(1, 101, 201),) if approved else ())
+    actual = RecordedExercise(
+        201, 1, actual_id, tuple(WorkoutSet(201, index, 8, 50.0, None) for index in range(count))
+    )
+    return PlanAdherenceInput(
+        (PlannedWorkout(slot, (target,)),),
+        (actual,),
+        (ExerciseMatch(1, 101, 201),) if approved else (),
+    )
 
 
 def test_substitute_counts_only_after_confirmation_and_preserves_actual_identity():
@@ -48,9 +63,18 @@ def test_substitute_counts_only_after_confirmation_and_preserves_actual_identity
 def test_extra_sets_are_capped_and_missing_exercises_leave_workout_partial():
     data = example(count=8)
     workout = data.workouts[0]
-    data = replace(data, workouts=(replace(workout, targets=(*workout.targets,
-        PlannedTarget(102, PlannedExercise(3, 2, 8, 12)),
-    )),))
+    data = replace(
+        data,
+        workouts=(
+            replace(
+                workout,
+                targets=(
+                    *workout.targets,
+                    PlannedTarget(102, PlannedExercise(3, 2, 8, 12)),
+                ),
+            ),
+        ),
+    )
     report = compute_plan_adherence(data, as_of=TODAY)
     assert report["summary"]["covered_sets"] == 3
     assert report["summary"]["planned_sets"] == 5
@@ -60,9 +84,18 @@ def test_extra_sets_are_capped_and_missing_exercises_leave_workout_partial():
 
 def test_repeated_planned_exercise_cannot_count_recorded_sets_twice():
     data = example(count=4)
-    data = replace(data, workouts=(replace(data.workouts[0], targets=(
-        *data.workouts[0].targets, PlannedTarget(102, PlannedExercise(1, 3, 6, 10)),
-    )),))
+    data = replace(
+        data,
+        workouts=(
+            replace(
+                data.workouts[0],
+                targets=(
+                    *data.workouts[0].targets,
+                    PlannedTarget(102, PlannedExercise(1, 3, 6, 10)),
+                ),
+            ),
+        ),
+    )
     report = compute_plan_adherence(data, as_of=TODAY)
     assert [item["covered_sets"] for item in report["workouts"][0]["details"]] == [3, 1]
     assert report["summary"]["covered_sets"] == 4
@@ -70,9 +103,18 @@ def test_repeated_planned_exercise_cannot_count_recorded_sets_twice():
 
 def test_explicit_replacement_reserves_exercise_before_exact_matching():
     data = example(actual_id=2, approved=True)
-    data = replace(data, workouts=(replace(data.workouts[0], targets=(
-        PlannedTarget(102, PlannedExercise(2, 3, 6, 10)), *data.workouts[0].targets,
-    )),))
+    data = replace(
+        data,
+        workouts=(
+            replace(
+                data.workouts[0],
+                targets=(
+                    PlannedTarget(102, PlannedExercise(2, 3, 6, 10)),
+                    *data.workouts[0].targets,
+                ),
+            ),
+        ),
+    )
     report = compute_plan_adherence(data, as_of=TODAY)
     assert [item["covered_sets"] for item in report["workouts"][0]["details"]] == [0, 3]
     assert report["summary"]["covered_sets"] == 3
@@ -80,7 +122,9 @@ def test_explicit_replacement_reserves_exercise_before_exact_matching():
 
 def test_unperformed_today_and_future_do_not_change_summary_denominators_or_numerators():
     data = example()
-    old = replace(data.workouts[0], slot=replace(data.workouts[0].slot, session_id=None, performed_on=None))
+    old = replace(
+        data.workouts[0], slot=replace(data.workouts[0].slot, session_id=None, performed_on=None)
+    )
     today = replace(old, slot=replace(old.slot, scheduled_date=TODAY))
     future = replace(old, slot=replace(old.slot, scheduled_date=TODAY + timedelta(days=7)))
     report = compute_plan_adherence(replace(data, workouts=(old, today, future)), as_of=TODAY)
@@ -94,11 +138,23 @@ def test_unperformed_today_and_future_do_not_change_summary_denominators_or_nume
 
 @pytest.mark.parametrize("planned_date", [TODAY, TODAY + timedelta(days=3)])
 @pytest.mark.parametrize("count", [0, 2, 3])
-def test_early_execution_counts_completed_recorded_day_even_before_planned_date(planned_date, count):
+def test_early_execution_counts_completed_recorded_day_even_before_planned_date(
+    planned_date, count
+):
     data = example(count=count)
-    data = replace(data, workouts=(replace(data.workouts[0], slot=replace(
-        data.workouts[0].slot, scheduled_date=planned_date, performed_on=TODAY - timedelta(days=1),
-    )),))
+    data = replace(
+        data,
+        workouts=(
+            replace(
+                data.workouts[0],
+                slot=replace(
+                    data.workouts[0].slot,
+                    scheduled_date=planned_date,
+                    performed_on=TODAY - timedelta(days=1),
+                ),
+            ),
+        ),
+    )
     before = compute_plan_adherence(data, as_of=TODAY)
     after = compute_plan_adherence(data, as_of=planned_date + timedelta(days=1))
     assert before["summary"] == after["summary"]
@@ -113,9 +169,19 @@ def test_early_execution_counts_completed_recorded_day_even_before_planned_date(
 @pytest.mark.parametrize("performed_on", [TODAY, TODAY + timedelta(days=1)])
 def test_early_execution_does_not_enter_summary_until_recorded_day_ends(performed_on):
     data = example()
-    data = replace(data, workouts=(replace(data.workouts[0], slot=replace(
-        data.workouts[0].slot, scheduled_date=TODAY + timedelta(days=3), performed_on=performed_on,
-    )),))
+    data = replace(
+        data,
+        workouts=(
+            replace(
+                data.workouts[0],
+                slot=replace(
+                    data.workouts[0].slot,
+                    scheduled_date=TODAY + timedelta(days=3),
+                    performed_on=performed_on,
+                ),
+            ),
+        ),
+    )
     report = compute_plan_adherence(data, as_of=TODAY)
     assert report["summary"]["due_workouts"] == 0
     assert report["summary"]["covered_sets"] == 0
@@ -124,29 +190,52 @@ def test_early_execution_does_not_enter_summary_until_recorded_day_ends(performe
 
 def test_timed_sets_do_not_automatically_satisfy_repetition_targets():
     data = example()
-    actual = replace(data.recorded[0], sets=(WorkoutSet(201, 1, 0, 0., None, 60),))
+    actual = replace(data.recorded[0], sets=(WorkoutSet(201, 1, 0, 0.0, None, 60),))
     report = compute_plan_adherence(replace(data, recorded=(actual,)), as_of=TODAY)
     assert report["summary"]["covered_sets"] == 0
 
 
 def test_future_recorded_session_does_not_earn_credit_as_of_today():
     data = example()
-    data = replace(data, workouts=(replace(data.workouts[0], slot=replace(
-        data.workouts[0].slot, performed_on=TODAY + timedelta(days=1),
-    )),))
+    data = replace(
+        data,
+        workouts=(
+            replace(
+                data.workouts[0],
+                slot=replace(
+                    data.workouts[0].slot,
+                    performed_on=TODAY + timedelta(days=1),
+                ),
+            ),
+        ),
+    )
     assert compute_plan_adherence(data, as_of=TODAY)["summary"]["covered_sets"] == 0
 
 
 def seed_alternative(engine):
     with engine.begin() as connection:
-        connection.execute(actual_exercises.insert(), [
-            {"workout_exercise_id": 200, "session_id": 2, "exercise_id": 2},
-            {"workout_exercise_id": 300, "session_id": 3, "exercise_id": 2},
-        ])
-        connection.execute(actual_sets.insert(), [{
-            "workout_exercise_id": we_id, "set_number": number, "repetitions": 8,
-            "weight": 50., "rir": None, "duration_seconds": None,
-        } for we_id in (200, 300) for number in (1, 2, 3)])
+        connection.execute(
+            actual_exercises.insert(),
+            [
+                {"workout_exercise_id": 200, "session_id": 2, "exercise_id": 2},
+                {"workout_exercise_id": 300, "session_id": 3, "exercise_id": 2},
+            ],
+        )
+        connection.execute(
+            actual_sets.insert(),
+            [
+                {
+                    "workout_exercise_id": we_id,
+                    "set_number": number,
+                    "repetitions": 8,
+                    "weight": 50.0,
+                    "rir": None,
+                    "duration_seconds": None,
+                }
+                for we_id in (200, 300)
+                for number in (1, 2, 3)
+            ],
+        )
 
 
 def linked_report(schedule_data):
@@ -162,11 +251,20 @@ def test_confirm_and_remove_replacement_roundtrip_without_modifying_training_log
     data = linked_report(schedule_data)
     target_id = data.workouts[0].targets[0].plan_exercise_id
     save_exercise_match(engine, 2, target_id, 200)
-    report = compute_plan_adherence(load_plan_adherence(engine, plan.plan_id, start, start), as_of=date.today())
+    report = compute_plan_adherence(
+        load_plan_adherence(engine, plan.plan_id, start, start), as_of=date.today()
+    )
     assert report["summary"]["covered_sets"] == 3
     assert report["summary"]["on_time_workouts"] == 0
     with engine.connect() as connection:
-        assert connection.execute(select(actual_exercises.c.exercise_id).where(actual_exercises.c.workout_exercise_id == 200)).scalar_one() == 2
+        assert (
+            connection.execute(
+                select(actual_exercises.c.exercise_id).where(
+                    actual_exercises.c.workout_exercise_id == 200
+                )
+            ).scalar_one()
+            == 2
+        )
     remove_exercise_match(engine, 2, target_id)
     assert not load_plan_adherence(engine, plan.plan_id, start, start).matches
 
@@ -192,9 +290,22 @@ def test_unlinking_session_clears_approvals_but_keeps_recorded_exercises(schedul
 def test_same_recorded_exercise_cannot_be_approved_for_two_positions(schedule_data):
     engine, start, plan, _ = schedule_data
     seed_alternative(engine)
-    other = save_training_plan(engine, replace(plan.draft, days=(TrainingDay("Upper", 0, (
-        PlannedExercise(1, 3, 6, 10), PlannedExercise(1, 3, 10, 12),
-    )),)))
+    other = save_training_plan(
+        engine,
+        replace(
+            plan.draft,
+            days=(
+                TrainingDay(
+                    "Upper",
+                    0,
+                    (
+                        PlannedExercise(1, 3, 6, 10),
+                        PlannedExercise(1, 3, 10, 12),
+                    ),
+                ),
+            ),
+        ),
+    )
     data = load_plan_adherence(engine, other.plan_id, start, start)
     assign_scheduled_session(engine, data.workouts[0].slot.day_id, start, 2)
     first, second = data.workouts[0].targets
@@ -204,7 +315,7 @@ def test_same_recorded_exercise_cannot_be_approved_for_two_positions(schedule_da
     assert len(load_plan_adherence(engine, other.plan_id, start, start).matches) == 1
 
 
-APP = '''
+APP = """
 import pandas as pd
 import streamlit as st
 from data_manager import DataManager
@@ -219,7 +330,7 @@ frame["repetitions"] = 8
 frame["weight"] = 50.
 frame["set_number"] = 1
 HistoryView({}, frame, month, data_manager=manager, exercise_names=names).render()
-'''
+"""
 
 
 def test_approval_lives_in_history_and_can_be_removed(schedule_data):

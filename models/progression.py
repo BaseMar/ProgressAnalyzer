@@ -1,4 +1,5 @@
 """Derived training targets, not edits to plans or logged performances."""
+
 from dataclasses import dataclass
 from datetime import date
 from math import isfinite
@@ -7,8 +8,14 @@ from typing import Literal
 RULES_VERSION = "double-progression-2026-11-v2"
 
 RecommendationAction = Literal[
-    "increase_reps", "increase_time", "equalize_weight", "increase_weight",
-    "reduce_weight", "maintain", "deload", "insufficient_data",
+    "increase_reps",
+    "increase_time",
+    "equalize_weight",
+    "increase_weight",
+    "reduce_weight",
+    "maintain",
+    "deload",
+    "insufficient_data",
 ]
 
 
@@ -24,8 +31,18 @@ class DeloadPolicy:
     def __post_init__(self):
         for name in ("retained_set_fraction", "load_reduction", "max_load_reduction"):
             value = getattr(self, name)
-            upper_valid = value <= 1 if name == "retained_set_fraction" and isinstance(value, (int, float)) else isinstance(value, (int, float)) and value < 1
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or not isfinite(value) or value <= 0 or not upper_valid:
+            upper_valid = (
+                value <= 1
+                if name == "retained_set_fraction" and isinstance(value, (int, float))
+                else isinstance(value, (int, float)) and value < 1
+            )
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not isfinite(value)
+                or value <= 0
+                or not upper_valid
+            ):
                 raise ValueError(f"{name} must be a finite valid fraction")
         if self.load_reduction > self.max_load_reduction:
             raise ValueError("Load reduction cannot exceed its limit")
@@ -63,10 +80,12 @@ class ProgressionPolicy:
             raise ValueError("Plateau assessment needs at least three executions")
         if type(self.timed_increment_seconds) is not int or self.timed_increment_seconds < 1:
             raise ValueError("Time increment must be a positive number of seconds")
-        if (isinstance(self.max_relative_weight_increase, bool)
+        if (
+            isinstance(self.max_relative_weight_increase, bool)
             or not isinstance(self.max_relative_weight_increase, (int, float))
             or not isfinite(self.max_relative_weight_increase)
-            or not 0 < self.max_relative_weight_increase <= 1):
+            or not 0 < self.max_relative_weight_increase <= 1
+        ):
             raise ValueError("Relative increase limit must be finite and between 0 and 1")
 
 

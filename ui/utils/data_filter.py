@@ -32,14 +32,13 @@ def filter_data_by_month(
         return input_data, sets_df
 
     year, month_num = map(int, month.split("-"))
+
     def in_month(value):
         day = to_date(value)
         return day.year == year and day.month == month_num
 
     filtered_sessions = [
-        session
-        for session in input_data.sessions
-        if in_month(session.session_date)
+        session for session in input_data.sessions if in_month(session.session_date)
     ]
 
     session_ids = {s.session_id for s in filtered_sessions}

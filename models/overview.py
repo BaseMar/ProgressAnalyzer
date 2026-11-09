@@ -1,4 +1,5 @@
 """Prepared content for the current-plan landing page."""
+
 from dataclasses import dataclass
 
 from models.progression import ExerciseRecommendation

@@ -2,20 +2,34 @@
 
 from collections import defaultdict
 
-
 BODY_PART_ORDER = (
-    "Chest", "Back", "Lower Back", "Glutes", "Legs", "Shoulders",
-    "Biceps", "Triceps", "Forearms", "Abs", "Obliques", "Calves",
+    "Chest",
+    "Back",
+    "Lower Back",
+    "Glutes",
+    "Legs",
+    "Shoulders",
+    "Biceps",
+    "Triceps",
+    "Forearms",
+    "Abs",
+    "Obliques",
+    "Calves",
 )
+
 
 def allocation_components(count, target):
     """Raw role counts and saved weighted contribution; no role guessed from factor."""
     role = target.get("role")
-    return {"Direct_Sets": float(count) if role == "primary" else 0.0,
-            "Indirect_Sets": float(count) if role in ("secondary", "stabilizer") else 0.0,
-            "Stabilizer_Sets": float(count) if role == "stabilizer" else 0.0,
-            "Unclassified_Sets": float(count) if role not in ("primary", "secondary", "stabilizer") else 0.0,
-            "Total_Sets": float(count) * float(target.get("set_factor", 1.0))}
+    return {
+        "Direct_Sets": float(count) if role == "primary" else 0.0,
+        "Indirect_Sets": float(count) if role in ("secondary", "stabilizer") else 0.0,
+        "Stabilizer_Sets": float(count) if role == "stabilizer" else 0.0,
+        "Unclassified_Sets": float(count)
+        if role not in ("primary", "secondary", "stabilizer")
+        else 0.0,
+        "Total_Sets": float(count) * float(target.get("set_factor", 1.0)),
+    }
 
 
 def weekly_plan_allocation(draft, input_data):
@@ -28,10 +42,21 @@ def weekly_plan_allocation(draft, input_data):
     for item in input_data.exercise_muscle_targets:
         if item.muscle_group and item.muscle_group.strip():
             allocations[item.exercise_id].append(
-                {"muscle_group": item.muscle_group.strip().title(), "set_factor": item.set_factor, "role": item.role})
+                {
+                    "muscle_group": item.muscle_group.strip().title(),
+                    "set_factor": item.set_factor,
+                    "role": item.role,
+                }
+            )
     for item in input_data.exercises:
         if item.exercise_id not in allocations and item.body_part and item.body_part.strip():
-            allocations[item.exercise_id].append({"muscle_group": item.body_part.strip().title(), "set_factor": 1.0, "role": "primary"})
+            allocations[item.exercise_id].append(
+                {
+                    "muscle_group": item.body_part.strip().title(),
+                    "set_factor": 1.0,
+                    "role": "primary",
+                }
+            )
 
     totals = defaultdict(lambda: defaultdict(float))
     missing = set()

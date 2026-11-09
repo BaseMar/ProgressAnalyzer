@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from calendar import monthrange
+from collections import defaultdict
 from typing import Dict
 
 import pandas as pd
@@ -19,9 +19,11 @@ from ui.utils.ui_helpers import ACCENT, PLOTLY_LAYOUT
 class BodyPartsView:
     """Aggregate exercise metrics for the Muscle distribution analysis."""
 
-    def __init__(self, exercises_metrics: Dict, selected_month: str | None = None, *, weekly_targets=None) -> None:
+    def __init__(
+        self, exercises_metrics: Dict, selected_month: str | None = None, *, weekly_targets=None
+    ) -> None:
         """Initialize with pre-computed exercise metrics.
-        
+
         Args:
             exercises_metrics: Dictionary with 'per_exercise' key containing exercise-level metrics
             selected_month: Active global month filter, or "All time".
@@ -32,7 +34,7 @@ class BodyPartsView:
 
     def _build_bodypart_df(self) -> pd.DataFrame:
         """Aggregate exercise metrics per body part.
-        
+
         Returns:
             DataFrame with columns: Body Part, Total_Sets, Total_Volume, Sessions
             Sorted by total volume descending.
@@ -81,7 +83,9 @@ class BodyPartsView:
                     for target in muscle_targets:
                         body_part = target.get("muscle_group")
                         if body_part and str(body_part).strip():
-                            session_dates_by_part[str(body_part).strip().title()].add(pd.to_datetime(date).date())
+                            session_dates_by_part[str(body_part).strip().title()].add(
+                                pd.to_datetime(date).date()
+                            )
 
         if not rows:
             return pd.DataFrame()
@@ -104,10 +108,7 @@ class BodyPartsView:
             lambda part: len(session_dates_by_part.get(str(part), set()))
         )
 
-        return (
-            body_df.sort_values("Total_Volume", ascending=False)
-            .reset_index(drop=True)
-        )
+        return body_df.sort_values("Total_Volume", ascending=False).reset_index(drop=True)
 
     def _training_period(self) -> tuple[float, str]:
         """Return the filtered period length in weeks and a display label."""
@@ -149,20 +150,35 @@ class BodyPartsView:
         if body_df.empty:
             st.info("No body part data available.")
             body_df = pd.DataFrame(columns=["Body Part", "Total_Sets", "Total_Volume", "Sessions"])
-        measure = st.radio("Distribution view", ["Muscle map", "Set allocation"], horizontal=True, key="analysis_muscle_view")
+        measure = st.radio(
+            "Distribution view",
+            ["Muscle map", "Set allocation"],
+            horizontal=True,
+            key="analysis_muscle_view",
+        )
         period_weeks, period_label = self._training_period()
-        summary = render_weekly_distribution(body_df, period_weeks, period_label,
-            weekly_targets=self.weekly_targets)
+        summary = render_weekly_distribution(
+            body_df, period_weeks, period_label, weekly_targets=self.weekly_targets
+        )
         if "Timed_Sets" in body_df and body_df["Timed_Sets"].gt(0).any():
             with st.expander("Timed sets"):
-                st.dataframe(body_df.loc[body_df["Timed_Sets"] > 0, ["Body Part", "Timed_Sets"]]
-                    .rename(columns={"Timed_Sets": "Allocated timed sets"}), hide_index=True, width="stretch")
+                st.dataframe(
+                    body_df.loc[body_df["Timed_Sets"] > 0, ["Body Part", "Timed_Sets"]].rename(
+                        columns={"Timed_Sets": "Allocated timed sets"}
+                    ),
+                    hide_index=True,
+                    width="stretch",
+                )
         if measure == "Muscle map":
             render_body_heatmap(summary, period_weeks, period_label)
         elif body_df.empty:
             st.info("Log a workout to see set allocation.")
         else:
-            st.plotly_chart(_bar_fig(body_df, "Total_Sets", "Sets in selected period"), width="stretch", key="analysis_muscle_sets")
+            st.plotly_chart(
+                _bar_fig(body_df, "Total_Sets", "Sets in selected period"),
+                width="stretch",
+                key="analysis_muscle_sets",
+            )
 
 
 def _bar_fig(body_df: pd.DataFrame, y_field: str, y_title: str):
@@ -176,11 +192,7 @@ def _bar_fig(body_df: pd.DataFrame, y_field: str, y_title: str):
     fig.update_traces(
         marker_color=ACCENT,
         opacity=0.85,
-        hovertemplate=(
-            "<b>%{y}</b><br>"
-            f"{y_title}: " + "%{x:,.0f}<br>"
-            "<extra></extra>"
-        ),
+        hovertemplate=(f"<b>%{{y}}</b><br>{y_title}: " + "%{x:,.0f}<br><extra></extra>"),
     )
     layout = {
         **PLOTLY_LAYOUT,

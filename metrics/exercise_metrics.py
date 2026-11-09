@@ -11,7 +11,6 @@ from statistics import mean
 from typing import Any, Dict, List
 
 from metrics.input import MetricsInput
-from metrics.utils.set_values import analysis_sets, load_summary
 from metrics.load_metrics import load_record, load_type, total_load_kg
 from metrics.utils import (
     is_duration_set,
@@ -22,6 +21,7 @@ from metrics.utils import (
     set_volume,
     set_weight,
 )
+from metrics.utils.set_values import analysis_sets, load_summary
 
 
 def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
@@ -44,10 +44,7 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         - "global": dict[str, Any]
     """
 
-    workout_to_exercise = {
-        we.workout_exercise_id: we.exercise_id
-        for we in input.workout_exercises
-    }
+    workout_to_exercise = {we.workout_exercise_id: we.exercise_id for we in input.workout_exercises}
     session_id_to_date = {s.session_id: s.session_date for s in input.sessions}
     sessions = {s.session_id: s for s in input.sessions}
     workout_to_session = {we.workout_exercise_id: we.session_id for we in input.workout_exercises}
@@ -55,8 +52,12 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
     exercise_id_to_name = {e.exercise_id: e.name for e in input.exercises}
     exercise_id_to_bodypart = {e.exercise_id: e.body_part for e in input.exercises}
     targets_by_exercise: Dict[int, List[dict[str, Any]]] = defaultdict(list)
-    progression_keys = {(item.workout_exercise_id, item.set_number)
-                        for item in analysis_sets(input.sets, progression=True, deload_exercise_ids=input.deload_exercise_ids)}
+    progression_keys = {
+        (item.workout_exercise_id, item.set_number)
+        for item in analysis_sets(
+            input.sets, progression=True, deload_exercise_ids=input.deload_exercise_ids
+        )
+    }
     for target in input.exercise_muscle_targets:
         targets_by_exercise[target.exercise_id].append(
             {
@@ -84,9 +85,7 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         total_volume = sum(set_volume(s) for s in sets)
         total_duration_seconds = sum(set_duration_seconds(s) for s in duration_sets)
         best_duration_seconds = (
-            max(set_duration_seconds(s) for s in duration_sets)
-            if duration_sets
-            else None
+            max(set_duration_seconds(s) for s in duration_sets) if duration_sets else None
         )
         effective_sets = sum(set_effective_sets(s) for s in sets)
         performance_points = []
@@ -119,11 +118,20 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
                 continue
             estimated_1rm = set_estimated_1rm(s)
             eligible = (s.workout_exercise_id, s.set_number) in progression_keys
-            performance_points.append({"session_id": session_id, "date": session_id_to_date[session_id],
-                "set_number": s.set_number, "workout_exercise_id": s.workout_exercise_id,
-                "unit": "seconds" if is_duration_set(s) else "reps",
-                "quantity": set_duration_seconds(s) if is_duration_set(s) else set_reps(s),
-                "weight": set_weight(s), "eligible": eligible, "rir": s.rir, **load_record(s)})
+            performance_points.append(
+                {
+                    "session_id": session_id,
+                    "date": session_id_to_date[session_id],
+                    "set_number": s.set_number,
+                    "workout_exercise_id": s.workout_exercise_id,
+                    "unit": "seconds" if is_duration_set(s) else "reps",
+                    "quantity": set_duration_seconds(s) if is_duration_set(s) else set_reps(s),
+                    "weight": set_weight(s),
+                    "eligible": eligible,
+                    "rir": s.rir,
+                    **load_record(s),
+                }
+            )
             if not is_duration_set(s) and total_load_kg(s) is None:
                 unknown_volume_sessions.add(session_id)
             if eligible and estimated_1rm is not None and estimated_1rm > 0:
@@ -132,12 +140,18 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
             per_session_duration[session_id] += set_duration_seconds(s)
             if eligible:
                 per_session_best_duration[session_id] = max(
-                    per_session_best_duration[session_id], set_duration_seconds(s),
+                    per_session_best_duration[session_id],
+                    set_duration_seconds(s),
                 )
 
-        session_order = sorted(per_session_volume, key=lambda sid: (
-            sessions[sid].session_date, sessions[sid].start_time or time.min, sid,
-        ))
+        session_order = sorted(
+            per_session_volume,
+            key=lambda sid: (
+                sessions[sid].session_date,
+                sessions[sid].start_time or time.min,
+                sid,
+            ),
+        )
         sessions_count = len(session_order)
         order_by_session = {sid: index for index, sid in enumerate(session_order)}
         for point in performance_points:
@@ -145,9 +159,13 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
         avg_sets_per_session = total_sets / sessions_count if sessions_count else None
 
         per_session_1rm = [
-            {"session_id": sid, "date": session_id_to_date[sid],
-             "estimated_1rm": round(max(per_session_map[sid]), 2)}
-            for sid in session_order if per_session_map[sid]
+            {
+                "session_id": sid,
+                "date": session_id_to_date[sid],
+                "estimated_1rm": round(max(per_session_map[sid]), 2),
+            }
+            for sid in session_order
+            if per_session_map[sid]
         ]
 
         per_session_volume_series = [
@@ -155,22 +173,31 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
             for sid in session_order
         ]
         per_session_duration_series = [
-            {"session_id": sid, "date": session_id_to_date[sid], "duration_seconds": per_session_duration[sid]}
-            for sid in session_order if per_session_duration[sid]
+            {
+                "session_id": sid,
+                "date": session_id_to_date[sid],
+                "duration_seconds": per_session_duration[sid],
+            }
+            for sid in session_order
+            if per_session_duration[sid]
         ]
         volume_trend = (
             per_session_volume[session_order[-1]] - per_session_volume[session_order[0]]
-            if sessions_count >= 2 else None
+            if sessions_count >= 2
+            else None
         )
         strength_sessions = [sid for sid in session_order if per_session_map[sid]]
         strength_trend_1rm = (
             max(per_session_map[strength_sessions[-1]]) - max(per_session_map[strength_sessions[0]])
-            if len(strength_sessions) >= 2 else None
+            if len(strength_sessions) >= 2
+            else None
         )
         duration_sessions = [sid for sid in session_order if per_session_best_duration[sid]]
         duration_trend_seconds = (
-            per_session_best_duration[duration_sessions[-1]] - per_session_best_duration[duration_sessions[0]]
-            if len(duration_sessions) >= 2 else None
+            per_session_best_duration[duration_sessions[-1]]
+            - per_session_best_duration[duration_sessions[0]]
+            if len(duration_sessions) >= 2
+            else None
         )
         # A single trend must not bridge a change in load convention or timed load.
         profiles = {(load_type(s), total_load_kg(s)) for s in duration_sets}
@@ -210,12 +237,21 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
             "sessions_count": sessions_count,
             "avg_sets_per_session": avg_sets_per_session,
             "per_session_1rm": per_session_1rm,
-            "per_session_volume": [dict(point, volume=None) if point["session_id"] in unknown_volume_sessions
-                                   else point for point in per_session_volume_series],
+            "per_session_volume": [
+                dict(point, volume=None)
+                if point["session_id"] in unknown_volume_sessions
+                else point
+                for point in per_session_volume_series
+            ],
             "per_session_duration": per_session_duration_series,
             "per_session_best_duration": [
-                {"session_id": sid, "date": session_id_to_date[sid], "duration_seconds": per_session_best_duration[sid]}
-                for sid in duration_sessions],
+                {
+                    "session_id": sid,
+                    "date": session_id_to_date[sid],
+                    "duration_seconds": per_session_best_duration[sid],
+                }
+                for sid in duration_sessions
+            ],
         }
 
     global_metrics = {}
@@ -231,11 +267,7 @@ def compute_exercise_metrics(input: MetricsInput) -> Dict[str, Any]:
                 key=lambda x: x[1]["total_volume"],
             )[0],
             "strongest_exercise_1rm": max(
-                (
-                    item
-                    for item in per_exercise.items()
-                    if item[1]["estimated_1rm_max"] is not None
-                ),
+                (item for item in per_exercise.items() if item[1]["estimated_1rm_max"] is not None),
                 key=lambda x: x[1]["estimated_1rm_max"],
                 default=(None, {}),
             )[0],

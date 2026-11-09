@@ -7,14 +7,20 @@ from sqlalchemy import Column, Integer, MetaData, Table, func, select
 from sqlalchemy.exc import IntegrityError
 
 from db.migrations.v003_exercise_matches import define_table
-from db.read_cache import has_table, read_cached
 from db.plan_schedule import links, load_scheduled_workouts, sessions
-from db.training_plans import exercises as targets, versions, days, exercise_lineage
-from db.recorded_workouts import actual_exercises, actual_sets, catalog_exercises, load_recorded_exercises
-from metrics.plan_adherence import compatible_set
+from db.read_cache import has_table, read_cached
+from db.recorded_workouts import actual_exercises as actual_exercises
+from db.recorded_workouts import actual_sets as actual_sets
+from db.recorded_workouts import catalog_exercises, load_recorded_exercises
+from db.training_plans import days, exercise_lineage, versions
+from db.training_plans import exercises as targets
 from metrics.load_metrics import suggested_load_type
+from metrics.plan_adherence import compatible_set
 from models.plan_adherence import (
-    ExerciseMatch, PlanAdherenceInput, PlannedTarget, PlannedWorkout,
+    ExerciseMatch,
+    PlanAdherenceInput,
+    PlannedTarget,
+    PlannedWorkout,
 )
 from models.training_plan import PlannedExercise
 
@@ -32,33 +38,75 @@ def adherence_storage_ready(engine):
 @read_cached
 def _plan_targets(engine, plan_id):
     with engine.connect() as connection:
-        rows = connection.execute(select(targets).join(days, targets.c.day_id == days.c.day_id)
-            .join(versions, days.c.version_id == versions.c.version_id).where(
-            versions.c.plan_id == plan_id).order_by(targets.c.position)).mappings().all()
+        rows = (
+            connection.execute(
+                select(targets)
+                .join(days, targets.c.day_id == days.c.day_id)
+                .join(versions, days.c.version_id == versions.c.version_id)
+                .where(versions.c.plan_id == plan_id)
+                .order_by(targets.c.position)
+            )
+            .mappings()
+            .all()
+        )
         by_day = {}
-        lineage = dict(connection.execute(select(exercise_lineage.c.plan_exercise_id, exercise_lineage.c.history_key)
-            .where(exercise_lineage.c.plan_exercise_id.in_([row["plan_exercise_id"] for row in rows]))).all()) if (
-                rows and has_table(connection, exercise_lineage.name)) else {}
+        lineage = (
+            dict(
+                connection.execute(
+                    select(
+                        exercise_lineage.c.plan_exercise_id, exercise_lineage.c.history_key
+                    ).where(
+                        exercise_lineage.c.plan_exercise_id.in_(
+                            [row["plan_exercise_id"] for row in rows]
+                        )
+                    )
+                ).all()
+            )
+            if (rows and has_table(connection, exercise_lineage.name))
+            else {}
+        )
         for row in rows:
-            by_day.setdefault(row["day_id"], []).append(PlannedTarget(row["plan_exercise_id"], PlannedExercise(
-                row["exercise_id"], row["set_count"], row["target_min"], row["target_max"],
-                row["target_unit"], row["target_rir"], row["weight_increment"],
-                history_key=lineage.get(row["plan_exercise_id"]),
-            )))
+            by_day.setdefault(row["day_id"], []).append(
+                PlannedTarget(
+                    row["plan_exercise_id"],
+                    PlannedExercise(
+                        row["exercise_id"],
+                        row["set_count"],
+                        row["target_min"],
+                        row["target_max"],
+                        row["target_unit"],
+                        row["target_rir"],
+                        row["weight_increment"],
+                        history_key=lineage.get(row["plan_exercise_id"]),
+                    ),
+                )
+            )
     return by_day
 
 
 @read_cached
 def _confirmed(connection, session_ids):
-    return tuple(ExerciseMatch(row.session_id, row.plan_exercise_id, row.workout_exercise_id)
-                 for row in connection.execute(select(matches).where(matches.c.session_id.in_(session_ids)))) if session_ids else ()
+    return (
+        tuple(
+            ExerciseMatch(row.session_id, row.plan_exercise_id, row.workout_exercise_id)
+            for row in connection.execute(
+                select(matches).where(matches.c.session_id.in_(session_ids))
+            )
+        )
+        if session_ids
+        else ()
+    )
 
 
 @read_cached
 def _manual_load_ids(connection):
-    return frozenset(row.exercise_id for row in connection.execute(
-        select(catalog_exercises.c.exercise_id, catalog_exercises.c.exercise_name))
-        if suggested_load_type(row.exercise_name) in ("bodyweight", "assisted_bodyweight"))
+    return frozenset(
+        row.exercise_id
+        for row in connection.execute(
+            select(catalog_exercises.c.exercise_id, catalog_exercises.c.exercise_name)
+        )
+        if suggested_load_type(row.exercise_name) in ("bodyweight", "assisted_bodyweight")
+    )
 
 
 @read_cached
@@ -70,28 +118,53 @@ def load_plan_adherence(engine, plan_id, start, end) -> PlanAdherenceInput:
         recorded = load_recorded_exercises(connection, session_ids)
         confirmed = _confirmed(connection, session_ids)
         manual_ids = _manual_load_ids(connection)
-    return PlanAdherenceInput(tuple(PlannedWorkout(slot, tuple(by_day.get(slot.day_id, ()))) for slot in slots),
-                              recorded, confirmed, manual_load_exercise_ids=manual_ids)
+    return PlanAdherenceInput(
+        tuple(PlannedWorkout(slot, tuple(by_day.get(slot.day_id, ()))) for slot in slots),
+        recorded,
+        confirmed,
+        manual_load_exercise_ids=manual_ids,
+    )
 
 
 @read_cached
 def _performance_bounds(engine, plan_id):
     with engine.connect() as connection:
-        first = connection.execute(select(func.min(versions.c.effective_from)).where(
-            versions.c.plan_id == plan_id,
-        )).scalar_one()
-        last_linked = connection.execute(select(func.max(links.c.scheduled_date)).join(
-            days, links.c.day_id == days.c.day_id,
-        ).join(versions, days.c.version_id == versions.c.version_id).where(
-            versions.c.plan_id == plan_id,
-        )).scalar_one()
+        first = connection.execute(
+            select(func.min(versions.c.effective_from)).where(
+                versions.c.plan_id == plan_id,
+            )
+        ).scalar_one()
+        last_linked = connection.execute(
+            select(func.max(links.c.scheduled_date))
+            .join(
+                days,
+                links.c.day_id == days.c.day_id,
+            )
+            .join(versions, days.c.version_id == versions.c.version_id)
+            .where(
+                versions.c.plan_id == plan_id,
+            )
+        ).scalar_one()
     return first, last_linked
 
 
 @read_cached
 def _session_order(connection, ids):
-    return tuple(connection.execute(select(sessions.c.session_id).where(sessions.c.session_id.in_(ids))
-                 .order_by(sessions.c.session_date, sessions.c.start_time.asc().nullsfirst(), sessions.c.session_id)).scalars()) if ids else ()
+    return (
+        tuple(
+            connection.execute(
+                select(sessions.c.session_id)
+                .where(sessions.c.session_id.in_(ids))
+                .order_by(
+                    sessions.c.session_date,
+                    sessions.c.start_time.asc().nullsfirst(),
+                    sessions.c.session_id,
+                )
+            ).scalars()
+        )
+        if ids
+        else ()
+    )
 
 
 @read_cached
@@ -102,7 +175,9 @@ def load_plan_performance(engine, plan_id, start, end) -> PlanAdherenceInput:
     Comparisons are ordered by actual session date/time, never planned date.
     """
     first, last_linked = _performance_bounds(engine, plan_id)
-    data = load_plan_adherence(engine, plan_id, min(start, first or start), max(end, date.today(), last_linked or end))
+    data = load_plan_adherence(
+        engine, plan_id, min(start, first or start), max(end, date.today(), last_linked or end)
+    )
     ids = {item.slot.session_id for item in data.workouts if item.slot.session_id is not None}
     with engine.connect() as connection:
         order = _session_order(connection, ids)
@@ -112,29 +187,60 @@ def load_plan_performance(engine, plan_id, start, end) -> PlanAdherenceInput:
 def save_exercise_match(engine, session_id, plan_exercise_id, workout_exercise_id):
     try:
         with engine.begin() as connection:
-            assignment = connection.execute(select(links).where(links.c.session_id == session_id)
-                                            .with_for_update()).mappings().one_or_none()
+            assignment = (
+                connection.execute(
+                    select(links).where(links.c.session_id == session_id).with_for_update()
+                )
+                .mappings()
+                .one_or_none()
+            )
             if assignment is None:
                 raise ValueError("Link the recorded session to a planned workout first")
-            planned = connection.execute(select(targets).where(
-                targets.c.plan_exercise_id == plan_exercise_id,
-                targets.c.day_id == assignment["day_id"],
-            )).mappings().one_or_none()
-            actual = next((item for item in load_recorded_exercises(connection, [session_id])
-                           if item.workout_exercise_id == workout_exercise_id), None)
+            planned = (
+                connection.execute(
+                    select(targets).where(
+                        targets.c.plan_exercise_id == plan_exercise_id,
+                        targets.c.day_id == assignment["day_id"],
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+            actual = next(
+                (
+                    item
+                    for item in load_recorded_exercises(connection, [session_id])
+                    if item.workout_exercise_id == workout_exercise_id
+                ),
+                None,
+            )
             if planned is None or actual is None:
-                raise ValueError("Choose a planned position and an exercise from its linked session")
+                raise ValueError(
+                    "Choose a planned position and an exercise from its linked session"
+                )
             if not any(compatible_set(item, planned["target_unit"]) for item in actual.sets):
                 raise ValueError("The replacement has no recorded sets with the planned unit")
-            connection.execute(matches.delete().where(matches.c.session_id == session_id,
-                                                       matches.c.plan_exercise_id == plan_exercise_id))
-            connection.execute(matches.insert().values(session_id=session_id, plan_exercise_id=plan_exercise_id,
-                                                        workout_exercise_id=workout_exercise_id))
+            connection.execute(
+                matches.delete().where(
+                    matches.c.session_id == session_id,
+                    matches.c.plan_exercise_id == plan_exercise_id,
+                )
+            )
+            connection.execute(
+                matches.insert().values(
+                    session_id=session_id,
+                    plan_exercise_id=plan_exercise_id,
+                    workout_exercise_id=workout_exercise_id,
+                )
+            )
     except IntegrityError as exc:
         raise ValueError("This recorded exercise already covers another planned position") from exc
 
 
 def remove_exercise_match(engine, session_id, plan_exercise_id):
     with engine.begin() as connection:
-        connection.execute(matches.delete().where(matches.c.session_id == session_id,
-                                                   matches.c.plan_exercise_id == plan_exercise_id))
+        connection.execute(
+            matches.delete().where(
+                matches.c.session_id == session_id, matches.c.plan_exercise_id == plan_exercise_id
+            )
+        )

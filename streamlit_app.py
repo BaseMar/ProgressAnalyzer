@@ -13,12 +13,11 @@ from data_loader import load_data
 from data_manager import DataManager
 from db.read_cache import read_scope
 from metrics.measurement_timeline import measurement_timeline
-
-from ui.sidebar_view import SidebarView
-from ui.training_plan_view import TrainingPlanView
-from ui.overview_view import OverviewView
 from ui.analysis_view import AnalysisView
 from ui.history_view import HistoryView
+from ui.overview_view import OverviewView
+from ui.sidebar_view import SidebarView
+from ui.training_plan_view import TrainingPlanView
 from ui.utils.ui_helpers import page_title
 
 
@@ -31,6 +30,7 @@ def _configure_page() -> None:
         initial_sidebar_state="expanded",
     )
 
+
 def _load_global_styles() -> None:
     """Inject main.css into the Streamlit page."""
     css_path = Path(__file__).resolve().parent / "ui" / "styles" / "main.css"
@@ -39,6 +39,7 @@ def _load_global_styles() -> None:
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
     else:
         st.error(f"CSS NOT FOUND: {css_path}")
+
 
 @read_scope()
 def main() -> None:
@@ -62,9 +63,17 @@ def main() -> None:
     elif selected_page == "Plan":
         TrainingPlanView(raw_input_data.exercises).render()
     else:
-        HistoryView({"body": {"timeline": measurement_timeline(raw_input_data)}}, sets_dataframe, exercise_names=names).render()
+        HistoryView(
+            {"body": {"timeline": measurement_timeline(raw_input_data)}},
+            sets_dataframe,
+            exercise_names=names,
+        ).render()
 
-    st.markdown('<div class="app-footer">All data shown are my personal workout and body measurements, used solely for the purposes of this project.</div>', unsafe_allow_html=True,)
+    st.markdown(
+        '<div class="app-footer">All data shown are my personal workout and body measurements, used solely for the purposes of this project.</div>',
+        unsafe_allow_html=True,
+    )
+
 
 _configure_page()
 

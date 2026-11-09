@@ -45,10 +45,20 @@ class SidebarView:
             "History": ":material/history:",
         }
 
-        aliases = {"Main Dashboard": "Overview", "Training Plan": "Plan", "Exercises": "Analysis",
-                   "Body Parts": "Analysis", "Analytics": "Analysis", "Body Metrics": "Analysis"}
+        aliases = {
+            "Main Dashboard": "Overview",
+            "Training Plan": "Plan",
+            "Exercises": "Analysis",
+            "Body Parts": "Analysis",
+            "Analytics": "Analysis",
+            "Body Metrics": "Analysis",
+        }
         previous = st.session_state.get("nav_selected", "Overview")
-        st.session_state.nav_selected = aliases.get(previous, previous) if aliases.get(previous, previous) in options else "Overview"
+        st.session_state.nav_selected = (
+            aliases.get(previous, previous)
+            if aliases.get(previous, previous) in options
+            else "Overview"
+        )
 
         for opt in options:
             button_type = "primary" if st.session_state.nav_selected == opt else "secondary"
@@ -61,13 +71,18 @@ class SidebarView:
                 args=(opt,),
             )
 
-        st.sidebar.button("Add workout", key="nav_add_workout", icon=":material/add:", on_click=_open_workout_import)
+        st.sidebar.button(
+            "Add workout",
+            key="nav_add_workout",
+            icon=":material/add:",
+            on_click=_open_workout_import,
+        )
         return st.session_state.nav_selected
-
 
 
 def _set_selected_nav(option: str) -> None:
     from ui.utils.plan_editor import capture_plan_drafts
+
     capture_plan_drafts()
     st.session_state.nav_selected = option
 

@@ -11,5 +11,3 @@ class BodyComposition:
     water_mass: float | None
     fat_percentage: float | None
     method: str | None
-
-

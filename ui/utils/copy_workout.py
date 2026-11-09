@@ -1,13 +1,13 @@
 """Copy directly in the browser without a Python rerun or network request."""
+
 import streamlit.components.v2 as components
 
-
 _COPY = components.component(
-    'copy_workout',
-    html='''<button type="button">Copy workout</button>
+    "copy_workout",
+    html="""<button type="button">Copy workout</button>
 <span role="status" aria-live="polite"></span>
-<textarea hidden readonly aria-label="Workout to copy"></textarea>''',
-    css='''
+<textarea hidden readonly aria-label="Workout to copy"></textarea>""",
+    css="""
 button { width: 100%; min-height: 44px; border-radius: 8px; padding: 10px 16px;
     background: #00adb5; color: #111820; border: 1px solid #00adb5;
     font: 600 15px sans-serif; cursor: pointer; }
@@ -17,8 +17,8 @@ button:focus-visible { outline: 3px solid #eeeeee; outline-offset: 2px; }
 [role="status"]:empty { display: none; }
 textarea { width: 100%; min-height: 180px; box-sizing: border-box; margin-top: 8px;
     background: #222831; color: #eeeeee; font-size: 16px; }
-''',
-    js='''export default function(component) {
+""",
+    js="""export default function(component) {
     const {data, parentElement} = component;
     const button = parentElement.querySelector('button');
     const status = parentElement.querySelector('[role="status"]');
@@ -70,9 +70,9 @@ textarea { width: 100%; min-height: 180px; box-sizing: border-box; margin-top: 8
         }
     };
     return () => { button.onclick = null; };
-}''',
+}""",
 )
 
 
 def copy_workout(text, *, key):
-    _COPY(data={'text': text}, key=key)
+    _COPY(data={"text": text}, key=key)

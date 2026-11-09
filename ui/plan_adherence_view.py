@@ -1,21 +1,24 @@
 """Analytical overview with optional drill-down and source corrections."""
+
+import logging
 from calendar import monthrange
 from datetime import date, timedelta
 from html import escape
-import logging
+
 import pandas as pd
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
+
 from data_manager import DataManager
+from metrics.load_metrics import describe_load
 from metrics.plan_adherence import compute_plan_adherence
 from metrics.plan_performance import compute_plan_performance
-from metrics.load_metrics import describe_load
 from metrics.plan_summary import summarize_plan
-from ui.utils.plan_charts import exercise_history_chart, weekly_execution_chart
-from ui.utils.ui_helpers import chart_label, section_header
 from metrics.training_block import deload_adjusted_input
 from ui.utils.active_plan import select_active_plan
 from ui.utils.analysis_kpis import recorded_set_value
+from ui.utils.plan_charts import exercise_history_chart, weekly_execution_chart
+from ui.utils.ui_helpers import chart_label, section_header
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +41,9 @@ class PlanAdherenceView:
                 return
             plans = {item.plan_id: item for item in self.dm.load_training_plans()}
             if not plans:
-                st.info("Create a plan in Plan, then link sessions in History to start the analysis. Unplanned exercises are available under All recorded exercises.")
+                st.info(
+                    "Create a plan in Plan, then link sessions in History to start the analysis. Unplanned exercises are available under All recorded exercises."
+                )
                 return
             plan_id = select_active_plan(plans.values())
             versions = self.dm.load_training_plan_versions(plan_id)
@@ -55,76 +60,166 @@ class PlanAdherenceView:
             st.error("Plan analysis could not be loaded. Please try again.")
             return
         block_settings = {version.version_id: version.draft.progression for version in versions}
-        report = compute_plan_adherence(deload_adjusted_input(data, block_settings, as_of=date.today()),
-                                        as_of=date.today(), settings_by_version=block_settings)
-        performance = compute_plan_performance(history, as_of=date.today(), start=start, end=end,
-                                             settings_by_version=block_settings)
+        report = compute_plan_adherence(
+            deload_adjusted_input(data, block_settings, as_of=date.today()),
+            as_of=date.today(),
+            settings_by_version=block_settings,
+        )
+        performance = compute_plan_performance(
+            history, as_of=date.today(), start=start, end=end, settings_by_version=block_settings
+        )
         if mode == "exercise":
             self.render_performance(performance)
             return
         overview, summary = summarize_plan(report, performance), report["summary"]
         linked, coverage, in_range = st.columns(3)
-        linked.metric("Workouts with linked logs", f'{summary["linked_workouts"]}/{summary["due_workouts"]}' if summary["due_workouts"] else "—",
-                      help="Linked logs among assessed planned workouts. An unlinked workout is not proof it was skipped.")
-        coverage.metric("Planned sets logged", f'{overview["set_pct"]:.0f}%' if overview["set_pct"] is not None else "—",
-                        help=f'{summary["covered_sets"]} of {summary["planned_sets"]} planned sets are logged.')
-        in_range.metric("Logged sets in range", f'{overview["range_pct"]:.0f}%' if overview["range_pct"] is not None else "—",
-                        help=f'{overview["in_range"]} of {overview["recorded_sets"]} logged sets are within the rep/time range. RIR is assessed separately.')
+        linked.metric(
+            "Workouts with linked logs",
+            f"{summary['linked_workouts']}/{summary['due_workouts']}"
+            if summary["due_workouts"]
+            else "—",
+            help="Linked logs among assessed planned workouts. An unlinked workout is not proof it was skipped.",
+        )
+        coverage.metric(
+            "Planned sets logged",
+            f"{overview['set_pct']:.0f}%" if overview["set_pct"] is not None else "—",
+            help=f"{summary['covered_sets']} of {summary['planned_sets']} planned sets are logged.",
+        )
+        in_range.metric(
+            "Logged sets in range",
+            f"{overview['range_pct']:.0f}%" if overview["range_pct"] is not None else "—",
+            help=f"{overview['in_range']} of {overview['recorded_sets']} logged sets are within the rep/time range. RIR is assessed separately.",
+        )
         if not summary["due_workouts"]:
             st.info("No elapsed planned days or earlier completed workouts in this period yet.")
         else:
             chart_label("Weekly execution")
-            st.plotly_chart(weekly_execution_chart(overview["weeks"]), width="stretch", key="weekly_plan_execution")
-        st.caption("Includes elapsed planned days and linked workouts performed before today, even when planned for later. Weeks follow planned dates. An unlinked workout is not proof that it was skipped.")
+            st.plotly_chart(
+                weekly_execution_chart(overview["weeks"]),
+                width="stretch",
+                key="weekly_plan_execution",
+            )
+        st.caption(
+            "Includes elapsed planned days and linked workouts performed before today, even when planned for later. Weeks follow planned dates. An unlinked workout is not proof that it was skipped."
+        )
         if any(row["training_phase"] == "deload" for row in performance):
-            st.caption("Deload dates use reduced set/repetition targets for resistance exercises. Deload logs are excluded from exercise progress comparisons.")
+            st.caption(
+                "Deload dates use reduced set/repetition targets for resistance exercises. Deload logs are excluded from exercise progress comparisons."
+            )
         with st.expander("Definitions & source data"):
-            st.caption(f'On the planned day: {summary["on_time_workouts"]}/{summary["linked_workouts"]} linked workouts. RIR missing: {overview["missing_rir"]}/{overview["recorded_sets"]} logged sets.')
-            st.caption("Coverage uses inferred or explicitly marked working sets, plus unknown-effort and timed logs; deload uses its own targets. Light/low-effort work stays in history. Missing RIR is not zero. These indicators do not measure technique or muscle growth.")
+            st.caption(
+                f"On the planned day: {summary['on_time_workouts']}/{summary['linked_workouts']} linked workouts. RIR missing: {overview['missing_rir']}/{overview['recorded_sets']} logged sets."
+            )
+            st.caption(
+                "Coverage uses inferred or explicitly marked working sets, plus unknown-effort and timed logs; deload uses its own targets. Light/low-effort work stays in history. Missing RIR is not zero. These indicators do not measure technique or muscle growth."
+            )
             if report["workouts"]:
-                st.dataframe(pd.DataFrame([{"Planned date": row["scheduled_date"], "Workout": row["name"], "Recorded date": row["performed_on"], "Status": row["status"], "Sets logged": row["covered_sets"], "Sets planned": row["planned_sets"]} for row in report["workouts"]]), hide_index=True, width="stretch")
+                st.dataframe(
+                    pd.DataFrame(
+                        [
+                            {
+                                "Planned date": row["scheduled_date"],
+                                "Workout": row["name"],
+                                "Recorded date": row["performed_on"],
+                                "Status": row["status"],
+                                "Sets logged": row["covered_sets"],
+                                "Sets planned": row["planned_sets"],
+                            }
+                            for row in report["workouts"]
+                        ]
+                    ),
+                    hide_index=True,
+                    width="stretch",
+                )
 
     @staticmethod
     def _set_label(item, unit):
-        quantity = f'{item["seconds"]}s' if unit == "seconds" else f'{item["reps"]} reps'
+        quantity = f"{item['seconds']}s" if unit == "seconds" else f"{item['reps']} reps"
         if item.get("load_type", "legacy") != "legacy":
-            return f'{quantity} @ {describe_load(item)} · RIR {item["rir"] if item["rir"] is not None else "?"}'
-        load = f' @ {item["weight"]:g} kg' if item["weight"] else ""
-        return f'{quantity}{load} · RIR {item["rir"] if item["rir"] is not None else "?"}'
+            return f"{quantity} @ {describe_load(item)} · RIR {item['rir'] if item['rir'] is not None else '?'}"
+        load = f" @ {item['weight']:g} kg" if item["weight"] else ""
+        return f"{quantity}{load} · RIR {item['rir'] if item['rir'] is not None else '?'}"
 
     def render_performance(self, rows):
         section_header("Exercise trends")
         observed = [row for row in rows if row["sets"]]
         if not observed:
-            st.caption("No matching logs in this period. Link a session or confirm a replacement to see its trend.")
+            st.caption(
+                "No matching logs in this period. Link a session or confirm a replacement to see its trend."
+            )
             return
         contexts = list(dict.fromkeys(row["context"] for row in observed))
         workout_names = {row["context"]: row["workout"] for row in observed}
-        selected = st.selectbox("Explore an exercise", contexts, key="performance_context", format_func=lambda key: f'{workout_names[key]} · {self._name(key[5])} · {key[7]} × {key[8]}–{key[9]} {key[6]} · position {key[3]}')
+        selected = st.selectbox(
+            "Explore an exercise",
+            contexts,
+            key="performance_context",
+            format_func=lambda key: (
+                f"{workout_names[key]} · {self._name(key[5])} · {key[7]} × {key[8]}–{key[9]} {key[6]} · position {key[3]}"
+            ),
+        )
         selected_rows = [row for row in observed if row["context"] == selected]
         latest = selected_rows[-1]
         last_set, change, in_range = st.columns(3)
-        last_set.metric("Last logged set", recorded_set_value(latest["sets"][-1], latest["unit"]),
-                        help="Final credited set of the latest recorded execution. Other sets can use different loads.")
+        last_set.metric(
+            "Last logged set",
+            recorded_set_value(latest["sets"][-1], latest["unit"]),
+            help="Final credited set of the latest recorded execution. Other sets can use different loads.",
+        )
         timed = latest["unit"] == "seconds"
         delta = latest["seconds_delta"] if timed else latest["reps_delta"]
-        change.metric("Seconds vs previous" if timed else "Reps vs previous",
-                      f'{delta:+g}' if delta is not None else "—",
-                      help="Change in total output across all planned sets at the same load. " + latest["comparison"] + ". Read RIR separately.")
-        in_range.metric("Sets in target range", f'{latest["in_range"]}/{latest["planned_sets"]}',
-                        help="Sets within the prescribed repetition/time range in the latest execution. RIR is assessed separately.")
-        st.markdown(f'<div class="analysis-insight">{escape(latest["comparison"])}</div>', unsafe_allow_html=True)
-        st.caption(f'Last recorded {latest["performed_on"]:%d %b %Y} · {latest["in_range"]}/{latest["planned_sets"]} sets in range · {latest["rir_status"]}')
+        change.metric(
+            "Seconds vs previous" if timed else "Reps vs previous",
+            f"{delta:+g}" if delta is not None else "—",
+            help="Change in total output across all planned sets at the same load. "
+            + latest["comparison"]
+            + ". Read RIR separately.",
+        )
+        in_range.metric(
+            "Sets in target range",
+            f"{latest['in_range']}/{latest['planned_sets']}",
+            help="Sets within the prescribed repetition/time range in the latest execution. RIR is assessed separately.",
+        )
+        st.markdown(
+            f'<div class="analysis-insight">{escape(latest["comparison"])}</div>',
+            unsafe_allow_html=True,
+        )
+        st.caption(
+            f"Last recorded {latest['performed_on']:%d %b %Y} · {latest['in_range']}/{latest['planned_sets']} sets in range · {latest['rir_status']}"
+        )
         fig = exercise_history_chart(selected_rows)
         if fig is not None:
             st.plotly_chart(fig, width="stretch", key="plan_exercise_history")
-        st.caption("Shaded band = target range at each date; amber diamonds = deload. Means describe logged sets, including partial sessions. Read load alongside reps/time; substitutes keep separate histories.")
+        st.caption(
+            "Shaded band = target range at each date; amber diamonds = deload. Means describe logged sets, including partial sessions. Read load alongside reps/time; substitutes keep separate histories."
+        )
         with st.expander("Previous vs current · set breakdown"):
             previous = latest["previous"]
             if previous:
-                st.caption(f'Previous: {previous["performed_on"]:%d %b %Y} · Current: {latest["performed_on"]:%d %b %Y}. History may extend outside the selected month.')
+                st.caption(
+                    f"Previous: {previous['performed_on']:%d %b %Y} · Current: {latest['performed_on']:%d %b %Y}. History may extend outside the selected month."
+                )
             else:
                 st.caption("No prior execution with the same workout context and targets.")
             old_sets = previous["sets"] if previous else ()
-            st.dataframe(pd.DataFrame([{"Set": index + 1, "Previous": self._set_label(old_sets[index], latest["unit"]) if index < len(old_sets) else "—", "Current": self._set_label(latest["sets"][index], latest["unit"]) if index < len(latest["sets"]) else "—"} for index in range(latest["planned_sets"])]), hide_index=True, width="stretch")
-            st.caption("Changed loads and incomplete counts are not automatically graded. Missing RIR stays unknown. Context or target changes start a new history.")
+            st.dataframe(
+                pd.DataFrame(
+                    [
+                        {
+                            "Set": index + 1,
+                            "Previous": self._set_label(old_sets[index], latest["unit"])
+                            if index < len(old_sets)
+                            else "—",
+                            "Current": self._set_label(latest["sets"][index], latest["unit"])
+                            if index < len(latest["sets"])
+                            else "—",
+                        }
+                        for index in range(latest["planned_sets"])
+                    ]
+                ),
+                hide_index=True,
+                width="stretch",
+            )
+            st.caption(
+                "Changed loads and incomplete counts are not automatically graded. Missing RIR stays unknown. Context or target changes start a new history."
+            )

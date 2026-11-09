@@ -2,8 +2,7 @@
 
 from streamlit.testing.v1 import AppTest
 
-
-APP = '''
+APP = """
 from unittest.mock import patch
 import pandas as pd
 import streamlit as st
@@ -24,7 +23,7 @@ if month != "All time":
 with patch("ui.history_view.DataManager"):
     view = HistoryView({}, df, month)
 view.render()
-'''
+"""
 
 
 def start_app(month="All time"):
@@ -49,7 +48,10 @@ def test_calendar_selects_day_and_shows_all_sessions_on_leap_day():
     assert app.button(key="history_date_2024-02-29").label == "29"
     assert "2 session(s)" in app.button(key="history_date_2024-02-29").help
     assert session_count(app) == 2
-    assert {button.key for button in app.button if button.label == "Delete Session"} == {"del_1", "del_2"}
+    assert {button.key for button in app.button if button.label == "Delete Session"} == {
+        "del_1",
+        "del_2",
+    }
     assert any("1:30" in item.value for item in app.markdown)
 
     app.button(key="history_date_2024-02-28").click().run()
@@ -89,13 +91,16 @@ def test_sidebar_filter_controls_calendar_and_resets_visible_sessions():
 
 
 def test_no_history_shows_empty_state():
-    app = AppTest.from_string('''
+    app = AppTest.from_string(
+        """
 from unittest.mock import patch
 import pandas as pd
 from ui.history_view import HistoryView
 with patch("ui.history_view.DataManager"):
     view = HistoryView({}, pd.DataFrame())
 view.render()
-''', default_timeout=30).run()
+""",
+        default_timeout=30,
+    ).run()
     assert not app.exception
     assert app.info[0].value == "No workout history yet."

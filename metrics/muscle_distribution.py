@@ -1,8 +1,8 @@
 """Weekly normalization and plan comparisons, independent of research thresholds."""
+
 import pandas as pd
 
 from metrics.muscle_volume import BODY_PART_ORDER
-
 
 
 def status_from_plan(sets_per_week, target):
@@ -29,7 +29,14 @@ def build_weekly_distribution(body_df, period_weeks, weekly_targets=None):
         total = float(source.get(part, 0.0))
         per_week = total / weeks
         target = weekly_targets.get(part, 0.0) if weekly_targets is not None else None
-        rows.append({"Body Part": part, "Target": target, "Total Sets": total, "Sets / Week": per_week,
-            "Target %": per_week / target * 100 if target is not None and target > 0 else None,
-            "Status": status_from_plan(per_week, target)})
+        rows.append(
+            {
+                "Body Part": part,
+                "Target": target,
+                "Total Sets": total,
+                "Sets / Week": per_week,
+                "Target %": per_week / target * 100 if target is not None and target > 0 else None,
+                "Status": status_from_plan(per_week, target),
+            }
+        )
     return pd.DataFrame(rows)
