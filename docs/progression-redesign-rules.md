@@ -1,7 +1,7 @@
-# Rekomendacje i progresja — zatwierdzone zasady v1.0
+# Rekomendacje i progresja — zatwierdzone zasady v1.1
 
-Data: 8 listopada 2026. Etap 1 zamknięty; poniższe reguły są wdrożone w nowym silniku.
-Wersja obliczeń: `double-progression-2026-11-v1`.
+Data: 9 listopada 2026. Aktualizacja: automatyczny odczyt ciężarów startowych z całej historii użytkownika po zmianie planu.
+Wersja obliczeń: `double-progression-2026-11-v2`.
 
 ## Cel i potwierdzone preferencje
 
@@ -68,19 +68,19 @@ zakładają wymagany zapas we wszystkich seriach. Cele nie przewidują faktyczne
 
 ## Kalibracja i porównywalność
 
-Nieustalony start użytkownik wybiera ręcznie przy wglądzie w historię. Dotyczy to
-braku bazy, rosnących ciężarów po pierwszej serii wskazujących na szukanie startu,
-istotnie zmienionej kolejności, zakresu, RIR lub struktury serii. Pokazujemy sesje
-źródłowe, ale nie przepisujemy późniejszej cięższej próby jako nowego startu.
+Po zmianie planu, kolejności, zakresu, RIR, liczby serii lub bloku program odczytuje
+ciężary startowe z ostatniego użytecznego wykonania tego samego ćwiczenia w całej
+historii. Uwzględnia poprzednie plany i treningi bez powiązania. Zachowuje kolejność
+ciężarów serii roboczych, a dodatkowym seriom przypisuje ostatni ciężar roboczy.
+Późniejszych cięższych prób nie podnosi powyżej pierwszego ciężaru roboczego.
+Pomija rozgrzewki, znany deload, niepoprawne wpisy i przyszłe daty. Pokazuje źródło
+oraz aktualny zakres i RIR; odczyt nie zapisuje nowych wykonań ani nie zmienia historii.
 
-Ręczny start nie oznacza pustej karty. Pokazujemy planowane serie, zakres i RIR,
-konkretną zmianę parametrów oraz ostatnie surowe wyniki tego samego ćwiczenia,
-także sprzed początku planu/bloku lub bez powiązania. Te dodatkowe wyniki są
-informacją do ręcznego wyboru, nie dowodem spełnienia warunków progresji.
-Powtórzone wpisy pozostają osobne. Użytkownik może wybrać ciężar każdej serii
-w podglądzie i skopiować go do notatki; wybór dotyczy wyłącznie wybranego treningu
-w bieżącej sesji aplikacji. Dopiero zapisane i powiązane faktyczne wykonanie
-ustanawia bazę. Widok podaje obowiązującą wersję planu i datę następnej wersji.
+Odczyt ciężaru startowego nie potwierdza podwyżki obciążenia. Dopiero zapisane
+i powiązane wykonanie w aktualnym kontekście pozwala kontynuować progresję według
+dotychczasowych reguł. Gdy użytecznej historii nie ma, pozostaje ręczny wybór:
+kompletne wartości są zapamiętywane, a formularz znika po ich uzupełnieniu.
+Rzeczywista historia ma pierwszeństwo przed zapamiętanym ręcznym wyborem.
 
 Zwykła progresja już ustalonej bazy nadal może automatycznie zmieniać cele zgodnie
 z regułami. Brak kalendarza bloków nie wyłącza zwykłych rekomendacji.
@@ -131,8 +131,9 @@ w przynajmniej jednej. Nie stosujemy średniej maskującej pogorszenie części 
 Pojedynczy wyższy odczyt nie wystarcza. Ocena zastoju jest dodatkową obserwacją;
 nie dodaje serii, nie zmienia ćwiczeń i nie diagnozuje przetrenowania.
 
-Ponad 21 dni od ostatniego porównywalnego wykonania oznacza ręczne ponowne
-ustalenie startu, bez założenia określonego procentu utraty siły.
+Ponad 21 dni od ostatniego porównywalnego wykonania blokuje automatyczną progresję.
+Starsze wyniki mogą nadal dostarczyć ciężar startowy z informacją o wieku źródła,
+bez założenia określonego procentu utraty siły.
 
 ## Automatyczny deload i powrót
 
@@ -159,12 +160,17 @@ użytkownik świadomie go nie zmieni.
 - Czas: +5 s łącznie do pierwszej serii poniżej sufitu, z ograniczeniem do maksimum
   zakresu. Nie wymagamy RIR opartego na powtórzeniach. Po suficie nowy zakres lub
   obciążenie jest dobierane ręcznie. Deload czasu/ustawień również jest ręczny.
-- Masa ciała/asysta: podpowiadamy powtórzenia, ale dodatkowy ciężar lub asystę
-  wybiera użytkownik. Mniejsza asysta zwiększa trudność. Nie zakładamy przyszłej
+- Masa ciała/asysta: podpowiadamy powtórzenia, a zapisany dodatkowy ciężar i asystę
+  odczytujemy z historii bez automatycznego zwiększania trudności. Mniejsza asysta
+  zwiększa trudność. Nie zakładamy przyszłej
   masy ciała ani nie przeliczamy jej na kilogramy siły mięśni.
 - Dla starszych wpisów podciągania, dipów i podobnych ćwiczeń o nieznanej konwencji
   pokazujemy cel powtórzeń/czasu z ręcznym ciężarem. Rozpoznanie typu ćwiczenia
   ogranicza automatykę, ale nie zmienia znaczenia zapisanych kilogramów.
+- Potwierdzenie użytkownika dla konkretnego ćwiczenia, że starsze kilogramy oznaczają
+  samą masę ciała, pozwala odczytać 0 kg dodatkowego ciężaru. Potwierdzenie jest
+  zapamiętane oddzielnie; historyczne kilogramy pozostają zachowane. Jawne nowsze
+  zapisy dodatkowego obciążenia mają pierwszeństwo. Zapisane 0 kg nie wymaga potwierdzenia.
 - Nieznana masa/asysta w jawnej konwencji ogranicza porównania obciążenia.
 - Serie jednostronne wymagają konsekwentnej konwencji „na stronę”. Model nie ma
   oddzielnego pomiaru strony; nie potwierdza niezapisanej drugiej strony.
@@ -179,7 +185,7 @@ Każda rekomendacja zawiera działanie, cele per seria, cel zapasu, główny pow
 sesje źródłowe, ograniczenia oraz wersję zasad. Overview, Analysis i notatka
 treningowa używają tego samego wyniku. Cele nie są zapisanym wykonaniem.
 
-Priorytet: deload/powrót → walidacja → kalibracja ręczna → korekta niepowodzenia
+Priorytet: deload/powrót → walidacja → odczyt startu z historii lub ręczny wybór przy jej braku → korekta niepowodzenia
 przy minimum → niedostateczny zapas → wyrównanie → nowy wspólny ciężar → dodatkowe
 powtórzenie/czas → utrzymanie. Zastój jest dodatkową obserwacją.
 

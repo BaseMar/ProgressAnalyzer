@@ -73,7 +73,7 @@ def postgres():
                 {"exercise_id": 2, "exercise_name": "Machine Chest Press"},
             ])
             adapter = TransactionEngine(connection)
-            assert len(migrate(adapter, apply=True)) == 8
+            assert len(migrate(adapter, apply=True)) == 9
             yield adapter
         finally:
             transaction.rollback()

@@ -68,7 +68,7 @@ def choose_starting_loads(result, upcoming, names, references, manager):
         if not editing:
             return replace(result, exercises=tuple(choices.get(item.plan_exercise_id, item) for item in result.exercises))
     with st.expander('Edit starting loads' if editing else 'Choose starting loads', expanded=editing):
-        st.caption('Enter each working-set load using the history below. Complete choices are saved automatically and remembered for this exercise and prescription. Recorded training history takes priority. After training, log the actual results and link the session to establish a baseline.')
+        st.caption('No usable starting-load history was found for these exercises. Enter any missing loads below; complete choices are saved automatically. Recorded training history takes priority once available.')
         if not storage_ready:
             st.warning('Starting loads can be previewed, but saving is unavailable until database setup is updated.')
         for item in manual:

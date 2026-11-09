@@ -34,7 +34,7 @@ def approved_alternatives(history, slot, planned_exercises, *, as_of):
 
 
 def recommendation_note(item):
-    if item.reason_code in ("manual_start", "changed_set_count", "history_gap", "manual_start_selected"):
+    if item.reason_code in ("manual_start", "changed_set_count", "history_gap", "manual_start_selected", "reuse_exercise_baseline"):
         return item.reason
     notes = {
         "one_more_rep": "Try one additional total rep in the first set below the ceiling; retain per-set loads and reserve.",
@@ -182,7 +182,7 @@ class NextWorkoutView:
                     if item.evidence_session_ids:
                         evidence = ", ".join(f"{day:%d %b %Y} (session #{sid})" for sid, day in zip(item.evidence_session_ids, item.evidence_dates))
                         st.caption(f"Based on: {evidence}")
-                st.caption("Normal training: add one total rep. One full ceiling result with enough reserve permits equalizing lighter sets first, then raising the common load. History limit: 21 days; load increase limit: 10% per set.")
+                st.caption("Normal training: add one total rep. One full ceiling result with enough reserve permits equalizing lighter sets first, then raising the common load. Automatic progression needs history within 21 days; older records can supply starting loads. Load increase limit: 10% per set.")
                 st.caption("Deload: retain sets and recorded repetitions, reduce each load by 30–40% in equipment steps and aim for RIR 3–4. After deload, resume ordinary loads without an immediate increase.")
                 for item in result.exercises:
                     for notice in item.notices:

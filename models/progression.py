@@ -4,7 +4,7 @@ from datetime import date
 from math import isfinite
 from typing import Literal
 
-RULES_VERSION = "double-progression-2026-11-v1"
+RULES_VERSION = "double-progression-2026-11-v2"
 
 RecommendationAction = Literal[
     "increase_reps", "increase_time", "equalize_weight", "increase_weight",

@@ -446,24 +446,22 @@ the ceiling with enough reserve before load progression. Different loads first
 move toward the established first-set load, with a 10% limit on each raised set.
 Large gaps are closed in equipment steps over multiple successful executions.
 
-Changing RIR, ranges or exercise order retains source history for review, but
-the working start is chosen manually. A card identifies source dates and workouts
-without prescribing a later heavy trial as a new first working set. Incomplete,
-stale or unknown-effort evidence remains unavailable for numeric increases.
+Changing the plan, RIR, ranges, exercise order or training block automatically
+reads starting loads from the exact exercise's full training history, including
+older plans and unlinked sessions. The latest usable ordinary entry supplies
+per-set loads with the current range and RIR. Fewer planned sets use the first
+recorded sets; additional sets repeat the last working load. Back-off loads are
+preserved, while later heavier trials are capped at the first working load.
+Warm-ups, known deloads, invalid entries and future sessions are excluded.
+The card identifies the source date, workout and entry; old or incomplete RIR
+is disclosed. These are starting suggestions, so they cannot confirm a weight
+increase. After logging and linking the new workout, ordinary progression applies.
 
-Manual-start cards show the current sets, range and RIR, the specific context
-changes, and the latest raw results even before the plan/block or without a plan
-link. Repeated entries stay separate. **Choose starting loads** lets you enter
-per-set loads for the preview and copied workout note. Complete choices are
-saved automatically in the database (migration 008) and restored after reopening
-the app or choosing another date with the same exercise and prescription.
-Once all starting loads are saved, the setup form disappears; **Edit starting loads**
-reopens the saved values for changes. A changed prescription, alternative,
-training cycle or source execution requires a separate choice. Saved choices
-do not establish progression evidence. Log and link the actual completed workout;
-its history then takes priority under the existing progression rules.
-The preview also identifies the applicable plan
-version and the next version's effective date.
+Only exercises without usable history retain **Choose starting loads** as a
+fallback. Complete manual choices are remembered (migration 008), and the setup
+form disappears once all are saved. **Edit starting loads** reopens those values.
+Actual training history takes priority over manually saved defaults. Reading
+history does not change old results, link sessions or infer exercise replacements.
 
 A linked session can also supply historical evidence for an exact catalog exercise
 that was recorded outside its older plan version. The source is dated by the
@@ -473,7 +471,11 @@ infer a replacement or credit that exercise towards historical plan coverage.
 Confirmed alternatives remain selectable after a plan revision. Select the
 actual exercise in **Use a confirmed alternative** to use its own history.
 
-**Bodyweight/assisted load selection remains manual; repetitions can progress.**
+**Bodyweight/assisted repetitions can progress; added load is not increased automatically.**
+Explicit historical additional load and assistance are reused as starting settings.
+An exercise-specific confirmation that legacy kilograms represented body mass
+only (migration 009) supplies 0 kg additional load without rewriting those records.
+Unconfirmed legacy kilograms are not treated as added weight.
 Time increases by up to five seconds in one set within its range. At the ceiling,
 a new range or load is chosen manually. Future body mass and assistance are not
 invented. Legacy bodyweight records keep their original meaning; their kilograms
@@ -848,6 +850,7 @@ requested, never during app startup.
 | 006 | Explicit set loads and body-mass snapshots. |
 | 007 | Stable plan-position identities across revisions, without changing recorded workouts. |
 | 008 | Saved manual starting loads per exercise and prescription, separate from recorded training history. |
+| 009 | User-confirmed meanings of legacy bodyweight history, scoped to the exact exercise. |
 
 `python -m db.migrate` previews pending revisions without writing.
 `python -m db.migrate --apply` applies them and records successful revisions.

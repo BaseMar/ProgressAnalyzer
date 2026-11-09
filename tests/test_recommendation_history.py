@@ -235,10 +235,12 @@ def test_database_revision_recovers_local_and_cross_workout_baselines(revised_pl
     result = dm.load_workout_recommendations(plan.plan_id, slot.day_id, next_day, as_of=date.today())
     bench, incline, pullup, row = result.exercises
     assert bench.actual_exercise_id == 1 and not bench.goals
-    for item in (incline, pullup, row):
-        assert item.reason_code == 'manual_start'
+    for item in (incline, row):
+        assert item.reason_code == 'reuse_exercise_baseline'
         assert item.target_rir == 2
-    assert not incline.goals
+    assert [g.weight for g in incline.goals] == [80., 70., 70.]
+    assert [g.weight for g in row.goals] == [85.] * 3
+    assert pullup.reason_code == 'manual_start' and not pullup.goals
     assert row.evidence_dates == (monday,)
     assert pullup.evidence_dates == (thursday,)
     assert pullup.evidence_workouts == ('Upper B',)
@@ -249,7 +251,7 @@ def test_database_revision_recovers_local_and_cross_workout_baselines(revised_pl
     chosen = dm.load_workout_recommendations(plan.plan_id, slot.day_id, next_day, as_of=date.today(),
         substitutions={bench.plan_exercise_id: 6})
     assert chosen.exercises[0].actual_exercise_id == 6
-    assert chosen.exercises[0].reason_code == 'manual_start'
+    assert chosen.exercises[0].reason_code == 'reuse_exercise_baseline'
     assert chosen.exercises[0].evidence_dates == (monday,)
 
 

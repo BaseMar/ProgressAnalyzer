@@ -84,16 +84,15 @@ def test_overview_has_conclusion_and_targets_without_kpis_tables_or_rankings(sch
     assert all('62.5 kg' not in value for value in insight_html)
 
 
-def test_default_focus_groups_unknown_targets_behind_full_workout(schedule_data):
+def test_default_focus_shows_recorded_starting_loads_when_source_rir_is_missing(schedule_data):
     engine, _, _, _ = schedule_data
     saved = seed(schedule_data, rir=None)
     app = start_app(engine, saved)
-    assert 'Build the evidence for your next target' in markup(app)
-    assert any('0 of 1 exercise targets available' in item.value for item in app.caption)
-    # No unknown-target card outside the collapsed full-workout disclosure.
-    assert sum('class="recommendation-list"' in item.value for item in app.markdown) == 1
+    assert 'Your next workout has clear targets' in markup(app)
+    assert any('1 of 1 exercise targets available' in item.value for item in app.caption)
+    assert '62.5 kg' not in markup(app)
     full = next(item for item in app.expander if item.label.startswith('Full workout'))
-    assert 'Complete the missing RIR' in '\n'.join(item.value for item in full.markdown)
+    assert 'Source RIR is incomplete' in '\n'.join(item.value for item in full.markdown)
 
 
 def test_legacy_plan_shows_progression_without_requiring_a_block(schedule_data):

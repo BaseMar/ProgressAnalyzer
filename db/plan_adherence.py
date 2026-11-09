@@ -42,10 +42,13 @@ def adherence_storage_ready(engine):
         return inspect(connection).has_table(matches.name)
 
 
-def _recorded(connection, session_ids):
+def _recorded(connection, session_ids, *, exercise_ids=None):
     if not session_ids:
         return ()
-    exercises = connection.execute(select(actual_exercises).where(actual_exercises.c.session_id.in_(session_ids))).mappings().all()
+    exercise_filter = [actual_exercises.c.session_id.in_(session_ids)]
+    if exercise_ids is not None:
+        exercise_filter.append(actual_exercises.c.exercise_id.in_(exercise_ids))
+    exercises = connection.execute(select(actual_exercises).where(*exercise_filter)).mappings().all()
     load_fields = ("load_type", "body_mass_kg", "assistance_kg")
     load_storage = inspect(connection).has_table(loads.name)
     columns = [loads.c[name] if load_storage else literal(None).label(name) for name in load_fields]
@@ -56,7 +59,7 @@ def _recorded(connection, session_ids):
     )
     if load_storage:
         query = query.outerjoin(loads, loads.c.set_id == actual_sets.c.set_id)
-    rows = connection.execute(query.where(actual_exercises.c.session_id.in_(session_ids))
+    rows = connection.execute(query.where(*exercise_filter)
                               .order_by(actual_sets.c.set_number)).mappings().all()
     sets = {row["workout_exercise_id"]: [] for row in exercises}
     for row in rows:

@@ -11,7 +11,7 @@ from db.recommendation_references import load_recommendation_references
 from db.training_plans import save_training_plan
 from metrics.overview_summary import workout_focus
 from models.progression import WorkoutRecommendation
-from test_next_workout_view import AS_OF, NEXT, exercise_html, seed, start_app
+from test_next_workout_view import AS_OF, NEXT, exercise_html, start_app
 from test_plan_schedule import schedule_data
 from test_recommendation_history import revised_plan_history
 
@@ -21,7 +21,7 @@ def snapshot(engine):
         return tuple(connection.execute(select(table)).all() for table in (actual_sets, links))
 
 
-def test_reference_before_plan_and_unlinked_is_visible_without_becoming_a_baseline(schedule_data):
+def test_unlinked_history_before_plan_supplies_starting_loads_without_progression(schedule_data):
     engine, _, source, sessions = schedule_data
     with engine.begin() as connection:
         connection.execute(sessions.update().where(sessions.c.session_id == 2).values(session_date=date(2026,4,27)))
@@ -36,19 +36,20 @@ def test_reference_before_plan_and_unlinked_is_visible_without_becoming_a_baseli
     assert len(references[1])==2
     assert {r['session_id'] for r in references[1]}=={2}
     assert all(r['date']==date(2026,4,27) and r['workout'] is None for r in references[1])
-    # An unlinked raw entry remains a reference, even if it has perfect data.
+    # Old unlinked entries supply loads without confirming a weight increase.
     plan=seed_without_records(engine,source)
     app=start_app(engine,plan)
     html=exercise_html(app)
-    assert '27 Apr 2026' in html and '90 kg recorded' in html
-    assert 'Several separate entries' in html
+    assert '27 Apr 2026' in html and '90 kg' in html
+    assert 'Starting loads' in html
     assert '3 × 6–10 reps · RIR ≥ 2' in html
     assert 'Target not available yet' not in html
-    assert all(n.value is None for n in app.number_input if n.key.startswith('manual_start_'))
+    assert not [n for n in app.number_input if n.key.startswith('manual_start_')]
     assert snapshot(engine)==before
     slot=load_scheduled_workouts(engine,plan.plan_id,NEXT,NEXT)[0]
     result=load_workout_recommendations(engine,plan.plan_id,slot.day_id,NEXT,as_of=AS_OF)
-    assert not result.exercises[0].goals
+    assert result.exercises[0].reason_code == 'reuse_exercise_baseline'
+    assert [g.weight for g in result.exercises[0].goals] == [90.] * 3
 
 
 def seed_without_records(engine,source):
@@ -58,18 +59,11 @@ def seed_without_records(engine,source):
         days=(TrainingDay('Upper A',0,(PLAN,)),),progression=ProgressionSettings(date(2026,5,4),7)))
 
 
-def test_changed_rir_saves_manual_choices_across_dates_and_browser_sessions(schedule_data,monkeypatch):
-    from types import SimpleNamespace
-    monkeypatch.setattr('db.training_plans.date',SimpleNamespace(today=lambda: AS_OF))
-    engine,_,_,_=schedule_data
-    first=seed(schedule_data)
-    revised=save_training_plan(engine,replace(first.draft,effective_from=date(2026,5,20),days=(
-        replace(first.draft.days[0],exercises=(replace(first.draft.days[0].exercises[0],target_rir=3),)),
-    )),plan_id=first.plan_id)
+def test_manual_fallback_without_history_saves_across_dates_and_browser_sessions(schedule_data):
+    engine,_,source,_=schedule_data
+    revised=seed_without_records(engine,source)
     before=snapshot(engine)
     app=start_app(engine,revised)
-    assert 'Target RIR changed: 2 → 3.' in exercise_html(app)
-    assert '60 kg recorded' in exercise_html(app)
     inputs=[n for n in app.number_input if n.key.startswith('manual_start_')]
     assert len(inputs)==3 and all(n.value is None for n in inputs)
     for field in inputs:
@@ -77,14 +71,14 @@ def test_changed_rir_saves_manual_choices_across_dates_and_browser_sessions(sche
     app.run()
     assert not app.exception
     assert 'Starting loads selected' in exercise_html(app)
-    assert '55 kg · 3 × 6–10 reps · RIR ≥ 3' in exercise_html(app)
+    assert '55 kg · 3 × 6–10 reps · RIR ≥ 2' in exercise_html(app)
     assert any('__x55 / __x55 / __x55' in c.value for c in app.code)
     assert 'Choose starting loads' not in [expander.label for expander in app.expander]
     assert not [n for n in app.number_input if n.key.startswith('manual_start_')]
     assert snapshot(engine)==before
     slot=load_scheduled_workouts(engine,revised.plan_id,NEXT,NEXT)[0]
     original=load_workout_recommendations(engine,revised.plan_id,slot.day_id,NEXT,as_of=AS_OF)
-    assert original.exercises[0].reason_code=='manual_start' and not original.exercises[0].goals
+    assert original.exercises[0].reason_code=='no_normal_baseline' and not original.exercises[0].goals
     other=load_scheduled_workouts(engine,revised.plan_id,date(2026,6,1),date(2026,6,1))[0]
     app.selectbox(key=f'next_workout_{revised.plan_id}').select(f'{other.day_id}:{other.scheduled_date}').run()
     assert not [n for n in app.number_input if n.key.startswith('manual_start_')]

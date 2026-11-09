@@ -114,7 +114,6 @@ def test_deload_and_return_render_as_different_decisions(schedule_data):
 
 
 @pytest.mark.parametrize("options, text_expected", [
-    ({"rir": None}, "Complete the missing RIR"),
     ({"planned": replace(PLAN, target_rir=None)}, "Set target RIR"),
     ({"planned": replace(PLAN, weight_increment=None)}, "Set the available weight step"),
 ])
@@ -127,6 +126,17 @@ def test_missing_data_gives_a_specific_next_action_and_no_invented_numeric_goal(
     assert "Target not available yet" in html
     assert text_expected in html
     assert "62.5 kg" not in html
+
+
+def test_missing_source_rir_keeps_recorded_starting_loads_without_increasing_them(schedule_data):
+    engine, _, _, _ = schedule_data
+    plan = seed(schedule_data, rir=None)
+    app = start_app(engine, plan)
+    html = exercise_html(app)
+    assert 'Starting loads' in html and '60 kg' in html
+    assert 'Source RIR is incomplete' in html
+    assert '62.5 kg' not in html
+    assert 'Choose starting loads' not in [e.label for e in app.expander]
 
 
 def test_legacy_plan_has_ordinary_targets_without_a_calendar(schedule_data):
