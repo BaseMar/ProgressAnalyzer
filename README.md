@@ -457,7 +457,8 @@ link. Repeated entries stay separate. **Choose starting loads** lets you enter
 per-set loads for the preview and copied workout note. Complete choices are
 saved automatically in the database (migration 008) and restored after reopening
 the app or choosing another date with the same exercise and prescription.
-You can edit saved loads in the same fields. A changed prescription, alternative,
+Once all starting loads are saved, the setup form disappears; **Edit starting loads**
+reopens the saved values for changes. A changed prescription, alternative,
 training cycle or source execution requires a separate choice. Saved choices
 do not establish progression evidence. Log and link the actual completed workout;
 its history then takes priority under the existing progression rules.

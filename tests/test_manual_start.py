@@ -79,18 +79,28 @@ def test_changed_rir_saves_manual_choices_across_dates_and_browser_sessions(sche
     assert 'Starting loads selected' in exercise_html(app)
     assert '55 kg · 3 × 6–10 reps · RIR ≥ 3' in exercise_html(app)
     assert any('__x55 / __x55 / __x55' in c.value for c in app.code)
+    assert 'Choose starting loads' not in [expander.label for expander in app.expander]
+    assert not [n for n in app.number_input if n.key.startswith('manual_start_')]
     assert snapshot(engine)==before
     slot=load_scheduled_workouts(engine,revised.plan_id,NEXT,NEXT)[0]
     original=load_workout_recommendations(engine,revised.plan_id,slot.day_id,NEXT,as_of=AS_OF)
     assert original.exercises[0].reason_code=='manual_start' and not original.exercises[0].goals
     other=load_scheduled_workouts(engine,revised.plan_id,date(2026,6,1),date(2026,6,1))[0]
     app.selectbox(key=f'next_workout_{revised.plan_id}').select(f'{other.day_id}:{other.scheduled_date}').run()
-    assert all(n.value == 55. for n in app.number_input if n.key.startswith('manual_start_'))
+    assert not [n for n in app.number_input if n.key.startswith('manual_start_')]
+    assert '55 kg' in exercise_html(app)
     fresh = start_app(engine, revised)
-    assert all(n.value == 55. for n in fresh.number_input if n.key.startswith('manual_start_'))
+    assert not [n for n in fresh.number_input if n.key.startswith('manual_start_')]
     assert 'Saved starting loads' in exercise_html(fresh)
+    fresh.toggle[0].set_value(True).run()
+    assert [n.value for n in fresh.number_input if n.key.startswith('manual_start_')] == [55., 55., 55.]
     next(n for n in fresh.number_input if n.key.startswith('manual_start_')).set_value(50.).run()
-    app.run()
+    app.toggle[0].set_value(True).run()
+    assert [n.value for n in app.number_input if n.key.startswith('manual_start_')] == [50., 55., 55.]
+    app.toggle[0].set_value(False).run()
+    assert not [n for n in app.number_input if n.key.startswith('manual_start_')]
+    assert not [e for e in app.expander if e.label in ('Choose starting loads', 'Edit starting loads')]
+    app.toggle[0].set_value(True).run()
     assert [n.value for n in app.number_input if n.key.startswith('manual_start_')] == [50., 55., 55.]
 
 
@@ -156,6 +166,36 @@ def test_saved_start_is_replaced_by_actual_training_history(schedule_data):
     assert '62.5 kg' in exercise_html(app)
     assert 'Saved starting loads' not in exercise_html(app)
     assert not [n for n in app.number_input if n.key.startswith('manual_start_')]
+
+
+def test_setup_stays_until_every_exercise_is_saved_then_hides(schedule_data):
+    from models.training_plan import ProgressionSettings, TrainingDay
+    from test_progression import PLAN
+    engine, _, source, _ = schedule_data
+    plan = save_training_plan(engine, replace(source.draft, effective_from=date(2026, 5, 4),
+        days=(TrainingDay('Upper A', 0, (PLAN, PLAN)),),
+        progression=ProgressionSettings(date(2026, 5, 4), 7)))
+    app = start_app(engine, plan)
+    inputs = [n for n in app.number_input if n.key.startswith('manual_start_')]
+    assert len(inputs) == 6
+    for field in inputs[:3]:
+        field.set_value(55.)
+    app.run()
+    assert 'Choose starting loads' in [e.label for e in app.expander]
+    assert [n.value for n in app.number_input if n.key.startswith('manual_start_')] == [55., 55., 55., None, None, None]
+    for field in list(app.number_input)[3:]:
+        field.set_value(50.)
+    app.run()
+    assert not app.exception
+    assert 'Choose starting loads' not in [e.label for e in app.expander]
+    assert not [n for n in app.number_input if n.key.startswith('manual_start_')]
+    assert exercise_html(app).count('Saved starting loads') == 2
+    app.run()
+    assert not app.exception
+    assert 'Choose starting loads' not in [e.label for e in app.expander]
+    assert '55 kg' in exercise_html(app) and '50 kg' in exercise_html(app)
+    app.toggle[0].set_value(True).run()
+    assert [n.value for n in app.number_input if n.key.startswith('manual_start_')] == [55., 55., 55., 50., 50., 50.]
 
 
 def test_missing_storage_keeps_preview_available_and_explains_unsaved_choices(schedule_data):

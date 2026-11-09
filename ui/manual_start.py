@@ -44,21 +44,36 @@ def reference_html(records):
     return ''.join(f'<p class="recommendation-source">{escape(line)}</p>' for line in reference_texts(records))
 
 
+def selected_start(item, goals, *, saved):
+    return replace(item, goals=tuple(goals), reason_code='manual_start_selected',
+        reason=('Saved starting loads. ' if saved else 'Working loads selected for this preview. ')
+        + 'Use the planned range and reserve. Log and link the actual workout to establish the new baseline; training history then takes priority.')
+
+
 def choose_starting_loads(result, upcoming, names, references, manager):
     """Remember complete choices without treating them as logged performances."""
     manual = [item for item in result.exercises if item.reason_code in MANUAL_START_REASONS]
     if not manual or result.block.phase not in ('normal', 'unconfigured'):
         return result
     planned = {target.plan_exercise_id: target.exercise for target in upcoming.targets}
-    choices = {}
     storage_ready = manager.starting_load_storage_ready()
-    with st.expander('Choose starting loads'):
+    saved_loads = {item.plan_exercise_id: manager.load_starting_loads(upcoming, item, result.block)
+                   if storage_ready else () for item in manual}
+    choices = {item.plan_exercise_id: selected_start(item, saved_loads[item.plan_exercise_id], saved=True)
+               for item in manual if saved_loads[item.plan_exercise_id]}
+    editing = False
+    if len(choices) == len(manual):
+        editing = st.toggle('Edit starting loads',
+            key=f'edit_starting_loads_{upcoming.slot.day_id}_{upcoming.slot.scheduled_date}')
+        if not editing:
+            return replace(result, exercises=tuple(choices.get(item.plan_exercise_id, item) for item in result.exercises))
+    with st.expander('Edit starting loads' if editing else 'Choose starting loads', expanded=editing):
         st.caption('Enter each working-set load using the history below. Complete choices are saved automatically and remembered for this exercise and prescription. Recorded training history takes priority. After training, log the actual results and link the session to establish a baseline.')
         if not storage_ready:
             st.warning('Starting loads can be previewed, but saving is unavailable until database setup is updated.')
         for item in manual:
             exercise = planned[item.plan_exercise_id]
-            saved = manager.load_starting_loads(upcoming, item, result.block) if storage_ready else ()
+            saved = saved_loads[item.plan_exercise_id]
             name = names.get(item.actual_exercise_id, f'Exercise #{item.actual_exercise_id}')
             st.markdown(f'**{escape(name)}** · {prescription_summary(exercise)}')
             st.caption(item.reason)
@@ -76,7 +91,8 @@ def choose_starting_loads(result, upcoming, names, references, manager):
             # Refresh old widgets when another preview or browser tab saves a change.
             saved_values = tuple((goal.weight, goal.assistance_kg) for goal in saved)
             marker = f'{scope}_saved'
-            if st.session_state.get(marker) != saved_values:
+            if (st.session_state.get(marker) != saved_values
+                    or any(f'{scope}_load_{index}' not in st.session_state for index in range(exercise.set_count))):
                 for index in range(exercise.set_count):
                     st.session_state[f'{scope}_load_{index}'] = saved[index].weight if saved else None
                     st.session_state[f'{scope}_assistance_{index}'] = saved[index].assistance_kg if saved else None
@@ -99,8 +115,11 @@ def choose_starting_loads(result, upcoming, names, references, manager):
                     if tuple(goals) != saved:
                         manager.save_starting_loads(upcoming, item, result.block, tuple(goals))
                         st.session_state[marker] = tuple((goal.weight, goal.assistance_kg) for goal in goals)
-                    st.caption('Starting loads saved. You can edit them here until training history establishes the next target.')
-                choices[item.plan_exercise_id] = replace(item, goals=tuple(goals), reason_code='manual_start_selected',
-                    reason=('Saved starting loads. ' if storage_ready else 'Working loads selected for this preview. ')
-                    + 'Use the planned range and reserve. Log and link the actual workout to establish the new baseline; training history then takes priority.')
+                    st.caption('Starting loads saved. Use Edit starting loads to change them until training history establishes the next target.')
+                choices[item.plan_exercise_id] = selected_start(item, goals, saved=storage_ready)
+            else:
+                choices.pop(item.plan_exercise_id, None)
+    if storage_ready and not editing and len(choices) == len(manual):
+        # Rebuild immediately after the final save so the setup form disappears.
+        st.rerun()
     return replace(result, exercises=tuple(choices.get(item.plan_exercise_id, item) for item in result.exercises))
