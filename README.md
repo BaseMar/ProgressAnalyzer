@@ -744,6 +744,10 @@ Keeping calculations separate from the interface lets tests check a rule
 without opening the dashboard. Views can reshape prepared results for charts;
 decision formulas stay in the calculation layer.
 
+For the current module map, legacy-code candidates and cleanup boundaries, see
+the [project inventory](docs/project-inventory.md). Its standard-library audit
+script inspects imports without starting the application or connecting to a database.
+
 ## Language and Terminology
 
 English is used throughout the interface, generated workout notes, documentation,
