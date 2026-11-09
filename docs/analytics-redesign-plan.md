@@ -1,5 +1,9 @@
 # Analytics-first layout proposal
 
+Historical implementation record. The outcomes below describe the 5 November
+release; current recommendation behavior is documented in the
+[progression rules](progression-redesign-rules.md).
+
 Status: completed, 5 November 2026. Steps 1–5 are implemented, verified and published.
 The user required and supplied explicit approval
 before moving from each completed step to the next.

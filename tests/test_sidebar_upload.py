@@ -252,6 +252,8 @@ def test_parse_txt_reads_unnumbered_inline_and_multiline_blocks(monkeypatch):
 def test_parse_time_range_supports_hyphen_and_unicode_dashes():
     upload = _upload()
 
+    assert upload._parse_time_range("Time: 10:30 - 12:45") == (time(10, 30), time(12, 45))
+    assert upload._parse_time_range("Time: 15.35 to 16.50") == (time(15, 35), time(16, 50))
     assert upload._parse_time_range("Godzina: 10:30 - 12:45") == (
         time(10, 30),
         time(12, 45),

@@ -1,5 +1,9 @@
 # Analytics redesign: release verification
 
+Historical release report. Results below belong to the stated release; current
+recommendation behavior is documented in the
+[progression rules](progression-redesign-rules.md).
+
 Verification date: **5 November 2026**. Verification and publication are complete.
 Application release: `6636442`; fresh Cloud rebuild: `63051e4`.
 Target: [existing Streamlit Cloud app](https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app),

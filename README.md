@@ -25,6 +25,7 @@ A training dashboard that turns workout notes into a clearer next step:
 - [Recording and Importing Workouts](#recording-and-importing-workouts)
 - [Research and Sources](#research-and-sources)
 - [Architecture](#architecture)
+- [Language and Terminology](#language-and-terminology)
 - [Data Model](#data-model)
 - [Installation](#installation)
 - [Database Migrations](#database-migrations)
@@ -423,11 +424,11 @@ controls automatic deloads.
 onward. You can choose another upcoming date and expand **Full workout**.
 The target is calculated from linked history; it is not written into your log.
 
-On your phone, **Kopiuj trening** copies an editable note for the selected
+On your phone, **Copy workout** copies an editable note for the selected
 workout, including preview alternatives, suggested loads and target RIR. Paste
-it into Samsung Notes. The **Cel:** lines describe targets; fill the **Wynik:**
+it into Samsung Notes. The **Target:** lines describe targets; fill the **Result:**
 and **RIR:** lines with actual results before importing the TXT. Unfilled values
-stay unknown, and targets are ignored by the importer. **Podgląd do skopiowania**
+stay unknown, and targets are ignored by the importer. **Copy preview**
 shows the exact copied text.
 
 For a plan of **3 × 6–10 reps, RIR at least 2, weight step 2.5 kg**:
@@ -560,7 +561,7 @@ Older logs keep their original kg convention until explicitly corrected.
 Choose **History → Add workout → Import TXT**, or use the sidebar shortcut:
 
 ```text
-Godzina 15:35-16:50
+Time: 15:35-16:50
 
 1. Incline Dumbbell Press
 10x24 / 10x24 / 6x26
@@ -580,13 +581,16 @@ the RIR values follow the same order.
 | Decimal comma | `10x67,5` |
 | Exercise numbering | `1.`, `1)`, `1 -` |
 | Inline exercise | `Bench Press: 10x100/8x110 RIR 2/1` |
-| Time range | `Godzina: 10:30 - 12:45`, `Godz. 15.35 do 16.50` |
+| Time range | `Time: 10:30 - 12:45`, `Time: 15.35 to 16.50` |
 | Missing RIR | Leave it out; the value stays unknown. |
 
 Unknown exercise names can be matched to the catalog or added as a new exercise.
 Before importing explicit bodyweight sets, open **Review body mass and load types**
 and check the convention and estimated total. The default preserves the TXT log's
 original kg meaning. An import saves all exercises together or rolls back.
+
+Previously saved Polish notes remain supported, including `Godzina`/`Godz.`
+time labels, `Cel:` target lines and `Wynik:` result lines. New exports use English.
 
 <details>
 <summary>Warm-up markers and timed dead hang examples</summary>
@@ -739,6 +743,18 @@ flowchart LR
 Keeping calculations separate from the interface lets tests check a rule
 without opening the dashboard. Views can reshape prepared results for charts;
 decision formulas stay in the calculation layer.
+
+## Language and Terminology
+
+English is used throughout the interface, generated workout notes, documentation,
+comments and code identifiers. New commit messages and pull requests use English
+as well. The [language and terminology guide](docs/language-style-guide.md)
+defines shared training terms and writing conventions.
+
+User-entered names and notes retain their original text. The importer accepts
+legacy Polish labels so earlier workout files remain usable. Dated release
+reports describe their stated release; current recommendation behavior is
+documented in the [progression rules](docs/progression-redesign-rules.md).
 
 ## Data Model
 

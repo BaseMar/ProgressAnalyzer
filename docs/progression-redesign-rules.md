@@ -1,207 +1,218 @@
-# Rekomendacje i progresja — zatwierdzone zasady v1.1
+# Recommendations and progression: approved rules v1.1
 
-Data: 9 listopada 2026. Aktualizacja: automatyczny odczyt ciężarów startowych z całej historii użytkownika po zmianie planu.
-Wersja obliczeń: `double-progression-2026-11-v2`.
+Date: 9 November 2026. Update: automatically read starting loads from the user's
+full exercise history after a plan change.
+Calculation version: `double-progression-2026-11-v2`.
 
-## Cel i potwierdzone preferencje
+## Goal and confirmed preferences
 
-Cel: hipertrofia i budowa siły. Użytkownik zapisuje RIR w seriach roboczych
-i rozgrzewce, dopuszczając błąd oszacowania. Zwykle odpoczywa około 3 minut;
-w końcowych izolacjach dobiera przerwy na wyczucie. Nie traktujemy tego jako
-pomiaru długości każdej historycznej przerwy.
+The goal is hypertrophy and strength. The user records repetitions in reserve
+(RIR) for working sets and warm-ups, accepting estimation error. Rest is usually
+about three minutes; later isolation exercises use a rest period chosen by feel.
+This is a stated habit, not a measurement of every historical rest interval.
 
-Różne ciężary wynikają z dobierania startu lub zmęczenia. Domyślnym modelem
-nie jest zaplanowana piramida ani ciężka seria z odrębną progresją serii lżejszych.
-Zapisany plan, faktyczne wyniki i rekomendacja pozostają oddzielnymi informacjami.
+Different loads may reflect finding a starting load or fatigue. The default model
+is not a planned pyramid or a heavy top set with separate back-off progression.
+The saved plan, recorded results and recommendation remain separate information.
 
-Uzgodniono odpowiedzi 1B, 2A, 3B, 4A, 5A, 6B, 7 — istniejące zapiski, 8B,
-a następnie wyrównywanie ciężarów i parametry uzupełniające opisane poniżej.
-Wszystkie konkretne progi są regułami aplikacji, a nie prawami fizjologii.
+The user approved answers 1B, 2A, 3B, 4A, 5A, 6B, 7 (existing notes) and 8B,
+then clarified load equalization and the additional parameters below. The
+9 November update replaces manual starts after context changes with history-based
+starting loads where usable records exist. All thresholds are application rules,
+not physiological laws.
 
-## Podwójna progresja z wyrównywaniem ciężarów
+## Double progression with load equalization
 
-1. Przy pełnym wykonaniu w zakresie i z wymaganym zapasem próbujemy dodać
-   jedno powtórzenie łącznie do pierwszej serii poniżej górnej granicy.
-2. Wyrównanie lub podwyżka wymagają górnej granicy we wszystkich planowanych
-   seriach na ich obecnych ciężarach, z RIR co najmniej docelowym.
-3. Wystarcza jedno takie pełne porównywalne wykonanie. Nie wymagamy drugiego.
-4. Jeśli ciężary są różne, najpierw podnosimy lżejsze serie do ustalonego ciężaru
-   pierwszej serii. Cel powtórzeń w podnoszonych seriach wraca do minimum;
-   serie już na ciężarze odniesienia zachowują cel na suficie.
-5. Każdy wzrost, również wyrównywanie, ma limit 10% dotychczasowego ciężaru danej
-   serii. Wybieramy największą liczbę rzeczywistych kroków mieszczącą się
-   w limicie i nieprzekraczającą ciężaru odniesienia. Większe różnice pokonujemy etapami.
-6. Dopiero pełny sukces na wspólnym ciężarze prowadzi do następnego wspólnego
-   obciążenia: jeden dostępny krok, z minimum powtórzeń jako celem wszystkich serii.
-7. Nie zwiększamy równocześnie ciężaru, docelowych powtórzeń i liczby serii.
-   Zapas i technika mają pierwszeństwo przed próbą osiągnięcia liczby z karty.
+1. After a complete execution within range and with the required reserve, try
+   one additional total repetition in the first set below the upper bound.
+2. Equalization or a weight increase requires every planned set to reach the
+   upper bound at its current load, with RIR at least equal to the target.
+3. One complete comparable execution is sufficient. A second is not required.
+4. If loads differ, first raise lighter sets toward the established first
+   working load. Raised sets return to the lower repetition bound; sets already
+   at the reference load retain the upper-bound target.
+5. Every increase, including equalization, is limited to 10% of that set's
+   previous load. Choose the largest number of available equipment increments
+   within that limit and at or below the reference load. Close larger gaps
+   over several successful executions.
+6. Only a complete success at one common load permits the next common load:
+   one available increment, with the lower repetition bound for every set.
+7. Do not increase weight, repetition targets and set count simultaneously.
+   Reserve and technique take priority over achieving the number on the card.
 
-Punkt odniesienia jest ustalonym ciężarem pierwszej serii roboczej, nie maksimum
-znalezionym w całej historii ani późniejszej próbie kalibracji.
-Gdy nie mieści się żaden dostępny krok, wyjaśniamy ograniczenie i pozostawiamy
-decyzję o sprzęcie/zakresie/obciążeniu użytkownikowi. Nie wymyślamy mikroobciążenia.
+The reference is the established first working load, rather than the maximum
+found anywhere in history or in a later calibration attempt. If no available
+increment fits, explain the equipment limitation and leave the equipment, range
+or load decision to the user. Do not invent unavailable microloading.
 
-## Macierz zwykłych decyzji
+## Ordinary decision matrix
 
-Przykładowy zakres 8–12, cel RIR 2, krok sprzętu 2,5 kg. Wiersze wzrostu
-zakładają wymagany zapas we wszystkich seriach. Cele nie przewidują faktycznego wyniku.
+Example: 8-12 reps, target RIR 2, equipment increment 2.5 kg. Rows involving an
+increase assume sufficient reserve in every set. Targets do not predict results.
 
-| Zapisane wykonanie lub sytuacja | Następna decyzja |
+| Recorded execution or situation | Next decision |
 | --- | --- |
-| 60 × 10 / 60 × 9 / 60 × 8 | 60 × 11 / 60 × 9 / 60 × 8. |
-| 60 × 12 / 55 × 11 / 55 × 12 | 60 × 12 / 55 × 12 / 55 × 12. |
-| 60 × 12 / 55 × 12 / 55 × 12 | 60 × 12 / 60 × 8 / 60 × 8. |
-| 60 × 12 / 60 × 12 / 55 × 12 | 60 × 12 / 60 × 12 / 60 × 8. |
-| 60 × 12 / 50 × 12 / 50 × 12 | 60 × 12 / 55 × 8 / 55 × 8; etap pośredni z limitem 10%. |
-| 60 × 12 / 60 × 8 / 60 × 8 | 60 × 12 / 60 × 9 / 60 × 8. |
-| 60 × 12 / 60 × 12 / 60 × 12 | 62,5 × 8 / 62,5 × 8 / 62,5 × 8. |
-| Jedna seria z RIR 1 powyżej minimum, cel RIR 2 | Bez podwyżki i bez automatycznej redukcji; zakres wykonujemy z wymaganym zapasem. |
-| RIR 0 przy 12 powtórzeniach | Najpierw wcześniejsze zakończenie serii w zakresie; nie przeliczamy dokładnie „−2 powtórzenia = +2 RIR”. |
-| RIR poniżej celu już przy 8 powtórzeniach | Po pierwszym takim wykonaniu zmniejszamy obciążenie tej serii o jeden dostępny krok, o ile pozostaje dodatnie. |
-| Poniżej 8 powtórzeń, zapas nie większy niż docelowy | Korekta ciężaru tej serii po pierwszym wykonaniu. |
-| Poniżej minimum, ale duży zapas | Najpierw wykonanie zakresu z zapasem, bez automatycznego dodawania ciężaru. |
-| Niepowodzenie wyłącznie późniejszej serii | Korekta tej serii; nie obniżamy automatycznie startu całego ćwiczenia. |
-| Brak dodatniego niższego ustawienia sprzętu | Ręczny dobór obciążenia problematycznej serii. |
-| Przekroczenie sufitu części serii | Cele ograniczamy do sufitu; nie zachęcamy do dalszego przekraczania zakresu. |
-| Brakujące serie lub RIR | Brak liczbowej podwyżki, konkretny opis brakujących danych. |
-| Kilka osobnych zapisów pasuje do jednej pozycji planu | Potrzebne jawne przypisanie w Historii; nie wybieramy dowolnego sukcesu. |
+| 60 x 10 / 60 x 9 / 60 x 8 | 60 x 11 / 60 x 9 / 60 x 8. |
+| 60 x 12 / 55 x 11 / 55 x 12 | 60 x 12 / 55 x 12 / 55 x 12. |
+| 60 x 12 / 55 x 12 / 55 x 12 | 60 x 12 / 60 x 8 / 60 x 8. |
+| 60 x 12 / 60 x 12 / 55 x 12 | 60 x 12 / 60 x 12 / 60 x 8. |
+| 60 x 12 / 50 x 12 / 50 x 12 | 60 x 12 / 55 x 8 / 55 x 8: an intermediate step within the 10% limit. |
+| 60 x 12 / 60 x 8 / 60 x 8 | 60 x 12 / 60 x 9 / 60 x 8. |
+| 60 x 12 / 60 x 12 / 60 x 12 | 62.5 x 8 / 62.5 x 8 / 62.5 x 8. |
+| One set at RIR 1 above the minimum, with target RIR 2 | No increase or automatic reduction; perform the range with the required reserve. |
+| RIR 0 at 12 reps | First stop earlier within the range; do not assume an exact conversion of two fewer reps into two more RIR. |
+| RIR below target at 8 reps | After the first such execution, reduce that set by one available increment if the result remains positive. |
+| Fewer than 8 reps, reserve at or below target | Correct that set's load after the first execution. |
+| Below the minimum with substantial reserve | First perform the prescribed range with reserve, without automatically adding weight. |
+| Only a later set fails | Correct that set; do not automatically lower the entire exercise's starting load. |
+| No positive lower equipment setting | Select the affected set's load manually. |
+| Some sets exceed the upper bound | Cap targets at the upper bound; do not encourage further overshooting. |
+| Missing sets or RIR | No numeric increase; explain the missing evidence. |
+| Several recorded entries match one plan position | Require an explicit History assignment; do not select an arbitrary success. |
 
-## Kalibracja i porównywalność
+## Starting loads and comparability
 
-Po zmianie planu, kolejności, zakresu, RIR, liczby serii lub bloku program odczytuje
-ciężary startowe z ostatniego użytecznego wykonania tego samego ćwiczenia w całej
-historii. Uwzględnia poprzednie plany i treningi bez powiązania. Zachowuje kolejność
-ciężarów serii roboczych, a dodatkowym seriom przypisuje ostatni ciężar roboczy.
-Późniejszych cięższych prób nie podnosi powyżej pierwszego ciężaru roboczego.
-Pomija rozgrzewki, znany deload, niepoprawne wpisy i przyszłe daty. Pokazuje źródło
-oraz aktualny zakres i RIR; odczyt nie zapisuje nowych wykonań ani nie zmienia historii.
+After a change to the plan, order, range, RIR, set count or block, read starting
+loads from the latest usable execution of the exact exercise across all history.
+Include previous plans and unlinked sessions. Preserve working-set load order;
+additional planned sets repeat the last working load. Later heavier trials do
+not raise the start above the first working load.
 
-Odczyt ciężaru startowego nie potwierdza podwyżki obciążenia. Dopiero zapisane
-i powiązane wykonanie w aktualnym kontekście pozwala kontynuować progresję według
-dotychczasowych reguł. Gdy użytecznej historii nie ma, pozostaje ręczny wybór:
-kompletne wartości są zapamiętywane, a formularz znika po ich uzupełnieniu.
-Rzeczywista historia ma pierwszeństwo przed zapamiętanym ręcznym wyborem.
+Exclude warm-ups, known deloads, invalid entries and future dates. Show the source
+alongside the current range and RIR. Reading history does not create executions
+or change recorded results.
 
-Zwykła progresja już ustalonej bazy nadal może automatycznie zmieniać cele zgodnie
-z regułami. Brak kalendarza bloków nie wyłącza zwykłych rekomendacji.
+A starting-load suggestion does not confirm a weight increase. A recorded and
+linked execution in the current context enables progression under the existing
+rules. When usable history is unavailable, manual selection remains a fallback:
+complete choices are remembered, and the form disappears once all are filled.
+Actual history takes priority over remembered manual choices.
 
-Porównania wymagają tego samego faktycznego ćwiczenia, pozycji/roli, jednostki,
-struktury serii i celu. W bazie pozycja ma trwały klucz historii. Zmiana nazwy
-treningu lub samego dnia tygodnia nie odcina historii. Powtórzone pozycje tego
-samego ćwiczenia zachowują odrębne klucze. Starsze klucze inicjalizujemy na
-podstawie planu, pozycji treningu i kolejnego wystąpienia ćwiczenia; nie jest to
-odtworzenie nieistniejących historycznych oznaczeń roli.
+Ordinary progression from an established baseline can still change targets
+automatically. A block calendar is not required for ordinary recommendations.
 
-Chronologia opiera się na faktycznych datach wykonania. Nie używamy wyników po
-`as_of`, nie pomijamy ostatniego niepełnego wykonania na rzecz starszego sukcesu
-i nie uznajemy braku powiązania treningu za dowód pominięcia treningu.
-Zamienniki wymagają jawnego wyboru i własnego kroku sprzętu. Filtr Analysis
-nie zmienia przyszłego celu. Różne konwencje kilogramów nie są zamienne.
+Comparisons require the same actual exercise, position or role, unit, set
+structure and prescription. Plan positions have stable history keys. Renaming
+a workout or changing only its weekday does not discard history. Repeated
+positions of the same exercise retain separate keys. Legacy keys are initialized
+from the plan, workout position and exercise occurrence; they do not reconstruct
+historical role labels that were never recorded.
 
-## RIR, przeznaczenie serii i przerwy
+Chronology uses actual execution dates. Results after `as_of` are excluded.
+Automatic increase confirmations do not skip a latest incomplete execution to
+find an older success. An unlinked session is not evidence of a missed workout.
+Alternatives require explicit selection and their own equipment increment.
+Analysis filters do not change future targets. Different kg conventions are not
+interchangeable.
 
-RIR pozostaje oszacowaniem. Nie poprawiamy go automatycznie i nie zakładamy
-uniwersalnego błędu ±1. RIR 0 jest poprawną obserwacją; brak RIR pozostaje nieznany.
-Gotowość do podwyżki i potrzeba redukcji są odrębnymi decyzjami.
+## RIR, set purpose and rest
 
-Jawne oznaczenia i korekty przeznaczenia mają pierwszeństwo. Importer obsługuje
-`warm-up`/`rozgrzewka` oraz `working`/`robocze`. Dla nieoznaczonej historii użytkownik
-wybrał zachowanie istniejącej heurystyki: RIR 0–3 jako kandydat roboczy, 4–5 jako
-lekka seria, >5 jako niski wysiłek. Rozgrzewka wnioskowana dodatkowo poprzedza serie
-robocze i ma mniejsze obciążenie w tej samej konwencji. Brak RIR jest nieznany.
-Źródło wnioskowania jest widoczne i nie nadpisuje surowych zapisów.
+RIR is an estimate. Do not correct it automatically or assume a universal error
+of one repetition. RIR 0 is valid; missing RIR stays unknown. Readiness to increase
+and the need to reduce a load are separate decisions.
 
-Jawna seria robocza z RIR 4 pozostaje roboczą. Jawna rozgrzewka z RIR 2 pozostaje
-rozgrzewką. Samo zapisanie RIR nie określa przeznaczenia.
+Explicit purpose labels and corrections take priority. The importer accepts
+`warm-up` and `working`, plus the legacy Polish aliases `rozgrzewka` and `robocze`.
+For unlabelled history, the user chose the existing heuristic: RIR 0-3 is a
+working-set candidate, 4-5 is light effort and above 5 is low effort. An inferred
+warm-up must also precede working sets and use a lower load under the same
+convention. Missing RIR remains unknown. The inference source is visible and
+does not overwrite raw records.
 
-Nieznana długość odpoczynku nie blokuje całego systemu, ale ogranicza ocenę
-przyczyny różnic. Nie rozpoznajemy skrócenia przerwy ani utraty siły z samego
-spadku powtórzeń. Pomiar każdej przerwy nie jest obowiązkowym polem wejściowym.
+An explicitly working set at RIR 4 remains working. An explicit warm-up at RIR 2
+remains a warm-up. Recording RIR alone does not determine purpose.
 
-## Zastój i dłuższa przerwa
+Unknown rest does not block the entire system, but limits explanations of why
+results differ. A repetition drop alone does not identify shorter rest or lost
+strength. Measuring every rest interval is not a required input.
 
-Możliwy zastój to cztery pełne, porównywalne wykonania na tych samych obciążeniach
-z wymaganym zapasem, bez wzrostu sumy powtórzeń ani potwierdzonej poprawy zapasu.
-Wykonania muszą pochodzić z odrębnych dni, z odstępami nie większymi niż 21 dni.
-Pełny sufit gotowy do podwyżki nie jest oznaczany jako zastój.
+## Possible plateaus and long gaps
 
-Potwierdzenie poprawy RIR w tym oknie wymaga dwóch kolejnych wykonań z takimi samymi
-powtórzeniami per seria jak w bazie, zapasem nie mniejszym w żadnej serii i większym
-w przynajmniej jednej. Nie stosujemy średniej maskującej pogorszenie części serii.
-Pojedynczy wyższy odczyt nie wystarcza. Ocena zastoju jest dodatkową obserwacją;
-nie dodaje serii, nie zmienia ćwiczeń i nie diagnozuje przetrenowania.
+A possible plateau is four complete comparable executions at the same loads
+with sufficient reserve, without an increase in total repetitions or confirmed
+reserve improvement. Executions must occur on separate days, no more than
+21 days apart. A complete upper-bound execution ready for an increase is not
+labelled a plateau.
 
-Ponad 21 dni od ostatniego porównywalnego wykonania blokuje automatyczną progresję.
-Starsze wyniki mogą nadal dostarczyć ciężar startowy z informacją o wieku źródła,
-bez założenia określonego procentu utraty siły.
+Confirmed RIR improvement within that window requires two consecutive executions
+with the baseline's per-set repetitions, no lower reserve in any set and higher
+reserve in at least one. An average must not hide deterioration in individual
+sets. One higher reading is insufficient. The plateau flag is an observation:
+it does not add sets, change exercises or diagnose overtraining.
 
-## Automatyczny deload i powrót
+More than 21 days since the last comparable execution blocks automatic
+progression. Older results can still supply a starting load with a source-age
+notice, without assuming a particular percentage of strength loss.
 
-Deload przypada na ostatni tydzień ustawionego cyklu. Zachowujemy wszystkie serie
-i faktycznie zapisane powtórzenia ostatniego porównywalnego zwykłego treningu.
-Każdy ciężar obniżamy o co najmniej 30% w pełnych krokach sprzętu, do pierwszego
-dostępnego poziomu dającego redukcję nie większą niż 40%. Brak takiego dodatniego
-ustawienia oznacza ręczny dobór. Cel RIR wynosi 3–4, a faktyczny zapas użytkownik
-zapisuje po serii; nie wyliczamy go z procentu obniżenia ciężaru.
+## Automatic deload and return
 
-Przykład: zwykłe 60 kg × 10/10/10, krok 2,5 kg → deload 40 kg × 10/10/10,
-cel RIR 3–4. Zapisane 12/10/9 pozostaje 12/10/9, zamiast wracać do minimum zakresu.
+Deload occurs in the final week of the configured cycle. Retain all sets and
+the actual repetitions from the last comparable ordinary workout. Reduce each
+load by at least 30% in whole equipment increments, choosing the first available
+setting whose reduction does not exceed 40%. If no positive setting fits,
+require manual selection. Target RIR is 3-4; actual reserve is logged after the
+set and is not calculated from the load-reduction percentage.
 
-Deload nie jest zwykłym sukcesem ani regresem. Nie kumuluje obniżek z kolejnych
-lżejszych sesji. Przesunięta sesja deloadu nadal jest deloadem; zwykły trening
-wykonany w okresie deloadu również nie stanowi potwierdzenia zwykłej progresji.
-Po deloadzie wracamy do ostatniej zwykłej bazy z poprzedniego cyklu, bez natychmiastowej
-podwyżki. Pierwsze zwykłe wykonanie weryfikuje bazę. Nadal obowiązują kompletność,
-porównywalność i limit historii. Nowa wersja planu zachowuje kalendarz, o ile
-użytkownik świadomie go nie zmieni.
+Example: ordinary 60 kg x 10/10/10, with a 2.5 kg increment, becomes deload
+40 kg x 10/10/10 at target RIR 3-4. Recorded 12/10/9 remains 12/10/9 instead of
+resetting to the lower bound.
 
-## Czas, masa ciała i granice automatyki
+Deload is neither ordinary success nor regression. Do not compound reductions
+from successive lighter sessions. A moved deload session remains a deload;
+an ordinary workout performed during the deload period does not confirm normal
+progression either. After deload, resume the last ordinary baseline from the
+previous cycle without an immediate increase. The first ordinary execution
+checks that baseline. Completeness, comparability and history-age limits still
+apply. A plan revision retains the calendar unless the user explicitly changes it.
 
-- Czas: +5 s łącznie do pierwszej serii poniżej sufitu, z ograniczeniem do maksimum
-  zakresu. Nie wymagamy RIR opartego na powtórzeniach. Po suficie nowy zakres lub
-  obciążenie jest dobierane ręcznie. Deload czasu/ustawień również jest ręczny.
-- Masa ciała/asysta: podpowiadamy powtórzenia, a zapisany dodatkowy ciężar i asystę
-  odczytujemy z historii bez automatycznego zwiększania trudności. Mniejsza asysta
-  zwiększa trudność. Nie zakładamy przyszłej
-  masy ciała ani nie przeliczamy jej na kilogramy siły mięśni.
-- Dla starszych wpisów podciągania, dipów i podobnych ćwiczeń o nieznanej konwencji
-  pokazujemy cel powtórzeń/czasu z ręcznym ciężarem. Rozpoznanie typu ćwiczenia
-  ogranicza automatykę, ale nie zmienia znaczenia zapisanych kilogramów.
-- Potwierdzenie użytkownika dla konkretnego ćwiczenia, że starsze kilogramy oznaczają
-  samą masę ciała, pozwala odczytać 0 kg dodatkowego ciężaru. Potwierdzenie jest
-  zapamiętane oddzielnie; historyczne kilogramy pozostają zachowane. Jawne nowsze
-  zapisy dodatkowego obciążenia mają pierwszeństwo. Zapisane 0 kg nie wymaga potwierdzenia.
-- Nieznana masa/asysta w jawnej konwencji ogranicza porównania obciążenia.
-- Serie jednostronne wymagają konsekwentnej konwencji „na stronę”. Model nie ma
-  oddzielnego pomiaru strony; nie potwierdza niezapisanej drugiej strony.
-- Drop sety, rest-pause i wymuszone powtórzenia wymagają osobnego wariantu/ręcznego
-  doboru. Nie rozpoznajemy tych technik z samych kilogramów i powtórzeń.
-- System nie ocenia techniki, bólu, choroby ani urazu z dziennika i nie jest
-  algorytmem rehabilitacji lub diagnozy zmęczenia.
+## Timed work, bodyweight and automation limits
 
-## Wspólny wynik i wdrożenie
+- Time: add up to five seconds to the first set below the ceiling, capped at the
+  range maximum. Repetition-based RIR is not required. At the ceiling, select
+  a new range or load manually. Timed/load-setting deloads also remain manual.
+- Bodyweight and assistance: suggest repetitions and read recorded additional
+  load and assistance without automatically increasing difficulty. Less
+  assistance increases difficulty. Future body mass is not assumed or converted
+  into kilograms of muscle force.
+- Legacy pull-up, dip and similar records with an unknown convention show
+  repetition/time targets with manual load selection. Recognizing an exercise
+  type limits automation but does not change the meaning of recorded kilograms.
+- Exercise-specific user confirmation that legacy kg represented body mass only
+  allows 0 kg additional load. Store confirmation separately and preserve the
+  original kg. Explicit newer additional-load records take priority. Recorded
+  0 kg needs no confirmation.
+- Unknown body mass or assistance in an explicit convention limits load comparisons.
+- Unilateral sets require a consistent per-side convention. The model does not
+  measure each side separately or confirm an unrecorded second side.
+- Drop sets, rest-pause and forced reps require a separate variant or manual
+  selection. Do not infer these techniques from kg and reps alone.
+- The system does not assess technique, pain, illness or injury from a log and
+  is not a rehabilitation or fatigue-diagnosis algorithm.
 
-Każda rekomendacja zawiera działanie, cele per seria, cel zapasu, główny powód,
-sesje źródłowe, ograniczenia oraz wersję zasad. Overview, Analysis i notatka
-treningowa używają tego samego wyniku. Cele nie są zapisanym wykonaniem.
+## Shared output and rollout
 
-Priorytet: deload/powrót → walidacja → odczyt startu z historii lub ręczny wybór przy jej braku → korekta niepowodzenia
-przy minimum → niedostateczny zapas → wyrównanie → nowy wspólny ciężar → dodatkowe
-powtórzenie/czas → utrzymanie. Zastój jest dodatkową obserwacją.
+Each recommendation contains an action, per-set goals, target reserve, primary
+reason, source sessions, limitations and rules version. Overview, Analysis and
+the workout note share the same output. Targets are not recorded executions.
 
-Zatwierdzona [konfiguracja 36 pozycji planu](training-plan-recommendation-configuration.md)
-została zapisana jako wersja 6 (ID 15) od 10 listopada 2026. Historyczne wersje
-i wykonania pozostają zachowane. Etapy i odbiór opisuje
-[plan wdrożenia](recommendation-system-implementation-plan.md).
+Priority: deload/return, validation, history-based start or manual fallback,
+minimum-failure correction, insufficient reserve, equalization, a new common
+load, an additional repetition/time target, then maintenance. A plateau is an
+additional observation.
 
-## Podstawa źródłowa a wybrane reguły aplikacji
+The approved [36-position plan configuration](training-plan-recommendation-configuration.md)
+was saved as version 6 (ID 15), effective from 10 November 2026. Historical
+versions and executions remain intact. Stages and acceptance are recorded in
+the [implementation plan](recommendation-system-implementation-plan.md).
 
-| Źródło | Wniosek i ograniczenie |
+## Research context and application-specific rules
+
+| Source | Finding and limitation |
 | --- | --- |
-| [ACSM 2026](https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/) | Cel i indywidualizacja mają znaczenie; upadek nie jest konieczny. Nie wyznacza dokładnego algorytmu ani optymalnego RIR dla każdego ćwiczenia. |
-| [ACSM 2009](https://pubmed.ncbi.nlm.nih.gov/19204579/) | Opisuje podwyżki 2–10% po przekraczaniu docelowych powtórzeń. Nie jest źródłem wybranej przez użytkownika reguły jednego sukcesu ani wyrównywania serii. |
-| [Plotkin i wsp. 2022](https://pmc.ncbi.nlm.nih.gov/articles/PMC9528903/) | Badanie wspiera progresję powtórzeń i obciążenia; nie dowodzi przewagi naszego konkretnego schematu. |
-| [Russo i wsp., online 2025](https://doi.org/10.1080/10833196.2025.2564026) | Trafność RIR zależy od warunków; brak uniwersalnej tolerancji ±1. |
-| [Bell i wsp. 2023](https://pmc.ncbi.nlm.nih.gov/articles/PMC10511399/) | Konsensus wspiera indywidualizację deloadu. Zachowanie serii i redukcja 30–40% są świadomym wyborem użytkownika, a nie obowiązkowym schematem z tego źródła. |
-| [Senna i wsp. 2011](https://pubmed.ncbi.nlm.nih.gov/21993029/) | Długość odpoczynku wpływała na powtórzenia; bez pomiaru nie ustalimy przyczyny konkretnego spadku. |
-| [Singer i wsp. 2024](https://www.frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2024.1429789/full) | Hipertrofia występuje przy różnych przerwach; nie ustala jednej dokładnej długości dla wszystkich ćwiczeń. |
+| [ACSM 2026](https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/) | Goals and individualization matter; failure is not required. It does not prescribe this exact algorithm or an optimal RIR for every exercise. |
+| [ACSM 2009](https://pubmed.ncbi.nlm.nih.gov/19204579/) | Describes 2-10% increases after exceeding target repetitions. It is not the source of the user's one-success or set-equalization rule. |
+| [Plotkin et al. 2022](https://pmc.ncbi.nlm.nih.gov/articles/PMC9528903/) | Supports repetition and load progression, without proving superiority of this particular scheme. |
+| [Russo et al., online 2025](https://doi.org/10.1080/10833196.2025.2564026) | RIR accuracy depends on conditions; there is no universal one-repetition tolerance. |
+| [Bell et al. 2023](https://pmc.ncbi.nlm.nih.gov/articles/PMC10511399/) | Supports individualized deloads. Retaining sets and reducing load by 30-40% are user choices, not a mandatory protocol from this source. |
+| [Senna et al. 2011](https://pubmed.ncbi.nlm.nih.gov/21993029/) | Rest duration affected repetitions; without measuring it, the cause of a particular drop cannot be established. |
+| [Singer et al. 2024](https://www.frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2024.1429789/full) | Hypertrophy occurs with different rest intervals; the study does not establish one exact duration for all exercises. |

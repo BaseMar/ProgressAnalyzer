@@ -286,7 +286,7 @@ class SidebarUpload:
         RIR: 2 / 1 / 0
 
         1) Bench Press
-        Serie: 10 x 100 kg, 8x110, 6x115
+        Sets: 10 x 100 kg, 8x110, 6x115
         RIR 2/1/0
         """
         text = self._normalize_txt(text)
@@ -416,7 +416,8 @@ class SidebarUpload:
                 continue
             if re.match(r'^(?:cel|target|plan)\s*:', line, re.IGNORECASE):
                 continue
-            if re.match(r'^wynik\s*:', line, re.IGNORECASE):
+            # Accept English exports and previously saved Polish notes.
+            if re.match(r'^(?:results?|wynik)\s*:', line, re.IGNORECASE):
                 for part in line.split(':', 1)[1].split('/'):
                     tokens = self._parse_work_tokens(part)
                     if tokens:
@@ -581,7 +582,7 @@ class SidebarUpload:
         return bool(re.search(r"\bRIR\b", line, re.IGNORECASE))
 
     def _is_metadata_line(self, line: str) -> bool:
-        return bool(re.match(r"^\s*(godzina|czas|date|data)\b", line, re.IGNORECASE))
+        return bool(re.match(r"^\s*(time|date|workout|godzina|czas|data|trening)\b", line, re.IGNORECASE))
 
     def _clean_exercise_name(self, name: str) -> str:
         return re.sub(r"\s+", " ", name).strip(" :-")
@@ -590,14 +591,16 @@ class SidebarUpload:
         """Parse workout time range from text.
         
         Expected format:
-        Godzina: 10:30 - 12:45
+        Time: 10:30 - 12:45
+
+        Legacy Polish labels and separators remain accepted on input.
         
         Returns:
             tuple: (start_time, end_time) or (None, None) if not found
         """
         text = self._normalize_txt(text)
         match = re.search(
-            r"(?:\b(?:Godzina|Godz\.?|Czas)\b\s*:?\s*)?(\d{1,2}[:\.]\d{2})\s*(?:-|do)\s*(\d{1,2}[:\.]\d{2})",
+            r"(?:\b(?:Time|Godzina|Godz\.?|Czas)\b\s*:?\s*)?(\d{1,2}[:\.]\d{2})\s*(?:-|to|do)\s*(\d{1,2}[:\.]\d{2})",
             text,
             re.IGNORECASE,
         )

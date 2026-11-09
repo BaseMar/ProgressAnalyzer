@@ -1,4 +1,4 @@
-# Deployment release: history-starting-loads-2026-11-09
+# Deployment release: english-language-standard-2026-11-09
 # Refresh this manifest for a full Cloud rebuild after moving application modules.
 streamlit==1.66.1
 pandas>=1.5

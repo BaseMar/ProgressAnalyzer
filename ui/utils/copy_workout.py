@@ -4,9 +4,9 @@ import streamlit.components.v2 as components
 
 _COPY = components.component(
     'copy_workout',
-    html='''<button type="button">Kopiuj trening</button>
+    html='''<button type="button">Copy workout</button>
 <span role="status" aria-live="polite"></span>
-<textarea hidden readonly aria-label="Trening do skopiowania"></textarea>''',
+<textarea hidden readonly aria-label="Workout to copy"></textarea>''',
     css='''
 button { width: 100%; min-height: 44px; border-radius: 8px; padding: 10px 16px;
     background: #00adb5; color: #111820; border: 1px solid #00adb5;
@@ -24,7 +24,7 @@ textarea { width: 100%; min-height: 180px; box-sizing: border-box; margin-top: 8
     const status = parentElement.querySelector('[role="status"]');
     const fallback = parentElement.querySelector('textarea');
     const text = data.text;
-    button.textContent = 'Kopiuj trening';
+    button.textContent = 'Copy workout';
     status.textContent = '';
     fallback.hidden = true;
     fallback.value = text;
@@ -59,11 +59,11 @@ textarea { width: 100%; min-height: 180px; box-sizing: border-box; margin-top: 8
             try { copied = legacyCopy(); } catch (_) { copied = false; }
         }
         if (copied) {
-            button.textContent = 'Skopiowano ✓';
-            status.textContent = 'Otwórz Samsung Notes i wklej trening.';
+            button.textContent = 'Copied ✓';
+            status.textContent = 'Open Samsung Notes and paste your workout.';
             fallback.hidden = true;
         } else {
-            status.textContent = 'Przytrzymaj tekst poniżej, wybierz Zaznacz wszystko i Kopiuj.';
+            status.textContent = 'Press and hold the text below, then choose Select all and Copy.';
             fallback.hidden = false;
             fallback.focus();
             fallback.select();

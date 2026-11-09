@@ -158,8 +158,8 @@ class NextWorkoutView:
 
             template = workout_template(upcoming, result, self.names)
             copy_workout(template, key=f'copy_workout_{plan_id}_{slot.day_id}_{slot.scheduled_date}')
-            with st.expander('Podgląd do skopiowania'):
-                st.caption('Wklej do Samsung Notes. Po treningu uzupełnij faktyczne wyniki i RIR.')
+            with st.expander('Copy preview'):
+                st.caption('Paste into Samsung Notes. After training, enter your actual results and RIR.')
                 st.code(template, language=None, wrap_lines=True)
             if compact:
                 focus = workout_focus(result)

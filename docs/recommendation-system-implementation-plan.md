@@ -1,299 +1,309 @@
-# Plan wdrożenia systemu rekomendacji
+# Recommendation system implementation plan
 
-Data: 8 listopada 2026. Status: wszystkie osiem etapów ukończone i opublikowane.
-Podstawa: [zatwierdzone zasady v1.0](progression-redesign-rules.md).
-Poniższy plan dokumentuje wykonany zakres i kryteria odbioru. Zatwierdzone reguły
-działają w publicznej aplikacji; szczegóły sprawdzeń zawiera raport walidacji.
+Date: 8 November 2026. Status: all eight stages completed and published.
+Basis: the approved v1.0 progression rules at the time of implementation.
+This document records the delivered scope and acceptance criteria for that release.
+Verification details are in the [validation report](recommendation-system-validation.md).
 
-## Stan realizacji
+Historical scope: the 9 November history-based starting-load update supersedes
+this plan's manual-start policy. The [current rules](progression-redesign-rules.md)
+describe the active behavior. Original decisions and release results below are
+retained as implementation history.
 
-| Etap | Stan | Rezultat |
+## Delivery status
+
+| Stage | Status | Result |
 | --- | --- | --- |
-| 1. Zasady | Ukończony | Zatwierdzony schemat wyrównywania, 10% / 4 wykonania / 21 dni, pełny deload 30–40%, czas i ręczne obciążenie masy ciała. |
-| 2. Model | Ukończony | Wersjonowany wynik, cele per seria, migracja 007 zastosowana; skróty sześciu istniejących tabel pozostały identyczne. |
-| 3. Historia | Ukończony | Trwałe klucze pozycji, jawne źródło wnioskowania, wykrycie niejednoznacznego dopasowania kilku zapisów. |
-| 4. Zwykły silnik | Ukończony | +1 powtórzenie, wyrównywanie w krokach, jeden sukces i nowy wspólny ciężar. |
-| 5. Wyjątki | Ukończony w uzgodnionym zakresie | Korekty, zastój, długa przerwa, deload/powrót, czas i ręczny ciężar/asysta. |
-| 6. Interfejs | Ukończony | Spójne cele i komunikaty, źródła i eksport; przeglądarka 1440 px oraz 390 px. |
-| 7. Plan i historia | Ukończony | Zatwierdzona wersja 6 (ID 15) od 10 listopada, 36 pozycji; porównanie 72 przyszłych decyzji na zapisanej historii. |
-| 8. Publikacja | Ukończony | Wydanie `a543c83` wysłane na main; CI zakończone sukcesem, nowe reguły i cztery widoki sprawdzone w publicznej aplikacji na komputerze i telefonie. |
+| 1. Rules | Complete | Approved equalization scheme; 10% / four executions / 21 days; full-set deload at 30-40%; timed work and manual bodyweight loads. |
+| 2. Model | Complete | Versioned output, per-set goals and migration 007; hashes of six existing tables remained identical. |
+| 3. History | Complete | Stable position keys, explicit inference provenance and detection of ambiguous recorded entries. |
+| 4. Ordinary engine | Complete | One extra rep, equalization in equipment increments, one success and a new common load. |
+| 5. Exceptions | Complete within agreed scope | Corrections, plateaus, long gaps, deload/return, timed work and manual load/assistance. |
+| 6. Interface | Complete | Consistent goals, messages, sources and export; browser checks at 1440 px and 390 px. |
+| 7. Plan and history | Complete | Approved version 6 (ID 15), effective 10 November, with 36 positions; comparison of 72 future decisions against recorded history. |
+| 8. Publication | Complete | Release `a543c83` pushed to main; CI passed; rules and all four views verified in the public desktop/mobile application. |
 
-Weryfikacja: 504 testy lokalne i 5 osobnych testów PostgreSQL przeszło.
-PostgreSQL używał wydzielonych schematów wycofanych po każdym teście. Kompilacja
-oraz kontrola zmian przeszły. Test przeglądarki przeszedł dla czterech stron,
-otwierania importu i pełnego treningu, bez wyjątków JS i bez poziomego przepełnienia
-Overview przy szerokości 390 px. Szczegóły: [raport walidacji](recommendation-system-validation.md).
+Verification: 504 local tests and five separate PostgreSQL tests passed.
+PostgreSQL used isolated schemas rolled back after each test. Compilation and
+change checks passed. Browser checks covered all four pages, opening import and
+the full workout, without JavaScript exceptions or horizontal Overview overflow
+at 390 px. See the [validation report](recommendation-system-validation.md).
 
-## Cel i zakres
+## Goal and scope
 
-System proponuje następny trening dla celu hipertrofia + budowa siły. Uwzględnia
-ciężar startowy, dobieranie obciążenia, redukcje wskutek zmęczenia, RIR w każdej
-serii oraz nieznaną lub zmienną długość przerw. Zwykła progresja działa bez
-obowiązkowej konfiguracji bloków. Cele pozostają propozycjami oddzielonymi od
-zapisanego planu i faktycznych wyników.
+The system suggests the next workout for hypertrophy and strength. It handles
+starting loads, load selection, fatigue-related reductions, per-set RIR and
+unknown or varying rest intervals. Ordinary progression works without mandatory
+block configuration. Targets remain suggestions, separate from saved plans and
+actual results.
 
-Kolejność: zasady → model danych → interpretacja historii → zwykły silnik →
-wyjątki → interfejs → konfiguracja planu i ocena na historii → publikacja.
-Różne ciężary serii należą do podstawowego zakresu, a nie dodatku po publikacji.
+Order of work: rules, data model, history interpretation, ordinary engine,
+exceptions, interface, plan configuration and historical evaluation, then publication.
+Different per-set loads belong to the core scope rather than a post-release addition.
 
-Każdy etap kończy się konkretnym rezultatem, sprawdzeniem właściwym dla zmian
-i krótkim raportem: co działa, jak to zweryfikowano, co pozostaje do zrobienia.
-Testy dodajemy wraz z implementacją zachowań, nie dopiero przed publikacją.
+Each stage produces a concrete result, appropriate verification and a short
+report covering what works, how it was checked and what remains. Tests accompany
+behavior changes rather than being deferred until publication.
 
-## 1. Zamknięcie zasad i przykładów decyzji
+## 1. Finalize rules and decision examples
 
-**Rezultat:** jedna wersja specyfikacji oraz tabela przypadków z oczekiwanymi wynikami.
+**Deliverable:** one specification and a case matrix with expected outcomes.
 
-Użytkownik odpowiedział na osiem pytań: **1B, 2A, 3B, 4A, 5A, 6B,
-7 — istniejące zapiski, 8B**. Oznacza to:
+The user answered eight questions: **1B, 2A, 3B, 4A, 5A, 6B,
+7 (existing notes), 8B**. At that release, these meant:
 
-- podwyżkę dopiero po sukcesie wszystkich planowanych serii na ich własnych ciężarach;
-- próbę dodania jednego powtórzenia łącznie;
-- jeden pełny sukces jako warunek podwyżki, bez drugiego potwierdzenia;
-- brak podwyżki przy RIR poniżej celu, z rozróżnieniem potrzeby redukcji;
-- korektę po pierwszym niepowodzeniu przy dolnej granicy, dotyczącą problematycznej serii;
-- ręczny wybór nieustalonego ciężaru startowego przy wglądzie w historię;
-- korzystanie z istniejących oznaczeń rozgrzewki i serii roboczych;
-- automatyczny deload według kalendarza.
+- increase only after every planned set succeeds at its own load;
+- try one additional total repetition;
+- require one complete success, without a second confirmation;
+- prevent increases below target RIR, distinguishing the need for a reduction;
+- correct the affected set after the first failure at the lower bound;
+- let the user select an unestablished starting load with history visible;
+- use existing warm-up and working-set labels;
+- schedule deloads automatically from the calendar.
 
-Użytkownik doprecyzował progresję różnych ciężarów: najpierw wyrównanie lżejszych
-serii do ustalonego ciężaru pierwszej serii. Przykład dla 8–12:
-`60 × 12 / 55 × 12 / 55 × 12` → cel `60 × 12 / 60 × 8 / 60 × 8`.
-Dopiero po osiągnięciu sufitu przez wszystkie serie na wspólnym ciężarze
-zwiększamy go o dostępny krok, z minimum zakresu jako celem każdej serii.
-Pytania uzupełniające są zamknięte: limit 10% także dla wyrównywania, zastój po
-4 wykonaniach, przerwa ponad 21 dni, czas +5 s, ręczna zmiana obciążenia/asysty
-w ćwiczeniach masy ciała oraz jawne zachowanie dotychczasowego wnioskowania serii.
-Deload zachowuje wszystkie serie i powtórzenia, obniża ciężar o 30–40% i wyznacza
-cel RIR 3–4. Zasady poniżej opisują zakres odbioru zrealizowanych prac.
+The user clarified mixed-load progression: first equalize lighter sets toward
+the established first working load. For an 8-12 range,
+`60 x 12 / 55 x 12 / 55 x 12` leads to `60 x 12 / 60 x 8 / 60 x 8`.
+Only after all sets reach the ceiling at the common load should it rise by one
+available increment, with the lower bound as every set's repetition target.
 
-- Oddzielić potwierdzone preferencje użytkownika od propozycji parametrów.
-- Rozpisać ustaloną progresję różnych ciężarów w tabeli: powtórzenia na obecnych
-  obciążeniach → wyrównanie po pełnym sukcesie → powtórzenia na wspólnym ciężarze
-  → nowy wspólny ciężar. Uwzględnić wpływ wcześniejszej pracy na późniejsze serie.
-- Ustalić wybór serii dla dodatkowego powtórzenia i zachowanie po zmianie pierwszej serii.
-- Zamknąć zasady kalibracji, wymaganego RIR, powtórzeń poniżej minimum i korekt obciążenia.
-- Liczba sukcesów jest ustalona: jeden. Progi 4/10%/21 dni oraz potwierdzanie
-  poprawy RIR opisuje zamknięta specyfikacja v1.0.
-- Ustalić, jak jednoznacznie odróżniamy rozgrzewkę, serię roboczą i próbę doboru
-  ciężaru przy imporcie oraz co robimy, jeśli brakuje takiej informacji.
-- Określić dokładnie zakres automatyki dla czasu, masy ciała, asysty i deloadu.
-  Każdy wariant otrzymuje regułę liczbową albo jawną decyzję o kalibracji ręcznej.
+Additional decisions were closed: the 10% limit also applies to equalization;
+a plateau requires four executions; a long gap exceeds 21 days; timed progression
+adds five seconds; bodyweight load/assistance changes remain manual; and existing
+set-purpose inference is retained explicitly. Deload retains all sets and reps,
+reduces load by 30-40% and targets RIR 3-4. The following rules record the acceptance
+scope of the delivered work.
 
-**Odbiór:** każda pozycja macierzy na końcu dokumentu ma określone działanie,
-cel lub powód braku celu oraz warunki potwierdzania. Przed etapem 4 nie pozostają
-otwarte decyzje zmieniające wynik zwykłej progresji. Parametry konkretnego planu
-użytkownika mogą poczekać do etapu 7; silnik operuje na konfiguracji ćwiczenia.
+- Separate confirmed user preferences from proposed parameter values.
+- Tabulate progression from reps at existing loads, through equalization after
+  complete success and reps at one common load, to a new common load. Include
+  how earlier work affects later sets.
+- Specify which set receives the additional rep and what happens after changing
+  the first set.
+- Finalize calibration, required RIR, below-minimum reps and load corrections.
+- One success is sufficient. Specification v1.0 defines the four-execution,
+  10% and 21-day thresholds and confirmation of RIR improvement.
+- Distinguish warm-ups, working sets and load-selection trials during import;
+  define behavior when purpose information is absent.
+- Define automation for time, bodyweight, assistance and deload. Each variant
+  needs a numeric rule or an explicit manual-calibration boundary.
 
-## 2. Model konfiguracji i wyniku rekomendacji
+**Acceptance:** each matrix case has an action, a goal or a reason for no goal,
+and confirmation conditions. Before stage 4, no unresolved decision changes
+ordinary progression. User-specific plan parameters may wait until stage 7;
+the engine operates on each exercise's configuration.
 
-**Rezultat:** modele obsługujące uzgodnione zasady, zgodne z historycznymi zapisami.
+## 2. Model recommendation configuration and output
 
-- Oddzielić politykę rekomendacji od kalendarza bloków i deloadu.
-- Utrzymać konfigurację ćwiczenia: serie, zakres, RIR i rzeczywiste kroki sprzętu;
-  dodać tylko pola potrzebne do rozstrzygniętych reguł.
-- Zaprojektować stabilną tożsamość pozycji ćwiczenia między wersjami planu;
-  zmiana nazwy lub dnia nie może sama kasować przydatnej historii.
-- Oddzielić przeznaczenie serii od oceny wysiłku. Nie wymagać nowych ręcznych
-  etykiet, jeśli dane już pozwalają jednoznacznie odtworzyć przeznaczenie.
-- Wynik rekomendacji ma zawierać cele per seria, działanie, kod przyczyny,
-  wskazane sesje źródłowe, potwierdzenia, ograniczenia danych i wersję zasad.
-- Rozróżnić kalibrację, utrzymanie, dodatkowe powtórzenie, wyrównanie ciężarów, nowy wspólny ciężar,
-  korektę obciążenia, deload/powrót i brak wystarczających danych.
-- Gdy potrzebne są nowe pola bazy, przygotować kolejną wolną migrację i zgodny
-  odczyt starszych planów. Nie przepisywać historycznych RIR ani wyników.
-- Około 3 minut pozostaje deklarowanym zwyczajem; nie uzupełniać tym historycznych
-  przerw. Ich rejestrowanie pozostaje opcjonalne.
+**Deliverable:** models supporting the agreed rules and historical records.
 
-**Główne miejsca:** `models/progression.py`, `models/training_plan.py`,
+- Separate recommendation policy from block and deload calendars.
+- Preserve sets, range, RIR and real equipment increments; add only fields
+  required by the agreed rules.
+- Give exercise positions stable identities across plan revisions. Renaming a
+  workout or changing its day must not by itself discard useful history.
+- Separate set purpose from effort. Do not require new manual labels when the
+  existing data already supports unambiguous interpretation.
+- Include per-set goals, action, reason code, source sessions, confirmations,
+  data limitations and rules version in recommendation output.
+- Distinguish calibration, maintenance, an extra rep, equalization, a new common
+  load, correction, deload/return and insufficient data.
+- Add the next unused migration when necessary, retaining compatibility with
+  older plans. Do not rewrite historical RIR or results.
+- Treat roughly three minutes as a stated habit, not a historical rest value.
+  Recording rest intervals remains optional.
+
+**Main locations:** `models/progression.py`, `models/training_plan.py`,
 `models/set_interpretation.py`, `models/workout_set.py`, `db/training_plans.py`,
-`db/progression.py`, ewentualnie nowa migracja i `db/migrate.py`.
+`db/progression.py`, a new migration if needed, and `db/migrate.py`.
 
-**Odbiór:** nowe i stare konfiguracje są poprawnie odczytywane; zapis i odczyt
-zachowują ustawienia, a migracja nie zmienia dotychczasowych wyników. Testy bazy
-działają na danych testowych. Plan wycofania uwzględnia, że stare wydanie aplikacji
-może odrzucać nieznany numer migracji.
+**Acceptance:** old and new configurations load correctly; round trips preserve
+settings; migration leaves recorded results unchanged. Storage tests use fixture
+data. Rollback planning accounts for older application versions rejecting an
+unknown migration revision.
 
-## 3. Wspólna interpretacja serii i dobór historii
+## 3. Share set interpretation and history selection
 
-**Rezultat:** jeden zestaw obserwacji używany przez analizę i rekomendacje.
+**Deliverable:** one set of observations for analysis and recommendations.
 
-- Odróżniać serię roboczą, rozgrzewkę, czas i deload bez przypisywania przeznaczenia
-  wyłącznie na podstawie RIR; zachować jawne korekty użytkownika i ich pierwszeństwo.
-- Zachować pozycje, obciążenia i RIR każdej serii; nie uśredniać różnych ciężarów.
-- Odróżnić zapisane fakty, przypuszczenie o kalibracji i zadeklarowaną przyczynę zmiany.
-- Rozdzielić historię pokazywaną przy ręcznym doborze nieustalonego startu od
-  historii nadającej się do zwykłej progresji już ustalonej bazy. Nie generować
-  nowego kandydata na start w trybie kalibracji.
-- Uwzględnić rzeczywiste daty, przesunięte treningi, zmiany wersji planu,
-  powtórzone ćwiczenia oraz jawnie wybrane zamienniki.
-- Trening bez jednoznacznego przypisania do pozycji planu nie daje automatycznego
-  potwierdzenia tej pozycji. Ewentualna baza wymaga zgodności faktycznego ćwiczenia.
-- Nie pomijać ostatniego słabego lub niepełnego wykonania, by znaleźć starszy sukces.
-- Zmiana samego filtra historycznej analizy nie zmienia celu przyszłego treningu.
+- Distinguish working sets, warm-ups, timed work and deload without using RIR
+  alone to assign purpose. Preserve explicit corrections and their priority.
+- Retain every set's position, load and RIR; do not average mixed loads.
+- Distinguish recorded facts, a calibration hypothesis and a declared reason
+  for a change.
+- Under the original policy, separate history shown for manual starting-load
+  selection from history eligible for progression from an established baseline.
+  Do not generate a new starting-load candidate during manual calibration.
+- Handle actual dates, moved sessions, plan revisions, repeated exercises and
+  explicitly selected alternatives.
+- A session without an unambiguous plan-position assignment does not confirm
+  that position. Any baseline requires the same actual exercise.
+- Do not skip a latest weak or incomplete execution to find an older success.
+- Historical Analysis filters must not change future workout targets.
 
-**Główne miejsca:** `metrics/set_interpretation.py`, `metrics/plan_performance.py`,
+**Main locations:** `metrics/set_interpretation.py`, `metrics/plan_performance.py`,
 `metrics/recommendation_history.py`, `metrics/load_metrics.py`,
-`metrics/utils/set_values.py`, `db/plan_adherence.py`.
+`metrics/utils/set_values.py` and `db/plan_adherence.py`.
 
-**Odbiór:** identyczna seria ma spójną interpretację w historii, analizie i danych
-silnika; porównania nie korzystają z przyszłych wyników ani z kilogramów innego
-ćwiczenia. Niejednoznaczność jest jawna i nie zamienia się w sukces lub regres.
+**Acceptance:** a set has consistent meaning in History, Analysis and engine
+input. Comparisons use neither future results nor another exercise's kilograms.
+Ambiguity is explicit and does not become a success or regression verdict.
 
-## 4. Podstawowy silnik progresji, w tym różne ciężary serii
+## 4. Implement ordinary progression, including mixed loads
 
-**Rezultat:** deterministyczny silnik zwykłego treningu zgodny z tabelą z etapu 1.
+**Deliverable:** a deterministic ordinary-training engine matching stage 1.
 
-- Obsłużyć brak bazy: historia do wglądu, a nieustalony start wybiera użytkownik.
-- Generować cele per seria dla wspólnego ciężaru i redukcji wskutek zmęczenia.
-- Po pełnym sukcesie różnych ciężarów wyrównywać lżejsze do ustalonego startu:
-  zachować cele już na ciężarze odniesienia, a w podnoszonych seriach ustawić minimum.
-- Podwyższać wspólny ciężar dopiero po pełnym sukcesie na jednakowym obciążeniu.
-- Wprowadzić dodatkowe powtórzenie, potwierdzanie górnej granicy i zwiększenie
-  o rzeczywiście dostępny krok obciążenia zgodnie z ustaloną jednostką progresji.
-- Po większej pracy we wcześniejszych seriach traktować późniejsze cele zgodnie
-  z uzgodnioną regułą; nie wymagać automatycznie poprawy wszystkich wyników naraz.
-- Obsłużyć zbyt duży skok sprzętu z konkretnym wyjaśnieniem dalszego działania.
-- Oddzielić brak gotowości do podwyżki od potrzeby redukcji; pojedyncze RIR niższe
-  od celu nie powoduje automatycznej obniżki całego ćwiczenia.
-- Zwykła progresja działa także przy braku kalendarza bloków.
+- Under the original policy, show history when no baseline exists and let the
+  user choose the unestablished start.
+- Generate per-set goals for common loads and fatigue-related reductions.
+- After mixed-load success, equalize lighter sets toward the established start.
+  Retain targets at the reference load and reset raised sets to the lower bound.
+- Increase the common load only after complete success at equal loads.
+- Implement the additional rep, upper-bound confirmation and increase by an
+  available equipment increment using the agreed unit of progression.
+- Handle later targets after greater earlier-set work under the agreed rule;
+  do not automatically require every set to improve at once.
+- Explain the next action when an equipment increment is too large.
+- Separate lack of readiness to increase from a need to reduce load. One RIR
+  reading below target must not automatically lower the entire exercise's load.
+- Support ordinary progression without a block calendar.
 
-**Główne miejsca:** `metrics/progression.py`, `models/progression.py`,
-`db/progression.py`, `tests/test_progression.py`, `tests/test_recommendation_history.py`.
+**Main locations:** `metrics/progression.py`, `models/progression.py`,
+`db/progression.py`, `tests/test_progression.py` and `tests/test_recommendation_history.py`.
 
-**Odbiór:** macierz zwykłych przypadków przechodzi testy; różne ciężary nie kończą
-się ogólnym „nieobsługiwane”. Powtórne wyliczenie dla tych samych danych, daty
-i wersji zasad daje ten sam wynik. Obliczenie nie zmienia planu ani historii.
+**Acceptance:** the ordinary-case matrix passes. Mixed loads do not produce a
+generic unsupported result. Identical inputs, date and rules version produce
+identical output, without changing the plan or history.
 
-## 5. Niepowodzenia, zastój, deload i pozostałe warianty
+## 5. Handle failure, plateaus, deload and other variants
 
-**Rezultat:** spójne zachowanie poza zwykłym udanym wykonaniem.
+**Deliverable:** consistent behavior beyond an ordinary successful execution.
 
-- Niepowodzenie: odróżnić zły start od trudności późniejszych serii; korekta po
-  pierwszym problemie przy minimum, natomiast przy większej liczbie powtórzeń
-  najpierw rozpatrywać wcześniejsze zakończenie serii w zakresie.
-- Możliwy zastój oceniać na porównywalnej pracy i zapasie, nie na samym tonażu.
-- Braki danych i nieukończone wykonania nie uruchamiają automatycznej diagnozy regresu.
-- Przerwa w historii powoduje uzgodniony tryb ponownego ustalenia bazy.
-- Deload jest oddzielnym trybem uruchamianym automatycznie według kalendarza. Po nim wraca baza zwykłego treningu,
-  a lżejszy tydzień nie staje się punktem odniesienia dla nowej podwyżki.
-- Masa ciała, dodatkowy ciężar i asysta pozostają oddzielnymi wielkościami;
-  mniejsza asysta zwiększa trudność. Nie zakładać przyszłej masy ciała.
-- Czas ma własną jednostkę progresji. Ćwiczenia jednostronne mają jasną konwencję
-  stron, a techniki specjalne nie potwierdzają zwykłych serii.
-- Zgłoszony ból/uraz wpływa na decyzję tylko jako rzeczywiście dostępna informacja;
-  nie diagnozujemy go z wyników i nie wymagamy nowego obowiązkowego formularza.
+- Distinguish an unsuitable starting load from difficulties in later sets.
+  Correct the first failure at the minimum; above it, first consider stopping
+  earlier within the range.
+- Assess possible plateaus from comparable work and reserve, rather than tonnage alone.
+- Missing data and incomplete executions must not automatically imply regression.
+- Apply the agreed baseline-reset mode after a history gap.
+- Treat calendar-based deload as a separate mode. Resume an ordinary baseline
+  afterward; a lighter week must not establish a new ordinary increase.
+- Keep body mass, additional load and assistance separate. Less assistance
+  increases difficulty. Do not assume future body mass.
+- Use a separate progression unit for time, a clear side convention for
+  unilateral work, and separate handling for special techniques.
+- Use reported pain/injury only when actually available. Do not diagnose it
+  from results or require a new mandatory questionnaire.
 
-**Główne miejsca:** `metrics/progression.py`, `metrics/training_block.py`,
+**Main locations:** `metrics/progression.py`, `metrics/training_block.py`,
 `metrics/progress_metrics.py`, `metrics/training_insights.py`,
-`tests/test_deload.py`, `tests/test_set_loads.py`, `tests/test_training_insights.py`.
+`tests/test_deload.py`, `tests/test_set_loads.py` and `tests/test_training_insights.py`.
 
-**Odbiór:** każdy wariant ma właściwy cel albo jasną, uzgodnioną granicę automatyki.
-Brak danych nie prowadzi do wymyślonego obciążenia, a deload nie generuje regresu.
+**Acceptance:** each variant has an appropriate goal or an explicit agreed
+automation boundary. Missing data does not invent loads; deload does not imply regression.
 
-## 6. Podłączenie do interfejsu i wspólne komunikaty
+## 6. Connect the interface and shared messages
 
-**Rezultat:** użytkownik widzi jeden spójny następny krok i jego podstawę.
+**Deliverable:** one consistent next action with its supporting evidence.
 
-- Overview pokazuje ciężar i cel każdej serii, RIR, główny powód decyzji
-  oraz możliwość obejrzenia ostatniego wykonania i potwierdzeń.
-- Plan pozwala ustawić parametry ćwiczenia i niezależny tryb deloadu.
-- History umożliwia opcjonalną korektę przeznaczenia serii i danych źródłowych;
-  nie dodajemy obowiązku ręcznego opisywania każdej zmiany ciężaru.
-- Analysis odróżnia obserwację wyniku, ograniczenia porównania i rekomendację.
-  Usunąć sprzeczne oceny pochodzące ze starych reguł.
-- Eksport notatki treningowej zachowuje różne ciężary i cele serii oraz miejsce
-  na faktyczny wynik. Skopiowany cel nie jest zapisanym wykonaniem.
-- Wszystkie komunikaty korzystają ze wspólnego wyniku silnika; widoki nie
-  implementują dodatkowych reguł zwiększania lub obniżania ciężaru.
-- Zmiana ustawień odświeża obliczenia; cache nie może mieszać wersji zasad.
+- Overview shows each set's load and target, RIR, the primary reason and access
+  to the latest execution and confirmations.
+- Plan configures exercise parameters and an independent deload schedule.
+- History supports optional purpose and source-data corrections without requiring
+  a manual explanation of every load change.
+- Analysis distinguishes observations, comparison limitations and recommendations.
+  Remove contradictory assessments from older rules.
+- Workout-note export preserves mixed loads, per-set targets and space for actual
+  results. Copying a target does not record an execution.
+- All messages use shared engine output; views do not add independent rules for
+  increasing or reducing load.
+- Setting changes refresh calculations. Cache must not mix rules versions.
 
-**Główne miejsca:** `ui/next_workout_view.py`, `ui/overview_view.py`,
+**Main locations:** `ui/next_workout_view.py`, `ui/overview_view.py`,
 `ui/training_plan_view.py`, `ui/utils/plan_editor.py`, `ui/set_classification_view.py`,
 `metrics/training_insights.py`, `metrics/overview_summary.py`,
-`metrics/utils/recommendation_text.py`, `metrics/workout_template.py`.
+`metrics/utils/recommendation_text.py` and `metrics/workout_template.py`.
 
-**Odbiór:** karta następnego treningu, analiza i eksport są zgodne; brak konieczności
-czytania technicznych kodów przyczyn. Przejście Plan → History → Overview i widok
-telefonu działają dla pełnej historii oraz dla brakujących danych.
+**Acceptance:** the next-workout card, analysis and export agree without requiring
+users to read technical reason codes. Plan to History to Overview navigation and
+mobile layout work with complete history and missing data.
 
-## 7. Dopasowanie Twojego planu i weryfikacja na historii
+## 7. Configure the user's plan and verify historical decisions
 
-**Rezultat:** propozycja konfiguracji ćwiczeń i raport przykładowych rekomendacji.
+**Deliverable:** proposed exercise configuration and a sample recommendation report.
 
-- Odczytać aktywny plan i historię; przygotować per ćwiczenie liczbę serii,
-  zakres, cel RIR, skok sprzętu oraz przerwę odniesienia dla hipertrofii i siły.
-- Dla ustalonej bazy pokazać ostatnie adekwatne obciążenia. Przy nieustalonym
-  starcie pokazać historię i pozostawić ręczny wybór, zgodnie z decyzją 6B.
-  Odróżnić tę sytuację od normalnej podwyżki już ustalonej bazy.
-- Najpierw przedstawić propozycję konfiguracji; zapis do aktywnego planu jest
-  osobnym działaniem i tworzy nową wersję, bez zmieniania dawnych wykonań.
-- Odtworzyć wybrane historyczne sytuacje nowym silnikiem. Dla daty odtworzenia
-  dostępne są wyłącznie wyniki i ustawienia znane najpóźniej w tym momencie.
-- Porównać stary i nowy wynik: decyzja, dane źródłowe, potwierdzenia, przyczyna różnicy.
-  Różnice są oczekiwane, ale każda istotna musi wynikać z konkretnej nowej reguły.
-- Osobno sprawdzić zaktualizowany plan jako przyszłą konfigurację; nie prezentować
-  nowego zakresu/RIR jako ustawień obowiązujących historycznie.
-- Sprawdzić pełny zestaw testów, integrację bazy na danych testowych oraz scenariusze
-  interfejsu. Uzupełniać testy wyłącznie o nowo ujawnione przypadki lub błędy.
+- Read the active plan and history. Prepare per-exercise sets, range, target RIR,
+  equipment increment and reference rest for hypertrophy and strength.
+- For established baselines, show the latest relevant loads. For an unestablished
+  start, the original decision 6B required visible history and manual selection.
+  Distinguish this from increasing an already established baseline.
+- Present configuration before saving it. Saving is a separate action that
+  creates a revision without changing historical executions.
+- Replay selected cases with the new engine using only results and settings
+  available at the replay cutoff.
+- Compare old and new actions, sources, confirmations and reasons. Significant
+  differences must follow a specific new rule.
+- Check the revised plan separately as future configuration. Do not present new
+  range/RIR settings as historically applicable prescriptions.
+- Check the full suite, storage integration on test data and interface journeys.
+  Add tests for newly exposed cases or defects.
 
-**Odbiór:** nie ma niewyjaśnionych decyzji ani sprzecznych ekranów. Powstaje lista
-wybranych sytuacji wraz z wynikiem i uzasadnieniem oraz propozycja parametrów planu.
-Odtworzenie historii jest oceną zgodności reguł, nie dowodem przyszłej skuteczności treningu.
+**Acceptance:** no unexplained decisions or conflicting screens remain. Document
+selected cases, outputs, explanations and proposed settings. Historical replay
+checks rule consistency; it does not prove future training effectiveness.
 
-## 8. Uruchomienie i wyłączenie starego mechanizmu
+## 8. Publish and retire the previous mechanism
 
-**Rezultat:** jedno aktywne wydanie systemu z możliwością odtworzenia decyzji.
+**Deliverable:** one active release with reproducible decisions.
 
-- Przed przełączeniem ustalić docelowy commit, stan migracji i zgodny sposób
-  powrotu do wcześniejszego działania bez usuwania nowych danych.
-- Do porównań można zachować stary silnik, ale po przełączeniu wszystkie ekrany
-  korzystają z tej samej aktywnej wersji zasad i konfiguracji.
-- Publikować dopiero po wykonaniu wymaganych testów i przeglądzie raportu z etapu 7;
-  techniczna publikacja jest osobną czynnością względem przygotowania tego planu.
-- Zweryfikować uruchomione wydanie, datę następnego treningu, cele serii, eksport,
-  odświeżanie po zmianie ustawień oraz obsługę istniejącego planu.
-- Zaktualizować README i dokumentację wydania. Dokumentu poprzedniej publikacji
-  nie przedstawiać jako walidacji nowego systemu.
+- Before switching, identify the target commit, migration state and compatible
+  rollback procedure that preserves new data.
+- Retain old code for comparison if needed, but after switching, all screens
+  must use the same active rules version and configuration.
+- Publish after required tests and review of stage 7. Technical publication is
+  a separate action from preparing this plan.
+- Verify the running release, next-workout date, per-set targets, export,
+  refresh after setting changes and existing-plan compatibility.
+- Update README and release documentation. Do not present a previous release's
+  report as validation of the new system.
 
-**Odbiór:** działa dokładnie sprawdzone wydanie; jeden mechanizm jest źródłem celów
-i komunikatów. Zachowane są historyczne zapisy oraz instrukcja przywrócenia
-zgodnego działania. Ocena zachowania po rzeczywistych treningach jest późniejszą
-obserwacją, a nie warunkiem technicznego ukończenia implementacji.
+**Acceptance:** the verified release runs; one engine supplies targets and
+messages. Preserve historical records and a compatible rollback procedure.
+Behavior after actual future training is a later observation rather than a
+condition of technical implementation completion.
 
-## Minimalna macierz przypadków do doprecyzowania w etapie 1
+## Minimum case matrix for stage 1
 
-| Przypadek | Co musi rozstrzygnąć specyfikacja |
+| Case | Required specification decision |
 | --- | --- |
-| Brak historii ćwiczenia | Kalibracja bez wymyślania ciężaru. |
-| Lżejsze serie początkowe, potem cięższe | Rodzaj serii i ręczny wybór startu przy wglądzie w historię. |
-| Stały ciężar, wynik w zakresie | Dokładny wybór celu +1 powtórzenie. |
-| Sufit we wszystkich seriach pierwszy raz | Gotowość do podwyżki po jednym pełnym sukcesie. |
-| Różne ciężary, np. 60/60/55 | Wyrównanie po pełnym sukcesie; minimum powtórzeń tylko w podnoszonej serii. |
-| 60 × 12 / 55 × 12 / 55 × 12 | Cel 60 × 12 / 60 × 8 / 60 × 8 przy wymaganym RIR. |
-| 60 × 12 / 60 × 8 / 60 × 8 | Cel 60 × 12 / 60 × 9 / 60 × 8 przy wymaganym RIR. |
-| Sufit wszystkich serii na wspólnym ciężarze | Następny wspólny ciężar i minimum zakresu we wszystkich seriach. |
-| Zwiększona praca pierwszej serii | Porównywalność i cele późniejszych serii. |
-| Jednorazowe RIR poniżej celu | Utrzymanie bez automatycznej redukcji. |
-| Za mały zapas przy dużej liczbie powtórzeń | Wcześniejsze zakończenie serii w zakresie. |
-| Za mały zapas już przy minimum | Warunki i zakres redukcji ciężaru. |
-| Słabsze wyłącznie późniejsze serie | Oddzielenie ich korekty od startu. |
-| Brak RIR, brak serii, błędny zapis | Inne ograniczenia danych i brak fałszywego sukcesu/regresu. |
-| Jawna rozgrzewka z małym RIR / robocza z dużym RIR | Przeznaczenie niezależne od wysiłku. |
-| Dodatkowe serie lub niejednoznaczny import | Wybór planowanych serii bez podwójnego liczenia. |
-| Zmienny lub nieznany odpoczynek | Ograniczenie wniosków bez blokowania całego systemu. |
-| Zbyt duży skok sprzętu | Dalsze działanie zamiast bezterminowego „utrzymaj”. |
-| Zastój i jednorazowa zmiana RIR | Dokładne potwierdzenie trendu. |
-| Dłuższa przerwa / powrót po deloadzie | Ponowne ustalenie bazy i potwierdzeń. |
-| Zmiana nazwy, dnia, kolejności, zakresu lub RIR | Która historia pozostaje bazą, a która potwierdzeniem. |
-| Zamiennik / inne urządzenie / powtórzona pozycja ćwiczenia | Oddzielna tożsamość i kroki sprzętu. |
-| Czas, masa ciała, asysta, strony | Własne jednostki, kierunek progresji i granice automatyki. |
-| Przesunięty trening, duplikat sesji, przyszłe dane | Chronologia bez podwójnych i przyszłych potwierdzeń. |
-| Zmiana filtra Analysis, eksport, inny ekran | Ten sam przyszły cel z tego samego silnika. |
+| No exercise history | Calibration without inventing a load. |
+| Lighter opening sets followed by heavier sets | Set purpose and manual starting-load selection under the original policy. |
+| Constant load, result within range | Exact selection of the one-rep target. |
+| First complete upper-bound result | Readiness to increase after one complete success. |
+| Mixed loads such as 60/60/55 | Equalization after complete success; lower-bound reps only in raised sets. |
+| 60 x 12 / 55 x 12 / 55 x 12 | 60 x 12 / 60 x 8 / 60 x 8 with sufficient RIR. |
+| 60 x 12 / 60 x 8 / 60 x 8 | 60 x 12 / 60 x 9 / 60 x 8 with sufficient RIR. |
+| Upper bound in all sets at a common load | Next common load and lower-bound reps in every set. |
+| More work in the first set | Comparability and targets for later sets. |
+| One RIR reading below target | Maintenance without automatic reduction. |
+| Insufficient reserve at high reps | Stop earlier within the range. |
+| Insufficient reserve at the minimum | Conditions and scope of load reduction. |
+| Only later sets are weaker | Separate their correction from the starting load. |
+| Missing RIR, missing sets or invalid records | Distinct limitations without false success/regression. |
+| Explicit warm-up with low RIR or working set with high RIR | Purpose independent of effort. |
+| Extra sets or ambiguous import | Select planned sets without double counting. |
+| Variable or unknown rest | Limit inference without blocking the entire system. |
+| Excessive equipment increment | A next action beyond indefinite maintenance. |
+| Plateau or one changed RIR reading | Exact trend-confirmation requirements. |
+| Long gap or return after deload | Re-establish the baseline and confirmations. |
+| Changed name, day, order, range or RIR | Which history supplies a baseline versus an increase confirmation. |
+| Alternative, different equipment or repeated exercise position | Separate identities and equipment increments. |
+| Time, bodyweight, assistance or sides | Their own units, progression direction and automation limits. |
+| Moved workout, duplicate session or future data | Chronology without duplicate/future confirmations. |
+| Analysis filter, export or another screen | The same future target from the same engine. |
 
-## Granice przebudowy
+## Scope boundaries
 
-System nie układa automatycznie nowego zestawu ćwiczeń, nie dodaje sam serii
-na zastój i nie rozpoznaje przetrenowania, techniki ani stanu zdrowia z dziennika.
-Nie wymaga codziennej ankiety, pomiaru każdej przerwy ani ponownego opisywania
-całej historii. Rozszerzenia ponad ustalony zakres dostają osobne reguły przed kodowaniem.
+The system does not automatically design a new exercise routine, add sets for a
+plateau or diagnose overtraining, technique or health from logs. It does not
+require a daily questionnaire, measurement of every rest interval or relabelling
+all history. Extensions beyond the agreed scope need explicit rules before coding.
