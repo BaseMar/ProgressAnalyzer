@@ -277,6 +277,7 @@ def main():
             snapshot = None if args.live else capture_snapshot(engine, plan)
             results = dict(mode='live_postgresql' if args.live else 'synthetic_sqlite', as_of=as_of.isoformat(), analysis_period='All time',
                 commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
+                working_tree_dirty=bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip()),
                 environment=dict(python=platform.python_version(), streamlit=metadata.version('streamlit'),
                     sqlalchemy=metadata.version('sqlalchemy'), pandas=metadata.version('pandas'),
                     numpy=metadata.version('numpy'), plotly=metadata.version('plotly'),

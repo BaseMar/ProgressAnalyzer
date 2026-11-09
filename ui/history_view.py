@@ -280,7 +280,6 @@ class HistoryView:
                 with col2:
                     if st.button("Delete Session", key=f"del_{session_id}", type="secondary", use_container_width=True, icon=":material/delete:"):
                         if self.dm.delete_session(session_id):
-                            st.cache_data.clear()
                             st.toast(f"Session deleted successfully!")
                             st.rerun()
 

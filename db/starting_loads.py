@@ -3,11 +3,12 @@ import hashlib
 import json
 from math import isfinite
 
-from sqlalchemy import MetaData, func, inspect, select
+from sqlalchemy import MetaData, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from db.migrations.v008_starting_loads import define_table
+from db.read_cache import has_table, read_cached
 from metrics.plan_performance import comparison_context
 from models.progression import SetGoal
 
@@ -18,7 +19,7 @@ MANUAL_START_REASONS = frozenset({"no_history", "no_normal_baseline", "manual_st
 
 def starting_load_storage_ready(engine):
     with engine.connect() as connection:
-        return inspect(connection).has_table(starting_loads.name)
+        return has_table(connection, starting_loads.name)
 
 
 def starting_load_key(upcoming, item, block):
@@ -32,6 +33,7 @@ def starting_load_key(upcoming, item, block):
     return hashlib.sha256(json.dumps(context, default=str).encode("utf-8")).hexdigest()
 
 
+@read_cached
 def load_starting_loads(engine, upcoming, item, block):
     if block.phase not in ("normal", "unconfigured") or item.reason_code not in MANUAL_START_REASONS:
         return ()

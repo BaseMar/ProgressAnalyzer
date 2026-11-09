@@ -3,6 +3,7 @@ from db.plan_adherence import load_plan_performance
 from db.exercise_starting_history import load_exercise_starting_history
 from db.exercise_history_load_settings import load_legacy_body_mass_exercise_ids
 from db.training_plans import load_training_plan_versions
+from db.read_cache import read_cached, read_scope
 from metrics.history_starting_loads import HISTORY_START_REASONS, with_history_starting_loads
 from metrics.progression import recommend_workout
 from models.progression import DeloadPolicy, ProgressionPolicy
@@ -18,6 +19,8 @@ def load_normal_workout_recommendations(engine, plan_id, day_id, scheduled_date,
     return result.exercises
 
 
+@read_scope()
+@read_cached
 def load_workout_recommendations(engine, plan_id, day_id, scheduled_date, *, as_of,
                                 policy=ProgressionPolicy(), deload_policy=DeloadPolicy(),
                                 substitutions=None, replacement_weight_steps=None):

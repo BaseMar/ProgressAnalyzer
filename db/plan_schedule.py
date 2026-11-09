@@ -2,10 +2,11 @@
 
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import Column, Date, Integer, MetaData, Table, Time, inspect, select
+from sqlalchemy import Column, Date, Integer, MetaData, Table, Time, select
 from sqlalchemy.exc import IntegrityError
 
 from db.migrations.v002_plan_session_links import define_table
+from db.read_cache import has_table, read_cached
 from db.training_plans import days, plans, versions, _load_version
 from models.scheduled_workout import ScheduledWorkout
 
@@ -20,12 +21,12 @@ links = define_table(metadata)
 
 def plan_schedule_storage_ready(engine):
     with engine.connect() as connection:
-        return inspect(connection).has_table(links.name)
+        return has_table(connection, links.name)
 
 
-def load_scheduled_workouts(engine, plan_id: int, start: date, end: date) -> list[ScheduledWorkout]:
-    if start > end:
-        raise ValueError("Schedule start must not exceed end")
+@read_cached
+def _schedule_rows(engine, plan_id):
+    """Read plan schedule inputs once for all date windows in a render."""
     with engine.connect() as connection:
         version_rows = connection.execute(select(versions).where(
             versions.c.plan_id == plan_id,
@@ -36,8 +37,16 @@ def load_scheduled_workouts(engine, plan_id: int, start: date, end: date) -> lis
         assigned = connection.execute(
             select(links, sessions.c.session_date).join(sessions).join(days, links.c.day_id == days.c.day_id)
             .join(versions, days.c.version_id == versions.c.version_id)
-            .where(versions.c.plan_id == plan_id, links.c.scheduled_date.between(start, end))
+            .where(versions.c.plan_id == plan_id)
         ).mappings().all()
+    return version_rows, day_rows, assigned
+
+
+@read_cached
+def load_scheduled_workouts(engine, plan_id: int, start: date, end: date) -> list[ScheduledWorkout]:
+    if start > end:
+        raise ValueError("Schedule start must not exceed end")
+    version_rows, day_rows, assigned = _schedule_rows(engine, plan_id)
     by_slot = {(row["day_id"], row["scheduled_date"]): row for row in assigned}
     result = []
     for index, version in enumerate(version_rows):
@@ -66,6 +75,7 @@ def load_scheduled_workouts(engine, plan_id: int, start: date, end: date) -> lis
     return sorted(result, key=lambda item: item.scheduled_date)
 
 
+@read_cached
 def load_scheduled_workout_targets(engine, day_id: int):
     with engine.connect() as connection:
         row = connection.execute(select(days).where(days.c.day_id == day_id)).mappings().one_or_none()
@@ -75,6 +85,7 @@ def load_scheduled_workout_targets(engine, day_id: int):
         return version.draft.days[row["position"] - 1]
 
 
+@read_cached
 def load_plan_session_links(engine) -> dict[int, tuple[int, date]]:
     """Session identity -> scheduled slot, used to exclude already assigned logs."""
     with engine.connect() as connection:

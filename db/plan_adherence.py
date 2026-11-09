@@ -3,10 +3,11 @@
 from dataclasses import replace
 from datetime import date
 
-from sqlalchemy import Column, Integer, Float, MetaData, String, Table, func, inspect, literal, select
+from sqlalchemy import Column, Integer, Float, MetaData, String, Table, func, literal, select
 from sqlalchemy.exc import IntegrityError
 
 from db.migrations.v003_exercise_matches import define_table
+from db.read_cache import has_table, read_cached
 from db.plan_schedule import links, load_scheduled_workouts, sessions
 from db.training_plans import exercises as targets, versions, days, exercise_lineage
 from db.set_classifications import classifications
@@ -39,9 +40,10 @@ matches = define_table(metadata)
 
 def adherence_storage_ready(engine):
     with engine.connect() as connection:
-        return inspect(connection).has_table(matches.name)
+        return has_table(connection, matches.name)
 
 
+@read_cached
 def _recorded(connection, session_ids, *, exercise_ids=None):
     if not session_ids:
         return ()
@@ -50,7 +52,7 @@ def _recorded(connection, session_ids, *, exercise_ids=None):
         exercise_filter.append(actual_exercises.c.exercise_id.in_(exercise_ids))
     exercises = connection.execute(select(actual_exercises).where(*exercise_filter)).mappings().all()
     load_fields = ("load_type", "body_mass_kg", "assistance_kg")
-    load_storage = inspect(connection).has_table(loads.name)
+    load_storage = has_table(connection, loads.name)
     columns = [loads.c[name] if load_storage else literal(None).label(name) for name in load_fields]
     query = select(actual_sets, classifications.c.is_warmup, *columns).outerjoin(
         classifications, classifications.c.set_id == actual_sets.c.set_id,
@@ -70,39 +72,53 @@ def _recorded(connection, session_ids, *, exercise_ids=None):
                                   tuple(sets[row["workout_exercise_id"]])) for row in exercises)
 
 
-def load_plan_adherence(engine, plan_id, start, end) -> PlanAdherenceInput:
-    slots = load_scheduled_workouts(engine, plan_id, start, end)
-    day_ids = {slot.day_id for slot in slots}
-    session_ids = {slot.session_id for slot in slots if slot.session_id is not None}
+@read_cached
+def _plan_targets(engine, plan_id):
     with engine.connect() as connection:
-        rows = connection.execute(select(targets).where(targets.c.day_id.in_(day_ids))
-                                  .order_by(targets.c.position)).mappings().all() if day_ids else []
-        by_day = {day_id: [] for day_id in day_ids}
+        rows = connection.execute(select(targets).join(days, targets.c.day_id == days.c.day_id)
+            .join(versions, days.c.version_id == versions.c.version_id).where(
+            versions.c.plan_id == plan_id).order_by(targets.c.position)).mappings().all()
+        by_day = {}
         lineage = dict(connection.execute(select(exercise_lineage.c.plan_exercise_id, exercise_lineage.c.history_key)
             .where(exercise_lineage.c.plan_exercise_id.in_([row["plan_exercise_id"] for row in rows]))).all()) if (
-                rows and inspect(connection).has_table(exercise_lineage.name)) else {}
+                rows and has_table(connection, exercise_lineage.name)) else {}
         for row in rows:
-            by_day[row["day_id"]].append(PlannedTarget(row["plan_exercise_id"], PlannedExercise(
+            by_day.setdefault(row["day_id"], []).append(PlannedTarget(row["plan_exercise_id"], PlannedExercise(
                 row["exercise_id"], row["set_count"], row["target_min"], row["target_max"],
                 row["target_unit"], row["target_rir"], row["weight_increment"],
                 history_key=lineage.get(row["plan_exercise_id"]),
             )))
+    return by_day
+
+
+@read_cached
+def _confirmed(connection, session_ids):
+    return tuple(ExerciseMatch(row.session_id, row.plan_exercise_id, row.workout_exercise_id)
+                 for row in connection.execute(select(matches).where(matches.c.session_id.in_(session_ids)))) if session_ids else ()
+
+
+@read_cached
+def _manual_load_ids(connection):
+    return frozenset(row.exercise_id for row in connection.execute(
+        select(catalog_exercises.c.exercise_id, catalog_exercises.c.exercise_name))
+        if suggested_load_type(row.exercise_name) in ("bodyweight", "assisted_bodyweight"))
+
+
+@read_cached
+def load_plan_adherence(engine, plan_id, start, end) -> PlanAdherenceInput:
+    slots = load_scheduled_workouts(engine, plan_id, start, end)
+    session_ids = {slot.session_id for slot in slots if slot.session_id is not None}
+    by_day = _plan_targets(engine, plan_id) if slots else {}
+    with engine.connect() as connection:
         recorded = _recorded(connection, session_ids)
-        confirmed = tuple(ExerciseMatch(row.session_id, row.plan_exercise_id, row.workout_exercise_id)
-                          for row in connection.execute(select(matches).where(matches.c.session_id.in_(session_ids)))) if session_ids else ()
-        manual_ids = frozenset(row.exercise_id for row in connection.execute(
-            select(catalog_exercises.c.exercise_id, catalog_exercises.c.exercise_name))
-            if suggested_load_type(row.exercise_name) in ("bodyweight", "assisted_bodyweight"))
-    return PlanAdherenceInput(tuple(PlannedWorkout(slot, tuple(by_day[slot.day_id])) for slot in slots),
+        confirmed = _confirmed(connection, session_ids)
+        manual_ids = _manual_load_ids(connection)
+    return PlanAdherenceInput(tuple(PlannedWorkout(slot, tuple(by_day.get(slot.day_id, ()))) for slot in slots),
                               recorded, confirmed, manual_load_exercise_ids=manual_ids)
 
 
-def load_plan_performance(engine, plan_id, start, end) -> PlanAdherenceInput:
-    """Include earlier linked workouts, independently of the visible month.
-
-    Include linked future slots too: a workout may have been recorded early.
-    Comparisons are ordered by actual session date/time, never planned date.
-    """
+@read_cached
+def _performance_bounds(engine, plan_id):
     with engine.connect() as connection:
         first = connection.execute(select(func.min(versions.c.effective_from)).where(
             versions.c.plan_id == plan_id,
@@ -112,11 +128,27 @@ def load_plan_performance(engine, plan_id, start, end) -> PlanAdherenceInput:
         ).join(versions, days.c.version_id == versions.c.version_id).where(
             versions.c.plan_id == plan_id,
         )).scalar_one()
+    return first, last_linked
+
+
+@read_cached
+def _session_order(connection, ids):
+    return tuple(connection.execute(select(sessions.c.session_id).where(sessions.c.session_id.in_(ids))
+                 .order_by(sessions.c.session_date, sessions.c.start_time.asc().nullsfirst(), sessions.c.session_id)).scalars()) if ids else ()
+
+
+@read_cached
+def load_plan_performance(engine, plan_id, start, end) -> PlanAdherenceInput:
+    """Include earlier linked workouts, independently of the visible month.
+
+    Include linked future slots too: a workout may have been recorded early.
+    Comparisons are ordered by actual session date/time, never planned date.
+    """
+    first, last_linked = _performance_bounds(engine, plan_id)
     data = load_plan_adherence(engine, plan_id, min(start, first or start), max(end, date.today(), last_linked or end))
     ids = {item.slot.session_id for item in data.workouts if item.slot.session_id is not None}
     with engine.connect() as connection:
-        order = tuple(connection.execute(select(sessions.c.session_id).where(sessions.c.session_id.in_(ids))
-                      .order_by(sessions.c.session_date, sessions.c.start_time.asc().nullsfirst(), sessions.c.session_id)).scalars()) if ids else ()
+        order = _session_order(connection, ids)
     return replace(data, session_order=order)
 
 

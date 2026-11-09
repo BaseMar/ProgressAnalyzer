@@ -231,7 +231,6 @@ class BodyMetricsView:
                         date, weight, fat_pct, muscle_mass, fat_mass, water_mass
                     )
                     st.success("Body composition saved.")
-                    st.cache_data.clear()
                     st.rerun()
 
         with tabs[1]:
@@ -254,7 +253,6 @@ class BodyMetricsView:
                         date, chest, waist, abdomen, hips, thigh, calf, biceps
                     )
                     st.success("Body measurements saved.")
-                    st.cache_data.clear()
                     st.rerun()
 
     def _render_metric_trends_section(self, df: pd.DataFrame, section_key: str, title: str) -> None:

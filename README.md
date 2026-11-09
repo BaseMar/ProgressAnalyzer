@@ -752,6 +752,10 @@ The [performance and regression baseline](docs/performance-baseline.md) records
 cache-cold/warm render times, SQL counts and frozen calculation outputs. It includes
 a portable synthetic benchmark and optional read-only PostgreSQL measurements.
 
+The [data access and cache optimization report](docs/data-access-optimization.md)
+compares stage 4 against that baseline and documents cache lifetime, write
+invalidation and behavior-preservation checks.
+
 ## Language and Terminology
 
 English is used throughout the interface, generated workout notes, documentation,

@@ -1,8 +1,9 @@
 """Optional explicit corrections; inferred meanings are never written here."""
 import pandas as pd
-from sqlalchemy import Column, Integer, MetaData, Table, inspect, select, text
+from sqlalchemy import Column, Integer, MetaData, Table, select, text
 from db.migrations.v004_set_classifications import define_table
 from db.set_loads import load_sql_parts
+from db.read_cache import has_table
 
 metadata = MetaData()
 sets = Table("workout_sets", metadata, Column("set_id", Integer, primary_key=True), Column("workout_exercise_id", Integer))
@@ -12,7 +13,7 @@ classifications = define_table(metadata)
 
 def classification_storage_ready(engine):
     with engine.connect() as connection:
-        return inspect(connection).has_table(classifications.name)
+        return has_table(connection, classifications.name)
 
 
 def load_session_sets(engine, session_id):

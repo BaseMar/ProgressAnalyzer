@@ -3,9 +3,10 @@ from datetime import date
 from math import isfinite
 
 import pandas as pd
-from sqlalchemy import Column, DateTime, Float, Integer, MetaData, String, Table, cast, inspect, select
+from sqlalchemy import Column, DateTime, Float, Integer, MetaData, String, Table, cast, select
 
 from db.migrations.v006_set_loads import define_table
+from db.read_cache import has_table
 from models.set_load import SetLoad
 
 metadata = MetaData()
@@ -23,7 +24,7 @@ def suggest_body_mass(engine, on_date: date):
     if type(on_date) is not date:
         raise ValueError("Workout date must be a date")
     with engine.connect() as connection:
-        if not inspect(connection).has_table(measurements.name):
+        if not has_table(connection, measurements.name):
             return None
         # Legacy installations store dates as TEXT; newer schemas use DATE or
         # TIMESTAMP. Normalize this small measurement history without imposing
@@ -54,12 +55,12 @@ def insert_set_load(connection, set_id, value):
 
 def set_load_storage_ready(engine):
     with engine.connect() as connection:
-        return inspect(connection).has_table(loads.name)
+        return has_table(connection, loads.name)
 
 
 def load_sql_parts(connection, set_alias):
     """SQL fragments for internal, fixed set aliases; old schemas remain readable."""
-    if inspect(connection).has_table(loads.name):
+    if has_table(connection, loads.name):
         return ("l.load_type, l.body_mass_kg, l.assistance_kg",
                 f"LEFT JOIN workout_set_loads l ON l.set_id={set_alias}.set_id")
     return "NULL AS load_type, NULL AS body_mass_kg, NULL AS assistance_kg", ""
@@ -77,7 +78,7 @@ def save_session_set_loads(engine, session_id, values: dict[int, SetLoad | None]
     if not values:
         return
     with engine.begin() as connection:
-        if not inspect(connection).has_table(loads.name):
+        if not has_table(connection, loads.name):
             raise ValueError("Set load storage needs migration 006_set_loads")
         allowed = set(connection.execute(select(sets.c.set_id).join(
             workouts, sets.c.workout_exercise_id == workouts.c.workout_exercise_id,

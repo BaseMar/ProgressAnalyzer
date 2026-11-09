@@ -1,4 +1,5 @@
 import logging
+from functools import wraps
 from typing import Any, Dict, List
 from datetime import date, time, timedelta
 import pandas as pd
@@ -38,6 +39,19 @@ from db.queries import (
 logger = logging.getLogger(__name__)
 
 
+def _refresh_after_write(method):
+    """Invalidate the shared input cache only after a successful database write."""
+    @wraps(method)
+    def wrapped(*args, **kwargs):
+        result = method(*args, **kwargs)
+        if result is not False:
+            # Delayed import avoids the loader/manager dependency cycle.
+            from data_loader import load_data
+            load_data.clear()
+        return result
+    return wrapped
+
+
 class DataManager:
     """Database access wrapper that returns query results as Pandas DataFrames.
 
@@ -56,6 +70,7 @@ class DataManager:
     def set_load_storage_ready(self):
         return set_load_storage_ready(self.engine)
 
+    @_refresh_after_write
     def save_session_set_loads(self, session_id, values):
         return save_session_set_loads(self.engine, session_id, values)
 
@@ -71,6 +86,7 @@ class DataManager:
     def load_session_sets(self, session_id):
         return load_session_sets(self.engine, session_id)
 
+    @_refresh_after_write
     def save_set_classifications(self, session_id, values):
         return save_set_classifications(self.engine, session_id, values)
 
@@ -101,12 +117,15 @@ class DataManager:
     def load_starting_loads(self, upcoming, item, block):
         return load_starting_loads(self.engine, upcoming, item, block)
 
+    @_refresh_after_write
     def save_starting_loads(self, upcoming, item, block, goals):
         return save_starting_loads(self.engine, upcoming, item, block, goals)
 
+    @_refresh_after_write
     def save_exercise_match(self, session_id, plan_exercise_id, workout_exercise_id):
         return save_exercise_match(self.engine, session_id, plan_exercise_id, workout_exercise_id)
 
+    @_refresh_after_write
     def remove_exercise_match(self, session_id, plan_exercise_id):
         return remove_exercise_match(self.engine, session_id, plan_exercise_id)
 
@@ -119,12 +138,15 @@ class DataManager:
     def load_plan_session_links(self):
         return load_plan_session_links(self.engine)
 
+    @_refresh_after_write
     def assign_scheduled_session(self, day_id, scheduled_date, session_id):
         return assign_scheduled_session(self.engine, day_id, scheduled_date, session_id)
 
+    @_refresh_after_write
     def unassign_scheduled_session(self, day_id, scheduled_date, session_id):
         return unassign_scheduled_session(self.engine, day_id, scheduled_date, session_id)
 
+    @_refresh_after_write
     def save_training_plan(self, draft: TrainingPlanDraft, *, plan_id: int | None = None) -> TrainingPlanVersion:
         return save_training_plan(self.engine, draft, plan_id=plan_id)
 
@@ -180,6 +202,7 @@ class DataManager:
             "composition": get_body_composition(self.engine),
         }
 
+    @_refresh_after_write
     def add_exercise(
         self,
         name: str,
@@ -213,6 +236,7 @@ class DataManager:
         return self.add_workout_session(session_date, notes,
             [{"name": exercise_name, "exercise_id": exercise_id, "sets": sets_data}], session_start, session_end)
 
+    @_refresh_after_write
     def add_workout_session(self, session_date, notes, exercises_data, session_start=None, session_end=None):
         """Save every exercise and load snapshot atomically, appending to the day."""
         day = pd.Timestamp(session_date).date()
@@ -290,6 +314,7 @@ class DataManager:
             logger.exception("add_workout_session failed")
             raise
 
+    @_refresh_after_write
     def add_body_measurements(self, data: dict) -> bool:
         """Insert body measurement records into the database.
 
@@ -302,6 +327,7 @@ class DataManager:
             logger.exception("add_body_measurements failed: %s", e)
             return False
 
+    @_refresh_after_write
     def add_body_composition(self, data: dict) -> bool:
         """Insert body composition records into the database.
 
@@ -328,6 +354,7 @@ class DataManager:
         with self.engine.connect() as conn:
             return pd.read_sql(query, conn)
 
+    @_refresh_after_write
     def delete_session(self, session_id: int) -> bool:
         try:
             return delete_workout_session(self.engine, session_id)

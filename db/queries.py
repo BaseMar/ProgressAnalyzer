@@ -248,18 +248,18 @@ def delete_workout_session(engine, session_id):
     """Delete session with exercises and series"""
     safe_session_id = int(session_id) 
 
-    query = text("""
+    queries = (text("""
         DELETE FROM workout_sets 
         WHERE workout_exercise_id IN (
             SELECT workout_exercise_id FROM workout_exercises WHERE session_id = :sid
-        );
-        DELETE FROM workout_exercises WHERE session_id = :sid;
-        DELETE FROM workout_sessions WHERE session_id = :sid;
-    """)
+        )
+    """), text("DELETE FROM workout_exercises WHERE session_id = :sid"),
+        text("DELETE FROM workout_sessions WHERE session_id = :sid"))
 
     try:
         with engine.begin() as conn:
-            conn.execute(query, {"sid": safe_session_id})
+            for query in queries:
+                conn.execute(query, {"sid": safe_session_id})
         return True
     except Exception:
         logging.getLogger(__name__).exception("SQL error deleting session")

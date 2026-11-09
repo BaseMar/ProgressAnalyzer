@@ -1,17 +1,19 @@
 """Read planned deload context without persisting inferred set labels."""
 from datetime import date, datetime
 
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 
 from metrics.training_block import is_deload_workout
 from models.scheduled_workout import ScheduledWorkout
 from models.training_plan import ProgressionSettings
+from db.read_cache import read_cached, table_names
 
 
+@read_cached
 def load_deload_exercise_ids(engine, *, as_of=None):
     as_of = as_of or date.today()
     with engine.connect() as connection:
-        names = set(inspect(connection).get_table_names())
+        names = table_names(connection)
         required = {"training_plan_session_links", "training_plan_progression", "training_plan_days"}
         if not required.issubset(names):
             return frozenset()

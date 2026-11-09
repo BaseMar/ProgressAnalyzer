@@ -7,8 +7,10 @@ from db.plan_adherence import _recorded, actual_exercises
 from db.plan_schedule import links, sessions
 from db.training_context import load_deload_exercise_ids
 from db.training_plans import days
+from db.read_cache import read_cached
 
 
+@read_cached
 def load_exercise_starting_history(engine, exercise_ids, *, as_of):
     if type(as_of) is not date:
         raise ValueError('History cutoff must be a date')

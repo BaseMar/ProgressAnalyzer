@@ -49,7 +49,6 @@ def render_set_classification(manager=None, *, session_id=None):
                 if not edited["Type"].isin(types).all():
                     raise ValueError("Choose a type for every set before saving")
                 dm.save_set_classifications(sid, {int(row.set_id): types[row.Type] for row in edited.itertuples()})
-                st.cache_data.clear()
                 st.rerun()
         except ValueError as exc:
             st.error(str(exc))

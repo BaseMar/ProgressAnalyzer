@@ -25,7 +25,7 @@ from mapper import (
 from metrics.input import MetricsInput
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner="Loading workout data…")
 def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
     """Load all application data from database.
     

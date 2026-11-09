@@ -6,8 +6,10 @@ from sqlalchemy import func, select
 from db.plan_adherence import _recorded, actual_exercises
 from db.plan_schedule import links, sessions
 from db.training_plans import days
+from db.read_cache import read_cached
 
 
+@read_cached
 def load_recommendation_references(engine, exercise_ids, *, as_of):
     """Show the latest session even before the plan/block or without a link.
 

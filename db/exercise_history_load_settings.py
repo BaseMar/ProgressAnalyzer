@@ -1,18 +1,20 @@
 """User-confirmed history semantics; never infer or rewrite legacy kilograms."""
-from sqlalchemy import Column, Integer, MetaData, Table, inspect, select
+from sqlalchemy import Column, Integer, MetaData, Table, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from db.migrations.v009_exercise_history_load_settings import define_table
+from db.read_cache import has_table, read_cached
 
 metadata = MetaData()
 Table('exercises', metadata, Column('exercise_id', Integer, primary_key=True))
 history_load_settings = define_table(metadata)
 
 
+@read_cached
 def load_legacy_body_mass_exercise_ids(engine):
     with engine.connect() as connection:
-        if not inspect(connection).has_table(history_load_settings.name):
+        if not has_table(connection, history_load_settings.name):
             return frozenset()
         return frozenset(connection.execute(select(history_load_settings.c.exercise_id).where(
             history_load_settings.c.legacy_bodyweight_is_body_mass.is_(True))).scalars())

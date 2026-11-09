@@ -137,7 +137,7 @@ class NextWorkoutView:
             if any(item.reason_code == "already_recorded" for item in result.exercises):
                 st.info("This workout was linked while the view was loading. Refresh to select another upcoming workout.")
                 return
-            planned = self.dm.load_scheduled_workout_targets(slot.day_id)
+            planned = version.draft.days[slot.position - 1]
             if history is None:
                 history = self.dm.load_plan_performance(plan_id, as_of, slot.scheduled_date)
             alternatives = approved_alternatives(history, slot, planned.exercises, as_of=as_of)

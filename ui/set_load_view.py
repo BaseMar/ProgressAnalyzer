@@ -43,7 +43,6 @@ def render_set_load_correction(manager, *, session_id, workout_date):
             render_total_loads(settings, [weight])
             if st.button("Save set load", key=f"{key}_save"):
                 manager.save_session_set_loads(session_id, {set_id: make_set_load(settings, weight)})
-                st.cache_data.clear()
                 st.rerun()
         except (ValueError, TypeError) as exc:
             st.error(str(exc))

@@ -154,7 +154,6 @@ class SidebarUpload:
             st.session_state[f"history_day_{workout_date:%Y-%m}"] = workout_date
             st.session_state["history_add_workout"] = False
 
-            st.cache_data.clear()
             st.session_state.adding_exercise = False
             st.session_state.pending_exercise = None
             st.session_state.uploaded_file_name = None
@@ -187,7 +186,6 @@ class SidebarUpload:
                 st.session_state.exercise_mapping[suggested_name] = selected_exercise
                 st.session_state.adding_exercise = False
                 st.session_state.pending_exercise = None
-                st.cache_data.clear()
                 st.rerun()
                 return
             
@@ -205,7 +203,6 @@ class SidebarUpload:
             st.session_state.exercise_mapping[suggested_name] = selected_exercise_all
             st.session_state.adding_exercise = False
             st.session_state.pending_exercise = None
-            st.cache_data.clear()
             st.rerun()
             return
         
@@ -239,7 +236,6 @@ class SidebarUpload:
 
                 self.ui.success("Exercise added!")
                 
-                st.cache_data.clear()
                 st.session_state.adding_exercise = False
                 st.session_state.pending_exercise = None
                 st.rerun()

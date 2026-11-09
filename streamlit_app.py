@@ -7,12 +7,11 @@ filters stay local; they never change the upcoming training prescription.
 
 from pathlib import Path
 
-import pandas as pd
 import streamlit as st
 
 from data_loader import load_data
 from data_manager import DataManager
-from metrics.input import MetricsInput
+from db.read_cache import read_scope
 from metrics.measurement_timeline import measurement_timeline
 
 from ui.sidebar_view import SidebarView
@@ -22,11 +21,6 @@ from ui.analysis_view import AnalysisView
 from ui.history_view import HistoryView
 from ui.utils.ui_helpers import page_title
 
-
-@st.cache_data(ttl=300, show_spinner="Loading workout data…")
-def _load_data_cached() -> tuple[MetricsInput, pd.DataFrame]:
-    """Load and cache application data with a 5-minute TTL."""
-    return load_data()
 
 def _configure_page() -> None:
     """Configure Streamlit page settings (title, layout, sidebar state)."""
@@ -46,12 +40,13 @@ def _load_global_styles() -> None:
     else:
         st.error(f"CSS NOT FOUND: {css_path}")
 
+@read_scope()
 def main() -> None:
     """Load source data, then render one task; historical filters belong to Analysis."""
     _load_global_styles()
 
     try:
-        raw_input_data, sets_dataframe = _load_data_cached()
+        raw_input_data, sets_dataframe = load_data()
     except Exception as exc:
         st.error(f"Failed to load data: {exc}")
         st.stop()

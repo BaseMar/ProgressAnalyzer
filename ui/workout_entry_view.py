@@ -65,7 +65,6 @@ def render_workout_entry(manager):
                 "weight": float(row["kg"]), "rir": None if pd.isna(rir) else int(rir), "load": load,
                 "is_warmup": {"Unknown": None, "Working": False, "Warm-up": True}[row["Purpose"]]})
         manager.add_full_session(day, "Manual entry", names[exercise_id], sets, None, None, exercise_id=int(exercise_id))
-        st.cache_data.clear()
         st.session_state["history_workout_notice"] = f"Saved {names[exercise_id]} · {len(sets)} sets."
         st.session_state["history_calendar_month"] = f"{day:%Y-%m}"
         st.session_state["history_month"] = f"{day:%Y-%m}"
