@@ -748,6 +748,10 @@ For the current module map, legacy-code candidates and cleanup boundaries, see
 the [project inventory](docs/project-inventory.md). Its standard-library audit
 script inspects imports without starting the application or connecting to a database.
 
+The [performance and regression baseline](docs/performance-baseline.md) records
+cache-cold/warm render times, SQL counts and frozen calculation outputs. It includes
+a portable synthetic benchmark and optional read-only PostgreSQL measurements.
+
 ## Language and Terminology
 
 English is used throughout the interface, generated workout notes, documentation,

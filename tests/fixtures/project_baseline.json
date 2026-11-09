@@ -1,0 +1,97 @@
+{
+  "fixture": {
+    "as_of": "2026-11-09",
+    "catalog_exercises": 10,
+    "recorded_exercises": 722,
+    "sessions": 122,
+    "sets": 1950,
+    "version": 1
+  },
+  "sections": {
+    "adherence": "c09289b582866ee0779b848f7457bdc7ebc0e5615bb70b62452b833ba47ae3c8",
+    "measurements": "a10943414cc973ea8a5f0434f053b00a2f56943251da1a307f34ef8d344f0234",
+    "phase_cases": "b305bf2a83e74a2fe74594cdcce92aa2e01022d4eaddc9f8ebff63da5f356490",
+    "plan_performance": "8606332abd0068bfc8362201043a78111aeef318d148827b747c9fcf6d64749f",
+    "recommendations": "1ee1d130efc09f4c3a1943fc658d02191a038d73a1a0d4085816c1dbfbb08f7d",
+    "recorded_exercises": "6fd9dd5321e15dee01afca881677fa88972949e9665d5cf774ae50d8c051df56",
+    "weekly_allocation": "59ce681a2094e9891a1b3a41bfa7270cdf83ce23abbf9444dca05914ab426cbb"
+  },
+  "examples": {
+    "upper_a": [
+      {
+        "exercise": 1,
+        "action": "maintain",
+        "reason": "reuse_exercise_baseline",
+        "weights": [
+          62.5,
+          62.5,
+          62.5
+        ]
+      },
+      {
+        "exercise": 2,
+        "action": "maintain",
+        "reason": "reuse_exercise_baseline",
+        "weights": [
+          70.0,
+          70.0,
+          70.0,
+          70.0
+        ]
+      },
+      {
+        "exercise": 3,
+        "action": "increase_reps",
+        "reason": "one_more_rep",
+        "weights": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "exercise": 6,
+        "action": "maintain",
+        "reason": "reuse_exercise_baseline",
+        "weights": [
+          12.0,
+          10.0,
+          10.0
+        ]
+      },
+      {
+        "exercise": 5,
+        "action": "increase_time",
+        "reason": "more_time",
+        "weights": [
+          0.0
+        ]
+      },
+      {
+        "exercise": 8,
+        "action": "increase_time",
+        "reason": "more_time",
+        "weights": [
+          0.0
+        ]
+      }
+    ],
+    "phases": {
+      "deload": [
+        40.0,
+        40.0,
+        40.0
+      ],
+      "ordinary_increase": [
+        62.5,
+        62.5,
+        62.5
+      ],
+      "return_after_deload": [
+        60.0,
+        60.0,
+        60.0
+      ]
+    }
+  }
+}
