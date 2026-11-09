@@ -8,6 +8,7 @@ from db.connection import get_engine
 from db.set_loads import insert_set_load, save_session_set_loads, set_load_storage_ready, suggest_body_mass
 from db.progression import load_normal_workout_recommendations, load_workout_recommendations
 from db.recommendation_references import load_recommendation_references
+from db.starting_loads import load_starting_loads, save_starting_loads, starting_load_storage_ready
 from db.training_context import load_deload_exercise_ids
 from db.training_plans import (
     load_effective_training_plan, load_training_plan_version, load_training_plan_versions, load_training_plans,
@@ -93,6 +94,15 @@ class DataManager:
 
     def load_recommendation_references(self, exercise_ids, *, as_of):
         return load_recommendation_references(self.engine, exercise_ids, as_of=as_of)
+
+    def starting_load_storage_ready(self):
+        return starting_load_storage_ready(self.engine)
+
+    def load_starting_loads(self, upcoming, item, block):
+        return load_starting_loads(self.engine, upcoming, item, block)
+
+    def save_starting_loads(self, upcoming, item, block, goals):
+        return save_starting_loads(self.engine, upcoming, item, block, goals)
 
     def save_exercise_match(self, session_id, plan_exercise_id, workout_exercise_id):
         return save_exercise_match(self.engine, session_id, plan_exercise_id, workout_exercise_id)

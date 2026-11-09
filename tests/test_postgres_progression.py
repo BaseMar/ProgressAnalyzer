@@ -73,7 +73,7 @@ def postgres():
                 {"exercise_id": 2, "exercise_name": "Machine Chest Press"},
             ])
             adapter = TransactionEngine(connection)
-            assert len(migrate(adapter, apply=True)) == 7
+            assert len(migrate(adapter, apply=True)) == 8
             yield adapter
         finally:
             transaction.rollback()
@@ -195,3 +195,18 @@ def test_migrations_and_versioned_block_settings_roundtrip_on_postgres(postgres)
     assert load_training_plan_version(postgres, saved.version_id) == saved
     assert migrate(postgres) == []
     assert migrate(postgres, apply=True) == []
+
+
+def test_saved_starting_loads_roundtrip_and_update_on_postgres(postgres):
+    from db.starting_loads import load_starting_loads, save_starting_loads
+    from models.progression import SetGoal
+    saved = plan(postgres)
+    recommendation = recommend(postgres, saved, NEXT)
+    upcoming = load_plan_performance(postgres, saved.plan_id, NEXT, NEXT).workouts[0]
+    item = recommendation.exercises[0]
+    goals = tuple(SetGoal(weight, 6, 10, 'reps', load_type='external') for weight in (60., 55., 50.))
+    save_starting_loads(postgres, upcoming, item, recommendation.block, goals)
+    assert load_starting_loads(postgres, upcoming, item, recommendation.block) == goals
+    revised = (replace(goals[0], weight=57.5), *goals[1:])
+    save_starting_loads(postgres, upcoming, item, recommendation.block, revised)
+    assert load_starting_loads(postgres, upcoming, item, recommendation.block) == revised

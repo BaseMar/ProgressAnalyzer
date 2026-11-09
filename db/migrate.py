@@ -4,9 +4,9 @@ import argparse
 
 from sqlalchemy import Column, DateTime, MetaData, String, Table, func, inspect, select, text
 
-from db.migrations import v001_training_plans, v002_plan_session_links, v003_exercise_matches, v004_set_classifications, v005_progression_settings, v006_set_loads, v007_recommendation_lineage
+from db.migrations import v001_training_plans, v002_plan_session_links, v003_exercise_matches, v004_set_classifications, v005_progression_settings, v006_set_loads, v007_recommendation_lineage, v008_starting_loads
 
-MIGRATIONS = (v001_training_plans, v002_plan_session_links, v003_exercise_matches, v004_set_classifications, v005_progression_settings, v006_set_loads, v007_recommendation_lineage)
+MIGRATIONS = (v001_training_plans, v002_plan_session_links, v003_exercise_matches, v004_set_classifications, v005_progression_settings, v006_set_loads, v007_recommendation_lineage, v008_starting_loads)
 metadata = MetaData()
 ledger = Table("schema_migrations", metadata,
     Column("revision", String(100), primary_key=True),

@@ -150,7 +150,7 @@ class NextWorkoutView:
                 for item, exercise in zip(result.exercises, planned.exercises)))
             references = self.dm.load_recommendation_references(
                 {item.actual_exercise_id for item in result.exercises if item.reason_code in MANUAL_START_REASONS}, as_of=as_of)
-            result = choose_starting_loads(result, upcoming, self.names, references)
+            result = choose_starting_loads(result, upcoming, self.names, references, self.dm)
             prescriptions = {target.plan_exercise_id: target.exercise for target in upcoming.targets}
 
             def exercise_card(item):

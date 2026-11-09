@@ -58,7 +58,7 @@ def seed_without_records(engine,source):
         days=(TrainingDay('Upper A',0,(PLAN,)),),progression=ProgressionSettings(date(2026,5,4),7)))
 
 
-def test_changed_rir_explains_difference_and_manual_choices_only_update_preview(schedule_data,monkeypatch):
+def test_changed_rir_saves_manual_choices_across_dates_and_browser_sessions(schedule_data,monkeypatch):
     from types import SimpleNamespace
     monkeypatch.setattr('db.training_plans.date',SimpleNamespace(today=lambda: AS_OF))
     engine,_,_,_=schedule_data
@@ -85,7 +85,13 @@ def test_changed_rir_explains_difference_and_manual_choices_only_update_preview(
     assert original.exercises[0].reason_code=='manual_start' and not original.exercises[0].goals
     other=load_scheduled_workouts(engine,revised.plan_id,date(2026,6,1),date(2026,6,1))[0]
     app.selectbox(key=f'next_workout_{revised.plan_id}').select(f'{other.day_id}:{other.scheduled_date}').run()
-    assert all(n.value is None for n in app.number_input if n.key.startswith('manual_start_'))
+    assert all(n.value == 55. for n in app.number_input if n.key.startswith('manual_start_'))
+    fresh = start_app(engine, revised)
+    assert all(n.value == 55. for n in fresh.number_input if n.key.startswith('manual_start_'))
+    assert 'Saved starting loads' in exercise_html(fresh)
+    next(n for n in fresh.number_input if n.key.startswith('manual_start_')).set_value(50.).run()
+    app.run()
+    assert [n.value for n in app.number_input if n.key.startswith('manual_start_')] == [50., 55., 55.]
 
 
 def test_manual_start_readiness_does_not_count_an_unselected_start():
@@ -125,3 +131,45 @@ NextWorkoutView(st.session_state['manager'],st.session_state['names']).render(
     assert not app.exception
     assert 'bodyweight + 0 kg' in exercise_html(app)
     assert '90.3 kg ×' not in exercise_html(app)
+
+
+def test_saved_start_is_replaced_by_actual_training_history(schedule_data):
+    from db.plan_schedule import assign_scheduled_session
+    engine, _, source, sessions = schedule_data
+    plan = seed_without_records(engine, source)
+    app = start_app(engine, plan)
+    for field in app.number_input:
+        if field.key.startswith('manual_start_'):
+            field.set_value(55.)
+    app.run()
+    assert 'Saved starting loads' in exercise_html(app)
+    with engine.begin() as connection:
+        connection.execute(sessions.update().where(sessions.c.session_id == 2).values(session_date=date(2026, 5, 18)))
+        connection.execute(actual_exercises.insert().values(workout_exercise_id=200, session_id=2, exercise_id=1))
+        connection.execute(actual_sets.insert(), [dict(workout_exercise_id=200, set_number=n,
+            weight=60., repetitions=10, rir=2) for n in (1, 2, 3)])
+    slot = load_scheduled_workouts(engine, plan.plan_id, date(2026, 5, 18), date(2026, 5, 18))[0]
+    assign_scheduled_session(engine, slot.day_id, slot.scheduled_date, 2)
+    app.run()
+    assert not app.exception
+    assert 'Increase load' in exercise_html(app)
+    assert '62.5 kg' in exercise_html(app)
+    assert 'Saved starting loads' not in exercise_html(app)
+    assert not [n for n in app.number_input if n.key.startswith('manual_start_')]
+
+
+def test_missing_storage_keeps_preview_available_and_explains_unsaved_choices(schedule_data):
+    from db.starting_loads import starting_loads
+    engine, _, source, _ = schedule_data
+    with engine.begin() as connection:
+        starting_loads.drop(connection)
+    plan = seed_without_records(engine, source)
+    app = start_app(engine, plan)
+    assert any('saving is unavailable' in warning.value for warning in app.warning)
+    for field in app.number_input:
+        if field.key.startswith('manual_start_'):
+            field.set_value(55.)
+    app.run()
+    assert not app.exception
+    assert 'Starting loads selected' in exercise_html(app)
+    assert 'Saved starting loads' not in exercise_html(app)

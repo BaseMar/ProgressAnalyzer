@@ -454,10 +454,14 @@ stale or unknown-effort evidence remains unavailable for numeric increases.
 Manual-start cards show the current sets, range and RIR, the specific context
 changes, and the latest raw results even before the plan/block or without a plan
 link. Repeated entries stay separate. **Choose starting loads** lets you enter
-per-set loads for this preview and the copied workout note. These choices stay
-in the current session and selected workout; they do not rewrite history or
-establish progression evidence. Log and link the actual completed workout to
-establish the new baseline. The preview also identifies the applicable plan
+per-set loads for the preview and copied workout note. Complete choices are
+saved automatically in the database (migration 008) and restored after reopening
+the app or choosing another date with the same exercise and prescription.
+You can edit saved loads in the same fields. A changed prescription, alternative,
+training cycle or source execution requires a separate choice. Saved choices
+do not establish progression evidence. Log and link the actual completed workout;
+its history then takes priority under the existing progression rules.
+The preview also identifies the applicable plan
 version and the next version's effective date.
 
 A linked session can also supply historical evidence for an exact catalog exercise
@@ -842,6 +846,7 @@ requested, never during app startup.
 | 005 | Versioned progression/block settings. |
 | 006 | Explicit set loads and body-mass snapshots. |
 | 007 | Stable plan-position identities across revisions, without changing recorded workouts. |
+| 008 | Saved manual starting loads per exercise and prescription, separate from recorded training history. |
 
 `python -m db.migrate` previews pending revisions without writing.
 `python -m db.migrate --apply` applies them and records successful revisions.
@@ -894,7 +899,7 @@ $env:TEST_POSTGRES_URL = "postgresql+psycopg2://user:password@localhost:5432/pro
 python -m pytest
 ```
 
-Each case creates a unique schema, applies all six migrations, uses synthetic
+Each case creates a unique schema, applies all migrations, uses synthetic
 logs and rolls the schema back afterward. The tests never fall back to the app's
 `DATABASE_URL`.
 
