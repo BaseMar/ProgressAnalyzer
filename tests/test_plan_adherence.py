@@ -218,7 +218,7 @@ frame["exercise_name"] = "Machine Chest Press"
 frame["repetitions"] = 8
 frame["weight"] = 50.
 frame["set_number"] = 1
-HistoryView({}, frame, month, data_manager=manager, exercise_names=names)._render_history()
+HistoryView({}, frame, month, data_manager=manager, exercise_names=names).render()
 '''
 
 

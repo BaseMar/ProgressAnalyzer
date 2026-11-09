@@ -500,22 +500,6 @@ class SidebarUpload:
 
         return tokens
 
-    def _parse_set_tokens(self, line: str) -> list[dict]:
-        """Find all reps x weight tokens in a line."""
-        tokens = []
-        for match in self._set_token_matches(line):
-            try:
-                tokens.append(
-                    {
-                        "reps": int(match.group("reps")),
-                        "weight": float(match.group("weight").replace(",", ".")),
-                    }
-                )
-            except ValueError:
-                continue
-
-        return tokens
-
     def _set_token_matches(self, line: str):
         """Find reps/weight token regex matches in source order."""
         pattern = re.compile(

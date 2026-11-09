@@ -747,7 +747,7 @@ Keeping calculations separate from the interface lets tests check a rule
 without opening the dashboard. Views can reshape prepared results for charts;
 decision formulas stay in the calculation layer.
 
-For the current module map, legacy-code candidates and cleanup boundaries, see
+For the original module map, legacy-code candidates and cleanup boundaries, see
 the [project inventory](docs/project-inventory.md). Its standard-library audit
 script inspects imports without starting the application or connecting to a database.
 
@@ -761,6 +761,9 @@ invalidation and behavior-preservation checks.
 
 The [project structure guide](docs/project-structure.md) describes the stage 5
 module boundaries, shared recommendation context and retained compatibility APIs.
+
+The [code retirement report](docs/code-retirement.md) lists the legacy modules
+and view branches removed in stage 6, with the test migration and validation results.
 
 ## Language and Terminology
 

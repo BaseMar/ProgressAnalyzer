@@ -1,6 +1,6 @@
 """Regression coverage for honest units, dated charts and explicit warm-up labels."""
 from dataclasses import replace
-from datetime import date, time
+from datetime import date
 import pandas as pd
 
 import pytest
@@ -13,33 +13,18 @@ from db.plan_adherence import load_plan_adherence
 from db.plan_schedule import assign_scheduled_session
 from db.set_classifications import classifications, save_set_classifications
 from mapper import map_workout_set
-from metrics.fatigue_metrics import compute_fatigue_metrics
-from metrics.metrics_engine import compute_all_metrics
+from metrics.exercise_metrics import compute_exercise_metrics
 from metrics.plan_adherence import compute_plan_adherence
-from models.workout_exercise import WorkoutExercise
-from models.workout_session import WorkoutSession
-from models.workout_set import WorkoutSet
 from ui.sidebar_upload import SidebarUpload
 
 
-def test_explicit_warmup_is_excluded_from_all_metric_groups(sample_input):
+def test_explicit_warmup_is_excluded_from_recorded_metrics(sample_input):
     labelled = replace(sample_input, sets=[replace(sample_input.sets[0], is_warmup=True), *sample_input.sets[1:]])
     expected = replace(sample_input, sets=sample_input.sets[1:])
-    assert compute_all_metrics(labelled) == compute_all_metrics(expected)
+    assert compute_exercise_metrics(labelled) == compute_exercise_metrics(expected)
     unknown = replace(sample_input, sets=[replace(item, is_warmup=None) for item in sample_input.sets])
     working = replace(sample_input, sets=[replace(item, is_warmup=False) for item in sample_input.sets])
-    assert compute_all_metrics(unknown) == compute_all_metrics(working)
-
-
-def test_fatigue_has_dates_and_consecutive_sessions_follow_chronology(sample_input):
-    sessions = [WorkoutSession(sid, date(2026, 5, sid), time(8), None) for sid in (1, 3, 4, 2)]
-    data = replace(sample_input, sessions=sessions,
-        workout_exercises=[WorkoutExercise(sid * 100, sid, 1) for sid in (1, 2, 3, 4)],
-        sets=[WorkoutSet(sid * 100, 1, 10, 10. if sid == 2 else 1000., 3 if sid == 2 else 0) for sid in (1, 2, 3, 4)])
-    fatigue = compute_fatigue_metrics(data)
-    assert list(fatigue["per_session"]) == [1, 2, 3, 4]
-    assert fatigue["global"]["max_consecutive_high_fatigue_sessions"] == 2
-    assert fatigue["per_session"][3]["session_date"] == date(2026, 5, 3)
+    assert compute_exercise_metrics(unknown) == compute_exercise_metrics(working)
 
 
 def test_mapper_keeps_unknown_type_and_missing_rir_unknown():

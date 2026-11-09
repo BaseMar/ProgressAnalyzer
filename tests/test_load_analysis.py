@@ -2,16 +2,13 @@
 from dataclasses import replace
 from datetime import date, timedelta
 
-import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
 from metrics.exercise_metrics import compute_exercise_metrics
-from metrics.metrics_engine import compute_all_metrics
 from metrics.load_metrics import recorded_load
 from metrics.muscle_volume import weekly_plan_sets
 from metrics.plan_performance import compute_plan_performance
-from metrics.progress_metrics import compute_progress_metrics
 from metrics.progression import recommend_normal_workout
 from metrics.training_insights import compute_training_insights
 from metrics.set_interpretation import interpret_sets
@@ -60,22 +57,21 @@ def test_dynamic_volume_uses_total_supported_mass_without_bodyweight_e1rm(sample
     assert set_volume(item) == total * 8
     assert set_estimated_1rm(item) is None
     assert set_intensity(item) is None
-    all_metrics = compute_all_metrics(inp)
-    assert all_metrics["sets"]["total_volume"] == total * 8
-    assert all_metrics["sessions"]["per_session"][1]["total_volume"] == total * 8
-    assert all_metrics["exercises"]["per_exercise"][1]["estimated_1rm_max"] is None
+    exercise = compute_exercise_metrics(inp)["per_exercise"][1]
+    assert exercise["total_volume"] == total * 8
+    assert exercise["per_session_volume"][0]["volume"] == total * 8
+    assert exercise["estimated_1rm_max"] is None
 
 
 def test_unknown_mass_does_not_become_zero_load_or_complete_volume(sample_input):
     inp = source(sample_input, [(SetLoad("bodyweight", 5, None), 8)])
-    all_metrics = compute_all_metrics(inp)
-    exercise = all_metrics["exercises"]["per_exercise"][1]
+    exercise = compute_exercise_metrics(inp)["per_exercise"][1]
     assert exercise["unknown_load_sets"] == 1
     assert not exercise["volume_complete"]
     assert exercise["per_session_volume"][0]["volume"] is None
     assert exercise["per_set_performance"][0]["total_load_kg"] is None
-    assert all_metrics["sessions"]["per_session"][1]["unknown_total_load_sets"] == 1
-    assert all_metrics["progress"]["per_exercise"] == {}
+    assert exercise["unknown_total_load_sets"] == 1
+    assert exercise["per_session_1rm"] == []
 
 
 @pytest.mark.parametrize("kind", ["bodyweight", "assisted_bodyweight"])
@@ -83,9 +79,12 @@ def test_incomplete_bodyweight_record_never_treats_additional_kg_as_total(kind):
     assert recorded_load({"load_type": kind, "weight": 5}) is None
 
 
-def test_heavy_set_ratio_uses_only_sets_with_supported_e1rm(sample_input):
+def test_external_e1rm_stays_available_alongside_bodyweight_work(sample_input):
     inp = source(sample_input, [(100., 8), (SetLoad("bodyweight", 5, 80), 8)])
-    assert compute_all_metrics(inp)["sets"]["heavy_set_ratio"] == 1.0
+    exercise = compute_exercise_metrics(inp)["per_exercise"][1]
+    assert len(exercise["per_session_1rm"]) == 1
+    assert exercise["per_session_1rm"][0]["session_id"] == 1
+    assert exercise["estimated_1rm_max"] == pytest.approx(set_estimated_1rm(inp.sets[0]))
 
 
 def test_timed_work_has_no_tonnage_e1rm_or_duration_based_set_multiplier(sample_input):
@@ -106,10 +105,9 @@ def test_timed_work_has_no_tonnage_e1rm_or_duration_based_set_multiplier(sample_
 def test_more_seconds_at_same_total_load_is_comparable(sample_input):
     load = SetLoad("bodyweight", 0, 80)
     inp = source(sample_input, [(load, 40), (load, 50)], timed=True)
-    progress = compute_progress_metrics(inp)["per_exercise"][1]
-    assert progress["metric_type"] == "duration_seconds"
-    assert progress["comparison_load_kg"] == 80
-    assert progress["progress_pct"] == 25
+    exercise = compute_exercise_metrics(inp)["per_exercise"][1]
+    assert exercise["duration_trend_seconds"] == 10
+    assert [p["duration_seconds"] for p in exercise["per_session_best_duration"]] == [40, 50]
     row = compute_plan_performance(data(entry(1, load, 40, timed=True), entry(2, load, 50, timed=True)), as_of=AS_OF)[1]
     assert row["seconds_delta"] == 30
     assert row["sets"][0]["weight"] == 0
@@ -119,7 +117,6 @@ def test_more_seconds_at_same_total_load_is_comparable(sample_input):
 def test_body_mass_change_prevents_false_timed_improvement(sample_input):
     old, new = SetLoad("bodyweight", 0, 80), SetLoad("bodyweight", 0, 85)
     inp = source(sample_input, [(old, 40), (new, 50)], timed=True)
-    assert compute_progress_metrics(inp)["per_exercise"] == {}
     assert compute_exercise_metrics(inp)["per_exercise"][1]["duration_trend_seconds"] is None
     rows = compute_plan_performance(data(entry(1, old, 40, timed=True), entry(2, new, 50, timed=True)), as_of=AS_OF)
     assert rows[1]["seconds_delta"] is None
@@ -145,10 +142,7 @@ def test_assistance_reduction_increases_total_load_without_inventing_regression(
 def test_equal_total_with_different_body_and_external_mass_compares_reps(sample_input):
     old, new = SetLoad("bodyweight", 5, 80), SetLoad("bodyweight", 0, 85)
     inp = source(sample_input, [(old, 8), (new, 9)])
-    progress = compute_progress_metrics(inp)
-    assert progress["per_exercise"][1]["metric_type"] == "repetitions"
-    assert progress["per_exercise"][1]["progress_pct"] == 12.5
-    assert progress["global"]["avg_strength_progress_pct"] is None
+    assert compute_exercise_metrics(inp)["per_exercise"][1]["estimated_1rm_max"] is None
     row = compute_plan_performance(data(entry(1, old), entry(2, new, 9)), as_of=AS_OF)[1]
     assert row["reps_delta"] == 3
 
@@ -171,7 +165,7 @@ def test_historical_convention_change_is_not_a_load_matched_comparison(sample_in
     assert rows[1]["comparison"] == "Not comparable: load convention changed"
     assert rows[1]["seconds_delta"] is None
     inp = source(sample_input, [(80., 40), (explicit, 50)], timed=True)
-    assert compute_progress_metrics(inp)["per_exercise"] == {}
+    assert compute_exercise_metrics(inp)["per_exercise"][1]["duration_trend_seconds"] is None
 
 
 def test_new_external_convention_uses_its_own_single_complete_execution():
@@ -182,7 +176,7 @@ def test_new_external_convention_uses_its_own_single_complete_execution():
 
 def test_return_to_old_convention_does_not_bridge_an_intervening_change(sample_input):
     inp = source(sample_input, [(60., 8), (SetLoad("external", 60), 9), (60., 10)])
-    assert compute_progress_metrics(inp)["per_exercise"] == {}
+    assert compute_exercise_metrics(inp)["per_exercise"][1]["strength_trend_1rm"] is None
 
 
 @pytest.mark.parametrize("first_load,expected", [
@@ -220,10 +214,9 @@ def test_chart_separates_timed_load_profiles_and_unknown_load(sample_input):
 def test_recorded_exercise_ui_exposes_load_and_separates_workload(sample_input):
     inp = source(sample_input, [(SetLoad("bodyweight", 0, 80), 40), (SetLoad("bodyweight", 5, 80), 35)], timed=True)
     app = AppTest.from_string('''
-import pandas as pd
 import streamlit as st
 from ui.exercise_view import ExerciseView
-ExerciseView(st.session_state["metrics"], pd.DataFrame()).render(focused=True)
+ExerciseView(st.session_state["metrics"]).render()
 ''', default_timeout=30)
     app.session_state["metrics"] = compute_exercise_metrics(inp)
     app.run()

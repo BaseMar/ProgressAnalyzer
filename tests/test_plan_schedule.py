@@ -176,7 +176,7 @@ if st.session_state.get("empty_history"):
 month = st.session_state["test_month"]
 if month:
     frame = frame.loc[frame.session_date.dt.strftime("%Y-%m") == month]
-HistoryView({}, frame, month, data_manager=manager, exercise_names={1: "Bench Press"})._render_history()
+HistoryView({}, frame, month, data_manager=manager, exercise_names={1: "Bench Press"}).render()
 '''
 
 
@@ -188,6 +188,7 @@ def test_calendar_links_session_from_another_month_and_removes_link(schedule_dat
     app.session_state["test_month"] = f"{start:%Y-%m}"
     app.run()
     assert not app.exception
+    assert app.selectbox(key="adherence_plan").value == plan.plan_id
     app.button(key=f"history_date_{start}").click().run()
     assert "1 planned" in app.button(key=f"history_date_{start}").help
     prefix = f"schedule_{slot.day_id}_{start}"

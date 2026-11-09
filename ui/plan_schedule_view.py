@@ -13,29 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 class PlanScheduleView:
-    def __init__(self, manager, exercise_names=None):
+    def __init__(self, manager):
         self.dm = manager
-        self.exercise_names = exercise_names or {}
         self.plan_id = None
         self.version_dates = []
-
-    def render_picker(self):
-        try:
-            if not self.dm.plan_schedule_storage_ready():
-                return
-            by_id = {plan.plan_id: plan for plan in self.dm.load_training_plans()}
-            if not by_id:
-                return
-            self.plan_id = st.selectbox(
-                "Calendar plan", [None, *by_id], index=1, key="calendar_plan",
-                format_func=lambda value: "Workout history only" if value is None else by_id[value].draft.name,
-            )
-            if self.plan_id is not None:
-                self.version_dates = [version.draft.effective_from for version in self.dm.load_training_plan_versions(self.plan_id)]
-        except SQLAlchemyError:
-            logger.exception("Unable to load calendar plans")
-            st.warning("Planned workouts could not be loaded. Workout history is still available.")
-            self.plan_id = None
 
     def load_month(self, start, end):
         if self.plan_id is None:

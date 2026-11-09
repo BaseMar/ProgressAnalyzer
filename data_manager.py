@@ -8,14 +8,14 @@ from db.connection import get_engine
 from db.set_loads import save_session_set_loads, set_load_storage_ready, suggest_body_mass
 from db.workout_sessions import save_workout_session
 from services.recommendations import (
-    load_normal_workout_recommendations, load_workout_recommendations,
+    load_workout_recommendations,
     prepare_plan_context, recommend_prepared_workout,
 )
 from db.recommendation_references import load_recommendation_references
 from db.starting_loads import load_starting_loads, save_starting_loads, starting_load_storage_ready
 from db.training_context import load_deload_exercise_ids
 from db.training_plans import (
-    load_effective_training_plan, load_training_plan_version, load_training_plan_versions, load_training_plans,
+    load_effective_training_plan, load_training_plan_versions, load_training_plans,
     save_training_plan, training_plan_storage_ready,
 )
 from models.training_plan import TrainingPlanDraft, TrainingPlanVersion
@@ -112,9 +112,6 @@ class DataManager:
     def recommend_prepared_workout(self, prepared, **options):
         return recommend_prepared_workout(self.engine, prepared, **options)
 
-    def load_normal_workout_recommendations(self, plan_id, day_id, scheduled_date, *, as_of, **options):
-        return load_normal_workout_recommendations(self.engine, plan_id, day_id, scheduled_date, as_of=as_of, **options)
-
     def load_workout_recommendations(self, plan_id, day_id, scheduled_date, *, as_of, **options):
         return load_workout_recommendations(self.engine, plan_id, day_id, scheduled_date, as_of=as_of, **options)
 
@@ -168,9 +165,6 @@ class DataManager:
 
     def load_training_plan_versions(self, plan_id: int) -> list[TrainingPlanVersion]:
         return load_training_plan_versions(self.engine, plan_id)
-
-    def load_training_plan_version(self, version_id: int) -> TrainingPlanVersion | None:
-        return load_training_plan_version(self.engine, version_id)
 
     def load_effective_training_plan(self, plan_id: int, on_date: date) -> TrainingPlanVersion | None:
         return load_effective_training_plan(self.engine, plan_id, on_date)
@@ -277,4 +271,3 @@ class DataManager:
         except Exception:
             logger.exception("delete_session failed")
             return False
-        

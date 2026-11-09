@@ -39,7 +39,7 @@ from ui.body_metrics_view import BodyMetricsView
 BodyMetricsView({'timeline': [
     {'date': date(2026, 5, 1), 'weight': 80., 'waist': 82.},
     {'date': date(2026, 5, 8), 'weight': 81.},
-]}, manager=object()).render(focused=True)
+]}, manager=object()).render()
 ''').run()
     assert not app.exception
     assert [item.value for item in app.metric] == ['81 kg', '+1 kg', '08 May 2026']

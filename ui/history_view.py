@@ -59,15 +59,15 @@ class HistoryView:
         """Initialize with pre-computed metrics and raw set data.
         
         Args:
-            metrics: Dictionary with keys 'sessions', 'exercises', 'progress', 'fatigue', 'body'
-            sets_df: DataFrame with columns: session_date, ExerciseName, Weight, Repetitions, set_number
+            metrics: Body measurement timeline used by the entry form.
+            sets_df: Recorded sets with dates, exercise names, loads and quantities.
         """
         self.metrics = metrics
         self.sets_df = sets_df
         self.selected_month = selected_month
         self.dm = data_manager if data_manager is not None else DataManager()
         self.exercise_names = exercise_names or {}
-        self.schedule = PlanScheduleView(self.dm, exercise_names)
+        self.schedule = PlanScheduleView(self.dm)
         self.scheduled_workouts = []
 
 
@@ -96,7 +96,7 @@ class HistoryView:
         if self.schedule.plan_id is not None and not st.toggle("Show planned workouts", value=True, key="calendar_plan_overlay"):
             self.schedule.plan_id = None
             self.schedule.version_dates = []
-        self._render_history(use_existing_plan=True)
+        self._render_history()
 
     def _select_plan(self):
         try:
@@ -110,12 +110,10 @@ class HistoryView:
             logger.exception("Unable to load history plan")
             st.warning("Plan overlay is unavailable. Recorded sessions remain accessible.")
 
-    def _render_history(self, *, use_existing_plan=False) -> None:
+    def _render_history(self) -> None:
         section_header("Session History")
 
         df = self.sets_df.copy()
-        if not use_existing_plan:
-            self.schedule.render_picker()
         if df.empty and self.selected_month in (None, "All time") and self.schedule.plan_id is None:
             st.info("No workout history yet.")
             return

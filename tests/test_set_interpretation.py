@@ -12,7 +12,7 @@ from db.plan_adherence import actual_exercises, actual_sets, load_plan_adherence
 from db.plan_schedule import assign_scheduled_session, load_scheduled_workouts
 from db.training_context import load_deload_exercise_ids
 from db.training_plans import save_training_plan
-from metrics.metrics_engine import compute_all_metrics
+from metrics.exercise_metrics import compute_exercise_metrics
 from metrics.plan_adherence import compute_plan_adherence
 from metrics.plan_performance import compute_plan_performance
 from metrics.progression import recommend_normal_workout
@@ -88,20 +88,19 @@ def test_unknown_light_and_low_effort_stay_descriptive_without_becoming_primary_
     assert analysis_sets(sets, progression=True) == []
 
 
-def test_all_descriptive_metric_groups_use_the_same_inferred_warmup_filter(sample_input):
+def test_recorded_metrics_use_the_inferred_warmup_filter(sample_input):
     warmup = replace(sample_input.sets[0], set_number=0, weight=20., rir=5)
     with_warmup = replace(sample_input, sets=[warmup, *sample_input.sets])
-    assert compute_all_metrics(with_warmup) == compute_all_metrics(sample_input)
+    assert compute_exercise_metrics(with_warmup) == compute_exercise_metrics(sample_input)
     assert warmup.is_warmup is None
 
 
-def test_global_progress_excludes_deload_without_removing_it_from_logged_volume(sample_input):
+def test_recorded_performance_excludes_deload_without_removing_logged_volume(sample_input):
     deload_ids = frozenset({102})
     interpreted = replace(sample_input, deload_exercise_ids=deload_ids)
-    metrics = compute_all_metrics(interpreted)
-    assert metrics["sets"]["total_sets"] == len(sample_input.sets)
-    assert 1 not in metrics["progress"]["per_exercise"]
-    exercise = metrics["exercises"]["per_exercise"][1]
+    metrics = compute_exercise_metrics(interpreted)
+    assert sum(item["total_sets"] for item in metrics["per_exercise"].values()) == len(sample_input.sets)
+    exercise = metrics["per_exercise"][1]
     assert exercise["strength_trend_1rm"] is None
     assert len(exercise["per_session_1rm"]) == 1
     assert len(exercise["per_session_volume"]) == 2
@@ -110,9 +109,9 @@ def test_global_progress_excludes_deload_without_removing_it_from_logged_volume(
 def test_unknown_effort_stays_in_muscle_workload_and_period_dates(sample_input):
     from ui.body_parts_view import BodyPartsView
     source = replace(sample_input, sets=[replace(value, rir=None) for value in sample_input.sets])
-    metrics = compute_all_metrics(source)
-    assert metrics["progress"]["per_exercise"] == {}
-    view = BodyPartsView(metrics["exercises"])
+    metrics = compute_exercise_metrics(source)
+    assert metrics["per_exercise"][1]["strength_trend_1rm"] is None
+    view = BodyPartsView(metrics)
     assert len(view._metric_dates()) == 3
     frame = view._build_bodypart_df()
     assert frame.loc[frame["Body Part"] == "Chest", "Sessions"].item() == 2

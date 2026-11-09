@@ -36,19 +36,19 @@ class AnalysisView:
             topic = st.selectbox("What do you want to understand?", ["Exercise progress", "Plan consistency", "Muscle distribution", "Body measurements"], key="analysis_question")
         with period:
             month = select_analysis_month(self.input)
-        filtered, sets = filter_data_by_month(self.input, self.sets, month)
+        filtered, _ = filter_data_by_month(self.input, self.sets, month)
         if topic in ("Exercise progress", "Plan consistency"):
             if topic == "Exercise progress":
                 scope = st.radio("Compare", ["Plan targets", "All recorded exercises"], horizontal=True, key="analysis_exercise_scope")
                 if scope == "All recorded exercises":
-                    ExerciseView(compute_exercise_metrics(filtered), sets).render(focused=True)
+                    ExerciseView(compute_exercise_metrics(filtered)).render()
                     return
             PlanAdherenceView(manager=self.dm, exercise_names=self.names, selected_month=month).render(
                 mode="exercise" if topic == "Exercise progress" else "consistency")
         elif topic == "Muscle distribution":
             self._muscle_distribution(filtered, month)
         else:
-            BodyMetricsView({"timeline": measurement_timeline(filtered)}, manager=self.dm).render(focused=True)
+            BodyMetricsView({"timeline": measurement_timeline(filtered)}, manager=self.dm).render()
 
     def _muscle_distribution(self, filtered, month):
         targets = None

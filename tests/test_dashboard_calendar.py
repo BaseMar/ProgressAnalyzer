@@ -23,7 +23,7 @@ if month != "All time":
     df = df.loc[df.session_date.str.startswith(month)]
 with patch("ui.history_view.DataManager"):
     view = HistoryView({}, df, month)
-view._render_history()
+view.render()
 '''
 
 
@@ -95,7 +95,7 @@ import pandas as pd
 from ui.history_view import HistoryView
 with patch("ui.history_view.DataManager"):
     view = HistoryView({}, pd.DataFrame())
-view._render_history()
+view.render()
 ''', default_timeout=30).run()
     assert not app.exception
     assert app.info[0].value == "No workout history yet."

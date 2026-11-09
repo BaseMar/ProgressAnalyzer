@@ -5,7 +5,6 @@ import pandas as pd
 from ui.body_parts_view import BodyPartsView, _bar_fig
 from ui.utils.data_filter import filter_data_by_month
 from ui.utils.exercise_matcher import normalize
-from ui.utils.muscle_tags import resolve_muscle_tag
 from ui.utils.ui_helpers import format_number
 
 
@@ -35,8 +34,6 @@ def test_filter_data_by_month_all_time_returns_original_objects(sample_input, se
 
 def test_simple_ui_helpers_are_deterministic():
     assert normalize(" Bench-Press! ") == "benchpress"
-    assert resolve_muscle_tag(" chest ") == ("Chest", "chest")
-    assert resolve_muscle_tag(None) == ("Other", "other")
     assert format_number(1234.567, 1) == "1\u202f234.6"
     assert format_number(None) == "—"
     assert format_number("bad") == "—"

@@ -116,20 +116,20 @@ retain the same conversion behavior.
   now reaches the application service directly through `DataManager`.
 - Existing table imports from `db.plan_adherence` remain available for older
   fixture callers. New recorded-history callers use `db.recorded_workouts`.
-- `metrics.body_metrics.to_date` remains available to existing callers while
-  the active date consumers use the new utility.
-- The unused aggregate metrics pipeline, old view branches and legacy
-  `MetricsInputBuilder` are reserved for stage 6. They have not been merged into
-  the active mapping path or treated as current architecture.
+- Date consumers use `metrics.utils.dates.to_date`. Stage 6 removes the old
+  `metrics.body_metrics` module along with its unused summary calculations.
+- The unused aggregate pipeline, old view branches and legacy input builder
+  are retired in [stage 6](code-retirement.md). The active mapping path remains
+  `data_loader` plus `mapper`.
 - The inventory script recognizes `services/` as application code, and CI
   compilation includes the new package. No dependency or schema changes are
   required.
 
-The updated tracked-source inventory contains 122 application modules, 45 test
-files and four tooling modules. The application reaches 108 modules and the
-three administrative entry points add three more. Of eleven modules outside
-those closures, `db.progression` is an intentional compatibility facade; ten
-remain legacy review candidates for stage 6. Import reachability alone still
+At the end of stage 5, the tracked-source inventory contained 122 application modules, 45 test
+files and four tooling modules. The application reached 108 modules and the
+three administrative entry points added three more. Of eleven modules outside
+those closures, `db.progression` was an intentional compatibility facade; ten
+were legacy review candidates for stage 6. Import reachability alone still
 does not approve their removal.
 
 ## Verification

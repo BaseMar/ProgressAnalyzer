@@ -1,12 +1,3 @@
-__all__ = [
-    "body_metrics",
-    "exercise_metrics",
-    "fatigue_metrics",
-    "frequency_metrics",
-    "input",
-    "metrics_engine",
-    "progress_metrics",
-    "registry",
-    "session_metrics",
-    "set_metrics",
-]
+"""Pure workout calculations and decision rules used by the active application."""
+
+__all__ = ["exercise_metrics", "input"]
