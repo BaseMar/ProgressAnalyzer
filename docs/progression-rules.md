@@ -1,7 +1,7 @@
-# Recommendations and progression: approved rules v1.1
+# Recommendation and progression rules
 
-Date: 9 November 2026. Update: automatically read starting loads from the user's
-full exercise history after a plan change.
+Maintained behavior reference. Starting loads come from the user's full
+exercise history when usable records exist, including after plan changes.
 Calculation version: `double-progression-2026-11-v2`.
 
 ## Goal and confirmed preferences
@@ -15,11 +15,9 @@ Different loads may reflect finding a starting load or fatigue. The default mode
 is not a planned pyramid or a heavy top set with separate back-off progression.
 The saved plan, recorded results and recommendation remain separate information.
 
-The user approved answers 1B, 2A, 3B, 4A, 5A, 6B, 7 (existing notes) and 8B,
-then clarified load equalization and the additional parameters below. The
-9 November update replaces manual starts after context changes with history-based
-starting loads where usable records exist. All thresholds are application rules,
-not physiological laws.
+The policy below defines the implemented behavior. All thresholds are
+application rules, not physiological laws. The approval and rollout history
+is retained in the [archived implementation plan](archive/recommendation-system-implementation-plan.md).
 
 ## Double progression with load equalization
 
@@ -189,7 +187,7 @@ apply. A plan revision retains the calendar unless the user explicitly changes i
 - The system does not assess technique, pain, illness or injury from a log and
   is not a rehabilitation or fatigue-diagnosis algorithm.
 
-## Shared output and rollout
+## Shared output and decision order
 
 Each recommendation contains an action, per-set goals, target reserve, primary
 reason, source sessions, limitations and rules version. Overview, Analysis and
@@ -199,11 +197,6 @@ Priority: deload/return, validation, history-based start or manual fallback,
 minimum-failure correction, insufficient reserve, equalization, a new common
 load, an additional repetition/time target, then maintenance. A plateau is an
 additional observation.
-
-The approved [36-position plan configuration](training-plan-recommendation-configuration.md)
-was saved as version 6 (ID 15), effective from 10 November 2026. Historical
-versions and executions remain intact. Stages and acceptance are recorded in
-the [implementation plan](recommendation-system-implementation-plan.md).
 
 ## Research context and application-specific rules
 

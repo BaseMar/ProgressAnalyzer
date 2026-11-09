@@ -1,8 +1,10 @@
 # Analytics-first layout proposal
 
+> Historical record: describes its stated release or cleanup stage. For maintained guidance, start at the [documentation index](../README.md).
+
 Historical implementation record. The outcomes below describe the 5 November
 release; current recommendation behavior is documented in the
-[progression rules](progression-redesign-rules.md).
+[progression rules](../progression-rules.md).
 
 Status: completed, 5 November 2026. Steps 1–5 are implemented, verified and published.
 The user required and supplied explicit approval

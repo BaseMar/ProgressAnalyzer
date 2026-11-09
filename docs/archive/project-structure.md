@@ -1,5 +1,7 @@
 # Project structure and module responsibilities
 
+> Historical record: describes its stated release or cleanup stage. For maintained guidance, start at the [documentation index](../README.md).
+
 Stage 5 organizes the active application around storage, mapping, calculations
 and application workflows. It preserves the recommendation contract and the
 render-scoped cache introduced in [stage 4](data-access-optimization.md).
@@ -34,7 +36,7 @@ Architecture tests protect these calculation/model boundaries.
 
 ## Prepared recommendation inputs
 
-[`services/recommendations.py`](../services/recommendations.py) has three main
+[`services/recommendations.py`](../../services/recommendations.py) has three main
 operations:
 
 1. `prepare_plan_context` loads version snapshots and complete linked history
@@ -44,7 +46,7 @@ operations:
 2. `PlanReadContext.prepare_workout` selects an actual scheduled workout from
    that context. It returns a `PreparedWorkout` with the same history, versions
    and explicit evidence cutoff. The immutable types live in
-   [`models/plan_context.py`](../models/plan_context.py).
+   [`models/plan_context.py`](../../models/plan_context.py).
 3. `recommend_prepared_workout` applies the existing pure progression engine,
    then the separate exact-exercise starting-history fallback where applicable.
    A confirmed alternative reuses the prepared input and supplies its own
@@ -68,7 +70,7 @@ after changing source data instead of keeping an old snapshot across writes.
 
 ## Recorded history and mapping
 
-[`db/recorded_workouts.py`](../db/recorded_workouts.py) owns recorded-exercise
+[`db/recorded_workouts.py`](../../db/recorded_workouts.py) owns recorded-exercise
 table descriptions and `load_recorded_exercises`. The reader accepts a
 caller-owned connection, session IDs and an optional exact exercise-ID filter.
 It reads working/warm-up corrections and optional explicit load snapshots,
@@ -92,7 +94,7 @@ normalization is unchanged. The active `data_loader` continues to assemble
 
 ## Workout persistence and shared dates
 
-[`db/workout_sessions.py`](../db/workout_sessions.py) owns complete workout
+[`db/workout_sessions.py`](../../db/workout_sessions.py) owns complete workout
 entry/import persistence. All exercises, sets, load snapshots and explicit
 classifications are written in one transaction. Same-day appending, ID/name
 resolution and rollback behavior retain their existing contracts. `DataManager`
@@ -102,7 +104,7 @@ DataFrame readers for exercise mappings and raw workout-exercise identities
 now live in `db/queries.py`. The optional-mapping fallback for older schemas is
 preserved. No SQL, transaction control or row mapping remains in `DataManager`.
 
-[`metrics/utils/dates.py`](../metrics/utils/dates.py) owns `to_date`. Measurement
+[`metrics/utils/dates.py`](../../metrics/utils/dates.py) owns `to_date`. Measurement
 timelines, period selection and data filters use this utility directly. Active
 date handling no longer imports the old body-summary implementation simply to
 normalize a date. Native dates, datetimes, Pandas timestamps and ISO strings
@@ -141,7 +143,7 @@ tests compare a broad preview window with independent single-workout reads,
 verify alternatives reuse the same source history, and check history cutoffs,
 mixed loads, bodyweight conventions and plan identity.
 
-The machine-readable [stage 5 verification](baselines/stage-5.json) records
+The machine-readable [stage 5 verification](../baselines/stage-5.json) records
 test results, dataset integrity and the render measurements. Read-only live
 measurements are separate from the isolated PostgreSQL write/migration tests.
 This structural stage makes no new algorithmic speed claim; stage 4's SQL

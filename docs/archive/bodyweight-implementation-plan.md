@@ -1,9 +1,11 @@
 # Bodyweight exercise loads and muscle distribution
 
+> Historical record: describes its stated release or cleanup stage. For maintained guidance, start at the [documentation index](../README.md).
+
 Historical implementation record for the rollout completed on 5 November 2026.
 The staged approval procedure and implementation notes below describe that work.
 For current starting-load behavior and legacy body-mass confirmations, see the
-[progression rules](progression-redesign-rules.md).
+[progression rules](../progression-rules.md).
 
 Work is split into four reviewable steps. After each completed step, stop and
 ask the user for permission to commit, push, and start the next step. Do not

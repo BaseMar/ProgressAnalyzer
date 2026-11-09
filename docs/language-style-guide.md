@@ -60,7 +60,14 @@ previously saved notes continue to import correctly.
 
 ## Current guidance and historical records
 
-[Progression rules](progression-redesign-rules.md) describe current recommendation
+[Progression rules](progression-rules.md) describe current recommendation
 behavior. Dated implementation plans and release reports describe their stated
 release; translating them does not turn past test results into current validation.
 Retain source links, dates, commit IDs, technical identifiers and historical results.
+
+
+The [documentation index](README.md) assigns one owner to each maintained topic.
+Update that guide when behavior changes, then link to it from summaries.
+Dated plans, validation reports and cleanup measurements belong in the
+[archive](archive/README.md), with their dates and evidence preserved.
+Do not present an archived rollout procedure as current operational guidance.

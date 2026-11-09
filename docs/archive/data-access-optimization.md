@@ -1,9 +1,11 @@
 # Data access and cache optimization
 
+> Historical record: describes its stated release or cleanup stage. For maintained guidance, start at the [documentation index](../README.md).
+
 Stage 4 of the cleanup consolidates plan/history reads without changing the
 recommendation rules. The comparison uses the workloads and measurement method
 from the [stage 3 baseline](performance-baseline.md). Full samples are retained
-in [`baselines/stage-4.json`](baselines/stage-4.json).
+in [`baselines/stage-4.json`](../baselines/stage-4.json).
 
 ## Changes
 

@@ -1,5 +1,7 @@
 # Project inventory and cleanup candidates
 
+> Historical record: describes its stated release or cleanup stage. For maintained guidance, start at the [documentation index](../README.md).
+
 Stage 2 of the project cleanup. Inspected on 9 November 2026 against application
 commit `0a5433b`, after the English-language standardization.
 
@@ -56,11 +58,11 @@ An unused import or a passing test is insufficient by itself to approve deletion
 
 | Entry point | Responsibility and evidence |
 | --- | --- |
-| [`streamlit_app.py`](../streamlit_app.py) | Loads shared source data, applies `ui/styles/main.css` and routes to Overview, Analysis, Plan or History. |
-| [`db/migrate.py`](../db/migrate.py) | Explicit schema preview/application through `python -m db.migrate`; imports the nine migration revisions. |
-| [`db/seed_exercise_muscle_map.py`](../db/seed_exercise_muscle_map.py) | Explicit administrative seeding command documented in README. |
-| [`db/seed_plank.py`](../db/seed_plank.py) | Explicit administrative setup for the timed Plank exercise. |
-| [Tests workflow](../.github/workflows/tests.yml) | Runs pytest with disposable PostgreSQL and compiles application modules. Test roots do not establish UI reachability. |
+| [`streamlit_app.py`](../../streamlit_app.py) | Loads shared source data, applies `ui/styles/main.css` and routes to Overview, Analysis, Plan or History. |
+| [`db/migrate.py`](../../db/migrate.py) | Explicit schema preview/application through `python -m db.migrate`; imports the nine migration revisions. |
+| [`db/seed_exercise_muscle_map.py`](../../db/seed_exercise_muscle_map.py) | Explicit administrative seeding command documented in README. |
+| [`db/seed_plank.py`](../../db/seed_plank.py) | Explicit administrative setup for the timed Plank exercise. |
+| [Tests workflow](../../.github/workflows/tests.yml) | Runs pytest with disposable PostgreSQL and compiles application modules. Test roots do not establish UI reachability. |
 
 The administrative commands were inspected as source; the inventory did not run them.
 

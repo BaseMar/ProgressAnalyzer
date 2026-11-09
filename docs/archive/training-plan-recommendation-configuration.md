@@ -1,11 +1,13 @@
 # Training plan configuration for the recommendation system
 
+> Historical record: describes its stated release or cleanup stage. For maintained guidance, start at the [documentation index](../README.md).
+
 Status: the proposal was approved and saved on 8 November 2026. Version 6
 (ID 15) takes effect on 10 November 2026. The tables compare it with source
 version ID 14, effective from 9 November. Earlier versions and results are retained.
 
 This is the configuration record for that release. For current starting-load
-behavior, see the [progression rules](progression-redesign-rules.md); the
+behavior, see the [progression rules](../progression-rules.md); the
 9 November update supersedes the manual-start policy described below.
 
 The user requested revised repetition ranges and RIR targets. Exercise order and

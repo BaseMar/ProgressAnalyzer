@@ -1,5 +1,7 @@
 # Legacy code retirement
 
+> Historical record: describes its stated release or cleanup stage. For maintained guidance, start at the [documentation index](../README.md).
+
 Stage 6 removes the unused implementation groups identified in the
 [inventory](project-inventory.md), after the active date utility and recorded
 history readers were separated in [stage 5](project-structure.md).
@@ -89,7 +91,7 @@ PostgreSQL write/migration cases require `TEST_POSTGRES_URL`, which is not
 configured locally. Compilation covers the application, service and tooling
 modules. No new dependencies or migrations are required.
 
-The [stage 6 verification artifact](baselines/stage-6.json) records the final
+The [stage 6 verification artifact](../baselines/stage-6.json) records the final
 render samples, query counts, semantic comparisons and database-integrity
 checks against stage 5. The synthetic semantic fixture remains unchanged.
 All seven semantic sections, nine captured route-output hashes on each dataset

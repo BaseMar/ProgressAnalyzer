@@ -1,8 +1,10 @@
 # Recommendation redesign validation: 8 November 2026
 
+> Historical record: describes its stated release or cleanup stage. For maintained guidance, start at the [documentation index](../README.md).
+
 Status: all eight stages completed; implementation, configuration and public
 release verified. This report records the stated releases, not the latest test
-run. The [current progression rules](progression-redesign-rules.md) include the
+run. The [current progression rules](../progression-rules.md) include the
 9 November history-based starting-load update that supersedes the manual-start
 behavior reported here.
 
@@ -12,7 +14,7 @@ One engine implements the approved progression: repetitions, equalizing lighter
 sets, repetitions at one common load, then a new common load. One complete
 success is sufficient, with a 10% per-set increase limit. Deload retains sets and
 repetitions, reduces load by 30-40% and targets RIR 3-4. See the
-[specification](progression-redesign-rules.md).
+[specification](../progression-rules.md).
 
 ## Verification performed
 

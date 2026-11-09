@@ -1,13 +1,15 @@
 # Performance and regression baseline
 
+> Historical record: describes its stated release or cleanup stage. For maintained guidance, start at the [documentation index](../README.md).
+
 Stage 3 of the project cleanup, measured on 9 November 2026. Application baseline:
 `518ec80` (the stage 2 inventory commit). This stage adds measurement tooling and
 reference tests; it does not optimize application code or change recommendation rules.
 
 The machine-readable results, including individual warm samples, are in
-[`baselines/stage-3.json`](baselines/stage-3.json). Reference calculation hashes
+[`baselines/stage-3.json`](../baselines/stage-3.json). Reference calculation hashes
 and reviewable examples are in
-[`tests/fixtures/project_baseline.json`](../tests/fixtures/project_baseline.json).
+[`tests/fixtures/project_baseline.json`](../../tests/fixtures/project_baseline.json).
 
 ## Environment and workloads
 

@@ -1,12 +1,14 @@
 # Recommendation system implementation plan
 
+> Historical record: describes its stated release or cleanup stage. For maintained guidance, start at the [documentation index](../README.md).
+
 Date: 8 November 2026. Status: all eight stages completed and published.
 Basis: the approved v1.0 progression rules at the time of implementation.
 This document records the delivered scope and acceptance criteria for that release.
 Verification details are in the [validation report](recommendation-system-validation.md).
 
 Historical scope: the 9 November history-based starting-load update supersedes
-this plan's manual-start policy. The [current rules](progression-redesign-rules.md)
+this plan's manual-start policy. The [current rules](../progression-rules.md)
 describe the active behavior. Original decisions and release results below are
 retained as implementation history.
 
