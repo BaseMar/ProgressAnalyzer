@@ -1,101 +1,65 @@
-# Byte-compiled / optimized / DLL files
+# Python bytecode and native extensions
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
 
-# Distribution / packaging
-/build/
-/dist/
+# Build output and package metadata
+build/
+dist/
 *.egg-info/
+*.dist-info/
 *.egg
 
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage
+# Test, analysis and temporary artifacts
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.cache/
 .tox/
 .nox/
 .coverage
 .coverage.*
 coverage.xml
 htmlcov/
+.ipynb_checkpoints/
+*.log
 
 # Virtual environments
-venv/
 .venv/
+venv/
 ENV/
 env/
 env.bak/
+*.venv
+
+# Local configuration, credentials and backups
 .env
 .env.*
+.streamlit/*
+!.streamlit/config.toml
+backup_db.py
+backups/
+user_settings/
+*.db
+*.sqlite
+*.sqlite3
+*.pdf
 
-# Editor directories and files
+# Editor and operating-system files
 .vscode/
 .idea/
 *.sublime-project
 *.sublime-workspace
-
-# OS files
 .DS_Store
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# Python compiled files
-*.pyc
-*.pyo
-*.pyd
-
-# Mypy cache
-.mypy_cache/
-.ruff_cache/
-
-# Streamlit
-.streamlit/*
-!.streamlit/config.toml
-
-# Logs
-*.log
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Build/packaging
-*.egg-info/
-dist/
-build/
-
-# Distribution metadata
-*.dist-info/
-
-# Ignore local secrets and credentials
-# (if you keep a .env for local dev, make sure it's not committed)
-.env
-.env.*
-
-# Misc
-.cache/
-__pycache__/
-*.pdf
-*.venv
-# Ignore all .txt files except requirements files
+# Keep dependency manifests trackable under external text-file ignore rules.
 !requirements.txt
 !requirements-dev.txt
-
-#files
-backup_db.py
-
-# folders
-backups/
-user_settings/
-.env 
