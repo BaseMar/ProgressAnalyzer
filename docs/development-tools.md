@@ -110,7 +110,8 @@ Native backup acceptance additionally requires `pg_dump` and `pg_restore` on
 `PATH`, matching the test server's major version. It creates two uniquely named
 test databases, compares every restored table, checks a sequence-backed write
 and drops both databases. The test role therefore needs database-creation rights.
-CI installs PostgreSQL 16 client tools explicitly.
+CI pins Ubuntu 24.04 and installs PostgreSQL 16 client tools explicitly, keeping
+the package source stable instead of following the changing `ubuntu-latest` image.
 
 The [dev container](../.devcontainer/devcontainer.json) uses the official
 [Python 3.12 Bookworm image](https://github.com/devcontainers/images/tree/main/src/python),
