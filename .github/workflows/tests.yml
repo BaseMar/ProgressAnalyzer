@@ -60,3 +60,22 @@ jobs:
         run: python -m pytest --junitxml=test-results.xml
       - name: Compile application modules
         run: python -m compileall -q db metrics models services ui scripts streamlit_app.py data_loader.py data_manager.py mapper.py
+
+  compose:
+    name: Docker Compose acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Check Docker and Compose
+        run: |
+          docker version
+          docker compose version
+      - name: Build, render all pages and verify persistent data after recreation
+        run: |
+          printf 'DATABASE_URL=postgresql://unused:unused@invalid.example/unused\n' > .env
+          printf 'acceptance_marker = "must stay outside the image"\n' > .streamlit/secrets.toml
+          python scripts/check_compose.py

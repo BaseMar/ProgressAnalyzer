@@ -245,6 +245,23 @@ and target selection live in [local setup](getting-started.md).
 SQLite transaction and foreign-key handling follow the
 [SQLAlchemy dialect guidance](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#transactions-with-sqlite-and-the-sqlite3-driver).
 
+## Container startup
+
+`compose.yaml` defines an application image and PostgreSQL 16 with a persistent
+named volume. The app waits for database health, then `db.container_start`
+prepares the database before replacing its process with Streamlit. Empty
+targets reuse `db.bootstrap` and the synthetic seed; recognized installations
+receive pending migrations without replacing records or regenerating examples.
+Initialization uses the same transaction and migration lock as the standalone
+bootstrap. Ordinary Streamlit startup outside this launcher does not initialize
+or migrate databases.
+
+`Dockerfile` installs only runtime requirements and application files, runs
+without root and exposes an HTTP health check. `.dockerignore` restricts the
+build context; Compose sets an internal database URL rather than inheriting
+the host's application connection. The runtime image has no source bind mounts.
+Commands and data-volume behavior are owned by the [Docker guide](docker.md).
+
 ## Inspect the module graph
 
 ```powershell

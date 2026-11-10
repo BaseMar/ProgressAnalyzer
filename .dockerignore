@@ -1,0 +1,33 @@
+# Allow only application files into the build context.
+*
+!requirements.txt
+!data_loader.py
+!data_manager.py
+!mapper.py
+!streamlit_app.py
+!db/
+!db/**
+!metrics/
+!metrics/**
+!models/
+!models/**
+!services/
+!services/**
+!ui/
+!ui/**
+!.streamlit/
+.streamlit/*
+!.streamlit/config.toml
+
+# Exclude local artifacts even when nested inside an application package.
+**/__pycache__
+**/*.py[cod]
+**/.env
+**/.env.*
+.env
+.env.*
+.streamlit/secrets.toml
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/*.log

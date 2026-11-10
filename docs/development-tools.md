@@ -127,3 +127,8 @@ The [stage 7 verification record](archive/dependency-tooling-verification.md)
 contains the fresh-environment checks, measured test counts and regression
 comparisons at that release. Use the [Tests workflow](../.github/workflows/tests.yml)
 for the current checks; past results do not attest to later commits.
+
+The workflow also builds and exercises the Docker Compose stack. Its
+first-start, page-rendering and volume-persistence checks are documented in the
+[Docker guide](docker.md#verification). `scripts/check_compose.py` needs only
+Python's standard library on the host; the container uses the runtime manifest.

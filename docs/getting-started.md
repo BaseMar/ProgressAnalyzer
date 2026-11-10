@@ -5,6 +5,10 @@ example uses Windows PowerShell; Python module commands are the same on other pl
 The public demo has one shared dataset; there is no authentication or user-data
 isolation. See [architecture](architecture.md#data-model) for storage ownership.
 
+For a containerized app and PostgreSQL with automatic first-start demo setup,
+follow the [Docker Compose guide](docker.md). The instructions below cover
+running Python directly on your host.
+
 ## Requirements
 
 - Python 3.11 or 3.12, both tested in CI.
@@ -109,8 +113,9 @@ includes all runtime dependencies; a second runtime install is unnecessary.
 
 ## Database migrations
 
-A migration adds a versioned database change. They run only when explicitly
-requested, never during app startup.
+A migration adds a versioned database change. Standalone Streamlit startup does
+not run migrations. The Docker launcher prepares its dedicated demo database
+before starting Streamlit; direct installations use the explicit commands below.
 
 | Revision | Adds |
 | --- | --- |

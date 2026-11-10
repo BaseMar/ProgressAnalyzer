@@ -9,6 +9,7 @@ owner; summaries link to it instead of copying detailed rules or commands.
 | --- | --- |
 | See the project and live demo | [Project README](../README.md) |
 | Install the app and configure its database | [Local setup and migrations](getting-started.md) |
+| Run the app and PostgreSQL together with one command | [Docker Compose demo](docker.md) |
 | Create plans, record/import workouts and use the dashboard | [User guide](user-guide.md) |
 | Understand load, volume, set interpretation, comparisons and coverage | [Calculation rules](calculation-rules.md) |
 | Understand starting loads, progression, deloads and bodyweight limits | [Recommendation rules](progression-rules.md) |

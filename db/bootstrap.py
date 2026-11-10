@@ -26,15 +26,9 @@ class ConnectionScope:
         yield self.connection
 
 
-def bootstrap_database(engine, *, demo=False, as_of=None):
-    """Create all tables once; reject existing schemas before changing records.
-
-    A failed migration or seed rolls back the entire initialization. The target
-    engine is explicit: this module never loads DATABASE_URL or app secrets.
-    """
-    as_of = date.today() if as_of is None else as_of
-    if type(as_of) is not date:
-        raise ValueError("The demo reference date must be a date")
+@contextmanager
+def initialization_transaction(engine):
+    """Serialize PostgreSQL initialization and include SQLite DDL in rollback."""
     with engine.begin() as connection:
         dialect = connection.dialect.name
         if dialect not in ("sqlite", "postgresql"):
@@ -46,6 +40,19 @@ def bootstrap_database(engine, *, demo=False, as_of=None):
                 connection.exec_driver_sql("BEGIN")
         else:
             connection.execute(text("SELECT pg_advisory_xact_lock(917420001)"))
+        yield connection
+
+
+def bootstrap_database(engine, *, demo=False, as_of=None):
+    """Create all tables once; reject existing schemas before changing records.
+
+    A failed migration or seed rolls back the entire initialization. The target
+    engine is explicit: this module never loads DATABASE_URL or app secrets.
+    """
+    as_of = date.today() if as_of is None else as_of
+    if type(as_of) is not date:
+        raise ValueError("The demo reference date must be a date")
+    with initialization_transaction(engine) as connection:
         inspector = inspect(connection)
         if inspector.get_table_names() or inspector.get_view_names():
             raise ValueError(

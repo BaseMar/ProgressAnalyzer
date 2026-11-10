@@ -103,6 +103,16 @@ For the exact commands and dependency update procedure, see
 
 ## Run locally
 
+With Docker and Compose v2 running, start the app and PostgreSQL together:
+
+```sh
+docker compose up --build --wait
+```
+
+Open **http://localhost:8501**. The first start creates fictional demo data;
+subsequent starts preserve saved records. See the [Docker guide](docs/docker.md)
+for prerequisites, port conflicts, persistence and reset commands.
+
 Follow [local setup and database migrations](docs/getting-started.md) to create
 the complete schema and generated demo history. The SQLite demo runs without
 a database server; PostgreSQL is also supported. The example data is entirely
@@ -117,8 +127,8 @@ and application-specific assumptions are documented with the
 [calculation rules](docs/calculation-rules.md#research-and-sources) and
 [recommendation rules](docs/progression-rules.md#research-context-and-application-specific-rules).
 
-Planned work includes Docker Compose, authentication with user-data isolation
-and broader free-form import coverage.
+Planned work includes authentication with user-data isolation and broader
+free-form import coverage.
 
 The repository uses English for documentation, interface copy, comments,
 docstrings and new contribution text. User-entered names and older TXT labels

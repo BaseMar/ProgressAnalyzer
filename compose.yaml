@@ -1,0 +1,31 @@
+name: progress-analyzer-demo
+
+services:
+  db:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: progress_analyzer_demo
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: local-demo-password
+    volumes:
+      - demo-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  app:
+    build: .
+    image: progress-analyzer-demo:local
+    environment:
+      DATABASE_URL: postgresql+psycopg2://demo:local-demo-password@db:5432/progress_analyzer_demo
+    ports:
+      - "127.0.0.1:${DEMO_PORT:-8501}:8501"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  demo-postgres:
