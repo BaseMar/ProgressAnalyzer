@@ -1,11 +1,68 @@
-# Public demo and personal application
+# Public demo and personal workspace
 
-The project has two explicit entry points sharing the same views and rules.
+The same hosted address serves a public demo and the owner's saved training data.
+Choose the workspace in the sidebar. Existing website links and embedded apps
+can keep their current Streamlit URL.
 
-| Entry point | Data source | Lifetime |
+| Workspace | Access | Data and lifetime |
 | --- | --- | --- |
-| `streamlit_app.py` | Generated fictional SQLite database per browser session | Temporary; resettable from the sidebar |
-| `personal_app.py` | `DATABASE_URL` from the environment, local `.env` or Streamlit secrets | Persistent; owned by the single user |
+| Demo | Open to everyone; selected by default | Fictional SQLite database per browser session; resettable |
+| Personal | Owner password | The persistent database selected by `DATABASE_URL` |
+
+## Enable personal access on Streamlit Cloud
+
+This is a one-time setup. Afterward the hosted app and database remain available
+without running the app on your computer.
+
+1. From the repository's activated Python environment, run:
+
+   ```sh
+   python -m services.personal_access
+   ```
+
+   Enter your chosen password twice. It must have at least twelve characters.
+   Input is hidden. The command prints a `PERSONAL_PASSWORD_HASH = "..."` line,
+   not the password itself.
+
+2. Open the deployed app's **Settings → Secrets** in Streamlit Community Cloud.
+   Keep the existing `DATABASE_URL` pointing to your real PostgreSQL/Supabase
+   database. Add the exact verifier line printed by the command:
+
+   ```toml
+   DATABASE_URL = "postgresql+psycopg2://USER:PASSWORD@HOST/DATABASE"
+   PERSONAL_PASSWORD_HASH = "paste-the-generated-verifier-here"
+   ```
+
+   These are placeholders. Preserve your actual existing connection string;
+   do not replace it with the example. Save the secrets and let the app restart.
+   Streamlit documents the [Secrets settings](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app/app-settings)
+   and [secret storage](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management).
+
+3. Visit the usual app URL, choose **Personal** in the sidebar and enter your
+   password. Your plan, history and next-workout copy action use the real database.
+   Choose **Log out** when finished. Other browsers continue using Demo.
+
+Do not put the password, verifier or database connection in Git or chat. For
+local hosted-mode checks, use environment variables, a local `.env`, or ignored
+`.streamlit/secrets.toml`. Missing or malformed password configuration leaves
+Personal locked and keeps Demo available.
+
+## Session behavior
+
+Access belongs to the current browser session. A second browser/tab must unlock
+Personal independently. A disconnected or expired Streamlit session can require
+the password again; there is no persistent sign-in cookie.
+
+Personal access expires after thirty minutes without an interaction, or twelve
+hours after login. These checks happen on the next app interaction. Switching
+workspaces and logging out clear editor drafts, selected records and password
+input. They do not delete database records. Save edits before switching.
+
+To change the password, generate a new verifier, replace `PERSONAL_PASSWORD_HASH`
+in Cloud secrets and restart. Old sessions are rejected on their next interaction.
+Login attempts are limited across tabs and browser sessions. The application
+uses salted PBKDF2-HMAC-SHA256 with 600,000 iterations and constant-time comparison;
+see the [password-storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
 
 ## Public sandbox
 
@@ -13,36 +70,27 @@ The project has two explicit entry points sharing the same views and rules.
 streamlit run streamlit_app.py
 ```
 
-This is also the main file used by the
+This is the entry point for the
 [public deployment](https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app).
-It does not resolve a personal database URL, even when one is configured on the
-host. Each browser session receives a separately generated database and cache
-identity. Edits survive reruns within the session. **Reset demo** discards its
-edits and generates a fresh sandbox without affecting other sessions.
+Demo does not resolve or connect to the personal database. Each browser session
+receives generated data and a separate cache identity. Edits survive reruns.
+**Reset demo** discards only that session's fictional edits.
 
-The demo uses the same schema, writers and calculation rules as the personal
-application. Its banner identifies fictional data and temporary changes.
-The database stays in memory and is released when Streamlit expires the session.
-Reconnecting after session expiration starts a new dataset; it is not a place
-to store personal workouts. Streamlit's
-[session-scoped resource cache](https://docs.streamlit.io/develop/api-reference/caching-and-state/st.cache_resource)
-owns resource cleanup.
+The demo uses the same schema, writers and calculation rules as Personal.
+Its database stays in memory and is released when Streamlit expires the session.
+The [session-scoped resource cache](https://docs.streamlit.io/develop/api-reference/caching-and-state/st.cache_resource)
+owns cleanup. It is not persistent storage for your own workouts.
 
-Existing Cloud deployments continue using `streamlit_app.py`; ordinary GitHub
-redeployment switches them to the sandbox. Remove an obsolete personal database
-secret from the Cloud settings after verifying the deployed demo. The application
-does not need it and does not modify that database.
+## Direct local application
 
-## Persistent personal app
-
-Configure your database using [local setup](getting-started.md), then run:
+For an installation on a trusted local machine:
 
 ```sh
 streamlit run personal_app.py
 ```
 
-This is the command to use for your actual training records. Switching entry
-points does not copy, clear or migrate the personal database. The app remains
-single-user without accounts. Docker Compose uses this persistent entry point
-with its own generated PostgreSQL demo and named volume, as described in the
-[Docker guide](docker.md).
+This direct entry point uses the configured database without the hosted password
+gate. Publish **`streamlit_app.py`** for the shared Demo/Personal address.
+Docker Compose keeps the direct entry point with its own generated PostgreSQL
+database and loopback-only port, as described in the [Docker guide](docker.md).
+Neither entry point copies or resets your existing personal database.

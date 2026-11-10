@@ -21,7 +21,7 @@ from uuid import uuid4
 from streamlit.runtime.scriptrunner_utils.script_run_context import get_script_run_ctx
 # AppTest uses one fixed context ID; model two real browser IDs explicitly.
 get_script_run_ctx().session_id = st.session_state.setdefault('test_session_id', uuid4().hex)
-run(demo=True)
+run(hosted=True)
 database = session_demo_database()
 st.session_state['sandbox'] = database
 """

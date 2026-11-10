@@ -5,11 +5,15 @@ Historical changes and measurements live in the [archive](archive/README.md).
 
 ## Entry points and routes
 
-`streamlit_app.py` starts the public sandbox with a generated, in-memory SQLite
-database scoped to the browser session. `personal_app.py` reuses its renderer
-against the configured persistent database. Public execution never resolves a
-personal connection URL. A `ContextVar` binds all demo readers and writers to
+`streamlit_app.py` defaults to the public sandbox with a generated, in-memory
+SQLite database scoped to the browser session. Its sidebar also exposes a
+password-protected Personal workspace. `ui.access_view` stops execution before
+private readers, cached inputs or views until `services.personal_access` verifies
+the owner. Switching workspaces, logging out or expiring a session clears UI
+state and editor drafts. A `ContextVar` binds all demo readers and writers to
 the sandbox engine without changing process environment variables.
+`personal_app.py` reuses the renderer directly on a trusted local installation;
+it is not the entry point to publish for shared hosted access.
 Both entry points configure the page and render one route inside a read scope.
 All routes initially share `data_loader.load_data()`.
 
@@ -141,6 +145,14 @@ Each sandbox has a random cache identity, so global input caching cannot return
 personal or another session's rows. Context bindings unwind on reruns and errors.
 Demo engine release uses Streamlit's session-scoped resource cleanup; no
 temporary database files or credentials are needed. See [mode ownership](public-demo.md).
+
+Owner sessions stay in server-side Streamlit session state and are checked on
+every rerun. Idle expiry is 30 minutes, with a 12-hour absolute lifetime;
+changing the configured verifier revokes previous sessions on their next rerun.
+Plaintext form input is cleared in its submit callback. A process-wide limiter
+reserves attempts before hashing, including concurrent submissions and new tabs.
+It retains only short-lived, keyed peer digests, with five attempts per peer
+and thirty overall in sixty seconds. Restarting the process clears these limits.
 
 Read scopes use a `ContextVar`, with engine identity and service arguments in
 their keys. Nested services reuse the scope; exit, early return and exceptions

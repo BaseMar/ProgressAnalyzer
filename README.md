@@ -16,8 +16,9 @@ coverage and explained targets for the next session.
 
 The public demo generates fictional training and measurement data for each
 browser session. You can edit workouts and plans, then reset the sandbox.
-It never connects to the personal database. The persistent application is
-designed for one user, without accounts or authentication.
+Demo browsing never connects to the personal database. Under the same URL,
+the owner can choose **Personal** and unlock the saved plan with a password.
+The application is designed for one owner, without registration or user accounts.
 
 ![Training overview and next workout](screenshots/Overview.png)
 
@@ -112,9 +113,12 @@ python -m pip install -r requirements.txt
 streamlit run streamlit_app.py
 ```
 
-No database credentials are needed. To keep your own records, configure
-`DATABASE_URL` and run **`streamlit run personal_app.py`** instead.
-See [public and personal modes](docs/public-demo.md) for their data lifetimes.
+No database credentials are needed for Demo. To use your saved records under
+the same hosted URL, configure `DATABASE_URL` and `PERSONAL_PASSWORD_HASH`, then
+choose **Personal** in the sidebar. The one-time
+[hosted access setup](docs/public-demo.md#enable-personal-access-on-streamlit-cloud)
+does not require a computer to remain running afterward.
+`personal_app.py` remains a direct local entry point for a trusted machine.
 
 With Docker and Compose v2 running, start the app and PostgreSQL together:
 
@@ -140,9 +144,9 @@ and application-specific assumptions are documented with the
 [calculation rules](docs/calculation-rules.md#research-and-sources) and
 [recommendation rules](docs/progression-rules.md#research-context-and-application-specific-rules).
 
-The scope is a single-user training tool. Multi-user accounts and authentication
-are outside this release. Further import improvements will follow observed
-workout-note formats.
+The scope is a single-owner training tool with password-protected personal access
+and a public sandbox. Multi-user accounts and registration are outside its scope.
+Further import improvements will follow observed workout-note formats.
 
 Release [v1.0.0](docs/releases/v1.0.0.md) includes separate public and personal
 entry points, a generated demo, portable [backup and restore](docs/backups.md),

@@ -44,8 +44,6 @@ def _load_global_styles() -> None:
 @read_scope()
 def main() -> None:
     """Load source data, then render one task; historical filters belong to Analysis."""
-    _load_global_styles()
-
     try:
         raw_input_data, sets_dataframe = load_data()
     except Exception as exc:
@@ -75,9 +73,15 @@ def main() -> None:
     )
 
 
-def run(*, demo=False):
+def run(*, hosted=False):
     _configure_page()
-    if not demo:
+    _load_global_styles()
+    if not hosted:
+        main()
+        return
+    from ui.access_view import select_workspace
+
+    if select_workspace():
         main()
         return
     from db.connection import database_scope
@@ -96,4 +100,4 @@ def run(*, demo=False):
 
 
 if __name__ == "__main__":
-    run(demo=True)
+    run(hosted=True)

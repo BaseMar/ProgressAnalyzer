@@ -2,9 +2,10 @@
 
 After cloning, run Python commands from the repository root. The activation
 example uses Windows PowerShell; Python module commands are the same on other platforms.
-The public entry point creates a temporary fictional database for each browser
-session. The personal entry point uses the persistent database you configure.
-Neither mode implements user accounts. See [public and personal modes](public-demo.md).
+The hosted entry point defaults to a temporary fictional database per browser
+session. Its Personal workspace uses the configured persistent database only
+after password verification. A direct personal entry point is available for
+trusted local use. See [public and personal modes](public-demo.md).
 
 For a containerized app and PostgreSQL with automatic first-start demo setup,
 follow the [Docker Compose guide](docker.md). The instructions below cover
