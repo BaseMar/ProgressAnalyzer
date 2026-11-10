@@ -73,7 +73,7 @@ python -m pip check
 python -m ruff check .
 python -m ruff format --check .
 python -m pytest
-python -m compileall -q db metrics models services ui scripts streamlit_app.py data_loader.py data_manager.py mapper.py
+python -m compileall -q db metrics models services ui scripts streamlit_app.py personal_app.py data_loader.py data_manager.py mapper.py
 ```
 
 To apply formatting and safe lint fixes:
@@ -105,6 +105,12 @@ Each case creates a unique schema, applies the migrations and uses synthetic log
 Existing progression cases roll back their schema; bootstrap acceptance cases
 also exercise committed transactions and remove their dedicated schema afterward.
 Both assert cleanup. Tests do not use or modify the application dataset.
+
+Native backup acceptance additionally requires `pg_dump` and `pg_restore` on
+`PATH`, matching the test server's major version. It creates two uniquely named
+test databases, compares every restored table, checks a sequence-backed write
+and drops both databases. The test role therefore needs database-creation rights.
+CI installs PostgreSQL 16 client tools explicitly.
 
 The [dev container](../.devcontainer/devcontainer.json) uses the official
 [Python 3.12 Bookworm image](https://github.com/devcontainers/images/tree/main/src/python),

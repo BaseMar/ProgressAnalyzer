@@ -10,6 +10,8 @@ owner; summaries link to it instead of copying detailed rules or commands.
 | See the project and live demo | [Project README](../README.md) |
 | Install the app and configure its database | [Local setup and migrations](getting-started.md) |
 | Run the app and PostgreSQL together with one command | [Docker Compose demo](docker.md) |
+| Understand the public sandbox and persistent personal app | [Public and personal modes](public-demo.md) |
+| Create a backup and restore it into a separate database | [Backup and restore](backups.md) |
 | Create plans, record/import workouts and use the dashboard | [User guide](user-guide.md) |
 | Understand load, volume, set interpretation, comparisons and coverage | [Calculation rules](calculation-rules.md) |
 | Understand starting loads, progression, deloads and bodyweight limits | [Recommendation rules](progression-rules.md) |
@@ -18,6 +20,8 @@ owner; summaries link to it instead of copying detailed rules or commands.
 | Write consistent English copy, comments and terminology | [Language guide](language-style-guide.md) |
 
 ## Evidence and historical context
+
+The [v1.0.0 release notes](releases/v1.0.0.md) describe the first stable release.
 
 The [archive](archive/README.md) contains completed implementation plans,
 release checks and cleanup measurements. Its documents retain their original

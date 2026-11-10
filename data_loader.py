@@ -13,6 +13,7 @@ import pandas as pd
 import streamlit as st
 
 from data_manager import DataManager
+from db.connection import database_cache_key
 from mapper import (
     map_body_composition,
     map_body_measurement,
@@ -25,12 +26,17 @@ from mapper import (
 from metrics.input import MetricsInput
 
 
-@st.cache_data(ttl=300, show_spinner="Loading workout data…")
 def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
+    """Reuse inputs only within the selected personal database or demo sandbox."""
+    return _load_data(database_cache_key())
+
+
+@st.cache_data(ttl=300, show_spinner="Loading workout data…", max_entries=128)
+def _load_data(cache_key: str) -> Tuple[MetricsInput, pd.DataFrame]:
     """Load all application data from database.
 
-    This is the main entry point for data loading. Data is cached automatically
-    by Streamlit to avoid redundant database queries.
+    Streamlit hashes cache_key before reading the context-bound database. Each
+    demo database has a unique identity, preventing cross-session input reuse.
 
     Returns:
         Tuple of:
@@ -72,3 +78,6 @@ def load_data() -> Tuple[MetricsInput, pd.DataFrame]:
     )
 
     return metrics_input, sets_df
+
+
+load_data.clear = _load_data.clear

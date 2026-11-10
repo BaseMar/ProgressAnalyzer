@@ -262,7 +262,7 @@ def test_fresh_database_renders_actual_entry_point_without_app_database(tmp_path
     load_data.clear()
     try:
         with patch("data_manager.get_engine", return_value=engine):
-            app = AppTest.from_file(str(ROOT / "streamlit_app.py"), default_timeout=30)
+            app = AppTest.from_file(str(ROOT / "personal_app.py"), default_timeout=30)
             app.session_state["nav_selected"] = page
             app.run()
             assert not app.exception and not app.error

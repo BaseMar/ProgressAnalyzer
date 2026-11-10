@@ -5,8 +5,13 @@ Historical changes and measurements live in the [archive](archive/README.md).
 
 ## Entry points and routes
 
-`streamlit_app.py` configures the page, loads shared input and renders one route
-inside a read scope. All routes initially share `data_loader.load_data()`.
+`streamlit_app.py` starts the public sandbox with a generated, in-memory SQLite
+database scoped to the browser session. `personal_app.py` reuses its renderer
+against the configured persistent database. Public execution never resolves a
+personal connection URL. A `ContextVar` binds all demo readers and writers to
+the sandbox engine without changing process environment variables.
+Both entry points configure the page and render one route inside a read scope.
+All routes initially share `data_loader.load_data()`.
 
 | Route | Presentation and calculation ownership |
 | --- | --- |
@@ -119,8 +124,9 @@ native dates, datetimes, pandas timestamps and ISO strings.
 
 | Data | Lifetime | Refresh rule |
 | --- | --- | --- |
-| Database engine | Streamlit resource lifetime | Existing resource-cache behavior |
-| Mapped workout/body input and joined sets | One `load_data()` cache, at most 300 seconds | Successful application writes clear this cache before returning |
+| Personal database engine | Streamlit resource lifetime | Existing resource-cache behavior |
+| Public demo engine | Browser-session resource lifetime | Reset discards the sandbox; session release disposes the engine |
+| Mapped workout/body input and joined sets | `load_data()` cache keyed by database scope, at most 300 seconds and 128 entries | Successful application writes clear this cache before returning; demo reset clears its entry |
 | Plans, schedule inputs, linked history and confirmations | Current read scope only | Every render starts fresh; writes invalidate the active scope immediately |
 | Schema availability | Current read scope only | Re-read on the next render; DDL invalidates the active scope |
 | Heatmap assets/HTML | Existing argument-keyed cache | Unchanged; input changes select the corresponding cached result |
@@ -130,6 +136,11 @@ assignment/removal, exercise confirmations, set classifications, explicit load
 corrections, measurements, catalog additions and saved manual starting loads.
 Failed operations do not discard the shared input cache. `add_full_session()`
 delegates to the same invalidating workout writer rather than invalidating twice.
+
+Each sandbox has a random cache identity, so global input caching cannot return
+personal or another session's rows. Context bindings unwind on reruns and errors.
+Demo engine release uses Streamlit's session-scoped resource cleanup; no
+temporary database files or credentials are needed. See [mode ownership](public-demo.md).
 
 Read scopes use a `ContextVar`, with engine identity and service arguments in
 their keys. Nested services reuse the scope; exit, early return and exceptions
@@ -231,9 +242,11 @@ tables in an empty target schema, applies the existing nine migrations and
 optionally calls `db.demo_data` within the same transaction. The resulting
 twenty-table schema supports the normal readers, writers and views.
 
-Bootstrap requires an explicit URL and refuses existing tables/views. It runs
-only as a CLI operation, outside application startup. Existing installations
-continue through `db.migrate`; their applied revisions are unchanged.
+The bootstrap CLI requires an explicit URL and refuses existing tables/views.
+Personal app startup does not initialize a database. The public sandbox calls
+the same bootstrap against a new in-memory engine; the container launcher also
+reuses it for empty targets. Existing direct installations continue through
+`db.migrate`; their applied revisions are unchanged.
 Demo values come from constants and offline exercise mappings, with dates
 relative to a supplied reference date or today. No personal dataset is read.
 

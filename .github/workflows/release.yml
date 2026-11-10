@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+  checks: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require successful verification of this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" > checks.json
+          python -c 'import json; rows=json.load(open("checks.json"))["check_runs"]; required={"Verify (Python 3.11)","Verify (Python 3.12)","Docker Compose acceptance"}; found={r["name"]:r["conclusion"] for r in rows if r["name"] in required}; assert set(found)==required and all(v=="success" for v in found.values()), found'
+      - name: Publish the documented release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -f "docs/releases/${GITHUB_REF_NAME}.md"
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "Workout Progress Analyzer ${GITHUB_REF_NAME}" --notes-file "docs/releases/${GITHUB_REF_NAME}.md"

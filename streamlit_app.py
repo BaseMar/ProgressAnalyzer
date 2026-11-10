@@ -75,8 +75,25 @@ def main() -> None:
     )
 
 
-_configure_page()
+def run(*, demo=False):
+    _configure_page()
+    if not demo:
+        main()
+        return
+    from db.connection import database_scope
+    from db.public_demo import session_demo_database
+
+    database = session_demo_database()
+    with database_scope(database.engine, database.cache_key):
+        with st.container(key="public_demo_notice"):
+            st.info("Interactive demo · Fictional data · Changes last for this browser session")
+        if st.sidebar.button("Reset demo", key="reset_public_demo"):
+            load_data.clear(database.cache_key)
+            session_demo_database.clear()
+            st.session_state.clear()
+            st.rerun()
+        main()
 
 
 if __name__ == "__main__":
-    main()
+    run(demo=True)

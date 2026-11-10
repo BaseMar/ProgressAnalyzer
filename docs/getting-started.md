@@ -2,8 +2,9 @@
 
 After cloning, run Python commands from the repository root. The activation
 example uses Windows PowerShell; Python module commands are the same on other platforms.
-The public demo has one shared dataset; there is no authentication or user-data
-isolation. See [architecture](architecture.md#data-model) for storage ownership.
+The public entry point creates a temporary fictional database for each browser
+session. The personal entry point uses the persistent database you configure.
+Neither mode implements user accounts. See [public and personal modes](public-demo.md).
 
 For a containerized app and PostgreSQL with automatic first-start demo setup,
 follow the [Docker Compose guide](docker.md). The instructions below cover
@@ -38,12 +39,15 @@ On Linux/macOS, activate with `source .venv/bin/activate` instead.
 
 ## Run the local demo
 
+For the temporary sandbox, run `streamlit run streamlit_app.py` without any
+database setup or credentials. Changes last for the browser session.
+
 These PowerShell commands create a new local file and select it for the app:
 
 ```powershell
 python -m db.bootstrap --url sqlite:///demo.sqlite3 --demo
 $env:DATABASE_URL = "sqlite:///demo.sqlite3"
-streamlit run streamlit_app.py
+streamlit run personal_app.py
 ```
 
 For Bash, use `export DATABASE_URL=sqlite:///demo.sqlite3` before starting
@@ -84,7 +88,7 @@ installation and database-role provisioning are separate from this command.
 ```powershell
 python -m db.bootstrap --url "postgresql+psycopg2://user:password@localhost:5432/progress_analyzer_demo" --demo
 $env:DATABASE_URL = "postgresql+psycopg2://user:password@localhost:5432/progress_analyzer_demo"
-streamlit run streamlit_app.py
+streamlit run personal_app.py
 ```
 
 PostgreSQL initialization is transactional and uses the migration lock. The

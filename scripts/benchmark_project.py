@@ -204,7 +204,7 @@ def check_app(app):
 
 def render_case(probe, plan_id, state, runs):
     st.cache_data.clear()
-    app = AppTest.from_file(str(ROOT / "streamlit_app.py"), default_timeout=120)
+    app = AppTest.from_file(str(ROOT / "personal_app.py"), default_timeout=120)
     for key, value in dict(active_plan_id=plan_id, adherence_plan=plan_id, **state).items():
         app.session_state[key] = value
     cold = probe.measure(app.run)
@@ -288,7 +288,7 @@ def render_benchmarks(probe, plan, as_of, runs, selected=None):
     )
     if len(slots) < 2:
         raise RuntimeError("Workout switching requires two upcoming unlinked workouts")
-    app = AppTest.from_file(str(ROOT / "streamlit_app.py"), default_timeout=120)
+    app = AppTest.from_file(str(ROOT / "personal_app.py"), default_timeout=120)
     app.session_state["active_plan_id"] = plan.plan_id
     app.session_state["adherence_plan"] = plan.plan_id
     app.run()

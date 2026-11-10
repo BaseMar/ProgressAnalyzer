@@ -34,6 +34,10 @@
 
 section.main > div { padding-top: 0; }
 
+.st-key-public_demo_notice {
+    padding-top: 2rem;
+}
+
 p { color: var(--text-primary); line-height: 1.6; }
 
 .css-10trblm { color: var(--text-muted); }

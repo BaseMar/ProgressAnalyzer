@@ -5,6 +5,7 @@
 !data_manager.py
 !mapper.py
 !streamlit_app.py
+!personal_app.py
 !db/
 !db/**
 !metrics/

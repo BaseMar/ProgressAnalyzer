@@ -14,8 +14,10 @@ coverage and explained targets for the next session.
 [User guide](docs/user-guide.md) ·
 [Documentation](docs/README.md)
 
-The public demo uses my personal training and measurement data. It is a
-single-user application with one shared dataset and no authentication.
+The public demo generates fictional training and measurement data for each
+browser session. You can edit workouts and plans, then reset the sandbox.
+It never connects to the personal database. The persistent application is
+designed for one user, without accounts or authentication.
 
 ![Training overview and next workout](screenshots/Overview.png)
 
@@ -103,6 +105,17 @@ For the exact commands and dependency update procedure, see
 
 ## Run locally
 
+Try the same temporary sandbox as the public demo:
+
+```sh
+python -m pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+No database credentials are needed. To keep your own records, configure
+`DATABASE_URL` and run **`streamlit run personal_app.py`** instead.
+See [public and personal modes](docs/public-demo.md) for their data lifetimes.
+
 With Docker and Compose v2 running, start the app and PostgreSQL together:
 
 ```sh
@@ -127,8 +140,13 @@ and application-specific assumptions are documented with the
 [calculation rules](docs/calculation-rules.md#research-and-sources) and
 [recommendation rules](docs/progression-rules.md#research-context-and-application-specific-rules).
 
-Planned work includes authentication with user-data isolation and broader
-free-form import coverage.
+The scope is a single-user training tool. Multi-user accounts and authentication
+are outside this release. Further import improvements will follow observed
+workout-note formats.
+
+Release [v1.0.0](docs/releases/v1.0.0.md) includes separate public and personal
+entry points, a generated demo, portable [backup and restore](docs/backups.md),
+versioned plans and explained recommendations.
 
 The repository uses English for documentation, interface copy, comments,
 docstrings and new contribution text. User-entered names and older TXT labels

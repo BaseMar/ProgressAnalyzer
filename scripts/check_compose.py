@@ -19,7 +19,7 @@ assert os.getuid() == 10001
 assert not any(Path(p).exists() for p in ('.env', '.streamlit/secrets.toml', '.git', '.venv', 'backups'))
 assert Path('ui/wzorzec/human_body.png').is_file()
 for page in ('Overview', 'Analysis', 'Plan', 'History'):
-    app = AppTest.from_file('streamlit_app.py', default_timeout=60)
+    app = AppTest.from_file('personal_app.py', default_timeout=60)
     app.session_state['nav_selected'] = page
     app.run()
     assert not app.exception and not app.error, page

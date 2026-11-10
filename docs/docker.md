@@ -30,7 +30,9 @@ health check reports readiness. These dependency rules follow
 ## Data ownership and subsequent starts
 
 The database lives in the project's named `demo-postgres` volume. The app image
-runs as a regular user. PostgreSQL has no host port; the dashboard is published
+runs `personal_app.py` against that persistent database. The public browser
+sandbox remains a separate entry point; see [public and personal modes](public-demo.md).
+The app runs as a regular user. PostgreSQL has no host port; the dashboard is published
 on the host's loopback interface only.
 
 The [Compose configuration](../compose.yaml) supplies its own internal database
