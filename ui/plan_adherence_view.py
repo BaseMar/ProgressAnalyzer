@@ -91,7 +91,7 @@ class PlanAdherenceView:
             help=f"{overview['in_range']} of {overview['recorded_sets']} logged sets are within the rep/time range. RIR is assessed separately.",
         )
         if not summary["due_workouts"]:
-            st.info("No elapsed planned days or earlier completed workouts in this period yet.")
+            st.info("No elapsed planned days or linked workouts recorded in this period yet.")
         else:
             chart_label("Weekly execution")
             st.plotly_chart(
@@ -100,7 +100,7 @@ class PlanAdherenceView:
                 key="weekly_plan_execution",
             )
         st.caption(
-            "Includes elapsed planned days and linked workouts performed before today, even when planned for later. Weeks follow planned dates. An unlinked workout is not proof that it was skipped."
+            "Includes elapsed planned days and linked workouts performed through today, even when planned for later. Weeks follow planned dates. An unlinked workout is not proof that it was skipped."
         )
         if any(row["training_phase"] == "deload" for row in performance):
             st.caption(

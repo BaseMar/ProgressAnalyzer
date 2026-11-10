@@ -18,6 +18,7 @@ from db.plan_adherence import (
 from db.plan_schedule import assign_scheduled_session, unassign_scheduled_session
 from db.training_plans import save_training_plan
 from metrics.plan_adherence import compute_plan_adherence
+from metrics.plan_summary import summarize_plan
 from models.plan_adherence import (
     ExerciseMatch,
     PlanAdherenceInput,
@@ -137,9 +138,10 @@ def test_unperformed_today_and_future_do_not_change_summary_denominators_or_nume
 
 
 @pytest.mark.parametrize("planned_date", [TODAY, TODAY + timedelta(days=3)])
+@pytest.mark.parametrize("recorded_date", [TODAY - timedelta(days=1), TODAY])
 @pytest.mark.parametrize("count", [0, 2, 3])
-def test_early_execution_counts_completed_recorded_day_even_before_planned_date(
-    planned_date, count
+def test_recorded_execution_counts_immediately_even_before_planned_date(
+    planned_date, recorded_date, count
 ):
     data = example(count=count)
     data = replace(
@@ -150,7 +152,7 @@ def test_early_execution_counts_completed_recorded_day_even_before_planned_date(
                 slot=replace(
                     data.workouts[0].slot,
                     scheduled_date=planned_date,
-                    performed_on=TODAY - timedelta(days=1),
+                    performed_on=recorded_date,
                 ),
             ),
         ),
@@ -162,12 +164,11 @@ def test_early_execution_counts_completed_recorded_day_even_before_planned_date(
     assert before["summary"]["linked_workouts"] == 1
     assert before["summary"]["planned_sets"] == 3
     assert before["summary"]["covered_sets"] == count
-    assert before["summary"]["on_time_workouts"] == 0
+    assert before["summary"]["on_time_workouts"] == (planned_date == recorded_date)
     assert before["workouts"][0]["eligible"]
 
 
-@pytest.mark.parametrize("performed_on", [TODAY, TODAY + timedelta(days=1)])
-def test_early_execution_does_not_enter_summary_until_recorded_day_ends(performed_on):
+def test_future_recorded_early_execution_does_not_enter_summary():
     data = example()
     data = replace(
         data,
@@ -177,7 +178,7 @@ def test_early_execution_does_not_enter_summary_until_recorded_day_ends(performe
                 slot=replace(
                     data.workouts[0].slot,
                     scheduled_date=TODAY + timedelta(days=3),
-                    performed_on=performed_on,
+                    performed_on=TODAY + timedelta(days=1),
                 ),
             ),
         ),
@@ -186,6 +187,31 @@ def test_early_execution_does_not_enter_summary_until_recorded_day_ends(performe
     assert report["summary"]["due_workouts"] == 0
     assert report["summary"]["covered_sets"] == 0
     assert not report["workouts"][0]["eligible"]
+
+
+def test_monthly_summary_and_weekly_chart_include_seventh_workout_recorded_today():
+    data = example()
+    workouts = tuple(
+        replace(
+            data.workouts[0],
+            slot=replace(
+                data.workouts[0].slot,
+                scheduled_date=TODAY - timedelta(days=offset),
+                performed_on=TODAY - timedelta(days=offset),
+                session_id=offset + 1,
+            ),
+        )
+        for offset in range(7)
+    )
+    recorded = tuple(replace(data.recorded[0], session_id=offset + 1) for offset in range(7))
+    report = compute_plan_adherence(
+        replace(data, workouts=workouts, recorded=recorded), as_of=TODAY
+    )
+    assert report["summary"]["linked_workouts"] == 7
+    assert report["summary"]["due_workouts"] == 7
+    assert report["summary"]["covered_sets"] == 21
+    overview = summarize_plan(report, [])
+    assert sum(week["complete"] for week in overview["weeks"]) == 7
 
 
 def test_timed_sets_do_not_automatically_satisfy_repetition_targets():

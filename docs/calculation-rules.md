@@ -257,8 +257,10 @@ Coverage and range checks answer different questions. A recorded set of
 5 reps may count toward coverage while falling outside a target of 6–10.
 RIR is checked separately too.
 
-Only scheduled dates **before today** enter summary ratios.
-Today's open workouts and future slots do not lower the result.
+Summary ratios include scheduled dates **before today** and linked workouts
+recorded **through today**, even if scheduled for a later date. A newly recorded
+and linked workout updates the summary immediately, including partial workouts.
+Unperformed slots scheduled for today or later do not lower the result.
 An unlinked workout means “no linked record”, not proof of a missed session.
 
 ### 7. Body measurements: what changed over time?
