@@ -380,7 +380,8 @@ def test_analytics_uses_reduced_targets_without_false_regression_or_missing_sets
     assert rows[2]["previous"]["session_id"] == 1
     assert rows[2]["reps_delta"] == 0
     report = compute_plan_adherence(deload_adjusted_input(source, {1: SETTINGS}), as_of=RETURN)
-    assert report["summary"]["planned_sets"] == report["summary"]["covered_sets"] == 6
+    assert report["summary"]["planned_sets"] == report["summary"]["covered_sets"] == 9
+    assert report["summary"]["linked_workouts"] == 3
     assert source.workouts[1].targets[0].exercise.set_count == 3
     fig = exercise_history_chart(rows)
     assert list(fig.data[0].marker.symbol) == ["circle", "diamond", "circle"]
