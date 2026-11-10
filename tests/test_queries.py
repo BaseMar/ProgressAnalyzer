@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from db.queries import insert_exercise
 
 
@@ -32,6 +34,8 @@ class _BeginContext:
 
 
 class _Engine:
+    dialect = SimpleNamespace(name="postgresql")
+
     def __init__(self):
         self.conn = _Connection()
 

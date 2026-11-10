@@ -3,7 +3,7 @@ import os
 
 import streamlit as st
 from dotenv import find_dotenv, load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 
 from db.read_cache import install_read_invalidation
@@ -43,9 +43,15 @@ def get_engine() -> Engine:
 
     try:
         engine = create_engine(database_url)
+        if engine.dialect.name == "sqlite":
+            event.listen(engine, "connect", _sqlite_foreign_keys)
         install_read_invalidation(engine)
         logger.info("Connected to database (SQLAlchemy)")
         return engine
     except Exception:
         logger.exception("Error creating SQLAlchemy engine")
         raise
+
+
+def _sqlite_foreign_keys(connection, _):
+    connection.execute("PRAGMA foreign_keys=ON")

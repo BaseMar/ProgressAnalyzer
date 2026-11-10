@@ -4,7 +4,7 @@ import logging
 from datetime import timedelta
 
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import Time, bindparam, text
 
 from db.set_classifications import classifications
 from db.set_loads import insert_set_load, set_load_storage_ready
@@ -46,7 +46,10 @@ def save_workout_session(
                     text("""
                     INSERT INTO workout_sessions (session_date, notes, start_time, end_time)
                     VALUES (:date, :notes, :start_time, :end_time) RETURNING session_id
-                """),
+                """).bindparams(
+                        bindparam("start_time", type_=Time()),
+                        bindparam("end_time", type_=Time()),
+                    ),
                     {
                         "date": day,
                         "notes": notes,

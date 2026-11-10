@@ -40,6 +40,7 @@ env.bak/
 # Local configuration, credentials and backups
 .env
 .env.*
+!.env.example
 .streamlit/*
 !.streamlit/config.toml
 backup_db.py

@@ -223,6 +223,28 @@ For behavior, read the [calculation rules](calculation-rules.md) and
 [recommendation rules](progression-rules.md). For installation and explicit
 migration commands, use [local setup](getting-started.md).
 
+## Fresh-install schema and demo data
+
+`db.schema.define_base_tables` owns the seven base catalog, workout, mapping
+and body-tracking tables for new installations. `db.bootstrap` creates those
+tables in an empty target schema, applies the existing nine migrations and
+optionally calls `db.demo_data` within the same transaction. The resulting
+twenty-table schema supports the normal readers, writers and views.
+
+Bootstrap requires an explicit URL and refuses existing tables/views. It runs
+only as a CLI operation, outside application startup. Existing installations
+continue through `db.migrate`; their applied revisions are unchanged.
+Demo values come from constants and offline exercise mappings, with dates
+relative to a supplied reference date or today. No personal dataset is read.
+
+SQLite is the local demo backend. Application connections enable foreign keys,
+workout time parameters use SQLAlchemy's time type, and catalog writes use
+PostgreSQL's table lock only on PostgreSQL. The transaction's existing read-cache
+and input-cache invalidation rules still apply to both backends. Setup commands
+and target selection live in [local setup](getting-started.md).
+SQLite transaction and foreign-key handling follow the
+[SQLAlchemy dialect guidance](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#transactions-with-sqlite-and-the-sqlite3-driver).
+
 ## Inspect the module graph
 
 ```powershell

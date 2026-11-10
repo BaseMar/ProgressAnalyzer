@@ -84,8 +84,8 @@ must pass afterward.
 
 The [Tests workflow](../.github/workflows/tests.yml) runs these checks on Python
 3.11 and 3.12. Each matrix job receives its own disposable PostgreSQL 16 service
-and executes the six database integration cases, in addition to the regular
-unit, SQLite and Streamlit tests. Local runs skip those six cases unless
+and executes the database integration cases, in addition to the regular
+unit, SQLite and Streamlit tests. Local runs skip PostgreSQL cases unless
 `TEST_POSTGRES_URL` is configured; they never use the application's database URL
 as a test-database fallback. pip caching keys include both dependency manifests.
 
@@ -97,8 +97,10 @@ $env:TEST_POSTGRES_URL = "postgresql+psycopg2://user:password@localhost:5432/pro
 python -m pytest
 ```
 
-Each case creates a unique schema, applies the migrations, uses synthetic logs
-and rolls back the schema afterward. Tests do not modify the application dataset.
+Each case creates a unique schema, applies the migrations and uses synthetic logs.
+Existing progression cases roll back their schema; bootstrap acceptance cases
+also exercise committed transactions and remove their dedicated schema afterward.
+Both assert cleanup. Tests do not use or modify the application dataset.
 
 The [dev container](../.devcontainer/devcontainer.json) uses the official
 [Python 3.12 Bookworm image](https://github.com/devcontainers/images/tree/main/src/python),

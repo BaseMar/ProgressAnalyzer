@@ -1,4 +1,4 @@
-# Local setup and database migrations
+# Local setup, demo data and database migrations
 
 After cloning, run Python commands from the repository root. The activation
 example uses Windows PowerShell; Python module commands are the same on other platforms.
@@ -8,13 +8,14 @@ isolation. See [architecture](architecture.md#data-model) for storage ownership.
 ## Requirements
 
 - Python 3.11 or 3.12, both tested in CI.
-- An existing PostgreSQL-compatible database with the expected workout and
-  body-tracking tables.
+- SQLite, included with standard Python installations, for the local demo.
+- A running PostgreSQL server and an empty database for the PostgreSQL alternative.
 - Dependencies listed in `requirements.txt`.
 
-The repository includes additive migrations, **not a complete bootstrap of the
-original schema or a sample dataset**. Cloning the repository alone does not
-create a ready-to-use database. For a quick look, use the [live demo](https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app).
+The initializer creates the base tables, applies all additive migrations and
+optionally generates fictional workout and measurement records. It uses the
+same schema and application readers as a normal installation. For a hosted
+preview, use the [live demo](https://progressanalyzer-jysznkmwcjnejwamgmlfqd.streamlit.app).
 
 ## Set up locally
 
@@ -29,26 +30,73 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Create `.env` in the project root and supply your database connection.
-The file is ignored by Git. Use the credentials for the database you intend to run.
+On Linux/macOS, activate with `source .venv/bin/activate` instead.
 
-```env
-DATABASE_URL=postgresql+psycopg2://user:password@host:5432/database
+## Run the local demo
+
+These PowerShell commands create a new local file and select it for the app:
+
+```powershell
+python -m db.bootstrap --url sqlite:///demo.sqlite3 --demo
+$env:DATABASE_URL = "sqlite:///demo.sqlite3"
+streamlit run streamlit_app.py
 ```
 
-Preview and apply the additive migrations, then start the app:
+For Bash, use `export DATABASE_URL=sqlite:///demo.sqlite3` before starting
+Streamlit. No PostgreSQL server, account or Docker installation is needed.
+
+The demo contains nine catalog exercises with muscle mappings, a three-day
+weekly plan, about eight weeks of linked workouts and weekly body measurements.
+It includes mixed loads, explicit bodyweight/assistance, timed sets, warm-ups,
+missing RIR, a moved workout, an approved replacement and unlinked practice.
+Dates are relative to today, keeping the history useful for the upcoming-workout
+preview. Every value is generated from constants; the initializer does not read
+personal training data, backups, the network or the existing application URL.
+These fictional values illustrate software behavior rather than prescribe a routine.
+
+Initialize a file **once**. If the target already contains tables or views,
+bootstrap exits without changing records. To reopen the demo, run only the
+environment selection and Streamlit command. Choose another filename for a
+fresh dataset. Omit `--demo` for an empty application schema, or use
+`--as-of YYYY-MM-DD` for a reproducible demonstration date.
+
+The URL is required explicitly; bootstrap does not load `.env` or Streamlit
+secrets. SQLite schema creation and demo seeding share one transaction, including
+rollback of tables if initialization fails. SQLite must support `RETURNING`
+(version 3.35 or newer, included in the tested Python installations).
+
+To persist the app connection between terminal sessions, copy
+[.env.example](../.env.example) to `.env` in a fresh clone, or set `DATABASE_URL`
+in your existing local configuration. `.env` and generated `.sqlite3` files are
+ignored by Git. A shell environment variable takes priority over the local file.
+
+## PostgreSQL alternative
+
+Create an empty database on an installed PostgreSQL server, for example with
+your PostgreSQL administration tool or `CREATE DATABASE progress_analyzer_demo;`.
+The initializer creates the application schema inside that database; server
+installation and database-role provisioning are separate from this command.
+
+```powershell
+python -m db.bootstrap --url "postgresql+psycopg2://user:password@localhost:5432/progress_analyzer_demo" --demo
+$env:DATABASE_URL = "postgresql+psycopg2://user:password@localhost:5432/progress_analyzer_demo"
+streamlit run streamlit_app.py
+```
+
+PostgreSQL initialization is transactional and uses the migration lock. The
+target schema must be empty. Existing installations keep their tables and
+recorded values; use the migration runner to upgrade them:
 
 ```powershell
 python -m db.migrate
 python -m db.migrate --apply
-streamlit run streamlit_app.py
 ```
 
 Direct runtime dependencies, including Streamlit, are pinned in `requirements.txt`
 so local installs and Community Cloud use the same renderer.
 Reinstall requirements after dependency changes. Development tools are installed
 separately through `requirements-dev.txt`, which includes the runtime manifest.
-A missing connection or missing base tables prevents startup data loading.
+A missing connection or an uninitialized database prevents startup data loading.
 
 The connection reader checks the environment (including local `.env`) first,
 then the `DATABASE_URL` key in Streamlit secrets. Both
@@ -82,8 +130,9 @@ requested, never during app startup.
 <details>
 <summary>Migration and data-handling details</summary>
 
-The migrations require the original catalog/workout tables, including
-`exercises`, `workout_sessions`, `workout_exercises` and `workout_sets`.
+For fresh databases, `db.bootstrap` creates the catalog/workout/body tables
+before applying these migrations. For existing databases, the migration runner
+uses their original base tables.
 They preserve historical workout values; migration 006 does not reinterpret
 legacy weights. Existing plans do not receive an assumed block configuration.
 
@@ -96,7 +145,8 @@ invalid or future measurements are skipped without changing them.
 Source data may be cached for up to five minutes; imports and corrections
 invalidate the cache.
 
-To seed exercise–muscle mappings in a configured database:
+The demo already includes muscle mappings. The following administrative command
+is for an existing PostgreSQL catalog containing its predefined exercises:
 
 ```powershell
 python -m db.seed_exercise_muscle_map
@@ -107,7 +157,7 @@ python -m db.seed_exercise_muscle_map
 ## Synthetic verification without an application database
 
 After installing the development dependencies, `python -m pytest` runs the
-unit, SQLite and Streamlit checks without `DATABASE_URL`. Six PostgreSQL cases
+unit, SQLite and Streamlit checks without `DATABASE_URL`. PostgreSQL cases
 need the separate `TEST_POSTGRES_URL` described in the
 [development tools guide](development-tools.md#local-and-ci-workflow).
 
@@ -117,8 +167,9 @@ The synthetic benchmark creates its own temporary SQLite fixture:
 python scripts/benchmark_project.py --output .cache/baseline/current.json
 ```
 
-This fixture is for tests and measurements; it does not bootstrap a deployable
-PostgreSQL database. The optional `--live` benchmark reads the configured
+This frozen fixture is separate from the deployable demo generated by
+`db.bootstrap`; its reference dates and values remain unchanged. The optional
+`--live` benchmark reads the configured
 application database under read-only and integrity guards. See the
 [measurement method](archive/performance-baseline.md#measurement-method) before
 comparing results with historical captures.

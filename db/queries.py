@@ -165,7 +165,8 @@ def insert_exercise(
     )
     try:
         with engine.begin() as conn:
-            conn.execute(text("LOCK TABLE exercises IN EXCLUSIVE MODE"))
+            if engine.dialect.name == "postgresql":
+                conn.execute(text("LOCK TABLE exercises IN EXCLUSIVE MODE"))
             exercise_id = conn.execute(
                 exercise_query,
                 {"name": name, "category": category, "body_part": body_part},
@@ -208,7 +209,7 @@ def upsert_exercise_muscle_targets(
             role = EXCLUDED.role,
             set_factor = EXCLUDED.set_factor,
             source_note = EXCLUDED.source_note,
-            updated_at = now()
+            updated_at = CURRENT_TIMESTAMP
     """
     )
     conn.execute(

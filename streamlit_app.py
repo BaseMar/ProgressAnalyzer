@@ -70,7 +70,7 @@ def main() -> None:
         ).render()
 
     st.markdown(
-        '<div class="app-footer">All data shown are my personal workout and body measurements, used solely for the purposes of this project.</div>',
+        '<div class="app-footer">Workout Progress Analyzer · Recorded results and explained training targets.</div>',
         unsafe_allow_html=True,
     )
 
