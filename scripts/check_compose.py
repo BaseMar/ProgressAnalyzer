@@ -23,6 +23,10 @@ for page in ('Overview', 'Analysis', 'Plan', 'History'):
     app.session_state['nav_selected'] = page
     app.run()
     assert not app.exception and not app.error, page
+    if page == 'Analysis':
+        app.selectbox(key='analysis_question').select('Muscle distribution').run()
+        assert not app.exception and not app.error, 'Muscle distribution'
+        assert app.get('iframe')[0].proto.alt == 'Muscle allocation compared with the training plan'
 """
 
 WRITE_RECORD = """
@@ -78,7 +82,17 @@ def main():
         )
 
     def execute(code):
-        result = compose("exec", "-T", "app", "python", "-", code=code, capture=True)
+        result = compose(
+            "exec",
+            "-T",
+            "app",
+            "python",
+            "-W",
+            "error::DeprecationWarning",
+            "-",
+            code=code,
+            capture=True,
+        )
         return json.loads(result.stdout.strip().splitlines()[-1])
 
     def healthy():

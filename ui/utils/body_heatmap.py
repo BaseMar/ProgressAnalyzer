@@ -8,7 +8,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 from PIL import Image, ImageDraw
 
 from ui.utils.ui_helpers import ACCENT, MUTED, SURFACE, TEXT, chart_label
@@ -295,7 +294,7 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
     </div>
     """
 
-    components.html(html, height=620, scrolling=False)
+    st.iframe(html, height="content", alt="Muscle allocation compared with the training plan")
 
 
 def _overlay_status_signature(heatmap_df: pd.DataFrame) -> tuple[tuple[str, str], ...]:

@@ -3,7 +3,7 @@
 import os
 import subprocess
 import sys
-from datetime import date, time
+from datetime import date, datetime, time
 from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
@@ -96,6 +96,31 @@ def test_fresh_schema_supports_real_catalog_and_workout_writes(fresh_engine):
     assert len(manager.load_body_data()["measurements"]) == 1
     with fresh_engine.connect() as connection:
         assert pending_migrations(connection) == []
+
+
+def test_body_tracking_preserves_dates_and_time_of_day(fresh_engine):
+    bootstrap_database(fresh_engine)
+    manager = DataManager(engine=fresh_engine)
+    recorded_at = datetime(2026, 11, 10, 17, 23, 45, 123456)
+    for stamp in (AS_OF, recorded_at):
+        assert manager.add_body_measurements(
+            dict(date=stamp, chest=100, waist=80, abdomen=85, hips=95, thigh=55, calf=35, biceps=32)
+        )
+        assert manager.add_body_composition(
+            dict(
+                date=stamp,
+                weight=80,
+                muscle_mass=35,
+                fat_mass=12,
+                water_mass=45,
+                bf_percent=15,
+                method="Synthetic test",
+            )
+        )
+    body = manager.load_body_data()
+    for frame in body.values():
+        stamps = sorted(datetime.fromisoformat(str(value)) for value in frame.measurement_date)
+        assert stamps == [datetime.combine(AS_OF, time()), recorded_at]
 
 
 def test_generated_demo_populates_every_route_and_preserves_load_meanings(fresh_engine):

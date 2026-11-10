@@ -385,7 +385,10 @@ def test_history_badges_show_time_body_added_weight_and_support():
     assert "total unknown" in _set_pills(frame)
 
 
-def test_manual_entry_is_reachable_and_returns_to_saved_day_in_history(entry_data):
+def test_manual_entry_is_reachable_and_returns_to_saved_day_in_history(
+    entry_data, caplog, monkeypatch
+):
+    monkeypatch.setattr("streamlit.elements.lib.policies._shown_default_value_warning", False)
     app = start_entry(
         entry_data,
         """
@@ -409,3 +412,4 @@ HistoryView({}, manager.load_sets_ui(), data_manager=manager).render()
     assert any("Sessions on 15 Feb 2026" in item.value for item in app.markdown)
     assert any("80 kg total" in item.value for item in app.markdown)
     assert any("Saved Dead hang" in item.value for item in app.success)
+    assert "created with a default value" not in caplog.text

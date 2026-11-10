@@ -209,12 +209,11 @@ class HistoryView:
                 )
                 choices = [str(value) for value in months]
                 saved = st.session_state.get("history_calendar_month")
-                if "history_month" not in st.session_state and saved in choices:
-                    default = saved
+                if st.session_state.get("history_month") not in choices:
+                    st.session_state["history_month"] = saved if saved in choices else default
                 month_label = st.selectbox(
                     "History month",
                     choices,
-                    index=choices.index(default),
                     key="history_month",
                     format_func=lambda value: date.fromisoformat(f"{value}-01").strftime("%B %Y"),
                     label_visibility="collapsed",

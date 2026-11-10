@@ -104,3 +104,23 @@ view.render()
     ).run()
     assert not app.exception
     assert app.info[0].value == "No workout history yet."
+
+
+def test_calendar_honors_saved_month_without_widget_default_warning(caplog, monkeypatch):
+    monkeypatch.setattr("streamlit.elements.lib.policies._shown_default_value_warning", False)
+    app = AppTest.from_string(APP, default_timeout=30)
+    app.session_state["history_month"] = "2024-02"
+    app.run()
+    assert not app.exception
+    assert app.selectbox(key="history_month").value == "2024-02"
+    assert session_count(app) == 2
+    assert "created with a default value" not in caplog.text
+
+
+def test_calendar_resets_month_outside_available_history():
+    app = AppTest.from_string(APP, default_timeout=30)
+    app.session_state["history_month"] = "2020-01"
+    app.run()
+    assert not app.exception
+    assert app.selectbox(key="history_month").value == "2024-04"
+    assert session_count(app) == 1

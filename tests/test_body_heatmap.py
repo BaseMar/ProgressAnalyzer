@@ -1,4 +1,5 @@
 import pandas as pd
+from streamlit.testing.v1 import AppTest
 
 from metrics.muscle_distribution import build_weekly_distribution, status_from_plan
 from ui.utils.body_heatmap import (
@@ -95,3 +96,28 @@ def test_build_heatmap_df_reports_target_percentage():
     assert row["Sets / Week"] == 7.0
     assert row["Target %"] == 35.0
     assert row["Status"] == "under"
+
+
+def test_heatmap_renders_accessible_iframe_with_escaped_labels():
+    app = AppTest.from_string(
+        """
+import pandas as pd
+from metrics.muscle_distribution import build_weekly_distribution
+from ui.utils.body_heatmap import render_body_heatmap
+frame = pd.DataFrame([
+    {"Body Part": "Back", "Total_Sets": 12.0},
+    {"Body Part": "<script>alert(1)</script>", "Total_Sets": 1.0},
+])
+heatmap = build_weekly_distribution(frame, period_weeks=1, weekly_targets={"Back": 12})
+render_body_heatmap(heatmap, period_weeks=1, period_label="This week")
+""",
+        default_timeout=30,
+    ).run()
+    assert not app.exception
+    iframe = app.get("iframe")[0].proto
+    assert iframe.alt == "Muscle allocation compared with the training plan"
+    assert 'class="body-image"' in iframe.srcdoc
+    assert 'class="body-overlay"' in iframe.srcdoc
+    assert "data:image/png;base64," in iframe.srcdoc
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in iframe.srcdoc.lower()
+    assert "<script>alert(1)</script>" not in iframe.srcdoc.lower()

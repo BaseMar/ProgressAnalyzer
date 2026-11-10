@@ -238,12 +238,21 @@ Demo values come from constants and offline exercise mappings, with dates
 relative to a supplied reference date or today. No personal dataset is read.
 
 SQLite is the local demo backend. Application connections enable foreign keys,
-workout time parameters use SQLAlchemy's time type, and catalog writes use
+workout date/time parameters and body-tracking timestamps use explicit SQLAlchemy
+types, and catalog writes use
 PostgreSQL's table lock only on PostgreSQL. The transaction's existing read-cache
 and input-cache invalidation rules still apply to both backends. Setup commands
 and target selection live in [local setup](getting-started.md).
 SQLite transaction and foreign-key handling follow the
 [SQLAlchemy dialect guidance](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#transactions-with-sqlite-and-the-sqlite3-driver).
+Typed parameters avoid Python's deprecated default SQLite date adapters and
+retain the time of day and microseconds in body measurements. No global adapter
+registration or stored-record conversion is required.
+
+The muscle map uses Streamlit's native `st.iframe` with an accessible name and
+content-based height. Its responsive HTML keeps the body overlay and status
+panel visible when the layout stacks on a narrow screen. Dynamic muscle names
+are HTML-escaped before embedding.
 
 ## Container startup
 

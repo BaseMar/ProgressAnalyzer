@@ -1,7 +1,7 @@
 import logging
 
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import DateTime, bindparam, text
 
 from db.exercise_muscle_resolver import MuscleTarget, resolve_exercise
 from db.set_loads import load_sql_parts
@@ -239,7 +239,7 @@ def insert_body_measurements(engine, data):
         INSERT INTO body_measurements (measurement_date, chest, waist, abdomen, hips, thigh, calf, biceps)
         VALUES (:date, :chest, :waist, :abdomen, :hips, :thigh, :calf, :biceps)
     """
-    )
+    ).bindparams(bindparam("date", type_=DateTime()))
     with engine.begin() as conn:
         conn.execute(query, data)
 
@@ -256,7 +256,7 @@ def insert_body_composition(engine, data):
         (measurement_date, weight, muscle_mass, fat_mass, water_mass, body_fat_percentage, method)
         VALUES (:date, :weight, :muscle_mass, :fat_mass, :water_mass, :bf_percent, :method)
     """
-    )
+    ).bindparams(bindparam("date", type_=DateTime()))
     with engine.begin() as conn:
         conn.execute(query, data)
 

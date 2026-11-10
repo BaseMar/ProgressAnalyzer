@@ -59,6 +59,10 @@ and history-selection behavior; use the regression checks when changing code.
 checkouts. `.ruff_cache/` is ignored. The existing `pytest.ini` continues to own
 pytest settings.
 
+Deprecation warnings fail tests through `pytest.ini`; they are not suppressed.
+This applies to both supported Python versions. Streamlit calendar tests also
+check the logged warning about conflicting widget defaults after a workout save.
+
 ## Local and CI workflow
 
 From an activated Python 3.11 or 3.12 virtual environment:

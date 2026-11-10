@@ -4,7 +4,7 @@ import logging
 from datetime import timedelta
 
 import pandas as pd
-from sqlalchemy import Time, bindparam, text
+from sqlalchemy import Date, Time, bindparam, text
 
 from db.set_classifications import classifications
 from db.set_loads import insert_set_load, set_load_storage_ready
@@ -36,7 +36,7 @@ def save_workout_session(
                 text(
                     "SELECT session_id FROM workout_sessions "
                     "WHERE session_date >= :day AND session_date < :next_day ORDER BY session_id DESC"
-                ),
+                ).bindparams(bindparam("day", type_=Date()), bindparam("next_day", type_=Date())),
                 {"day": day, "next_day": day + timedelta(days=1)},
             ).first()
             if row:
@@ -47,6 +47,7 @@ def save_workout_session(
                     INSERT INTO workout_sessions (session_date, notes, start_time, end_time)
                     VALUES (:date, :notes, :start_time, :end_time) RETURNING session_id
                 """).bindparams(
+                        bindparam("date", type_=Date()),
                         bindparam("start_time", type_=Time()),
                         bindparam("end_time", type_=Time()),
                     ),
