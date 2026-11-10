@@ -29,7 +29,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.schema import CreateSchema
 
-from db.migrate import migrate
+from db.migrate import MIGRATIONS, migrate
 from db.plan_adherence import (
     actual_exercises,
     actual_sets,
@@ -129,7 +129,7 @@ def postgres():
                 ],
             )
             adapter = TransactionEngine(connection)
-            assert len(migrate(adapter, apply=True)) == 9
+            assert len(migrate(adapter, apply=True)) == len(MIGRATIONS)
             yield adapter
         finally:
             transaction.rollback()

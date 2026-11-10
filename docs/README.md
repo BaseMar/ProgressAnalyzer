@@ -12,6 +12,7 @@ owner; summaries link to it instead of copying detailed rules or commands.
 | Run the app and PostgreSQL together with one command | [Docker Compose demo](docker.md) |
 | Understand the public sandbox and persistent personal app | [Public and personal modes](public-demo.md) |
 | Create a backup and restore it into a separate database | [Backup and restore](backups.md) |
+| Restrict Supabase Data API access independently of the website password | [Database access security](database-security.md) |
 | Create plans, record/import workouts and use the dashboard | [User guide](user-guide.md) |
 | Understand load, volume, set interpretation, comparisons and coverage | [Calculation rules](calculation-rules.md) |
 | Understand starting loads, progression, deloads and bodyweight limits | [Recommendation rules](progression-rules.md) |

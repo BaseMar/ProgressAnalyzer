@@ -133,6 +133,7 @@ before starting Streamlit; direct installations use the explicit commands below.
 | 007 | Stable plan-position identities across revisions, without changing recorded workouts. |
 | 008 | Saved manual starting loads per exercise and prescription, separate from recorded training history. |
 | 009 | User-confirmed meanings of legacy bodyweight history, scoped to the exact exercise. |
+| 010 | RLS and Data API privilege restrictions for application tables, sequences and future table defaults. |
 
 `python -m db.migrate` previews pending revisions without writing.
 `python -m db.migrate --apply` applies them and records successful revisions.

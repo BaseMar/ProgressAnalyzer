@@ -250,7 +250,7 @@ migration commands, use [local setup](getting-started.md).
 
 `db.schema.define_base_tables` owns the seven base catalog, workout, mapping
 and body-tracking tables for new installations. `db.bootstrap` creates those
-tables in an empty target schema, applies the existing nine migrations and
+tables in an empty target schema, applies all registered migrations and
 optionally calls `db.demo_data` within the same transaction. The resulting
 twenty-table schema supports the normal readers, writers and views.
 
@@ -270,6 +270,14 @@ and input-cache invalidation rules still apply to both backends. Setup commands
 and target selection live in [local setup](getting-started.md).
 SQLite transaction and foreign-key handling follow the
 [SQLAlchemy dialect guidance](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#transactions-with-sqlite-and-the-sqlite3-driver).
+
+Migration 010 enables RLS on application tables and revokes public/Data API
+privileges on those tables and their owned sequences. It also removes automatic
+table/sequence grants for the migration role in the current schema. Later
+migration runs recheck these controls. The backend connects as the table owner
+or a role allowed to bypass RLS; browser/API roles cannot use that connection.
+SQLite records the revision without executing PostgreSQL security DDL.
+See [database access security](database-security.md) for Supabase settings and checks.
 Typed parameters avoid Python's deprecated default SQLite date adapters and
 retain the time of day and microseconds in body measurements. No global adapter
 registration or stored-record conversion is required.

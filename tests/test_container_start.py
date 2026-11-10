@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import func, inspect, select, text
 
 from db.container_start import ensure_database
-from db.migrate import ledger
+from db.migrate import MIGRATIONS, ledger
 from db.migrations import v009_exercise_history_load_settings
 from db.schema import define_base_tables
 from test_bootstrap import fresh_engine as fresh_engine
@@ -12,7 +12,7 @@ from test_bootstrap import fresh_engine as fresh_engine
 
 def test_container_initializes_demo_once_and_preserves_modified_records(fresh_engine):
     first = ensure_database(fresh_engine)
-    assert first["created"] and len(first["migrations"]) == 9
+    assert first["created"] and len(first["migrations"]) == len(MIGRATIONS)
     with fresh_engine.begin() as connection:
         connection.execute(
             text("UPDATE workout_sessions SET notes=:note"), {"note": "Keep my edits after restart"}

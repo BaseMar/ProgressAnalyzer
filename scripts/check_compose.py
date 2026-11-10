@@ -55,7 +55,8 @@ with engine.connect() as connection:
         counts[table] = len(records)
         fingerprints[table] = hashlib.sha256(json.dumps(records).encode()).hexdigest()
 assert counts['exercises'] == 9 and counts['training_plans'] == 1
-assert counts['schema_migrations'] == 9 and counts['workout_sets'] >= 300
+from db.migrate import MIGRATIONS
+assert counts['schema_migrations'] == len(MIGRATIONS) and counts['workout_sets'] >= 300
 print(json.dumps({'counts': counts, 'fingerprints': fingerprints}))
 """
 

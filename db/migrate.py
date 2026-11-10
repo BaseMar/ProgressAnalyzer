@@ -14,6 +14,7 @@ from db.migrations import (
     v007_recommendation_lineage,
     v008_starting_loads,
     v009_exercise_history_load_settings,
+    v010_application_access_security,
 )
 
 MIGRATIONS = (
@@ -26,6 +27,7 @@ MIGRATIONS = (
     v007_recommendation_lineage,
     v008_starting_loads,
     v009_exercise_history_load_settings,
+    v010_application_access_security,
 )
 metadata = MetaData()
 ledger = Table(
@@ -63,6 +65,9 @@ def migrate(engine, *, apply: bool = False) -> list[str]:
         for migration in pending:
             migration.apply(connection)
             connection.execute(ledger.insert().values(revision=migration.REVISION))
+        if v010_application_access_security not in pending:
+            # Later migrations must not reopen the Data API through new objects.
+            v010_application_access_security.apply(connection)
         return [migration.REVISION for migration in pending]
 
 

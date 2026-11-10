@@ -65,6 +65,10 @@ The CLI reports failures without printing subprocess stderr or connection
 credentials. Existing SQL dumps from the old local `backup_db.py` are retained;
 this command accepts native custom archives, not those older plain SQL files.
 
+After restoring an older snapshot, select the recovered database as the app's
+`DATABASE_URL` and apply pending migrations before exposing it. In particular,
+migration 010 closes the public Data API access that older backups may retain.
+
 ## Recovery check and routine
 
 Keep personal backups outside Git, periodically copy them to another device
