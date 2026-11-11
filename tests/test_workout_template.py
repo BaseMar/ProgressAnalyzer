@@ -62,8 +62,9 @@ def test_untouched_template_cannot_import_suggested_results(parser):
     assert "Date: 2026-11-09" in text
     assert "1. Machine Chest Press" in text
     assert "Starting loads" in text
-    assert "Result: __x80 / __x70 / __x70" in text
-    assert "RIR: __ / __ / __" in text
+    assert "Time:\n" in text
+    assert "Result:\nRIR:\n" in text
+    assert "__" not in text
     assert parser._parse_txt(text) is None
 
 
@@ -78,8 +79,8 @@ def test_completed_template_imports_actual_values_and_preserves_unknown_rir_posi
             SetGoal(70.0, 10, 12, "reps"),
         ]
     )
-    text = text.replace("Result: __x80 / __x70 / __x70", "Result: 8x75 / 11x65 / 10x65")
-    text = text.replace("RIR: __ / __ / __", "RIR: __ / 2 / 0")
+    text = text.replace("Result:", "Result: 8x75 / 11x65 / 10x65")
+    text = text.replace("\nRIR:\n", "\nRIR: __ / 2 / 0\n")
     text = text.replace("Target:", target_label).replace("Result:", result_label)
     assert parser._parse_txt(text) == [
         {
@@ -103,8 +104,8 @@ def test_partial_note_keeps_rir_assigned_to_its_actual_set(parser, result, resul
             SetGoal(70.0, 10, 12, "reps"),
         ]
     )
-    text = text.replace("Result: __x80 / __x70 / __x70", "Result: " + result)
-    text = text.replace("RIR: __ / __ / __", "RIR: __ / 2 / 0")
+    text = text.replace("Result:", "Result: " + result)
+    text = text.replace("\nRIR:\n", "\nRIR: __ / 2 / 0\n")
     text = text.replace("Result:", result_label)
     assert parser._parse_txt(text)[0]["sets"] == [{"reps": 11, "weight": 65.0, "rir": 2}]
 
@@ -113,24 +114,24 @@ def test_missing_recommendation_keeps_exercise_and_unknown_weight(parser):
     text = note(reason="no_history", actual_id=1)
     assert "1. Bench Press" in text
     assert "load to be selected" in text
-    assert "Result: __x__ / __x__ / __x__" in text
+    assert "Result:\nRIR:\n" in text
     assert parser._parse_txt(text) is None
 
 
 def test_deload_template_uses_reduced_goal_count_and_target_reserve(parser):
     text = note([SetGoal(52.5, 6, 6, "reps")] * 2, reason="scheduled_deload", rir=4)
     assert "2 × 6 reps" in text and "RIR ≥ 4" in text
-    assert "Result: __x52.5 / __x52.5" in text
-    assert "\nRIR: __ / __\n" in text
+    assert "Result:\n" in text
+    assert "\nRIR:\n" in text
     assert parser._parse_txt(text) is None
 
 
 def test_timed_template_keeps_duration_and_recorded_load_on_import(parser):
     text = note([SetGoal(5.0, 30, 60, "seconds")] * 3, unit="seconds", rir=None)
-    assert "Result: __s @ 5 kg / __s @ 5 kg / __s @ 5 kg" in text
+    assert "Result:\nRIR:\n" in text
     assert parser._parse_txt(text) is None
     text = text.replace(
-        "Result: __s @ 5 kg / __s @ 5 kg / __s @ 5 kg",
+        "Result:",
         "Result: 45s @ 5 kg / 40s @ 5 kg / 35s @ 5 kg",
     )
     assert parser._parse_txt(text)[0]["sets"] == [
@@ -154,10 +155,11 @@ def test_copy_preview_tracks_selected_alternative_and_weight_step(schedule_data)
     app = start_app(engine, plan)
     assert len(app.code) == 1
     assert "1. Barbell Bench Press" in app.code[0].value
-    assert "Result: __x__ / __x__ / __x__" in app.code[0].value
+    assert "Result:\nRIR:" in app.code[0].value
     next(item for item in app.selectbox if item.key.endswith("_exercise")).select(2).run()
     next(item for item in app.number_input if "Weight step" in item.label).set_value(5.0).run()
     assert not app.exception
     assert "1. Machine Chest Press" in app.code[0].value
-    assert "Result: __x65 / __x65 / __x65" in app.code[0].value
+    assert "65 kg" in app.code[0].value
+    assert "Result:\nRIR:" in app.code[0].value
     assert "1. Barbell Bench Press" not in app.code[0].value

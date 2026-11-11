@@ -133,7 +133,7 @@ def test_next_normal_goal_and_evidence_render_without_changing_logged_data(sched
     assert app.selectbox(key=f"next_workout_{plan.plan_id}").value.endswith(str(NEXT))
     assert "62.5 kg · 3 × 6 reps · RIR ≥ 2" in exercise_html(app)
     assert "Increase load" in exercise_html(app)
-    assert any("session #3" in item.value for item in app.caption)
+    assert "session #3" in exercise_html(app)
     assert not app.dataframe
     with engine.connect() as connection:
         assert connection.execute(select(actual_sets)).mappings().all() == before

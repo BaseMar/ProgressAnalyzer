@@ -16,12 +16,12 @@ class WorkoutPreview:
 
 @dataclass(frozen=True)
 class InsightPolicy:
-    max_annotations: int = 3
+    max_annotations: int = 5
     max_gap_days: int = 21
 
     def __post_init__(self):
-        if type(self.max_annotations) is not int or not 1 <= self.max_annotations <= 3:
-            raise ValueError("Show between one and three annotations")
+        if type(self.max_annotations) is not int or not 1 <= self.max_annotations <= 5:
+            raise ValueError("Show between one and five annotations")
         if type(self.max_gap_days) is not int or self.max_gap_days < 1:
             raise ValueError("History gap must be a positive number of days")
 

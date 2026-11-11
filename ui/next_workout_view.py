@@ -7,7 +7,6 @@ from html import escape
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
-from metrics.overview_summary import workout_focus
 from metrics.recommendation_history import approved_alternatives
 from metrics.utils.recommendation_text import goal_summary
 from metrics.workout_template import workout_template
@@ -85,11 +84,11 @@ class NextWorkoutView:
     def _name(self, exercise_id):
         return self.names.get(exercise_id, f"Exercise #{exercise_id}")
 
-    def render(self, plan_id, versions, *, context=None, history=None, as_of=None, compact=False):
+    def render(self, plan_id, versions, *, context=None, history=None, as_of=None):
         as_of = as_of or date.today()
         section_header("Next workout")
         try:
-            return self._render(plan_id, versions, history, as_of, context=context, compact=compact)
+            return self._render(plan_id, versions, history, as_of, context=context)
         except SQLAlchemyError:
             logger.exception("Unable to load next-workout recommendations")
             st.error(
@@ -101,7 +100,7 @@ class NextWorkoutView:
                 "The plan or workout assignment changed. Refresh this view to select the next workout."
             )
 
-    def _render(self, plan_id, versions, history, as_of, *, context=None, compact=False):
+    def _render(self, plan_id, versions, history, as_of, *, context=None):
         if not versions:
             st.info("Save a Training Plan to see the next workout.")
             return
@@ -210,67 +209,12 @@ class NextWorkoutView:
                     "Paste into Samsung Notes. After training, enter your actual results and RIR."
                 )
                 st.code(template, language=None, wrap_lines=True)
-            if compact:
-                focus = workout_focus(result)
-                st.caption(
-                    f"{focus.available} of {focus.total} exercise targets available. Full workout includes every planned exercise."
-                )
-                if focus.gaps:
-                    st.caption(
-                        "To complete targets: "
-                        + "; ".join(
-                            f"{gap.count} exercise(s) — {recommendation_note(gap.example)}"
-                            for gap in focus.gaps[:2]
-                        )
-                        + (
-                            " Further setup details are in Full workout."
-                            if len(focus.gaps) > 2
-                            else ""
-                        )
-                    )
-                if focus.visible:
-                    st.markdown(
-                        '<div class="recommendation-list">'
-                        + "".join(exercise_card(item) for item in focus.visible)
-                        + "</div>",
-                        unsafe_allow_html=True,
-                    )
-                with st.expander(f"Full workout · {focus.total} exercises"):
-                    st.markdown(
-                        '<div class="recommendation-list">'
-                        + "".join(exercise_card(item) for item in result.exercises)
-                        + "</div>",
-                        unsafe_allow_html=True,
-                    )
-            else:
-                st.markdown(
-                    '<div class="recommendation-list">'
-                    + "".join(exercise_card(item) for item in result.exercises)
-                    + "</div>",
-                    unsafe_allow_html=True,
-                )
-            with st.expander("Why these targets?"):
-                st.caption(
-                    "RIR means repetitions in reserve. Working sets are inferred automatically from RIR and sequence; explicit corrections take priority. Deload and timed work use their own context. Targets are rule-based suggestions."
-                )
-                for item in result.exercises:
-                    st.markdown(f"**{escape(self._name(item.actual_exercise_id))}**")
-                    st.caption(item.reason)
-                    if item.evidence_session_ids:
-                        evidence = ", ".join(
-                            f"{day:%d %b %Y} (session #{sid})"
-                            for sid, day in zip(item.evidence_session_ids, item.evidence_dates)
-                        )
-                        st.caption(f"Based on: {evidence}")
-                st.caption(
-                    "Normal training: add one total rep. One full ceiling result with enough reserve permits equalizing lighter sets first, then raising the common load. Automatic progression needs history within 21 days; older records can supply starting loads. Load increase limit: 10% per set."
-                )
-                st.caption(
-                    "Deload: retain sets and recorded repetitions, reduce each load by 30–40% in equipment steps and aim for RIR 3–4. After deload, resume ordinary loads without an immediate increase."
-                )
-                for item in result.exercises:
-                    for notice in item.notices:
-                        st.caption(notice)
+            st.markdown(
+                '<div class="recommendation-list">'
+                + "".join(exercise_card(item) for item in result.exercises)
+                + "</div>",
+                unsafe_allow_html=True,
+            )
             return WorkoutPreview(upcoming, result)
 
     @staticmethod

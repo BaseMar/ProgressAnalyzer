@@ -104,10 +104,10 @@ def test_overview_has_conclusion_and_targets_without_kpis_tables_or_rankings(sch
     assert "62.5 kg · 3 × 6 reps" in html
     assert not app.metric and not app.dataframe and not app.get("plotly_chart")
     assert len([item for item in app.selectbox if item.label == "Active plan"]) == 1
-    assert len([item for item in app.expander if item.label == "Full workout · 1 exercises"]) == 1
-    assert not next(
-        item for item in app.expander if item.label.startswith("Full workout")
-    ).proto.expanded
+    assert not any(
+        item.label.startswith("Full workout") or item.label == "Why these targets?"
+        for item in app.expander
+    )
     # The annotation points to the target rather than copying its numbers.
     insight_html = [item.value for item in app.markdown if "analysis-insight" in item.value]
     assert all("62.5 kg" not in value for value in insight_html)
@@ -118,10 +118,8 @@ def test_default_focus_shows_recorded_starting_loads_when_source_rir_is_missing(
     saved = seed(schedule_data, rir=None)
     app = start_app(engine, saved)
     assert "Your next workout has clear targets" in markup(app)
-    assert any("1 of 1 exercise targets available" in item.value for item in app.caption)
     assert "62.5 kg" not in markup(app)
-    full = next(item for item in app.expander if item.label.startswith("Full workout"))
-    assert "Source RIR is incomplete" in "\n".join(item.value for item in full.markdown)
+    assert "Source RIR is incomplete" in markup(app)
 
 
 def test_legacy_plan_shows_progression_without_requiring_a_block(schedule_data):
@@ -133,7 +131,7 @@ def test_legacy_plan_shows_progression_without_requiring_a_block(schedule_data):
     assert "Target not available yet" not in markup(app)
 
 
-def test_future_workout_selection_and_alternative_step_still_work_in_compact_view(schedule_data):
+def test_future_workout_selection_and_alternative_step_still_work_in_full_view(schedule_data):
     engine, _, _, _ = schedule_data
     saved = seed(schedule_data, actual_id=2)
     app = start_app(engine, saved)
@@ -242,3 +240,22 @@ OverviewView({manager_source}).render()
 """).run()
         assert not app.exception
         assert any(expected in item.value for item in app.info)
+
+
+def test_overview_displays_every_exercise_without_full_workout_disclosure(schedule_data):
+    from db.training_plans import save_training_plan
+
+    engine, _, _, _ = schedule_data
+    saved = seed(schedule_data)
+    day = saved.draft.days[0]
+    exercises = tuple(replace(day.exercises[0], history_key=None) for _ in range(3))
+    plan = save_training_plan(
+        engine, replace(saved.draft, days=(replace(day, exercises=exercises),))
+    )
+    app = start_app(engine, plan)
+    cards = next(item.value for item in app.markdown if 'class="recommendation-list"' in item.value)
+    assert cards.count('class="recommendation-exercise"') == 3
+    assert not any(
+        item.label.startswith("Full workout") or item.label == "Why these targets?"
+        for item in app.expander
+    )

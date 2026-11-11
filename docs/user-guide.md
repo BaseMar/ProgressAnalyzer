@@ -70,9 +70,13 @@ controls automatic deloads.
 ### Read the next target
 
 **Overview → Next workout** previews an unlinked planned workout from today
-onward. Choose another upcoming date or expand **Full workout** for every set.
-**Why these targets?** shows the source sessions and limitations for next-workout targets.
+onward. Choose another upcoming date to see all planned exercises and their targets.
+Every exercise is visible directly, with its relevant notes and source sessions.
 Overview's numeric next action comes from that same preview.
+
+**Copy preview** uses a short note with empty **Time:**, **Result:** and **RIR:**
+lines. Append your actual values after training; no placeholders need to be removed.
+Targets remain separate suggestions and are ignored during import.
 
 Starting suggestions use the exact exercise's usable history, including older
 plans and unlinked sessions. The source entry is shown with the current range

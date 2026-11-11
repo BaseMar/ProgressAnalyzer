@@ -70,7 +70,7 @@ class OverviewView:
             # so the conclusion and annotations use the user's actual preview.
             with next_workout:
                 preview = NextWorkoutView(self.dm, self.names).render(
-                    plan_id, versions, context=context, history=history, as_of=as_of, compact=True
+                    plan_id, versions, context=context, history=history, as_of=as_of
                 )
             report = compute_training_insights(
                 history,

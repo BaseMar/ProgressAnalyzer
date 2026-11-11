@@ -258,9 +258,9 @@ def test_current_numeric_targets_are_not_attached_to_historical_window_or_wrong_
     assert other.annotations[0].next_target is None
 
 
-def test_at_most_three_annotations_prioritize_attention_and_group_data_gaps():
+def test_at_most_five_annotations_prioritize_attention_and_group_data_gaps():
     entries = []
-    for index in range(5):
+    for index in range(7):
         for sid, day, values in (
             (index * 2 + 1, FIRST, (10, 9, 8)),
             (index * 2 + 2, SECOND, (10, 10, 9)),
@@ -277,10 +277,10 @@ def test_at_most_three_annotations_prioritize_attention_and_group_data_gaps():
                 )
             )
     result = report(*entries)
-    assert len(result.annotations) == 3
+    assert len(result.annotations) == 5
     assert result.annotations[0].code == "below_target_rir"
     assert result.omitted_annotations == 2
-    assert report(*entries, policy=InsightPolicy(max_annotations=1)).omitted_annotations == 4
+    assert report(*entries, policy=InsightPolicy(max_annotations=1)).omitted_annotations == 6
 
 
 def test_ui_shows_action_without_technical_disclosures_and_escapes_catalog_names():
