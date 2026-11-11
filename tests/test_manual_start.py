@@ -97,7 +97,10 @@ def test_manual_fallback_without_history_saves_across_dates_and_browser_sessions
     assert not app.exception
     assert "Starting loads selected" in exercise_html(app)
     assert "55 kg · 3 × 6–10 reps · RIR ≥ 2" in exercise_html(app)
-    assert any("__x55 / __x55 / __x55" in c.value for c in app.code)
+    template = app.code[0].value
+    assert "Target: 55 kg · 3 × 6–10 reps · RIR ≥ 2" in template
+    assert "Result:\nRIR:" in template
+    assert "__" not in template
     assert "Choose starting loads" not in [expander.label for expander in app.expander]
     assert not [n for n in app.number_input if n.key.startswith("manual_start_")]
     assert snapshot(engine) == before
