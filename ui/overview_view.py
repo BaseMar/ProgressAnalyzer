@@ -1,13 +1,11 @@
-"""Current-plan conclusion, attention on the left, next workout on the right."""
+"""Progress first, with a separate, visible home for copying the next workout."""
 
 import logging
 from datetime import date, timedelta
-from html import escape
 
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
-from metrics.overview_summary import overview_conclusion
 from metrics.training_insights import compute_training_insights
 from ui.next_workout_view import NextWorkoutView
 from ui.training_insights_view import render_training_insights
@@ -30,7 +28,8 @@ class OverviewView:
                 )
                 return None, ()
             plans = self.dm.load_training_plans()
-            plan_id = select_active_plan(plans)
+            with st.container(key="overview_plan_filter"):
+                plan_id = select_active_plan(plans)
             if plan_id is None:
                 st.info(
                     "Start with a Training Plan. Add exercises and training days to receive progression targets."
@@ -55,39 +54,57 @@ class OverviewView:
             )
             return None, ()
         settings = {version.version_id: version.draft.progression for version in versions}
-        current = max(
-            (version for version in versions if version.draft.effective_from <= as_of),
-            key=lambda version: version.draft.effective_from,
-            default=min(versions, key=lambda version: version.draft.effective_from),
-        )
-        st.caption(
-            f"Current plan · recent 28 days ({start:%d %b}–{as_of:%d %b %Y}) · historical periods are selected in Analysis."
-        )
-        headline = st.empty()
-        with st.container(key="overview_decisions"):
-            attention, next_workout = st.columns([1, 1], gap="large")
-            # The placeholder above stays first in the page; prepare targets once
-            # so the conclusion and annotations use the user's actual preview.
-            with next_workout:
-                preview = NextWorkoutView(self.dm, self.names).render(
-                    plan_id, versions, context=context, history=history, as_of=as_of
-                )
-            report = compute_training_insights(
-                history,
-                as_of=as_of,
-                start=start,
-                end=as_of,
-                settings_by_version=settings,
-                preview=preview,
-                date_basis="performed",
+        with st.container(key="overview_tabs"):
+            progress, next_workout = st.tabs(["Progress", "Next workout"])
+        summary_area = progress.container(key="overview_progress_summary")
+        insights_area = progress.container(key="overview_progress_insights")
+        with next_workout:
+            preview = NextWorkoutView(self.dm, self.names).render(
+                plan_id, versions, context=context, history=history, as_of=as_of
             )
-            with attention:
-                render_training_insights(report, self.names, show_target_actions=False)
-        conclusion = overview_conclusion(report, preview, as_of=as_of, version=current)
-        headline.markdown(
-            f'<div class="overview-conclusion overview-conclusion--{escape(conclusion.kind)}">'
-            '<span class="overview-eyebrow">Your training today</span>'
-            f"<h2>{escape(conclusion.title)}</h2><p>{escape(conclusion.detail)}</p></div>",
-            unsafe_allow_html=True,
+        report = compute_training_insights(
+            history,
+            as_of=as_of,
+            start=start,
+            end=as_of,
+            settings_by_version=settings,
+            preview=preview,
+            date_basis="performed",
         )
+        with summary_area:
+            st.subheader("Your progress")
+            st.caption(f"Last 28 days: {start:%d %b} to {as_of:%d %b %Y}")
+            counts = report.exercise_progress
+            with st.container(key="overview_progress_kpis"):
+                improving, unchanged, lower = st.columns(3)
+                for column, label, value, explanation in (
+                    (
+                        improving,
+                        "Improving exercises",
+                        counts.improving,
+                        "More reps or seconds at unchanged per-set loads and, for repetitions, the same recorded RIR.",
+                    ),
+                    (
+                        unchanged,
+                        "No clear change",
+                        counts.unchanged,
+                        "The same total reps or seconds under comparable conditions. This does not diagnose a plateau.",
+                    ),
+                    (
+                        lower,
+                        "Lower results",
+                        counts.lower,
+                        "Fewer reps or seconds under comparable conditions. One result does not establish regression or fatigue.",
+                    ),
+                ):
+                    column.metric(label, value if counts.compared else "\u2014", help=explanation)
+            st.caption(
+                f"Compared exercises: {counts.compared}. Awaiting comparable data: {counts.unassessed}."
+            )
+            if not counts.compared:
+                st.caption(
+                    "A comparison needs two complete results in the same exercise context, with unchanged loads and reserve. Changed loads, incomplete logs and deloads are not graded."
+                )
+        with insights_area:
+            render_training_insights(report, self.names, show_target_actions=False)
         return plan_id, versions

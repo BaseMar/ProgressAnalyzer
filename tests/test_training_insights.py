@@ -294,7 +294,182 @@ render_training_insights(st.session_state['report'], {1: '<script>alert(1)</scri
     app.run()
     assert not app.exception
     html = next(item.value for item in app.markdown if "analysis-insight" in item.value)
-    assert "&lt;script&gt;" in html and "<script>" not in html
+    assert "<script>" not in html
+    assert app.button(key="insight_history_more_output_1").label == "<script>alert(1)</script>"
     assert "2 more reps" in html and "Next workout target" in html
     assert not app.expander
     assert not app.json
+
+
+@pytest.mark.parametrize(
+    "values,expected", [((10, 10, 9), (1, 0, 0)), ((10, 9, 8), (0, 1, 0)), ((8, 8, 7), (0, 0, 1))]
+)
+def test_progress_summary_counts_latest_comparable_exercise(values, expected):
+    counts = report(execution(1, FIRST), execution(2, SECOND, values)).exercise_progress
+    assert (counts.improving, counts.unchanged, counts.lower) == expected
+    assert counts.compared == 1 and counts.unassessed == 0
+
+
+def test_progress_summary_is_not_truncated_by_top_five_annotations():
+    entries = []
+    for eid in range(1, 8):
+        planned = replace(PLAN, exercise_id=eid)
+        for sid, day, values in ((eid * 2, FIRST, (10, 9, 8)), (eid * 2 + 1, SECOND, (10, 10, 9))):
+            workout, recorded, match = execution(sid, day, values, actual_id=eid, planned=planned)
+            entries.append(
+                (replace(workout, slot=replace(workout.slot, day_id=eid + 10)), recorded, match)
+            )
+    result = report(*entries)
+    assert len(result.annotations) == 5
+    assert result.exercise_progress.improving == 7
+    assert result.exercise_progress.compared == 7
+    assert (
+        report(*entries, policy=InsightPolicy(max_annotations=1)).exercise_progress
+        == result.exercise_progress
+    )
+
+
+@pytest.mark.parametrize(
+    "options", [{"weight": 65}, {"rir": None}, {"rir": 3}, {"rir": 1}, {"values": (10,)}]
+)
+def test_progress_summary_does_not_grade_incomparable_results(options):
+    counts = report(execution(1, FIRST), execution(2, SECOND, **options)).exercise_progress
+    assert counts.compared == 0 and counts.unassessed == 1
+
+
+def test_latest_incomplete_result_does_not_reuse_earlier_progress():
+    counts = report(
+        execution(1, FIRST), execution(2, SECOND, (10, 10, 9)), execution(3, THIRD, (10,))
+    ).exercise_progress
+    assert counts.compared == 0 and counts.unassessed == 1
+
+
+def test_latest_exercise_context_prevents_double_counting_and_old_fallback():
+    latest = execution(3, THIRD)
+    latest = (
+        replace(latest[0], slot=replace(latest[0].slot, day_id=20, name="Another workout")),
+        latest[1],
+        latest[2],
+    )
+    counts = report(
+        execution(1, FIRST), execution(2, SECOND, (10, 10, 9)), latest
+    ).exercise_progress
+    assert counts.compared == 0 and counts.unassessed == 1
+
+
+def test_progress_window_uses_earlier_comparison_without_counting_it_twice():
+    counts = report(
+        execution(1, FIRST), execution(2, SECOND, (10, 10, 9)), start=SECOND, date_basis="performed"
+    ).exercise_progress
+    assert counts.improving == 1 and counts.unassessed == 0
+
+
+def test_empty_progress_summary_has_no_assessed_or_missing_results():
+    counts = report().exercise_progress
+    assert counts.compared == 0 and counts.unassessed == 0
+
+
+def test_latest_comparable_context_counts_same_catalog_exercise_once():
+    earlier = execution(3, FIRST)
+    latest = execution(4, THIRD, (8, 8, 7))
+    others = [
+        (
+            replace(item[0], slot=replace(item[0].slot, day_id=20, name="Another workout")),
+            item[1],
+            item[2],
+        )
+        for item in (earlier, latest)
+    ]
+    counts = report(
+        execution(1, FIRST), execution(2, SECOND, (10, 10, 9)), *others
+    ).exercise_progress
+    assert counts.compared == 1 and counts.lower == 1 and counts.improving == 0
+
+
+def test_timed_progress_does_not_require_rir():
+    planned = replace(PLAN, target_unit="seconds", target_min=30, target_max=60, target_rir=None)
+    counts = report(
+        execution(1, FIRST, (30, 30, 30), planned=planned, rir=None),
+        execution(2, SECOND, (35, 30, 30), planned=planned, rir=None),
+    ).exercise_progress
+    assert counts.improving == 1 and counts.unassessed == 0
+
+
+def test_deload_result_is_not_labelled_lower_output():
+    deload_day = date(2026, 6, 15)
+    counts = compute_training_insights(
+        data(execution(1, SECOND), execution(2, deload_day, (8, 8, 7), weight=40)),
+        as_of=deload_day,
+        settings_by_version={1: SETTINGS},
+        date_basis="performed",
+    ).exercise_progress
+    assert counts.compared == 0 and counts.unassessed == 1
+
+
+def highlight_entries(pairs):
+    entries = []
+    for eid, (old, new) in enumerate(pairs, 1):
+        planned = replace(PLAN, exercise_id=eid)
+        for sid, day, values in ((eid * 2, FIRST, old), (eid * 2 + 1, SECOND, new)):
+            workout, recorded, match = execution(sid, day, values, actual_id=eid, planned=planned)
+            entries.append(
+                (replace(workout, slot=replace(workout.slot, day_id=eid + 10)), recorded, match)
+            )
+    return entries
+
+
+def test_highlights_use_relative_change_and_select_both_directions():
+    result = report(
+        *highlight_entries(
+            [
+                ((10, 10, 10), (12, 12, 10)),  # +4 / 30
+                ((6, 6, 6), (7, 7, 7)),  # +3 / 18: larger relative gain
+                ((10, 10, 10), (9, 9, 9)),
+                ((8, 8, 8), (6, 6, 6)),
+            ]
+        )
+    )
+    assert [(item.code, item.exercise_id) for item in result.highlighted_annotations] == [
+        ("more_output", 2),
+        ("less_output", 4),
+    ]
+
+
+def test_highlight_can_come_from_outside_top_five_without_duplicate_display():
+    result = report(*highlight_entries([((6, 6, 6), (6 + eid, 6, 6)) for eid in range(1, 8)]))
+    assert result.highlighted_annotations[0].exercise_id == 7
+    assert not any(item.exercise_id == 7 for item in result.annotations)
+    app = AppTest.from_string("""
+import streamlit as st
+from ui.training_insights_view import render_training_insights
+render_training_insights(st.session_state['report'])
+""")
+    app.session_state["report"] = result
+    app.run()
+    assert not app.exception
+    cards = [item.value for item in app.markdown if 'class="analysis-insight"' in item.value]
+    assert len(cards) == 5
+    assert app.button[0].label == "Exercise #7"
+    assert sum("Largest improvement" in item.value for item in app.markdown) == 1
+    assert not any("Result to review" in item.value for item in app.markdown)
+
+
+def test_highlights_do_not_grade_missing_data_or_reuse_older_success():
+    result = report(
+        execution(1, FIRST), execution(2, SECOND, (10, 10, 9)), execution(3, THIRD, (10,))
+    )
+    assert not result.highlighted_annotations
+    assert not report(execution(1, FIRST), execution(2, SECOND)).highlighted_annotations
+
+
+def test_ordinary_observation_still_escapes_catalog_names():
+    result = report(execution(1, FIRST), execution(2, SECOND))
+    app = AppTest.from_string("""
+import streamlit as st
+from ui.training_insights_view import render_training_insights
+render_training_insights(st.session_state['report'], {1: '<script>alert(1)</script>'})
+""")
+    app.session_state["report"] = result
+    app.run()
+    html = next(item.value for item in app.markdown if 'class="analysis-insight"' in item.value)
+    assert "&lt;script&gt;" in html and "<script>" not in html

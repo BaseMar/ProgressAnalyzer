@@ -88,16 +88,26 @@ class HistoryView:
         if "history_workout_notice" in st.session_state:
             st.success(st.session_state.pop("history_workout_notice"))
         with st.container(key="history_actions"):
-            workout_action, measurement_action = st.columns(2)
-            if workout_action.button(
-                "Add workout", key="history_add_workout_button", icon=":material/add:"
+            upload, manual = st.columns(2)
+            if upload.button(
+                "Import workout TXT",
+                key="history_add_workout_button",
+                type="primary",
+                width="stretch",
+                icon=":material/upload_file:",
             ):
                 st.session_state["history_add_workout"] = True
-            if measurement_action.button(
-                "Add body measurement",
-                key="history_add_measurement_button",
-                icon=":material/straighten:",
+                st.session_state["workout_entry_mode"] = "Import TXT"
+            if manual.button(
+                "Enter workout manually",
+                key="history_manual_workout_button",
+                width="stretch",
+                icon=":material/edit_note:",
             ):
+                st.session_state["history_add_workout"] = True
+                st.session_state["workout_entry_mode"] = "Enter exercise"
+        with st.expander("Body measurements"):
+            if st.button("Add body measurement", key="history_add_measurement_button"):
                 st.session_state["history_add_measurement"] = not st.session_state.get(
                     "history_add_measurement", False
                 )
@@ -106,24 +116,20 @@ class HistoryView:
                 if st.button("Close entry", key="history_close_import"):
                     st.session_state["history_add_workout"] = False
                     st.rerun()
-                mode = st.radio(
-                    "Workout entry",
-                    ["Import TXT", "Enter exercise"],
-                    horizontal=True,
-                    key="workout_entry_mode",
-                )
+                mode = st.session_state.get("workout_entry_mode", "Import TXT")
                 if mode == "Import TXT":
                     SidebarUpload(manager=self.dm).render()
                 else:
                     render_workout_entry(self.dm)
         if st.session_state.get("history_add_measurement"):
             BodyMetricsView(self.metrics.get("body", {}), manager=self.dm)._add_measurement_form()
-        self._select_plan()
-        if self.schedule.plan_id is not None and not st.toggle(
-            "Show planned workouts", value=True, key="calendar_plan_overlay"
-        ):
-            self.schedule.plan_id = None
-            self.schedule.version_dates = []
+        with st.expander("Calendar settings"):
+            self._select_plan()
+            if self.schedule.plan_id is not None and not st.toggle(
+                "Show planned workouts", value=True, key="calendar_plan_overlay"
+            ):
+                self.schedule.plan_id = None
+                self.schedule.version_dates = []
         self._render_history()
 
     def _select_plan(self):
@@ -348,25 +354,26 @@ class HistoryView:
                         f'<div class="set-pills">{_set_pills(ex_df)}</div>',
                         unsafe_allow_html=True,
                     )
-                render_set_classification(self.dm, session_id=int(session_id))
-                render_set_load_correction(
-                    self.dm, session_id=int(session_id), workout_date=session_date.date()
-                )
+                with st.expander("Correct or delete this session"):
+                    render_set_classification(self.dm, session_id=int(session_id))
+                    render_set_load_correction(
+                        self.dm, session_id=int(session_id), workout_date=session_date.date()
+                    )
 
-                st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
+                    st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
 
-                col1, col2 = st.columns([0.8, 0.2])
-                with col2:
-                    if st.button(
-                        "Delete Session",
-                        key=f"del_{session_id}",
-                        type="secondary",
-                        use_container_width=True,
-                        icon=":material/delete:",
-                    ):
-                        if self.dm.delete_session(session_id):
-                            st.toast("Session deleted successfully!")
-                            st.rerun()
+                    col1, col2 = st.columns([0.8, 0.2])
+                    with col2:
+                        if st.button(
+                            "Delete Session",
+                            key=f"del_{session_id}",
+                            type="secondary",
+                            use_container_width=True,
+                            icon=":material/delete:",
+                        ):
+                            if self.dm.delete_session(session_id):
+                                st.toast("Session deleted successfully!")
+                                st.rerun()
 
 
 def _format_seconds(value: int | float) -> str:

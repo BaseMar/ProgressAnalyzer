@@ -200,7 +200,8 @@ def test_legacy_plan_has_ordinary_targets_without_a_calendar(schedule_data):
     engine, _, _, _ = schedule_data
     plan = seed(schedule_data, progression=False)
     app = start_app(engine, plan)
-    assert any("Ordinary progression is available" in item.value for item in app.caption)
+    assert any("Normal training" in item.value for item in app.markdown)
+    assert not any(item.label == "Workout details" for item in app.expander)
     assert "62.5 kg" in exercise_html(app)
 
 

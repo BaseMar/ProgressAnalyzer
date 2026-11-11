@@ -247,7 +247,6 @@ def render_benchmarks(probe, plan, as_of, runs, selected=None):
         "analysis_recorded_exercises": dict(
             nav_selected="Analysis",
             analysis_question="Exercise progress",
-            analysis_exercise_scope="All recorded exercises",
         ),
         "analysis_consistency": dict(nav_selected="Analysis", analysis_question="Plan consistency"),
         "analysis_muscle_map": dict(

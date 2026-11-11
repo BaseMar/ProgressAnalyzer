@@ -108,7 +108,7 @@ def test_create_plan_persists_and_is_visible_after_a_fresh_page_load(plan_engine
     fresh.selectbox(key="adherence_plan").select(saved.plan_id).run()
     assert not fresh.exception
     assert not fresh.text_input
-    fresh.toggle(key=f"plan_edit_{saved.version_id}").set_value(True).run()
+    fresh.button(key=f"plan_edit_{saved.version_id}").click().run()
     assert fresh.text_input(key=f"plan_editor_{saved.version_id}_name").value == saved.draft.name
 
 
@@ -116,7 +116,7 @@ def test_revision_preserves_old_snapshot(plan_engine):
     app = start_app(plan_engine)
     create_plan(app)
     old = load_training_plans(plan_engine)[0]
-    app.toggle(key=f"plan_edit_{old.version_id}").set_value(True).run()
+    app.button(key=f"plan_edit_{old.version_id}").click().run()
     scope = f"plan_editor_{old.version_id}"
     app.text_input(key=f"{scope}_name").set_value("Upper / Core v2")
     edit_rows(app, f"{scope}_day_0_exercises", {"Sets": 4})

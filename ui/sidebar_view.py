@@ -72,7 +72,7 @@ class SidebarView:
             )
 
         st.sidebar.button(
-            "Add workout",
+            "Import workout TXT",
             key="nav_add_workout",
             icon=":material/add:",
             on_click=_open_workout_import,
@@ -90,3 +90,4 @@ def _set_selected_nav(option: str) -> None:
 def _open_workout_import():
     _set_selected_nav("History")
     st.session_state["history_add_workout"] = True
+    st.session_state["workout_entry_mode"] = "Import TXT"

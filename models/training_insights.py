@@ -72,8 +72,22 @@ class TrainingInsight:
 
 
 @dataclass(frozen=True)
+class ExerciseProgressSummary:
+    improving: int = 0
+    unchanged: int = 0
+    lower: int = 0
+    unassessed: int = 0
+
+    @property
+    def compared(self):
+        return self.improving + self.unchanged + self.lower
+
+
+@dataclass(frozen=True)
 class InsightReport:
     annotations: tuple[TrainingInsight, ...]
     assessed_contexts: int
     limited_contexts: int
     omitted_annotations: int
+    exercise_progress: ExerciseProgressSummary = ExerciseProgressSummary()
+    highlighted_annotations: tuple[TrainingInsight, ...] = ()

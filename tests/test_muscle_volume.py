@@ -98,7 +98,7 @@ def test_new_plan_is_activated_and_recalculates_targets_across_navigation(
     assert ranges_table(app).loc["Triceps", "Target"] == 1.5
     assert not app.get("data_editor")
     app.button(key="nav_Plan").click().run()
-    app.toggle(key="plan_create_new").set_value(True).run()
+    app.button(key="plan_create_new").click().run()
     app.text_input(key="plan_editor_new_name").set_value("Full Body")
     app.text_input(key="plan_editor_new_day_0_name").set_value("Full Body A")
     app.selectbox(key="plan_editor_new_day_0_ex_0_exercise_id").select(1)

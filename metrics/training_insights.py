@@ -12,6 +12,7 @@ from metrics.load_metrics import describe_load, load_comparison_problem, recorde
 from metrics.plan_performance import comparison_context, compute_plan_performance
 from metrics.utils.recommendation_text import goal_summary
 from models.training_insights import (
+    ExerciseProgressSummary,
     InsightPolicy,
     InsightReport,
     InsightSet,
@@ -122,7 +123,7 @@ def compute_training_insights(
     policy=InsightPolicy(),
     date_basis="scheduled",
 ):
-    """Return at most three prioritized annotations with immutable evidence.
+    """Return prioritized annotations and uncapped exercise progress counts with immutable evidence.
 
     Select the latest *linked* execution per context, including an empty or
     incomplete one. Never fall back to an older success. Substitutes and changed
@@ -144,6 +145,7 @@ def compute_training_insights(
 
     groups = defaultdict(list)
     unlinked = {}
+    latest_by_exercise = {}
     for row in rows:
         if row["session_id"] is None:
             if inside(row) and row["scheduled_date"] < as_of:
@@ -152,8 +154,15 @@ def compute_training_insights(
         if row["performed_on"] is None or row["performed_on"] > as_of:
             continue
         groups[(row["context"], settings.get(row["version_id"]))].append(row)
+        if inside(row):
+            latest_by_exercise[row["actual_exercise_id"]] = row
 
+    # Rows are in actual-session order. Count each catalog exercise once using
+    # its latest result, even when that result is incomplete or in a new context.
+    # The annotation limit must never limit or bias these counts.
+    exercise_status = dict.fromkeys(latest_by_exercise, "unassessed")
     annotations, limitations, deloads = [], [], []
+    highlight_candidates = []
     assessed = 0
     for history in groups.values():
         visible = [index for index, row in enumerate(history) if inside(row)]
@@ -271,6 +280,12 @@ def compute_training_insights(
             )
             action = "Follow the Next workout target to decide between one more rep, a confirmed load increase or holding."
             rule += " Equal totals are an observation, not a plateau diagnosis."
+        if latest_by_exercise.get(current["actual_exercise_id"]) is current:
+            exercise_status[current["actual_exercise_id"]] = {
+                "more_output": "improving",
+                "same_output": "unchanged",
+                "less_output": "lower",
+            }.get(code, "unassessed")
         recommendation = _next_target(
             current, preview, as_of=as_of, end=end, settings_by_version=settings
         )
@@ -296,6 +311,35 @@ def compute_training_insights(
                 recommendation,
             )
         )
+
+        if latest_by_exercise.get(current["actual_exercise_id"]) is current and code in (
+            "more_output",
+            "less_output",
+        ):
+            highlight_candidates.append(annotations[-1])
+
+    def relative_change(insight):
+        previous, current = insight.sources
+        baseline = sum(item.quantity for item in previous.sets)
+        change = sum(item.quantity for item in current.sets) - baseline
+        return (
+            abs(change / baseline) if baseline > 0 else 0,
+            current.performed_on,
+            -(insight.exercise_id or 0),
+        )
+
+    highlights = tuple(
+        chosen
+        for code in ("more_output", "less_output")
+        if (
+            chosen := max(
+                (item for item in highlight_candidates if item.code == code),
+                key=relative_change,
+                default=None,
+            )
+        )
+        is not None
+    )
 
     if deloads:
         annotations.append(
@@ -352,4 +396,11 @@ def compute_training_insights(
         assessed,
         len(limitations),
         max(0, len(annotations) - policy.max_annotations),
+        ExerciseProgressSummary(
+            **{
+                name: sum(value == name for value in exercise_status.values())
+                for name in ("improving", "unchanged", "lower", "unassessed")
+            }
+        ),
+        highlights,
     )

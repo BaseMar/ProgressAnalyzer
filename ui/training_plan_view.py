@@ -16,10 +16,16 @@ from models.training_plan import (
     TrainingPlanDraft,
 )
 from ui.utils.active_plan import select_active_plan
-from ui.utils.plan_editor import WEEKDAYS, capture_draft
+from ui.utils.plan_editor import WEEKDAYS, capture_draft, capture_plan_drafts
 from ui.utils.ui_helpers import page_title, section_header
 
 logger = logging.getLogger(__name__)
+
+
+def _set_plan_mode(create, version_id=None):
+    capture_plan_drafts()
+    st.session_state["plan_create_mode"] = create
+    st.session_state["plan_editing_version"] = version_id
 
 
 class TrainingPlanView:
@@ -54,31 +60,46 @@ class TrainingPlanView:
         if "plan_next_selection" in st.session_state:
             st.session_state["adherence_plan"] = st.session_state.pop("plan_next_selection")
             st.session_state["active_plan_id"] = st.session_state["adherence_plan"]
-            st.session_state["plan_create_new"] = False
             st.session_state["plan_create_mode"] = False
-        selected = select_active_plan(plans.values())
-        create = (
-            st.toggle(
+        create = st.session_state.get("plan_create_mode", not plans)
+        with st.container(key="plan_main_actions"):
+            new, edit = st.columns(2)
+            new.button(
                 "Create a new plan",
-                value=st.session_state.get("plan_create_mode", False),
                 key="plan_create_new",
+                type="primary",
+                width="stretch",
+                icon=":material/add:",
+                on_click=_set_plan_mode,
+                args=(True,),
             )
-            if plans
-            else True
-        )
-        st.session_state["plan_create_mode"] = create
+            if create and plans:
+                edit.button(
+                    "Back to saved plans",
+                    key="plan_back_to_saved",
+                    width="stretch",
+                    on_click=_set_plan_mode,
+                    args=(False,),
+                )
+        selected = select_active_plan(plans.values()) if not create else None
         source = None if create else plans.get(selected)
-        if source:
-            st.caption(
-                f"Version {source.version_number} · from {source.draft.effective_from:%d %b %Y}"
-            )
-            self._overview(source.draft, source.version_id)
-        editing = source is None or st.toggle(
-            "Edit as a new version",
-            value=st.session_state.get("plan_editing_version") == source.version_id,
-            key=f"plan_edit_{source.version_id}",
+        editing = (
+            source is None or st.session_state.get("plan_editing_version") == source.version_id
         )
-        st.session_state["plan_editing_version"] = source.version_id if source and editing else None
+        if source:
+            with edit:
+                st.button(
+                    "Finish editing" if editing else "Edit plan",
+                    key=f"plan_edit_{source.version_id}",
+                    width="stretch",
+                    on_click=_set_plan_mode,
+                    args=(False, None if editing else source.version_id),
+                )
+            st.caption(
+                f"Version {source.version_number} - applies from {source.draft.effective_from:%d %b %Y}"
+            )
+            if not editing:
+                self._overview(source.draft, source.version_id)
         if editing:
             self._render_editor(source)
         if source:
@@ -99,28 +120,26 @@ class TrainingPlanView:
         st.markdown(
             '<div class="plan-week-grid">' + "".join(cards) + "</div>", unsafe_allow_html=True
         )
-        with st.expander("Reference exercises"):
-            index = st.selectbox(
-                "Workout",
-                range(len(draft.days)),
-                key=f"reference_workout_{version_id}",
-                format_func=lambda value: (
-                    f"{WEEKDAYS[draft.days[value].weekday]} · {draft.days[value].name}"
-                ),
+        section_header("Exercises in your plan")
+        index = st.selectbox(
+            "Workout",
+            range(len(draft.days)),
+            key=f"reference_workout_{version_id}",
+            format_func=lambda value: (
+                f"{WEEKDAYS[draft.days[value].weekday]} · {draft.days[value].name}"
+            ),
+        )
+        for position, item in enumerate(draft.days[index].exercises, start=1):
+            rir = f" · RIR {item.target_rir}" if item.target_rir is not None else ""
+            weight_step = (
+                f" · step {item.weight_increment:g} kg" if item.weight_increment is not None else ""
             )
-            for position, item in enumerate(draft.days[index].exercises, start=1):
-                rir = f" · RIR {item.target_rir}" if item.target_rir is not None else ""
-                weight_step = (
-                    f" · step {item.weight_increment:g} kg"
-                    if item.weight_increment is not None
-                    else ""
-                )
-                st.markdown(
-                    '<div class="plan-reference-row">'
-                    f"<span>{position:02d} · {escape(self.labels.get(item.exercise_id, 'Unknown exercise'))}</span>"
-                    f"<strong>{item.set_count} × {item.target_min}–{item.target_max} {item.target_unit}{rir}{weight_step}</strong></div>",
-                    unsafe_allow_html=True,
-                )
+            st.markdown(
+                '<div class="plan-reference-row">'
+                f"<span>{position:02d} · {escape(self.labels.get(item.exercise_id, 'Unknown exercise'))}</span>"
+                f"<strong>{item.set_count} × {item.target_min}–{item.target_max} {item.target_unit}{rir}{weight_step}</strong></div>",
+                unsafe_allow_html=True,
+            )
 
     @staticmethod
     def _exercise(item=None, uid=0):
@@ -166,7 +185,11 @@ class TrainingPlanView:
             st.session_state[store_key] = dict(days=days, next_day=len(days))
         store = st.session_state[store_key]
         self._capture(scope, store)
-        section_header("Edit reference plan" if source else "New reference plan")
+        st.subheader("Edit plan" if source else "Create a new plan")
+        st.caption(
+            "Your draft is kept when you switch workouts, exercises or pages. Save below when the whole routine is ready."
+        )
+        section_header("1. Plan details")
         minimum = (
             max(date.today(), source.draft.effective_from + timedelta(days=1)) if source else None
         )
@@ -188,48 +211,7 @@ class TrainingPlanView:
             if source:
                 st.caption("Saving creates a new version; previous targets remain in history.")
         store["name"], store["start"] = name, start
-        saved_settings = source.draft.progression if source else None
-        with st.expander("Progression & training block"):
-            enabled = (
-                True
-                if saved_settings
-                else st.checkbox(
-                    "Configure training block",
-                    value=store.get("progression_enabled", source is None),
-                    key=f"{scope}_progression_enabled",
-                )
-            )
-            store["progression_enabled"] = enabled
-            if enabled:
-                left, right = st.columns(2)
-                block_start = left.date_input(
-                    "Block starts on",
-                    value=store.get(
-                        "block_start",
-                        saved_settings.block_start
-                        if saved_settings
-                        else source.draft.effective_from
-                        if source
-                        else start,
-                    ),
-                    key=f"{scope}_block_start",
-                )
-                weeks = store.get(
-                    "block_weeks", saved_settings.block_weeks if saved_settings else 7
-                )
-                block_weeks = right.selectbox(
-                    "Block length (weeks)",
-                    [6, 7, 8],
-                    index=[6, 7, 8].index(weeks),
-                    key=f"{scope}_block_weeks",
-                )
-                store["block_start"], store["block_weeks"] = block_start, block_weeks
-                st.caption(
-                    "Blocks repeat from this date; the final week of each block is deload. A new plan version keeps this anchor; change it explicitly to restart the schedule."
-                )
-            st.caption(
-                "See next-workout targets, deloads and their explanations in Overview → Next workout."
-            )
+        section_header("2. Workouts and exercises")
         action = None
         if store["days"]:
             ids = [day["uid"] for day in store["days"]]
@@ -355,27 +337,27 @@ class TrainingPlanView:
                             index=0 if item["unit"] == "reps" else 1,
                             key=f"{ex_prefix}_unit",
                         )
-                        with st.expander("Progression & RIR"):
-                            left, right = st.columns(2)
-                            left.number_input(
-                                "Target RIR",
-                                min_value=0,
-                                value=item["rir"],
-                                step=1,
-                                key=f"{ex_prefix}_rir",
-                            )
-                            increment = (
-                                float(item["increment"]) if item["increment"] is not None else None
-                            )
-                            right.number_input(
-                                "Available weight step (kg)",
-                                min_value=0.01,
-                                value=increment,
-                                step=0.25,
-                                format="%.2f",
-                                key=f"{ex_prefix}_increment",
-                                help="Use the same weight convention as your workout log, including per-dumbbell weights if applicable. Leave blank if unknown.",
-                            )
+                        left, right = st.columns(2)
+                        left.number_input(
+                            "Target RIR",
+                            help="Repetitions in reserve: how many more reps you could perform after a set. Leave blank if unknown.",
+                            min_value=0,
+                            value=item["rir"],
+                            step=1,
+                            key=f"{ex_prefix}_rir",
+                        )
+                        increment = (
+                            float(item["increment"]) if item["increment"] is not None else None
+                        )
+                        right.number_input(
+                            "Available weight step (kg)",
+                            min_value=0.01,
+                            value=increment,
+                            step=0.25,
+                            format="%.2f",
+                            key=f"{ex_prefix}_increment",
+                            help="Use the same weight convention as your workout log, including per-dumbbell weights if applicable. Leave blank if unknown.",
+                        )
                 add, remove = st.columns(2)
                 if add.button("Add exercise", key=f"{prefix}_add_exercise", icon=":material/add:"):
                     action = ("add_exercise", day_id)
@@ -407,6 +389,49 @@ class TrainingPlanView:
             store["select_next"] = uid
             st.rerun()
         st.caption("Edit one workout at a time. All workouts are saved together below.")
+        saved_settings = source.draft.progression if source else None
+        with st.expander("Progression & training block"):
+            enabled = (
+                True
+                if saved_settings
+                else st.checkbox(
+                    "Configure training block",
+                    value=store.get("progression_enabled", False),
+                    key=f"{scope}_progression_enabled",
+                )
+            )
+            store["progression_enabled"] = enabled
+            if enabled:
+                left, right = st.columns(2)
+                block_start = left.date_input(
+                    "Block starts on",
+                    value=store.get(
+                        "block_start",
+                        saved_settings.block_start
+                        if saved_settings
+                        else source.draft.effective_from
+                        if source
+                        else start,
+                    ),
+                    key=f"{scope}_block_start",
+                )
+                weeks = store.get(
+                    "block_weeks", saved_settings.block_weeks if saved_settings else 7
+                )
+                block_weeks = right.selectbox(
+                    "Block length (weeks)",
+                    [6, 7, 8],
+                    index=[6, 7, 8].index(weeks),
+                    key=f"{scope}_block_weeks",
+                )
+                store["block_start"], store["block_weeks"] = block_start, block_weeks
+                st.caption(
+                    "Blocks repeat from this date; the final week of each block is deload. A new plan version keeps this anchor; change it explicitly to restart the schedule."
+                )
+            st.caption(
+                "See next-workout targets, deloads and their explanations in Overview → Next workout."
+            )
+        section_header("3. Save your plan")
         if st.button(
             "Save new version" if source else "Save plan", key=f"{scope}_save", type="primary"
         ):

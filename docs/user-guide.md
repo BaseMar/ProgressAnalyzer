@@ -10,7 +10,7 @@ The app has four pages. Each answers a different question.
 
 | Page | Start here when you want to… |
 | --- | --- |
-| **Overview** | Read recent observations and the next workout's suggested targets. |
+| **Overview** | Review recent progress, or open Next workout to copy training targets. |
 | **Analysis** | Compare an exercise, check plan consistency, inspect muscle distribution or explore body measurements. |
 | **Plan** | Create a weekly routine, edit its targets or configure a training block. |
 | **History** | Browse recorded sessions, link them to a plan, import workouts or correct a set. |
@@ -19,11 +19,40 @@ One active plan is shared across the app. Analysis and History have their own
 date filters; changing a historical month does not change the current plan
 or the next workout.
 
+
+### Progress and filters
+
+Overview opens on **Progress**, showing **Improving exercises**, **No clear change** and **Lower results**
+for the last 28 days, followed by recent observations. The counters use each
+exercise's latest result in the selected plan, independently of the top-five
+observation limit. Only complete comparable pairs at unchanged per-set loads
+and recorded reserve are graded; timed work does not require RIR. Changed
+contexts, loads, reserve, missing evidence and deloads await comparable data.
+An older positive pair never replaces an incomplete latest result. When no
+exercise can be compared, cards show a dash rather than a misleading zero. Choose **Next workout** to copy the
+full workout in a centered panel. The copy action is near the top; the workout
+date and training phase remain visible.
+
+**Analysis** opens the exercise's full recorded history, including sessions before
+any plan and unlinked sessions. **Filters** contains the optional period and,
+where needed, load-convention/unit controls. The chart shows mean repetitions
+(or seconds) per set and mean load for each recorded session. Different load
+conventions remain separate; unknown loads are gaps, not zero. These means
+describe recorded work, including light and unknown-effort sets.
+
+**Plan** uses visible **Create a new plan** and **Edit plan** actions. Its editor
+keeps plan details, workouts/exercises and saving on one page. Training blocks
+are optional; an existing block is preserved when editing a version.
+
+**History** has direct **Import workout TXT** and **Enter workout manually**
+actions. Calendar controls are under **Calendar settings**; session corrections
+are under **Correct or delete this session** below the recorded sets.
+
 ## Your first plan and workout
 
 1. **Create your routine in Plan.** Name the workouts, choose weekdays and add
    exercises, for example `3 sets × 6–10 reps`.
-2. **Add a workout in History → Add workout.** Enter an exercise manually or
+2. **Import a workout in History → Import workout TXT.** Enter an exercise manually or
    import a TXT note. Record RIR when you know it.
 3. **Link the session to its planned workout in the History calendar.**
    This tells the app which prescription the log belongs to.
@@ -40,13 +69,13 @@ ordinary progression also works without it.
 
 ### Build a weekly routine
 
-In **Plan**, select a saved plan or enable **Create a new plan**:
+In **Plan**, choose **Create a new plan** or select a saved plan:
 
 1. Set the name and effective date.
 2. Add named workouts and weekdays; select one **Workout to edit**.
 3. Add exercises and set their counts, ranges and unit: reps or seconds.
-4. Set target RIR and an available weight step under **Progression & RIR**.
-5. Save. To revise a saved routine, enable **Edit as a new version**.
+4. Set target RIR and an available weight step in the exercise fields.
+5. Save. To revise a saved routine, choose **Edit plan**.
 
 A revision preserves earlier plan versions. Draft values survive switching
 exercises or pages.
@@ -93,7 +122,7 @@ the [recommendation rules](progression-rules.md), which own the decision policy.
 
 ### Manual entry and bodyweight sets
 
-Open **History → Add workout → Enter exercise** for reps/seconds, weight,
+Choose **History → Enter workout manually** for reps/seconds, weight,
 RIR and set purpose. For explicit bodyweight work, weight means **additional kg**;
 body mass and assistance have separate fields.
 
@@ -103,7 +132,7 @@ Older logs keep their original kg convention until explicitly corrected.
 
 ### TXT workout import
 
-Choose **History → Add workout → Import TXT**, or use the sidebar shortcut:
+Choose **History → Import workout TXT**, or use the sidebar shortcut:
 
 ```text
 Time: 15:35-16:50
@@ -246,3 +275,24 @@ use 390 px. Images show the interface at capture time; see the
 ![Workout calendar and session logs](../screenshots/History_Mobile.png)
 
 </details>
+
+
+See the [first UX iteration screenshots](../screenshots/ux-iteration-1/README.md) for desktop and mobile examples of these workflows.
+
+
+### Highlighted observations
+
+Within **What changed - what to do**, **Largest improvement** appears first and
+**Result to review** follows when a comparable lower result exists. They are
+selected from all latest comparable exercise results before the five-observation
+limit, using relative changes in total reps or seconds at unchanged loads and
+reserve. Highlights are not repeated in the remaining observations. Missing data,
+changed conditions and deloads never manufacture a positive or negative highlight.
+
+Select a highlighted exercise name to open its full recorded history in Analysis.
+This opens **Exercise progress** with **All time**, clearing an earlier date filter
+so it cannot hide the selected exercise.
+
+Highlighted observations place the bold label and underlined exercise name on one
+line when space permits. The accented name and right arrow open exercise history;
+long names wrap on narrow screens. Keyboard focus remains visible.

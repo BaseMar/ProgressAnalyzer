@@ -55,7 +55,7 @@ def test_four_pages_and_add_workout_shortcut_open_only_history_import(
         "Analysis",
         "Plan",
         "History",
-        "Add workout",
+        "Import workout TXT",
     }
     assert not app.get("file_uploader")
     assert not any(item.key.startswith("history_date_") for item in app.button)
@@ -78,7 +78,7 @@ def test_one_exercise_form_and_draft_survive_navigation_before_saving(
     schedule_data, sample_input, sets_dataframe
 ):
     app = start_app(schedule_data, sample_input, sets_dataframe, page="Plan")
-    app.toggle(key="plan_create_new").set_value(True).run()
+    app.button(key="plan_create_new").click().run()
     app.text_input(key="plan_editor_new_name").set_value("Persistent draft")
     app.text_input(key="plan_editor_new_day_0_name").set_value("Upper A")
     app.selectbox(key="plan_editor_new_day_0_ex_0_exercise_id").select(1)
@@ -92,7 +92,7 @@ def test_one_exercise_form_and_draft_survive_navigation_before_saving(
     assert not app.text_input
     app.button(key="nav_Plan").click().run()
     assert not app.exception
-    assert app.toggle(key="plan_create_new").value is True
+    assert app.session_state["plan_create_mode"] is True
     assert app.text_input(key="plan_editor_new_name").value == "Persistent draft"
     assert app.selectbox(key="plan_editor_new_day_0_active_exercise").value == 1
     assert app.number_input(key="plan_editor_new_day_0_ex_1_sets").value == 5
@@ -156,11 +156,15 @@ def test_recorded_exercise_analysis_preserves_unplanned_exercises_without_rankin
     schedule_data, sample_input, sets_dataframe
 ):
     app = start_app(schedule_data, sample_input, sets_dataframe, page="Analysis")
-    app.radio(key="analysis_exercise_scope").set_value("All recorded exercises").run()
+    assert not any(item.key == "analysis_exercise_scope" for item in app.radio)
+    assert app.selectbox(key="analysis_month").value == "All time"
+    assert next(item for item in app.expander if item.label == "Filters").proto.expanded is False
     assert not app.exception
     app.selectbox(key="analysis_recorded_exercise").select(2).run()
-    assert len(app.get("vega_lite_chart")) == 1
-    assert [item.value for item in app.metric] == ["60 kg × 12 reps", "1", "1"]
+    assert len(app.get("plotly_chart")) == 1
+    assert not app.metric
+    assert any("60 kg" in item.value and "12 reps" in item.value for item in app.caption)
+    assert any("1 logged sets across 1 sessions" in item.value for item in app.caption)
     assert not any(
         "Top Strength" in item.value or "Weakest Strength" in item.value for item in app.markdown
     )
@@ -227,3 +231,77 @@ def test_analysis_accepts_mixed_database_date_representations(
     app.selectbox(key="analysis_month").select("2026-05").run()
     assert not app.exception
     assert len(app.get("vega_lite_chart")) == 1
+
+
+def test_history_main_actions_open_import_and_manual_entry_directly(
+    schedule_data, sample_input, sets_dataframe, monkeypatch
+):
+    import pandas as pd
+
+    from data_manager import DataManager
+
+    monkeypatch.setattr(
+        DataManager,
+        "load_exercises",
+        lambda self: pd.DataFrame([{"exercise_id": 1, "exercise_name": "Bench Press"}]),
+    )
+    app = start_app(schedule_data, sample_input, sets_dataframe, page="History")
+    assert app.button(key="history_add_workout_button").label == "Import workout TXT"
+    app.button(key="history_add_workout_button").click().run()
+    assert not app.exception
+    assert len(app.get("file_uploader")) == 1
+    assert not any(item.key == "workout_entry_mode" for item in app.radio)
+    app.button(key="history_manual_workout_button").click().run()
+    assert not app.exception
+    assert app.session_state["workout_entry_mode"] == "Enter exercise"
+    assert not app.get("file_uploader")
+    assert app.button(key="entry_save")
+    assert not app.error
+
+
+def test_create_plan_button_and_back_preserve_draft(schedule_data, sample_input, sets_dataframe):
+    app = start_app(schedule_data, sample_input, sets_dataframe, page="Plan")
+    app.button(key="plan_create_new").click().run()
+    app.text_input(key="plan_editor_new_name").set_value("My draft").run()
+    assert not app.checkbox(key="plan_editor_new_progression_enabled").value
+    app.button(key="plan_back_to_saved").click().run()
+    assert not app.exception and not app.text_input
+    app.button(key="plan_create_new").click().run()
+    assert not app.exception
+    assert app.text_input(key="plan_editor_new_name").value == "My draft"
+
+
+def test_highlight_opens_exact_exercise_and_clears_hidden_date_filter(
+    schedule_data, sample_input, sets_dataframe
+):
+    from dataclasses import replace
+
+    from metrics.training_insights import compute_training_insights
+    from test_plan_performance import data, execution
+    from test_training_insights import AS_OF, FIRST, PLAN, SECOND
+
+    planned = replace(PLAN, exercise_id=2)
+    report = compute_training_insights(
+        data(
+            execution(1, FIRST, actual_id=2, planned=planned),
+            execution(2, SECOND, (10, 10, 9), actual_id=2, planned=planned),
+        ),
+        as_of=AS_OF,
+    )
+    source = APP.replace(
+        "    OverviewView(manager, names).render()",
+        "    from ui.training_insights_view import render_training_insights\n    render_training_insights(st.session_state['test_report'], names)",
+    )
+    app = AppTest.from_string(source, default_timeout=45)
+    app.session_state["test_engine"] = schedule_data[0]
+    app.session_state["input_data"] = sample_input
+    app.session_state["sets_df"] = sets_dataframe
+    app.session_state["test_report"] = report
+    app.session_state["analysis_period_value"] = "2026-05"
+    app.run()
+    assert not app.exception
+    app.button(key="insight_history_more_output_2").click().run()
+    assert not app.exception and not app.error
+    assert app.session_state["nav_selected"] == "Analysis"
+    assert app.selectbox(key="analysis_recorded_exercise").value == 2
+    assert app.selectbox(key="analysis_month").value == "All time"

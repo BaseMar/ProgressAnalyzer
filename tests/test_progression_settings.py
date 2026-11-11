@@ -150,6 +150,7 @@ def test_upgrade_preserves_legacy_plan_without_assuming_a_block(plan_engine, mon
 
 def test_form_saves_rir_weight_step_and_preserves_block_on_revision(plan_engine):
     app = start_app(plan_engine)
+    app.checkbox(key="plan_editor_new_progression_enabled").set_value(True).run()
     origin = date.today() - timedelta(days=14)
     app.date_input(key="plan_editor_new_block_start").set_value(origin)
     app.selectbox(key="plan_editor_new_block_weeks").select(8)
@@ -160,7 +161,7 @@ def test_form_saves_rir_weight_step_and_preserves_block_on_revision(plan_engine)
     assert first.draft.progression == ProgressionSettings(origin, 8)
     assert first.draft.days[0].exercises[0].weight_increment == 2.5
     assert first.draft.days[0].exercises[0].target_rir == 1
-    app.toggle(key=f"plan_edit_{first.version_id}").set_value(True).run()
+    app.button(key=f"plan_edit_{first.version_id}").click().run()
     scope = f"plan_editor_{first.version_id}"
     assert app.date_input(key=f"{scope}_block_start").value == origin
     assert app.selectbox(key=f"{scope}_block_weeks").value == 8
@@ -179,7 +180,7 @@ def test_legacy_form_does_not_silently_configure_block(plan_engine):
     migration_runner.migrate(plan_engine, apply=True)
     first = save_training_plan(plan_engine, draft())
     app = start_app(plan_engine)
-    app.toggle(key=f"plan_edit_{first.version_id}").set_value(True).run()
+    app.button(key=f"plan_edit_{first.version_id}").click().run()
     scope = f"plan_editor_{first.version_id}"
     assert not app.checkbox(key=f"{scope}_progression_enabled").value
     assert not any(item.key == f"{scope}_block_start" for item in app.date_input)

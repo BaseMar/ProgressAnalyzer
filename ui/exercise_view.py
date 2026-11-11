@@ -1,24 +1,24 @@
-"""One recorded exercise: eligible performance, descriptive workload and source sets."""
+"""Full recorded exercise history with descriptive session means."""
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Dict
 
 import pandas as pd
 import streamlit as st
 
-from metrics.load_metrics import describe_load
 from ui.utils.analysis_kpis import recorded_set_value
-from ui.utils.load_charts import load_history_chart
+from ui.utils.load_charts import mean_load_history_chart
 from ui.utils.set_load_inputs import LOAD_LABELS
-from ui.utils.ui_helpers import line_chart
 
 
 class ExerciseView:
     """Present the active exercise analysis using precomputed metrics."""
 
-    def __init__(self, exercises_metrics: Dict) -> None:
+    def __init__(self, exercises_metrics: Dict, *, filters=None) -> None:
         self.exercises_metrics = exercises_metrics
+        self.filters = filters
 
     def render(self) -> None:
         if not self.exercises_metrics.get("per_exercise"):
@@ -30,55 +30,41 @@ class ExerciseView:
         items = self.exercises_metrics.get("per_exercise", {})
         if st.session_state.get("analysis_recorded_exercise") not in items:
             st.session_state["analysis_recorded_exercise"] = next(iter(items))
+        labels = Counter(item["exercise_name"] for item in items.values())
         selected = st.selectbox(
-            "Recorded exercise",
+            "Exercise",
             list(items),
             key="analysis_recorded_exercise",
-            format_func=lambda value: f"{items[value]['exercise_name']} · #{value}",
+            format_func=lambda value: (
+                items[value]["exercise_name"]
+                + (f" - #{value}" if labels[items[value]["exercise_name"]] > 1 else "")
+            ),
         )
         exercise = items[selected]
-        timed = bool(exercise.get("total_duration_seconds"))
-        question = st.radio(
-            "Show", ["Performance", "Workload"], horizontal=True, key="recorded_exercise_series"
-        )
-        workload = question == "Workload"
-        if exercise.get("per_set_performance") and (timed or exercise.get("has_explicit_load")):
-            self._render_load_series(exercise, workload)
+        points = exercise.get("per_set_performance", [])
+        if not points:
+            st.info("No recorded sets in this period. Choose another period in Filters.")
             return
-        self._render_recorded_kpis(exercise, exercise.get("per_set_performance", []))
-        field = "duration_seconds" if timed else "volume" if workload else "estimated_1rm"
-        key = (
-            ("per_session_duration" if workload else "per_session_best_duration")
-            if timed
-            else ("per_session_volume" if workload else "per_session_1rm")
-        )
-        label = "Seconds" if timed else "Volume (kg)" if workload else "Best eligible e1RM (kg)"
-        points = exercise.get(key, [])
-        if points:
-            st.caption(
-                f"{len(points)} recorded sessions · {exercise['total_sets']} descriptive sets. Read changes within this exercise only."
-            )
-        self._series(points, field, label)
-        st.caption(
-            "Workload includes light and unknown-effort logs. Performance uses eligible ordinary sets or timed work; planned deloads are excluded. e1RM is an estimate, not a tested maximum."
-        )
-        with st.expander("Source sessions"):
-            st.dataframe(pd.DataFrame(points), hide_index=True, width="stretch")
+        with self.filters if self.filters is not None else st.container():
+            points = self._select_load_series(points)
+        self._render_selected_results(points)
 
-    def _render_load_series(self, exercise, workload):
-        points = exercise["per_set_performance"]
+    def _select_load_series(self, points):
         kinds = list(dict.fromkeys(item["load_type"] for item in points))
         kind = (
             st.selectbox(
                 "Load convention",
-                kinds,
-                format_func=LOAD_LABELS.get,
+                [None, *kinds],
+                format_func=lambda value: (
+                    "All load conventions" if value is None else LOAD_LABELS[value]
+                ),
                 key="recorded_load_convention",
             )
             if len(kinds) > 1
             else kinds[0]
         )
-        points = [item for item in points if item["load_type"] == kind]
+        if kind is not None:
+            points = [item for item in points if item["load_type"] == kind]
         units = list(dict.fromkeys(item["unit"] for item in points))
         unit = (
             st.radio("Recorded set type", units, horizontal=True, key="recorded_load_unit")
@@ -86,15 +72,21 @@ class ExerciseView:
             else units[0]
         )
         points = [item for item in points if item["unit"] == unit]
-        self._render_recorded_kpis(exercise, points)
-        fig = load_history_chart(points, workload=workload)
-        if fig is None:
-            st.caption("No eligible performance sets yet. Workload includes descriptive logs.")
-        else:
+        # The filter controls render into the shared Filters panel; results stay
+        # in the page's original position rather than inside that panel.
+        return points
+
+    def _render_selected_results(self, points):
+        self._render_history_context(points)
+        fig = mean_load_history_chart(points)
+        if fig is not None:
             st.plotly_chart(fig, width="stretch", key="recorded_load_history")
+        st.caption(
+            "Session means describe all logged sets, including light and unknown-effort work. Read repetitions or time together with load; direction alone does not establish improvement."
+        )
         if any(item["total_load_kg"] is None for item in points):
             st.caption("Some load values are missing.")
-        with st.expander("Source sets"):
+        with st.expander("Recorded sets"):
             fields = [
                 "date",
                 "quantity",
@@ -121,8 +113,7 @@ class ExerciseView:
             )
 
     @staticmethod
-    def _render_recorded_kpis(exercise, points):
-        last_set, sets, sessions = st.columns(3)
+    def _render_history_context(points):
         if points:
             latest = max(
                 points,
@@ -134,25 +125,9 @@ class ExerciseView:
                 ),
             )
             item = {**latest, "seconds": latest["quantity"], "reps": latest["quantity"]}
-            last_set.metric(
-                "Last logged set",
-                recorded_set_value(item, latest["unit"]),
-                help=f"{latest['date']:%d %b %Y} · {describe_load(latest)}. Recorded work may include light or unknown-effort sets.",
+            st.caption(
+                f"Latest set: {recorded_set_value(item, latest['unit'])} - {latest['date']:%d %b %Y}"
             )
-        else:
-            last_set.metric("Last logged set", "—")
-        sets.metric("Logged sets in period", len(points) if points else exercise["total_sets"])
-        sessions.metric(
-            "Sessions in period",
-            len({item["session_id"] for item in points}) if points else exercise["sessions_count"],
+        st.caption(
+            f"{len(points)} logged sets across {len({item['session_id'] for item in points})} sessions in this period."
         )
-
-    @staticmethod
-    def _series(points, field, label):
-        if not points:
-            st.caption("No eligible results for this series yet.")
-            return
-        frame = pd.DataFrame(points).rename(columns={"date": "Date", field: label})
-        frame["Date"] = pd.to_datetime(frame["Date"])
-        frame = frame.sort_values(["Date", "session_id"]).set_index("Date")
-        line_chart(frame[[label]], label)

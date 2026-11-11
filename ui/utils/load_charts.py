@@ -123,3 +123,91 @@ def load_history_chart(points, *, workload=False):
     labels = [f"{pd.Timestamp(sessions[sid][0]['date']):%d %b} · #{sid}" for sid in ordered]
     fig.update_xaxes(tickmode="array", tickvals=x, ticktext=labels)
     return fig
+
+
+def mean_load_history_chart(points):
+    """Describe all logged sets, keeping incompatible load conventions separate."""
+    if not points:
+        return None
+    sessions = defaultdict(list)
+    for point in points:
+        sessions[point["session_id"]].append(point)
+    ordered = sorted(sessions, key=lambda sid: (pd.Timestamp(sessions[sid][0]["date"]), sid))
+    timed = points[0]["unit"] == "seconds"
+    kinds = list(dict.fromkeys(point["load_type"] for point in points))
+    quantity_label = "Mean seconds / set" if timed else "Mean reps / set"
+    load_label = (
+        "Mean recorded load (kg)"
+        if kinds == ["legacy"]
+        else "Mean total / recorded load (kg)"
+        if "legacy" in kinds
+        else "Mean total load (kg)"
+    )
+    names = {
+        "legacy": "Recorded kg",
+        "external": "External kg",
+        "bodyweight": "Bodyweight + load",
+        "assisted_bodyweight": "Assisted bodyweight",
+    }
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.16)
+    x = list(range(len(ordered)))
+    labels = [
+        f"{pd.Timestamp(sessions[sid][0]['date']):%d %b %Y} - session #{sid}" for sid in ordered
+    ]
+    for kind in kinds:
+        quantities, loads = [], []
+        for sid in ordered:
+            rows = [point for point in sessions[sid] if point["load_type"] == kind]
+            quantities.append(sum(row["quantity"] for row in rows) / len(rows) if rows else None)
+            loads.append(
+                None
+                if not rows or any(row["total_load_kg"] is None for row in rows)
+                else sum(row["total_load_kg"] for row in rows) / len(rows)
+            )
+        for row, values, label, color in (
+            (1, quantities, quantity_label, ACCENT),
+            (2, loads, load_label, MUTED),
+        ):
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=values,
+                    name=names.get(kind, kind) if len(kinds) > 1 else label,
+                    legendgroup=kind,
+                    showlegend=len(kinds) > 1 and row == 1,
+                    mode="lines+markers",
+                    connectgaps=False,
+                    line=dict(
+                        color=color,
+                        dash={
+                            "legacy": "dot",
+                            "external": "solid",
+                            "bodyweight": "dash",
+                            "assisted_bodyweight": "dashdot",
+                        }.get(kind, "solid")
+                        if len(kinds) > 1
+                        else "solid",
+                    ),
+                    customdata=labels,
+                    hovertemplate="%{customdata}<br>"
+                    + names.get(kind, kind)
+                    + "<br>"
+                    + label
+                    + ": %{y:.1f}<extra></extra>",
+                ),
+                row=row,
+                col=1,
+            )
+    fig.update_yaxes(title_text=quantity_label, row=1, col=1)
+    fig.update_yaxes(title_text=load_label, row=2, col=1)
+    fig.update_layout(**PLOTLY_LAYOUT)
+    fig.update_layout(height=420, margin=dict(l=8, r=8, t=20, b=8), showlegend=len(kinds) > 1)
+    step = max(1, (len(x) + 4) // 5)
+    ticks = sorted(set([*x[::step], x[-1]]))
+    fig.update_xaxes(
+        tickmode="array",
+        tickvals=ticks,
+        ticktext=[f"{pd.Timestamp(sessions[ordered[i]][0]['date']):%d %b}" for i in ticks],
+    )
+    fig.update_xaxes(title_text="Recorded session", row=2, col=1)
+    return fig

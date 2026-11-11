@@ -32,35 +32,27 @@ class AnalysisView:
     def render(self):
         page_title("Analysis", "Explore your training")
         with st.container(key="analysis_filters"):
-            question, period = st.columns([2, 1])
-            with question:
-                topic = st.selectbox(
-                    "What do you want to understand?",
-                    [
-                        "Exercise progress",
-                        "Plan consistency",
-                        "Muscle distribution",
-                        "Body measurements",
-                    ],
-                    key="analysis_question",
-                )
-            with period:
+            topic = st.selectbox(
+                "What do you want to understand?",
+                [
+                    "Exercise progress",
+                    "Plan consistency",
+                    "Muscle distribution",
+                    "Body measurements",
+                ],
+                key="analysis_question",
+            )
+            with st.expander("Filters"):
                 month = select_analysis_month(self.input)
+                exercise_filters = st.container()
+        st.caption(f"Period: {month}")
         filtered, _ = filter_data_by_month(self.input, self.sets, month)
-        if topic in ("Exercise progress", "Plan consistency"):
-            if topic == "Exercise progress":
-                scope = st.radio(
-                    "Compare",
-                    ["Plan targets", "All recorded exercises"],
-                    horizontal=True,
-                    key="analysis_exercise_scope",
-                )
-                if scope == "All recorded exercises":
-                    ExerciseView(compute_exercise_metrics(filtered)).render()
-                    return
+        if topic == "Exercise progress":
+            ExerciseView(compute_exercise_metrics(filtered), filters=exercise_filters).render()
+        elif topic == "Plan consistency":
             PlanAdherenceView(
                 manager=self.dm, exercise_names=self.names, selected_month=month
-            ).render(mode="exercise" if topic == "Exercise progress" else "consistency")
+            ).render(mode="consistency")
         elif topic == "Muscle distribution":
             self._muscle_distribution(filtered, month)
         else:

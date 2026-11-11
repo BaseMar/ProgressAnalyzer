@@ -10,7 +10,6 @@ import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
 from data_manager import DataManager
-from metrics.load_metrics import describe_load
 from metrics.plan_adherence import compute_plan_adherence
 from metrics.plan_performance import compute_plan_performance
 from metrics.plan_summary import summarize_plan
@@ -132,14 +131,6 @@ class PlanAdherenceView:
                     width="stretch",
                 )
 
-    @staticmethod
-    def _set_label(item, unit):
-        quantity = f"{item['seconds']}s" if unit == "seconds" else f"{item['reps']} reps"
-        if item.get("load_type", "legacy") != "legacy":
-            return f"{quantity} @ {describe_load(item)} · RIR {item['rir'] if item['rir'] is not None else '?'}"
-        load = f" @ {item['weight']:g} kg" if item["weight"] else ""
-        return f"{quantity}{load} · RIR {item['rir'] if item['rir'] is not None else '?'}"
-
     def render_performance(self, rows):
         section_header("Exercise trends")
         observed = [row for row in rows if row["sets"]]
@@ -193,33 +184,3 @@ class PlanAdherenceView:
         st.caption(
             "Shaded band = target range at each date; amber diamonds = deload. Means describe logged sets, including partial sessions. Read load alongside reps/time; substitutes keep separate histories."
         )
-        with st.expander("Previous vs current · set breakdown"):
-            previous = latest["previous"]
-            if previous:
-                st.caption(
-                    f"Previous: {previous['performed_on']:%d %b %Y} · Current: {latest['performed_on']:%d %b %Y}. History may extend outside the selected month."
-                )
-            else:
-                st.caption("No prior execution with the same workout context and targets.")
-            old_sets = previous["sets"] if previous else ()
-            st.dataframe(
-                pd.DataFrame(
-                    [
-                        {
-                            "Set": index + 1,
-                            "Previous": self._set_label(old_sets[index], latest["unit"])
-                            if index < len(old_sets)
-                            else "—",
-                            "Current": self._set_label(latest["sets"][index], latest["unit"])
-                            if index < len(latest["sets"])
-                            else "—",
-                        }
-                        for index in range(latest["planned_sets"])
-                    ]
-                ),
-                hide_index=True,
-                width="stretch",
-            )
-            st.caption(
-                "Changed loads and incomplete counts are not automatically graded. Missing RIR stays unknown. Context or target changes start a new history."
-            )

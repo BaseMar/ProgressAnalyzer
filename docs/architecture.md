@@ -20,7 +20,7 @@ All routes initially share `data_loader.load_data()`.
 | Route | Presentation and calculation ownership |
 | --- | --- |
 | Overview | `OverviewView`, `NextWorkoutView`, `TrainingInsightsView`; prepared recommendations and recent observations |
-| Analysis | `AnalysisView`; recorded exercise or plan-context performance, plan consistency, muscle allocation and measurement timelines |
+| Analysis | `AnalysisView`; full recorded exercise history, plan consistency, muscle allocation and measurement timelines |
 | Plan | `TrainingPlanView`; versioned routine drafts and training-block configuration |
 | History | `HistoryView`, `PlanScheduleView`; entry/import, linking, replacements, set/load corrections and measurement entry |
 

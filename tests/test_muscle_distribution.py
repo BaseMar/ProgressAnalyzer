@@ -128,7 +128,7 @@ def test_table_contains_only_the_four_essential_fields(schedule_data, sample_inp
     app = open_muscle_distribution(schedule_data, sample_input, sets_dataframe)
     table = app.dataframe[0].value
     assert list(table.columns) == ["Body Part", "Target", "Recorded / week", "Target %"]
-    assert not app.expander
+    assert [item.label for item in app.expander] == ["Filters"]
     assert not any(item.key == "muscle_reference_group" for item in app.selectbox)
     assert not any("doi.org" in item.value or "Counting" in item.value for item in app.markdown)
     assert (

@@ -7,8 +7,6 @@ def capture_plan_drafts():
     """Capture visible inputs before navigation removes their widget state."""
     import streamlit as st
 
-    if "plan_create_new" in st.session_state:
-        st.session_state["plan_create_mode"] = st.session_state["plan_create_new"]
     for key in list(st.session_state):
         if key.startswith("plan_editor_") and key.endswith("_draft"):
             capture_draft(key.removesuffix("_draft"), st.session_state[key])

@@ -402,7 +402,7 @@ HistoryView({}, manager.load_sets_ui(), data_manager=manager).render()
     )
     app.button(key="history_add_workout_button").click().run()
     assert len(app.get("file_uploader")) == 1
-    app.radio(key="workout_entry_mode").set_value("Enter exercise").run()
+    app.button(key="history_manual_workout_button").click().run()
     assert not app.get("file_uploader")
     open_hang(app)
     app.button(key="entry_save").click().run()

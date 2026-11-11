@@ -95,14 +95,22 @@ def test_focus_includes_maintained_loads_when_there_are_no_changes():
     assert result.available == 1
 
 
-def test_overview_has_conclusion_and_targets_without_kpis_tables_or_rankings(schedule_data):
+def test_overview_starts_with_progress_and_separates_next_workout(schedule_data):
     engine, _, _, _ = schedule_data
     saved = seed(schedule_data)
     app = start_app(engine, saved)
     html = markup(app)
-    assert "Your next progression targets are ready" in html
+    assert [item.label for item in app.tabs] == ["Progress", "Next workout"]
+    assert [item.label for item in app.metric] == [
+        "Improving exercises",
+        "No clear change",
+        "Lower results",
+    ]
+    assert [item.value for item in app.metric] == ["0", "1", "0"]
+    assert any("Compared exercises: 1" in item.value for item in app.caption)
+    assert "Your training today" not in html
     assert "62.5 kg · 3 × 6 reps" in html
-    assert not app.metric and not app.dataframe and not app.get("plotly_chart")
+    assert len(app.metric) == 3 and not app.dataframe and not app.get("plotly_chart")
     assert len([item for item in app.selectbox if item.label == "Active plan"]) == 1
     assert not any(
         item.label.startswith("Full workout") or item.label == "Why these targets?"
@@ -117,17 +125,20 @@ def test_default_focus_shows_recorded_starting_loads_when_source_rir_is_missing(
     engine, _, _, _ = schedule_data
     saved = seed(schedule_data, rir=None)
     app = start_app(engine, saved)
-    assert "Your next workout has clear targets" in markup(app)
+    assert any(item.value == "Your progress" for item in app.subheader)
     assert "62.5 kg" not in markup(app)
     assert "Source RIR is incomplete" in markup(app)
+    assert all(item.value == "\u2014" for item in app.metric)
+    assert any("Awaiting comparable data: 1" in item.value for item in app.caption)
 
 
 def test_legacy_plan_shows_progression_without_requiring_a_block(schedule_data):
     engine, _, _, _ = schedule_data
     saved = seed(schedule_data, progression=False)
     app = start_app(engine, saved)
-    assert "Your next progression targets are ready" in markup(app)
-    assert sum("Ordinary progression is available" in item.value for item in app.caption) == 1
+    assert any(item.value == "Your progress" for item in app.subheader)
+    assert any("Normal training" in item.value for item in app.markdown)
+    assert not any(item.label == "Workout details" for item in app.expander)
     assert "Target not available yet" not in markup(app)
 
 
@@ -185,7 +196,7 @@ OverviewView(manager, {1: 'Bench Press'}).render(as_of=st.session_state['as_of']
     )
     assert not any(item.label == "Calendar & recorded sessions" for item in app.expander)
     assert not any(item.key.startswith("history_date_") for item in app.button)
-    assert not app.metric and not app.dataframe and not app.get("plotly_chart")
+    assert len(app.metric) == 3 and not app.dataframe and not app.get("plotly_chart")
 
 
 def test_recent_window_uses_actual_dates_including_early_and_moved_workouts():

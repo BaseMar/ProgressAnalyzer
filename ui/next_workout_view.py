@@ -85,20 +85,21 @@ class NextWorkoutView:
         return self.names.get(exercise_id, f"Exercise #{exercise_id}")
 
     def render(self, plan_id, versions, *, context=None, history=None, as_of=None):
-        as_of = as_of or date.today()
-        section_header("Next workout")
-        try:
-            return self._render(plan_id, versions, history, as_of, context=context)
-        except SQLAlchemyError:
-            logger.exception("Unable to load next-workout recommendations")
-            st.error(
-                "Next-workout targets could not be loaded. Your recorded history is still available."
-            )
-        except ValueError:
-            logger.exception("Next-workout selection is no longer valid")
-            st.info(
-                "The plan or workout assignment changed. Refresh this view to select the next workout."
-            )
+        with st.container(key="next_workout_workspace"):
+            as_of = as_of or date.today()
+            section_header("Next workout")
+            try:
+                return self._render(plan_id, versions, history, as_of, context=context)
+            except SQLAlchemyError:
+                logger.exception("Unable to load next-workout recommendations")
+                st.error(
+                    "Next-workout targets could not be loaded. Your recorded history is still available."
+                )
+            except ValueError:
+                logger.exception("Next-workout selection is no longer valid")
+                st.info(
+                    "The plan or workout assignment changed. Refresh this view to select the next workout."
+                )
 
     def _render(self, plan_id, versions, history, as_of, *, context=None):
         if not versions:
@@ -141,25 +142,7 @@ class NextWorkoutView:
             result = self.dm.recommend_prepared_workout(prepared)
             version = next(version for version in versions if version.version_id == slot.version_id)
             self._heading(slot, result.block, version.draft.progression)
-            st.caption(
-                f"Plan version {version.version_number} · effective from {version.draft.effective_from:%d %b %Y}."
-            )
-            next_versions = sorted(
-                (v for v in versions if v.draft.effective_from > slot.scheduled_date),
-                key=lambda v: v.draft.effective_from,
-            )
-            if next_versions:
-                next_version = next_versions[0]
-                st.caption(
-                    f"Plan version {next_version.version_number} starts on {next_version.draft.effective_from:%d %b %Y}; it does not change this workout."
-                )
-            st.caption(
-                "Today and upcoming dates · independent of Analysis and History filters · linked workouts are excluded."
-            )
-            if result.block.phase == "unconfigured":
-                st.caption(
-                    "Ordinary progression is available. Configure the calendar in Plan to schedule automatic deloads."
-                )
+            copy_area = st.container()
             if result.block.phase == "not_started":
                 st.info(
                     f"The training block starts on {version.draft.progression.block_start:%d %b %Y}. Select a workout on or after that date."
@@ -201,14 +184,15 @@ class NextWorkoutView:
                 )
 
             template = workout_template(upcoming, result, self.names)
-            copy_workout(
-                template, key=f"copy_workout_{plan_id}_{slot.day_id}_{slot.scheduled_date}"
-            )
-            with st.expander("Copy preview"):
-                st.caption(
-                    "Paste into Samsung Notes. After training, enter your actual results and RIR."
+            with copy_area:
+                copy_workout(
+                    template, key=f"copy_workout_{plan_id}_{slot.day_id}_{slot.scheduled_date}"
                 )
-                st.code(template, language=None, wrap_lines=True)
+                with st.expander("Copy preview"):
+                    st.caption(
+                        "Paste into Samsung Notes. After training, enter your actual results and RIR."
+                    )
+                    st.code(template, language=None, wrap_lines=True)
             st.markdown(
                 '<div class="recommendation-list">'
                 + "".join(exercise_card(item) for item in result.exercises)

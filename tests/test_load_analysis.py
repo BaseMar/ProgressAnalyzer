@@ -276,7 +276,7 @@ def test_chart_separates_timed_load_profiles_and_unknown_load(sample_input):
     assert list(fig.data[-1].y) == [80, 85, None]
 
 
-def test_recorded_exercise_ui_exposes_load_and_separates_workload(sample_input):
+def test_recorded_exercise_ui_exposes_load_without_extra_mode_selector(sample_input):
     inp = source(
         sample_input,
         [(SetLoad("bodyweight", 0, 80), 40), (SetLoad("bodyweight", 5, 80), 35)],
@@ -293,8 +293,44 @@ ExerciseView(st.session_state["metrics"]).render()
     app.session_state["metrics"] = compute_exercise_metrics(inp)
     app.run()
     assert not app.exception and not app.error
-    assert [item.value for item in app.metric] == ["85 kg total × 35 s", "2", "2"]
+    assert not app.metric
+    assert any("85 kg total" in item.value and "35 s" in item.value for item in app.caption)
+    assert any("2 logged sets across 2 sessions" in item.value for item in app.caption)
     assert len(app.get("plotly_chart")) == 1
     assert not any("Body mass +" in item.value for item in app.caption)
-    app.radio(key="recorded_exercise_series").set_value("Workload").run()
-    assert not app.exception and len(app.get("plotly_chart")) == 1
+    assert not any(item.key == "recorded_exercise_series" for item in app.radio)
+
+
+def test_mean_history_uses_all_sessions_and_keeps_missing_load_unknown(sample_input):
+    from ui.utils.load_charts import mean_load_history_chart
+
+    inp = source(
+        sample_input,
+        [
+            (SetLoad("bodyweight", 0, 80), 40),
+            (SetLoad("bodyweight", 5, 80), 30),
+            (SetLoad("bodyweight", 0, None), 60),
+        ],
+        timed=True,
+    )
+    points = compute_exercise_metrics(inp)["per_exercise"][1]["per_set_performance"]
+    # A light or incomplete-effort log still belongs to descriptive history.
+    points[0]["eligible"] = False
+    points.append({**points[0], "set_number": 2, "quantity": 20})
+    fig = mean_load_history_chart(points)
+    assert list(fig.data[0].y) == [30, 30, 60]
+    assert list(fig.data[1].y) == [80, 85, None]
+    assert fig.layout.yaxis.title.text == "Mean seconds / set"
+    assert fig.layout.yaxis2.title.text == "Mean total load (kg)"
+
+
+def test_mean_chart_does_not_average_different_load_conventions(sample_input):
+    from ui.utils.load_charts import mean_load_history_chart
+
+    inp = source(sample_input, [(60.0, 8), (SetLoad("bodyweight", 0, 80), 10)])
+    points = compute_exercise_metrics(inp)["per_exercise"][1]["per_set_performance"]
+    # Even within one session, recorded kg and bodyweight totals stay separate.
+    points[1]["session_id"] = points[0]["session_id"]
+    fig = mean_load_history_chart(points)
+    assert list(fig.data[1].y) == [60]
+    assert list(fig.data[3].y) == [80]

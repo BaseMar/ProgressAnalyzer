@@ -301,10 +301,8 @@ PlanAdherenceView(manager=manager, exercise_names={1: "Bench Press"}, selected_m
     assert not app.error
     assert [item.value for item in app.metric] == ["60 kg × 9 reps", "+3", "3/3"]
     assert len(app.get("plotly_chart")) == 1
-    tables = [table.value for table in app.dataframe]
-    comparison_table = next(table for table in tables if "Previous" in table.columns)
-    assert "8 reps @ 60 kg" in comparison_table.iloc[0]["Previous"]
-    assert "9 reps @ 60 kg" in comparison_table.iloc[0]["Current"]
+    assert not app.dataframe
+    assert not any(item.label.startswith("Previous vs current") for item in app.expander)
     assert any("3/3 sets in range" in item.value for item in app.caption)
     assert any("More reps at the same load" in item.value for item in app.markdown)
 
