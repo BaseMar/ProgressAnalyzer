@@ -87,19 +87,20 @@ class HistoryView:
         page_title("History", "Your training history")
         if "history_workout_notice" in st.session_state:
             st.success(st.session_state.pop("history_workout_notice"))
-        workout_action, measurement_action = st.columns(2)
-        if workout_action.button(
-            "Add workout", key="history_add_workout_button", icon=":material/add:"
-        ):
-            st.session_state["history_add_workout"] = True
-        if measurement_action.button(
-            "Add body measurement",
-            key="history_add_measurement_button",
-            icon=":material/straighten:",
-        ):
-            st.session_state["history_add_measurement"] = not st.session_state.get(
-                "history_add_measurement", False
-            )
+        with st.container(key="history_actions"):
+            workout_action, measurement_action = st.columns(2)
+            if workout_action.button(
+                "Add workout", key="history_add_workout_button", icon=":material/add:"
+            ):
+                st.session_state["history_add_workout"] = True
+            if measurement_action.button(
+                "Add body measurement",
+                key="history_add_measurement_button",
+                icon=":material/straighten:",
+            ):
+                st.session_state["history_add_measurement"] = not st.session_state.get(
+                    "history_add_measurement", False
+                )
         if st.session_state.get("history_add_workout"):
             with st.container(key="history_import"):
                 if st.button("Close entry", key="history_close_import"):

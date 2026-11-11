@@ -31,20 +31,21 @@ class AnalysisView:
 
     def render(self):
         page_title("Analysis", "Explore your training")
-        question, period = st.columns([2, 1])
-        with question:
-            topic = st.selectbox(
-                "What do you want to understand?",
-                [
-                    "Exercise progress",
-                    "Plan consistency",
-                    "Muscle distribution",
-                    "Body measurements",
-                ],
-                key="analysis_question",
-            )
-        with period:
-            month = select_analysis_month(self.input)
+        with st.container(key="analysis_filters"):
+            question, period = st.columns([2, 1])
+            with question:
+                topic = st.selectbox(
+                    "What do you want to understand?",
+                    [
+                        "Exercise progress",
+                        "Plan consistency",
+                        "Muscle distribution",
+                        "Body measurements",
+                    ],
+                    key="analysis_question",
+                )
+            with period:
+                month = select_analysis_month(self.input)
         filtered, _ = filter_data_by_month(self.input, self.sets, month)
         if topic in ("Exercise progress", "Plan consistency"):
             if topic == "Exercise progress":

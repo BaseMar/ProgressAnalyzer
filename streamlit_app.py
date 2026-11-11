@@ -27,7 +27,7 @@ def _configure_page() -> None:
         page_title="Workout Progress Analyzer",
         page_icon="💪",
         layout="wide",
-        initial_sidebar_state="expanded",
+        initial_sidebar_state="auto",
     )
 
 

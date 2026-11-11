@@ -27,7 +27,10 @@
 }
 
 .block-container {
-    max-width: 1200px;
+    max-width: 1600px;
+    width: 100%;
+    container-type: inline-size;
+    padding-inline: clamp(1rem, 3vw, 3rem);
     padding-top: 2rem;
     padding-bottom: 2rem;
 }
@@ -1217,3 +1220,74 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
         padding-right: 6px;
     }
 }
+
+/* Responsive layout only: retain the existing visual theme and interactions.
+   Container breakpoints use content width, including the space taken by sidebar. */
+[data-testid="stColumn"] { min-width: 0; }
+.page-title, .overview-conclusion, .recommendation-exercise,
+.plan-week-card, .plan-reference-row, .calendar-detail-heading {
+    overflow-wrap: anywhere;
+}
+[data-testid="stDataFrame"], [data-testid="stTable"] {
+    max-width: 100%; overflow-x: auto;
+}
+[data-testid="stTabs"] [role="tablist"] { overflow-x: auto; }
+[data-testid="stTabs"] [role="tab"] { flex-shrink: 0; }
+
+@container (max-width: 900px) {
+    .st-key-overview_decisions [data-testid="stHorizontalBlock"]:has(.st-key-next_workout_card) {
+        flex-direction: column; gap: 18px;
+    }
+    .st-key-overview_decisions [data-testid="stHorizontalBlock"]:has(.st-key-next_workout_card) > [data-testid="stColumn"] {
+        width: 100%; min-width: 100%; flex: 1 1 100%;
+    }
+}
+@container (max-width: 700px) {
+    /* Metric rows and calendar filters need usable widths on phones/tablets. */
+    [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] [data-testid="stMetric"]),
+    .st-key-workout_calendar [data-testid="stHorizontalBlock"]:has([data-testid="stSelectbox"]) {
+        flex-wrap: wrap;
+    }
+    [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] [data-testid="stMetric"]) > [data-testid="stColumn"],
+    .st-key-workout_calendar [data-testid="stHorizontalBlock"]:has([data-testid="stSelectbox"]) > [data-testid="stColumn"] {
+        width: 100%; min-width: 100%; flex: 1 1 100%;
+    }
+    :is(.st-key-analysis_filters, .st-key-history_actions, .st-key-training_plan_details, .st-key-training_workout_editor, .st-key-history_import) [data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap;
+    }
+    :is(.st-key-analysis_filters, .st-key-history_actions, .st-key-training_plan_details, .st-key-training_workout_editor, .st-key-history_import) [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        width: 100%; min-width: 100%; flex: 1 1 100%;
+    }
+    .st-key-workout_calendar { padding: 8px; }
+    .calendar-heading { flex-direction: column; align-items: flex-start; }
+    .calendar-summary, .calendar-legend { flex-wrap: wrap; gap: 8px 12px; }
+    .st-key-calendar_grid [data-testid="stHorizontalBlock"] { gap: 2px !important; }
+    .st-key-calendar_grid [data-testid="stButton"] button { height: 48px; min-height: 48px; padding-inline: 0; }
+    .calendar-blank { height: 48px; }
+    .recommendation-phase, .recommendation-action { white-space: normal; }
+    .plan-week-grid { grid-template-columns: 1fr; }
+    .st-key-history_actions button p { white-space: normal; }
+}
+/* Editor controls are an intentional row, even when the surrounding form stacks. */
+.st-key-training_workout_editor [class*="_controls"] [data-testid="stHorizontalBlock"] {
+    flex-direction: row; flex-wrap: nowrap; gap: 8px;
+}
+.st-key-training_workout_editor [class*="_controls"] [data-testid="stColumn"] {
+    width: 44px; min-width: 0; flex: 0 0 44px;
+}
+.st-key-training_workout_editor [class*="_controls"] [data-testid="stColumn"]:first-child {
+    width: auto; min-width: 0; flex: 1 1 0;
+}
+.st-key-training_workout_editor [class*="_controls"] button {
+    width: 44px; min-width: 44px; min-height: 44px; padding-inline: 0;
+}
+@media (max-width: 640px) {
+    .block-container { padding-inline: .75rem; }
+    [data-testid="stSidebar"] .stButton > button { min-width: 0 !important; }
+    .st-key-workout_calendar .calendar-weekday { letter-spacing: 0; }
+}
+/* Expand the analytical workspace progressively on QHD, ultrawide and 4K displays.
+   A cap avoids turning individual paragraphs into full-monitor lines. */
+@media (min-width: 1920px) { .block-container { max-width: 1800px; } }
+@media (min-width: 2560px) { .block-container { max-width: 2200px; } }
+@media (min-width: 3200px) { .block-container { max-width: 2600px; } }
