@@ -71,7 +71,7 @@ controls automatic deloads.
 
 **Overview → Next workout** previews an unlinked planned workout from today
 onward. Choose another upcoming date or expand **Full workout** for every set.
-**Why?** / **Why these targets?** show the source sessions and limitations.
+**Why these targets?** shows the source sessions and limitations for next-workout targets.
 Overview's numeric next action comes from that same preview.
 
 Starting suggestions use the exact exercise's usable history, including older

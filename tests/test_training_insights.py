@@ -283,7 +283,7 @@ def test_at_most_three_annotations_prioritize_attention_and_group_data_gaps():
     assert report(*entries, policy=InsightPolicy(max_annotations=1)).omitted_annotations == 4
 
 
-def test_ui_shows_action_and_source_disclosure_and_escapes_catalog_names():
+def test_ui_shows_action_without_technical_disclosures_and_escapes_catalog_names():
     result = report(execution(1, FIRST), execution(2, SECOND, (10, 10, 9)))
     app = AppTest.from_string("""
 import streamlit as st
@@ -296,6 +296,5 @@ render_training_insights(st.session_state['report'], {1: '<script>alert(1)</scri
     html = next(item.value for item in app.markdown if "analysis-insight" in item.value)
     assert "&lt;script&gt;" in html and "<script>" not in html
     assert "2 more reps" in html and "Next workout target" in html
-    assert len(app.expander) == 1
-    assert app.expander[0].label.startswith("Why?")
-    assert len(app.json) == 1
+    assert not app.expander
+    assert not app.json

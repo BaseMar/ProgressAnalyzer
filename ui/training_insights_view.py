@@ -1,7 +1,5 @@
-"""Render prepared observations; evidence stays behind one disclosure."""
+"""Render readable observations, supporting evidence and suggested actions."""
 
-import json
-from dataclasses import asdict
 from html import escape
 
 import streamlit as st
@@ -31,13 +29,6 @@ def render_training_insights(report, exercise_names=None, *, show_target_actions
             f"<br><strong>{escape(action)}</strong></div>",
             unsafe_allow_html=True,
         )
-        with st.expander(f"Why? · {title}"):
-            st.caption(f"Evidence: {insight.evidence_level} · Rule: {insight.code}")
-            st.caption(insight.rule)
-            st.caption(
-                "Source snapshots include session IDs, actual dates, individual sets, targets and automatic interpretation. Unknown effort is never filled with zero."
-            )
-            st.json(json.dumps(asdict(insight), default=str, ensure_ascii=False), expanded=False)
     st.caption(
         f"{report.assessed_contexts} paired exercise contexts · {report.limited_contexts} with limited evidence. "
         + (
