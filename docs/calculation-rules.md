@@ -249,6 +249,19 @@ Recorded-exercise charts separate load conventions and reps/time. Bodyweight
 and timed performance series use the same known total load. Missing or changed
 loads cannot produce an automatic comparable-progress label.
 
+Analysis **Progress** restores the early/late ranking as a separate descriptive
+estimate. Each eligible external-load session supplies its best existing Epley
+estimate; eligible timed sessions supply their longest hold. With `N` sessions,
+each window contains `min(3, floor(N / 2))` sessions. Change is
+`100 × (last-window mean / first-window mean − 1)`, rounded to two decimals.
+At least two positive, finite values are required, and windows never overlap.
+The existing strength-convention and timed-total-load guards apply; seconds and
+strength estimates never share one ranking. Warm-ups, deloads and ineligible
+ordinary-effort sets cannot establish estimates. A bodyweight strength estimate
+is unavailable, not zero. Top 5 contains positive changes; Bottom 5 contains the
+lowest non-positive changes, with no duplication or padding. This is not the
+latest-pair verdict in Overview; actual RIR can differ between ranking sessions.
+
 </details>
 
 ### 6. Plan consistency: recorded does not always mean in range

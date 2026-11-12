@@ -128,14 +128,14 @@ def test_table_contains_only_the_four_essential_fields(schedule_data, sample_inp
     app = open_muscle_distribution(schedule_data, sample_input, sets_dataframe)
     table = app.dataframe[0].value
     assert list(table.columns) == ["Body Part", "Target", "Recorded / week", "Target %"]
-    assert [item.label for item in app.expander] == ["Filters"]
+    assert not app.expander
     assert not any(item.key == "muscle_reference_group" for item in app.selectbox)
     assert not any("doi.org" in item.value or "Counting" in item.value for item in app.markdown)
     assert (
         ranges_table(app).loc["Triceps", "Recorded / week"]
         == ranges_table(app).loc["Chest", "Recorded / week"] * 0.5
     )
-    app.radio(key="analysis_muscle_view").set_value("Set allocation").run()
+    assert not any(item.key == "analysis_muscle_view" for item in app.radio)
     assert not app.exception and not app.error
     assert len(app.get("plotly_chart")) == 1
     assert list(app.dataframe[0].value.columns) == list(table.columns)

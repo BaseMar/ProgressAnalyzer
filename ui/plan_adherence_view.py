@@ -41,7 +41,7 @@ class PlanAdherenceView:
             plans = {item.plan_id: item for item in self.dm.load_training_plans()}
             if not plans:
                 st.info(
-                    "Create a plan in Plan, then link sessions in History to start the analysis. Unplanned exercises are available under All recorded exercises."
+                    "Create a plan in Plan, then link sessions in History to start the analysis. Recorded exercise history is available under Exercises."
                 )
                 return
             plan_id = select_active_plan(plans.values())

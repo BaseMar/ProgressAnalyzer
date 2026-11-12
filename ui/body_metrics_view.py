@@ -80,8 +80,6 @@ class BodyMetricsView:
         st.caption(
             "These are recorded measurements. Direction alone does not establish improvement; device estimates may vary."
         )
-        with st.expander("Measurement records"):
-            st.dataframe(points, hide_index=True, width="stretch")
 
     def _add_measurement_form(self) -> None:
         """Provide forms for adding new body composition and measurement data."""

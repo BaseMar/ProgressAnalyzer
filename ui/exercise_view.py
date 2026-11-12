@@ -16,34 +16,57 @@ from ui.utils.set_load_inputs import LOAD_LABELS
 class ExerciseView:
     """Present the active exercise analysis using precomputed metrics."""
 
-    def __init__(self, exercises_metrics: Dict, *, filters=None) -> None:
+    def __init__(
+        self, exercises_metrics: Dict, *, filters=None, selection=None, exercise_options=None
+    ) -> None:
         self.exercises_metrics = exercises_metrics
         self.filters = filters
+        self.selection = selection
+        self.options = exercise_options
 
     def render(self) -> None:
-        if not self.exercises_metrics.get("per_exercise"):
-            st.info("No exercise data available.")
+        if not self.exercises_metrics.get("per_exercise") and not self.options:
+            st.info(
+                "No exercise history yet. Import a workout TXT or enter a workout in History to start."
+            )
             return
         self._render_selected_exercise()
 
     def _render_selected_exercise(self):
         items = self.exercises_metrics.get("per_exercise", {})
-        if st.session_state.get("analysis_recorded_exercise") not in items:
-            st.session_state["analysis_recorded_exercise"] = next(iter(items))
-        labels = Counter(item["exercise_name"] for item in items.values())
-        selected = st.selectbox(
-            "Exercise",
-            list(items),
-            key="analysis_recorded_exercise",
-            format_func=lambda value: (
-                items[value]["exercise_name"]
-                + (f" - #{value}" if labels[items[value]["exercise_name"]] > 1 else "")
-            ),
+        options = (
+            self.options
+            if self.options is not None
+            else {key: item["exercise_name"] for key, item in items.items()}
         )
-        exercise = items[selected]
+        if st.session_state.get("analysis_recorded_exercise") not in options:
+            saved = st.session_state.get("analysis_exercise_value")
+            st.session_state["analysis_recorded_exercise"] = (
+                saved if saved in options else next(iter(options))
+            )
+        labels = Counter(options.values())
+        with self.selection if self.selection is not None else st.container():
+            selected = st.selectbox(
+                "Exercise",
+                list(options),
+                key="analysis_recorded_exercise",
+                format_func=lambda value: (
+                    options[value] + (f" - #{value}" if labels[options[value]] > 1 else "")
+                ),
+            )
+            if len(options[selected]) > 80:
+                st.caption(options[selected])
+        st.session_state["analysis_exercise_value"] = selected
+        exercise = items.get(selected, {})
         points = exercise.get("per_set_performance", [])
         if not points:
-            st.info("No recorded sets in this period. Choose another period in Filters.")
+            st.info(
+                "No recorded sets for this exercise in the selected period. Change Analysis period above the tabs."
+            )
+            if self.filters is not None:
+                st.button(
+                    "Show all history", on_click=_show_all_history, key="analysis_show_all_history"
+                )
             return
         with self.filters if self.filters is not None else st.container():
             points = self._select_load_series(points)
@@ -51,6 +74,8 @@ class ExerciseView:
 
     def _select_load_series(self, points):
         kinds = list(dict.fromkeys(item["load_type"] for item in points))
+        if st.session_state.get("recorded_load_convention") not in (None, *kinds):
+            st.session_state["recorded_load_convention"] = None
         kind = (
             st.selectbox(
                 "Load convention",
@@ -66,14 +91,21 @@ class ExerciseView:
         if kind is not None:
             points = [item for item in points if item["load_type"] == kind]
         units = list(dict.fromkeys(item["unit"] for item in points))
+        if st.session_state.get("recorded_load_unit") not in (None, *units):
+            st.session_state["recorded_load_unit"] = units[0]
         unit = (
-            st.radio("Recorded set type", units, horizontal=True, key="recorded_load_unit")
+            st.radio(
+                "Recorded set type",
+                units,
+                horizontal=True,
+                key="recorded_load_unit",
+                format_func=lambda value: "Repetitions" if value == "reps" else "Time (seconds)",
+            )
             if len(units) > 1
             else units[0]
         )
         points = [item for item in points if item["unit"] == unit]
-        # The filter controls render into the shared Filters panel; results stay
-        # in the page's original position rather than inside that panel.
+        # Optional load/unit controls stay near the selected exercise.
         return points
 
     def _render_selected_results(self, points):
@@ -86,34 +118,10 @@ class ExerciseView:
         )
         if any(item["total_load_kg"] is None for item in points):
             st.caption("Some load values are missing.")
-        with st.expander("Recorded sets"):
-            fields = [
-                "date",
-                "quantity",
-                "unit",
-                "weight",
-                "body_mass_kg",
-                "assistance_kg",
-                "total_load_kg",
-                "rir",
-            ]
-            st.dataframe(
-                pd.DataFrame(points)[fields].rename(
-                    columns={
-                        "date": "Date",
-                        "weight": "External kg",
-                        "body_mass_kg": "Body mass kg",
-                        "assistance_kg": "Assistance kg",
-                        "total_load_kg": "Total kg",
-                        "quantity": "Reps/seconds",
-                    }
-                ),
-                hide_index=True,
-                width="stretch",
-            )
 
     @staticmethod
     def _render_history_context(points):
+        latest_description = ""
         if points:
             latest = max(
                 points,
@@ -125,9 +133,13 @@ class ExerciseView:
                 ),
             )
             item = {**latest, "seconds": latest["quantity"], "reps": latest["quantity"]}
-            st.caption(
-                f"Latest set: {recorded_set_value(item, latest['unit'])} - {latest['date']:%d %b %Y}"
-            )
+            latest_description = f"Latest set: {recorded_set_value(item, latest['unit'])} - {latest['date']:%d %b %Y}"
         st.caption(
-            f"{len(points)} logged sets across {len({item['session_id'] for item in points})} sessions in this period."
+            latest_description
+            + f" · {len(points)} logged sets across {len({item['session_id'] for item in points})} sessions in this period."
         )
+
+
+def _show_all_history():
+    st.session_state["analysis_month"] = "All time"
+    st.session_state["analysis_period_value"] = "All time"

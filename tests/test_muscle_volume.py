@@ -84,7 +84,8 @@ def ranges_table(app):
 
 def open_muscle_distribution(schedule_data, sample_input, sets_dataframe):
     app = start_app(schedule_data, sample_input, sets_dataframe, page="Analysis")
-    app.selectbox(key="analysis_question").select("Muscle distribution").run()
+    app.session_state["analysis_tab"] = "Muscles"
+    app.run()
     assert not app.exception
     assert not app.error
     return app
@@ -110,7 +111,8 @@ def test_new_plan_is_activated_and_recalculates_targets_across_navigation(
     new_plan = app.session_state["active_plan_id"]
     assert new_plan != schedule_data[2].plan_id
     app.button(key="nav_Analysis").click().run()
-    app.selectbox(key="analysis_question").select("Muscle distribution").run()
+    app.session_state["analysis_tab"] = "Muscles"
+    app.run()
     assert not app.exception
     assert ranges_table(app).loc["Chest", "Target"] == 7.0
     assert ranges_table(app).loc["Triceps", "Target"] == 3.5

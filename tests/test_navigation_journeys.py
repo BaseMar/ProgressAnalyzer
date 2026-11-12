@@ -33,17 +33,25 @@ else:
 """
 
 
-def start_app(schedule_data, sample_input, sets_dataframe, page="Overview"):
+def start_app(
+    schedule_data, sample_input, sets_dataframe, page="Overview", analysis_tab="Exercises"
+):
     app = AppTest.from_string(APP, default_timeout=45)
     app.session_state["test_engine"] = schedule_data[0]
     app.session_state["input_data"] = sample_input
     frame = sets_dataframe.assign(repetitions=8, weight=60.0, set_number=1)
     app.session_state["sets_df"] = frame
     app.session_state["nav_selected"] = page
+    app.session_state["analysis_tab"] = analysis_tab
     app.run()
     assert not app.exception
     assert not app.error
     return app
+
+
+def select_analysis_tab(app, tab):
+    app.session_state["analysis_tab"] = tab
+    return app.run()
 
 
 def test_four_pages_and_add_workout_shortcut_open_only_history_import(
@@ -116,7 +124,7 @@ def test_analysis_period_applies_to_body_data_and_keeps_other_questions_hidden(
     schedule_data, sample_input, sets_dataframe
 ):
     app = start_app(schedule_data, sample_input, sets_dataframe, page="Analysis")
-    app.selectbox(key="analysis_question").select("Body measurements").run()
+    select_analysis_tab(app, "Body measurements")
     app.selectbox(key="analysis_month").select("2026-05").run()
     app.selectbox(key="analysis_body_metric").select("Waist").run()
     assert not app.exception
@@ -127,9 +135,8 @@ def test_analysis_period_applies_to_body_data_and_keeps_other_questions_hidden(
     )
     assert [item.value for item in app.metric] == ["80 cm", "—", "01 May 2026"]
     assert any("One observation" in item.value for item in app.caption)
-    records = app.dataframe[0].value
-    assert len(records) == 1
-    assert records["Waist"].iloc[0] == 80
+    assert not app.dataframe
+    assert not any(item.label == "Measurement records" for item in app.expander)
     app.button(key="nav_Overview").click().run()
     assert not any(item.label == "Analysis period" for item in app.selectbox)
     assert any(item.label == "Upcoming workout" for item in app.selectbox)
@@ -141,7 +148,7 @@ def test_plan_consistency_has_one_chart_and_no_editing_or_exercise_drilldown(
     schedule_data, sample_input, sets_dataframe
 ):
     app = start_app(schedule_data, sample_input, sets_dataframe, page="Analysis")
-    app.selectbox(key="analysis_question").select("Plan consistency").run()
+    select_analysis_tab(app, "Plan consistency")
     assert not app.exception
     assert len(app.get("plotly_chart")) == 1
     assert len(app.metric) == 3 and not app.text_input
@@ -158,7 +165,7 @@ def test_recorded_exercise_analysis_preserves_unplanned_exercises_without_rankin
     app = start_app(schedule_data, sample_input, sets_dataframe, page="Analysis")
     assert not any(item.key == "analysis_exercise_scope" for item in app.radio)
     assert app.selectbox(key="analysis_month").value == "All time"
-    assert next(item for item in app.expander if item.label == "Filters").proto.expanded is False
+    assert not any(item.label == "Filters" for item in app.expander)
     assert not app.exception
     app.selectbox(key="analysis_recorded_exercise").select(2).run()
     assert len(app.get("plotly_chart")) == 1
@@ -170,7 +177,14 @@ def test_recorded_exercise_analysis_preserves_unplanned_exercises_without_rankin
     )
     app.selectbox(key="analysis_month").select("2026-05").run()
     assert not app.exception
-    assert app.selectbox(key="analysis_recorded_exercise").value == 1
+    assert app.selectbox(key="analysis_recorded_exercise").value == 2
+    assert not app.get("plotly_chart")
+    assert any("No recorded sets for this exercise" in item.value for item in app.info)
+    app.button(key="analysis_show_all_history").click().run()
+    assert not app.exception
+    assert app.selectbox(key="analysis_month").value == "All time"
+    assert app.selectbox(key="analysis_recorded_exercise").value == 2
+    assert len(app.get("plotly_chart")) == 1
 
 
 def test_history_body_input_and_overlay_are_reachable_without_other_page_forms(
@@ -227,7 +241,7 @@ def test_analysis_accepts_mixed_database_date_representations(
         ],
     )
     app = start_app(schedule_data, mixed, sets_dataframe, page="Analysis")
-    app.selectbox(key="analysis_question").select("Body measurements").run()
+    select_analysis_tab(app, "Body measurements")
     app.selectbox(key="analysis_month").select("2026-05").run()
     assert not app.exception
     assert len(app.get("vega_lite_chart")) == 1

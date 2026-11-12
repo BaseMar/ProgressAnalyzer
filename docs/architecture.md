@@ -15,7 +15,13 @@ the sandbox engine without changing process environment variables.
 `personal_app.py` reuses the renderer directly on a trusted local installation;
 it is not the entry point to publish for shared hosted access.
 Both entry points configure the page and render one route inside a read scope.
-All routes initially share `data_loader.load_data()`.
+All routes initially share `data_loader.load_data()`. Navigation renders before
+source loading, and each route lives inside a single `st.empty()` placeholder
+with a route-specific container key. Replacing this block clears the previous
+page before slow source loading or rendering, preventing old charts and controls
+from remaining under the new route. A native spinner identifies a slow-loading
+view. This does not change cache lifetimes or
+authentication boundaries.
 
 | Route | Presentation and calculation ownership |
 | --- | --- |
@@ -23,6 +29,23 @@ All routes initially share `data_loader.load_data()`.
 | Analysis | `AnalysisView`; full recorded exercise history, plan consistency, muscle allocation and measurement timelines |
 | Plan | `TrainingPlanView`; versioned routine drafts and training-block configuration |
 | History | `HistoryView`, `PlanScheduleView`; entry/import, linking, replacements, set/load corrections and measurement entry |
+
+Analysis uses stateful native `st.tabs(on_change="rerun")`, defaulting to Progress,
+and checks `.open` before computing the selected tab. Rankings reuse the cached
+exercise metric series through pure `metrics/progress_ranking.py`; their immutable
+window evidence lives in `models/progress_ranking.py`. No extra source reads are
+introduced. Exercise choices come from the full recorded catalog, while chart inputs
+follow one shared Analysis period selector above the tabs. Optional measure,
+load-convention and unit controls render inline within their relevant tab;
+there is no Filters expander. Separate remembered area/exercise IDs survive
+Streamlit widget cleanup across navigation; explicit Overview exercise links
+take precedence. An empty filtered exercise is retained with a recovery action.
+
+The muscle heat map uses native `st.html` with styles scoped to its named region
+and a container-width breakpoint. It stays in normal document flow, so the
+set-allocation chart follows it without retaining an old iframe viewport height
+after switching between narrow and wide screens. Labels remain escaped; the
+renderer does not enable JavaScript.
 
 `ExerciseView.render()` and `BodyMetricsView.render()` each have one active
 display path. History calls the existing body-measurement form for entry.

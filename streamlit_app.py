@@ -43,15 +43,22 @@ def _load_global_styles() -> None:
 
 @read_scope()
 def main() -> None:
-    """Load source data, then render one task; historical filters belong to Analysis."""
+    """Replace the previous route before loading or rendering the next page."""
+    selected_page = SidebarView().render_navigation()
+    with st.spinner(f"Loading {selected_page}…"):
+        page = st.empty()
+        with page.container(key=f"route_{selected_page}"):
+            _render_page(selected_page)
+
+
+def _render_page(selected_page):
+    """Keep one route inside one replaceable block, including slow/error states."""
     try:
         raw_input_data, sets_dataframe = load_data()
     except Exception as exc:
         st.error(f"Failed to load data: {exc}")
         st.stop()
 
-    sidebar = SidebarView()
-    selected_page = sidebar.render_navigation()
     names = {exercise.exercise_id: exercise.name for exercise in raw_input_data.exercises}
     if selected_page == "Overview":
         page_title("Overview", "Training Overview")

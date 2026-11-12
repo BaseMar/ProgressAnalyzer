@@ -85,6 +85,8 @@ def _set_selected_nav(option: str) -> None:
 
     capture_plan_drafts()
     st.session_state.nav_selected = option
+    if option == "Analysis":
+        st.session_state["analysis_tab"] = st.session_state.get("analysis_active_tab", "Progress")
 
 
 def _open_workout_import():

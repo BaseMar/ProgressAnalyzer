@@ -150,28 +150,12 @@ class BodyPartsView:
         if body_df.empty:
             st.info("No body part data available.")
             body_df = pd.DataFrame(columns=["Body Part", "Total_Sets", "Total_Volume", "Sessions"])
-        measure = st.radio(
-            "Distribution view",
-            ["Muscle map", "Set allocation"],
-            horizontal=True,
-            key="analysis_muscle_view",
-        )
         period_weeks, period_label = self._training_period()
         summary = render_weekly_distribution(
             body_df, period_weeks, period_label, weekly_targets=self.weekly_targets
         )
-        if "Timed_Sets" in body_df and body_df["Timed_Sets"].gt(0).any():
-            with st.expander("Timed sets"):
-                st.dataframe(
-                    body_df.loc[body_df["Timed_Sets"] > 0, ["Body Part", "Timed_Sets"]].rename(
-                        columns={"Timed_Sets": "Allocated timed sets"}
-                    ),
-                    hide_index=True,
-                    width="stretch",
-                )
-        if measure == "Muscle map":
-            render_body_heatmap(summary, period_weeks, period_label)
-        elif body_df.empty:
+        render_body_heatmap(summary, period_weeks, period_label)
+        if body_df.empty:
             st.info("Log a workout to see set allocation.")
         else:
             st.plotly_chart(

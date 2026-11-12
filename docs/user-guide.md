@@ -38,12 +38,39 @@ full workout in a centered panel. The copy action is near the top; the workout
 date and training phase remain visible. The active-plan selector is in this tab
 and changes upcoming targets, not the recorded Progress summary.
 
-**Analysis** opens the exercise's full recorded history, including sessions before
-any plan and unlinked sessions. **Filters** contains the optional period and,
-where needed, load-convention/unit controls. The chart shows mean repetitions
+**Analysis** opens on **Progress**, with **Top 5 / Bottom 5** exercise trends.
+Native tabs lead to **Exercises**, **Plan consistency**, **Muscles** and
+**Body measurements**, matching Overview's navigation. On small screens, the
+tab strip scrolls horizontally. Only the selected tab is computed. The last tab and
+exercise are remembered when switching pages. **Exercises** opens full recorded
+history, including sessions before any plan and unlinked sessions. One visible
+**Analysis period** selector above the tabs applies to all five views. Optional
+load-convention/unit controls appear beside the exercise data; there is no
+Filters expander. Changing the period keeps the selected exercise; an empty
+result offers **Show all history** instead of silently choosing another
+exercise. The chart shows mean repetitions
 (or seconds) per set and mean load for each recorded session. Different load
 conventions remain separate; unknown loads are gaps, not zero. These means
-describe recorded work, including light and unknown-effort sets.
+describe recorded work, including light and unknown-effort sets. Detailed set
+records remain in History; Exercises does not include a Recorded sets disclosure.
+
+The **Progress** ranking compares first and last windows of up to three sessions
+using each session's best estimated 1RM, or longest eligible hold. Windows never
+overlap. When both are available, choose **Estimated strength** or **Hold time**
+directly in Progress. Top 5 shows increases; Bottom 5 shows
+the lowest decreases or unchanged results. Neither list is padded with missing
+data or duplicates. An empty group explains why no bars appear.
+
+Strength estimates use eligible external-load records with one convention;
+bodyweight strength is excluded. Holds require known, unchanged load and
+convention. This window-based estimate differs from Overview's two-session comparison at
+unchanged load and recorded RIR. Overview exercise links open **Exercises**
+directly, with the exact exercise and its full history.
+
+**Muscles** shows the heat map followed directly by the set-allocation chart,
+without a view switch or a separate Timed sets disclosure. **Body measurements** shows the selected measurement,
+summary and trend without a separate Measurement records table. Entry and
+correction remain available in History.
 
 **Plan** uses visible **Create a new plan** and **Edit plan** actions. Its editor
 keeps plan details, workouts/exercises and saving on one page. Training blocks

@@ -14,6 +14,7 @@ from ui.body_metrics_view import BodyMetricsView
 from ui.body_parts_view import BodyPartsView
 from ui.exercise_view import ExerciseView
 from ui.plan_adherence_view import PlanAdherenceView
+from ui.progress_ranking_view import render_progress_ranking
 from ui.utils.active_plan import select_active_plan
 from ui.utils.data_filter import filter_data_by_month
 from ui.utils.history_period import select_analysis_month
@@ -31,29 +32,50 @@ class AnalysisView:
 
     def render(self):
         page_title("Analysis", "Explore your training")
-        with st.container(key="analysis_filters"):
-            topic = st.selectbox(
-                "What do you want to understand?",
-                [
-                    "Exercise progress",
-                    "Plan consistency",
-                    "Muscle distribution",
-                    "Body measurements",
-                ],
-                key="analysis_question",
-            )
-            with st.expander("Filters"):
-                month = select_analysis_month(self.input)
-                exercise_filters = st.container()
-        st.caption(f"Period: {month}")
+        with st.container(key="analysis_period", width=360):
+            month = select_analysis_month(self.input)
         filtered, _ = filter_data_by_month(self.input, self.sets, month)
-        if topic == "Exercise progress":
-            ExerciseView(compute_exercise_metrics(filtered), filters=exercise_filters).render()
+        topics = ["Progress", "Exercises", "Plan consistency", "Muscles", "Body measurements"]
+        if st.session_state.get("analysis_tab") not in topics:
+            saved = st.session_state.get("analysis_active_tab")
+            st.session_state["analysis_tab"] = saved if saved in topics else "Progress"
+        with st.container(key="analysis_navigation"):
+            tabs = st.tabs(
+                topics,
+                key="analysis_tab",
+                on_change="rerun",
+            )
+        st.session_state["analysis_active_tab"] = st.session_state["analysis_tab"]
+        for topic, tab in zip(topics, tabs):
+            if tab.open:
+                with tab:
+                    self._render_topic(topic, filtered, month)
+
+    def _render_topic(self, topic, filtered, month):
+        selection = st.container(key="analysis_selection")
+        exercise_filters = st.container(key="analysis_local_controls")
+        if topic == "Progress":
+            render_progress_ranking(compute_exercise_metrics(filtered), filters=exercise_filters)
+        elif topic == "Exercises":
+            recorded_ids = {item.exercise_id for item in self.input.workout_exercises}
+            names = {item.exercise_id: item.name for item in self.input.exercises}
+            choices = dict(
+                sorted(
+                    ((key, names.get(key, f"Exercise #{key}")) for key in recorded_ids),
+                    key=lambda item: (item[1].casefold(), item[0]),
+                )
+            )
+            ExerciseView(
+                compute_exercise_metrics(filtered),
+                filters=exercise_filters,
+                selection=selection,
+                exercise_options=choices,
+            ).render()
         elif topic == "Plan consistency":
             PlanAdherenceView(
                 manager=self.dm, exercise_names=self.names, selected_month=month
             ).render(mode="consistency")
-        elif topic == "Muscle distribution":
+        elif topic == "Muscles":
             self._muscle_distribution(filtered, month)
         else:
             BodyMetricsView({"timeline": measurement_timeline(filtered)}, manager=self.dm).render()

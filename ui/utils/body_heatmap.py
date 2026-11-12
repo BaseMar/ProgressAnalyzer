@@ -149,22 +149,26 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
 
     html = f"""
     <style>
-      :root {{
+      .muscle-map-root {{
         --bg-base: #222831;
         --bg-surface: {SURFACE};
         --text-primary: {TEXT};
         --text-muted: {MUTED};
         --border: rgba(255,255,255,0.07);
         --accent: {ACCENT};
+        container-type: inline-size;
+        width: 100%;
+        max-width: 100%;
       }}
-      * {{ box-sizing: border-box; }}
-      body {{
+      .muscle-map-root, .muscle-map-root * {{ box-sizing: border-box; }}
+      .muscle-map-root {{
         margin: 0;
         background: transparent;
         color: var(--text-primary);
         font-family: sans-serif;
+        line-height: normal;
       }}
-      .heatmap-shell {{
+      .muscle-map-root .heatmap-shell {{
         display: grid;
         grid-template-columns: minmax(360px, 1fr) 290px;
         gap: 18px;
@@ -174,7 +178,7 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
         border-radius: 10px;
         padding: 18px;
       }}
-      .figure-wrap {{
+      .muscle-map-root .figure-wrap {{
         background: transparent;
         border: 1px solid var(--border);
         border-radius: 8px;
@@ -184,51 +188,51 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
         align-items: center;
         justify-content: center;
       }}
-      .body-canvas {{
+      .muscle-map-root .body-canvas {{
         position: relative;
         width: 100%;
         max-width: 100%;
       }}
-      .body-image {{
+      .muscle-map-root .body-image {{
         width: 100%;
         height: auto;
         display: block;
         object-fit: contain;
       }}
-      .body-overlay {{
+      .muscle-map-root .body-overlay {{
         position: absolute;
         inset: 0;
         width: 100%;
         height: auto;
         pointer-events: none;
       }}
-      .panel {{
+      .muscle-map-root .panel {{
         display: flex;
         flex-direction: column;
         gap: 12px;
         min-width: 0;
       }}
-      .period {{
+      .muscle-map-root .period {{
         color: var(--text-muted);
         font-size: 11px;
         font-weight: 700;
         letter-spacing: 1.2px;
         text-transform: uppercase;
       }}
-      .period strong {{
+      .muscle-map-root .period strong {{
         color: var(--text-primary);
         font-size: 20px;
         letter-spacing: 0;
         display: block;
         margin-top: 4px;
       }}
-      .legend {{
+      .muscle-map-root .legend {{
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
         padding-bottom: 3px;
       }}
-      .legend-item {{
+      .muscle-map-root .legend-item {{
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -238,18 +242,18 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
         letter-spacing: 0.8px;
         text-transform: uppercase;
       }}
-      .legend-item i {{
+      .muscle-map-root .legend-item i {{
         display: inline-block;
         width: 10px;
         height: 10px;
         border-radius: 2px;
       }}
-      .status-list {{
+      .muscle-map-root .status-list {{
         display: flex;
         flex-direction: column;
         gap: 7px;
       }}
-      .status-row {{
+      .muscle-map-root .status-row {{
         display: grid;
         grid-template-columns: 14px minmax(72px, 1fr) auto;
         gap: 8px;
@@ -259,26 +263,27 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
         border: 1px solid var(--border);
         border-radius: 6px;
       }}
-      .dot {{
+      .muscle-map-root .dot {{
         width: 10px;
         height: 10px;
         border-radius: 999px;
       }}
-      .part {{
+      .muscle-map-root .part {{
         font-size: 13px;
         font-weight: 700;
       }}
-      .dose {{
+      .muscle-map-root .dose {{
         color: var(--text-muted);
         font-family: 'Courier New', monospace;
         font-size: 12px;
         text-align: right;
       }}
-      @media (max-width: 760px) {{
-        .heatmap-shell {{ grid-template-columns: 1fr; }}
-        .figure-wrap {{ min-height: 430px; }}
+      @container (max-width: 760px) {{
+        .muscle-map-root .heatmap-shell {{ grid-template-columns: 1fr; }}
+        .muscle-map-root .figure-wrap {{ min-height: 430px; }}
       }}
     </style>
+    <section class="muscle-map-root" aria-label="Muscle allocation compared with the training plan">
     <div class="heatmap-shell">
       <div class="figure-wrap">
         <div class="body-canvas">
@@ -292,9 +297,10 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
         <div class="status-list">{rows_html}</div>
       </aside>
     </div>
+    </section>
     """
 
-    st.iframe(html, height="content", alt="Muscle allocation compared with the training plan")
+    st.html(html)
 
 
 def _overlay_status_signature(heatmap_df: pd.DataFrame) -> tuple[tuple[str, str], ...]:

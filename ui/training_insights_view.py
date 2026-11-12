@@ -83,7 +83,7 @@ def _open_exercise_history(exercise_id):
     from ui.sidebar_view import _set_selected_nav
 
     _set_selected_nav("Analysis")
-    st.session_state["analysis_question"] = "Exercise progress"
+    st.session_state["analysis_tab"] = "Exercises"
     st.session_state["analysis_recorded_exercise"] = exercise_id
     st.session_state["analysis_month"] = "All time"
     st.session_state["analysis_period_value"] = "All time"

@@ -1149,6 +1149,21 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
     line-height: 1.5;
 }
 
+/* Native tabs match Overview; inactive analysis views are not computed. */
+.st-key-analysis_navigation [role="tab"] {
+    min-height: 44px;
+}
+@container (max-width: 1000px) {
+    .st-key-analysis_rankings [data-testid="stHorizontalBlock"] {
+        flex-direction: column;
+    }
+    .st-key-analysis_rankings [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        width: 100%;
+        min-width: 100%;
+        flex: 1 1 100%;
+    }
+}
+
 .plan-week-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
@@ -1253,10 +1268,10 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
     .st-key-workout_calendar [data-testid="stHorizontalBlock"]:has([data-testid="stSelectbox"]) > [data-testid="stColumn"] {
         width: 100%; min-width: 100%; flex: 1 1 100%;
     }
-    :is(.st-key-analysis_filters, .st-key-history_actions, .st-key-training_plan_details, .st-key-training_workout_editor, .st-key-history_import) [data-testid="stHorizontalBlock"] {
+    :is(.st-key-history_actions, .st-key-training_plan_details, .st-key-training_workout_editor, .st-key-history_import) [data-testid="stHorizontalBlock"] {
         flex-wrap: wrap;
     }
-    :is(.st-key-analysis_filters, .st-key-history_actions, .st-key-training_plan_details, .st-key-training_workout_editor, .st-key-history_import) [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+    :is(.st-key-history_actions, .st-key-training_plan_details, .st-key-training_workout_editor, .st-key-history_import) [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
         width: 100%; min-width: 100%; flex: 1 1 100%;
     }
     .st-key-workout_calendar { padding: 8px; }
