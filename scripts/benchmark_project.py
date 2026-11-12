@@ -226,11 +226,10 @@ def render_case(probe, plan_id, state, runs):
 
 CASE_NAMES = (
     "overview",
-    "analysis_plan_progress",
+    "analysis_progress",
     "analysis_recorded_exercises",
     "analysis_consistency",
     "analysis_muscle_map",
-    "analysis_set_allocation",
     "analysis_measurements",
     "plan",
     "history",
@@ -241,25 +240,14 @@ CASE_NAMES = (
 def render_benchmarks(probe, plan, as_of, runs, selected=None):
     cases = {
         "overview": dict(nav_selected="Overview"),
-        "analysis_plan_progress": dict(
-            nav_selected="Analysis", analysis_question="Exercise progress"
-        ),
+        "analysis_progress": dict(nav_selected="Analysis", analysis_tab="Progress"),
         "analysis_recorded_exercises": dict(
             nav_selected="Analysis",
-            analysis_question="Exercise progress",
+            analysis_tab="Exercises",
         ),
-        "analysis_consistency": dict(nav_selected="Analysis", analysis_question="Plan consistency"),
-        "analysis_muscle_map": dict(
-            nav_selected="Analysis", analysis_question="Muscle distribution"
-        ),
-        "analysis_set_allocation": dict(
-            nav_selected="Analysis",
-            analysis_question="Muscle distribution",
-            analysis_muscle_view="Set allocation",
-        ),
-        "analysis_measurements": dict(
-            nav_selected="Analysis", analysis_question="Body measurements"
-        ),
+        "analysis_consistency": dict(nav_selected="Analysis", analysis_tab="Plan consistency"),
+        "analysis_muscle_map": dict(nav_selected="Analysis", analysis_tab="Muscles"),
+        "analysis_measurements": dict(nav_selected="Analysis", analysis_tab="Body measurements"),
         "plan": dict(nav_selected="Plan"),
         "history": dict(nav_selected="History"),
     }

@@ -11,23 +11,39 @@ from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
 
-CHECK_APP = """
-import os
-from pathlib import Path
+CHECK_PAGES = """
 from streamlit.testing.v1 import AppTest
-assert os.getuid() == 10001
-assert not any(Path(p).exists() for p in ('.env', '.streamlit/secrets.toml', '.git', '.venv', 'backups'))
-assert Path('ui/wzorzec/human_body.png').is_file()
 for page in ('Overview', 'Analysis', 'Plan', 'History'):
     app = AppTest.from_file('personal_app.py', default_timeout=60)
     app.session_state['nav_selected'] = page
     app.run()
     assert not app.exception and not app.error, page
     if page == 'Analysis':
-        app.selectbox(key='analysis_question').select('Muscle distribution').run()
-        assert not app.exception and not app.error, 'Muscle distribution'
-        assert app.get('iframe')[0].proto.alt == 'Muscle allocation compared with the training plan'
+        assert app.session_state['analysis_tab'] == 'Progress'
+        for tab in ('Exercises', 'Plan consistency', 'Muscles', 'Body measurements'):
+            app.session_state['analysis_tab'] = tab
+            app.run()
+            assert not app.exception and not app.error, tab
+            if tab == 'Muscles':
+                assert any('class="muscle-map-root"' in item.proto.body for item in app.get('html'))
+                assert len(app.get('plotly_chart')) == 1
+                assert not any(item.label == 'Timed sets' for item in app.expander)
+            if tab == 'Exercises':
+                assert not any(item.label == 'Recorded sets' for item in app.expander)
+            if tab == 'Body measurements':
+                assert not any(item.label == 'Measurement records' for item in app.expander)
 """
+
+CHECK_APP = (
+    """
+import os
+from pathlib import Path
+assert os.getuid() == 10001
+assert not any(Path(p).exists() for p in ('.env', '.streamlit/secrets.toml', '.git', '.venv', 'backups'))
+assert Path('ui/wzorzec/human_body.png').is_file()
+"""
+    + CHECK_PAGES
+)
 
 WRITE_RECORD = """
 from datetime import date
