@@ -6,7 +6,7 @@ from datetime import date, timedelta
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
-from metrics.training_insights import compute_training_insights
+from metrics.recorded_progress import compute_recorded_progress
 from ui.next_workout_view import NextWorkoutView
 from ui.training_insights_view import render_training_insights
 from ui.utils.active_plan import select_active_plan
@@ -15,12 +15,22 @@ logger = logging.getLogger(__name__)
 
 
 class OverviewView:
-    def __init__(self, manager, exercise_names=None):
+    def __init__(self, manager, exercise_names=None, *, input_data):
         self.dm = manager
         self.names = exercise_names or {}
+        self.input_data = input_data
 
     def render(self, *, as_of=None):
         as_of = as_of or date.today()
+        start = as_of - timedelta(days=27)
+        with st.container(key="overview_tabs"):
+            progress, next_workout = st.tabs(["Progress", "Next workout"])
+        with progress:
+            self._render_progress(start, as_of)
+        with next_workout:
+            return self._render_next_workout(as_of)
+
+    def _render_next_workout(self, as_of):
         try:
             if not self.dm.adherence_storage_ready():
                 st.info(
@@ -37,7 +47,7 @@ class OverviewView:
                 return None, ()
             versions = self.dm.load_training_plan_versions(plan_id)
             if not versions:
-                st.info("Save a plan version to start the overview.")
+                st.info("Save a plan version to receive targets for your next workout.")
                 return None, ()
             start = as_of - timedelta(days=27)
             preview_end = max(
@@ -53,27 +63,19 @@ class OverviewView:
                 "The plan overview could not be loaded. Your recorded sessions remain available in History."
             )
             return None, ()
-        settings = {version.version_id: version.draft.progression for version in versions}
-        with st.container(key="overview_tabs"):
-            progress, next_workout = st.tabs(["Progress", "Next workout"])
-        summary_area = progress.container(key="overview_progress_summary")
-        insights_area = progress.container(key="overview_progress_insights")
-        with next_workout:
-            preview = NextWorkoutView(self.dm, self.names).render(
-                plan_id, versions, context=context, history=history, as_of=as_of
-            )
-        report = compute_training_insights(
-            history,
-            as_of=as_of,
-            start=start,
-            end=as_of,
-            settings_by_version=settings,
-            preview=preview,
-            date_basis="performed",
+        NextWorkoutView(self.dm, self.names).render(
+            plan_id, versions, context=context, history=history, as_of=as_of
         )
-        with summary_area:
+        return plan_id, versions
+
+    def _render_progress(self, start, as_of):
+        report = compute_recorded_progress(self.input_data, as_of=as_of, start=start)
+        with st.container(key="overview_progress_summary"):
             st.subheader("Your progress")
             st.caption(f"Last 28 days: {start:%d %b} to {as_of:%d %b %Y}")
+            st.caption(
+                "All recorded exercises · latest result versus its previous session, including history before your plan."
+            )
             counts = report.exercise_progress
             with st.container(key="overview_progress_kpis"):
                 improving, unchanged, lower = st.columns(3)
@@ -101,10 +103,13 @@ class OverviewView:
             st.caption(
                 f"Compared exercises: {counts.compared}. Awaiting comparable data: {counts.unassessed}."
             )
-            if not counts.compared:
+            if not counts.compared and counts.unassessed:
                 st.caption(
-                    "A comparison needs two complete results in the same exercise context, with unchanged loads and reserve. Changed loads, incomplete logs and deloads are not graded."
+                    "A comparison needs two recorded results with the same working set count, loads and actual RIR (repetitions in reserve). Timed work does not need RIR. Plan targets and session links do not affect these counts."
                 )
-        with insights_area:
+            if not counts.compared and not counts.unassessed:
+                st.info(
+                    "No exercises recorded in the last 28 days. Import a workout TXT or enter a workout in History to start tracking progress."
+                )
+        with st.container(key="overview_progress_insights"):
             render_training_insights(report, self.names, show_target_actions=False)
-        return plan_id, versions

@@ -222,10 +222,23 @@ Actual session date, start time and ID determine order. Unknown times sort
 first; IDs break ties. Prior history remains available beyond the visible month.
 The latest incomplete execution is a barrier: an older success is not substituted.
 
-Overview looks at the last 28 actual days. A paired ordinary observation needs
-complete comparable executions on different days, at most 21 days apart.
-Per-set RIR must match for an output-change annotation; matching averages alone
-are insufficient. One complete log can already show less reserve than planned.
+Overview **Progress** uses recorded history independently of these plan contexts.
+It selects each catalog exercise's latest actual result in the last 28 days and
+compares it with the immediately preceding recorded session, even before the
+window or plan. Plan links, target RIR, revisions and the recommendation-specific
+21-day history cutoff do not restrict this descriptive comparison. Source dates
+show the actual interval. It works without a plan.
+
+Pairs need different recorded days, the same actual working set count, units,
+per-set load convention and known total loads. For an output-change verdict,
+per-set loads and actual RIR must match; matching RIR averages alone are insufficient.
+Timed work does not require RIR. Warm-ups and uncorrected light/low-effort sets
+are excluded. Missing/invalid values, duplicate exercise entries within a session,
+changed set counts and deloads remain unassessed. The immediately previous
+incomplete or deload result is not skipped to select an older positive pair.
+Changed loads and reserve are contextual observations, not automatic improvement
+or decline. Counts and relative-change highlights use all latest results before
+the five-observation limit. Next-workout target rules remain separate and unchanged.
 
 Exercise charts show mean reps/time and load separately. A mean inside the
 shaded band does not mean every set met the range; source details show individual

@@ -24,14 +24,19 @@ or the next workout.
 
 Overview opens on **Progress**, showing **Improving exercises**, **No clear change** and **Lower results**
 for the last 28 days, followed by recent observations. The counters use each
-exercise's latest result in the selected plan, independently of the top-five
-observation limit. Only complete comparable pairs at unchanged per-set loads
-and recorded reserve are graded; timed work does not require RIR. Changed
-contexts, loads, reserve, missing evidence and deloads await comparable data.
+exercise's latest recorded result, independently of the active plan and top-five
+observation limit. Its preceding recorded session can be outside the 28-day
+window, before a plan existed, or unlinked. No plan or plan version is needed.
+Only pairs with the same recorded working set count, units, per-set load convention,
+load and actual reserve are graded; timed work does not require RIR. The plan's
+target reserve does not affect these descriptive counts. Changed loads, reserve,
+set counts, missing evidence and deloads await comparable data; observations
+explain the reason. There is no recommendation-specific 21-day history cutoff.
 An older positive pair never replaces an incomplete latest result. When no
 exercise can be compared, cards show a dash rather than a misleading zero. Choose **Next workout** to copy the
 full workout in a centered panel. The copy action is near the top; the workout
-date and training phase remain visible.
+date and training phase remain visible. The active-plan selector is in this tab
+and changes upcoming targets, not the recorded Progress summary.
 
 **Analysis** opens the exercise's full recorded history, including sessions before
 any plan and unlinked sessions. **Filters** contains the optional period and,

@@ -23,7 +23,7 @@ frame = st.session_state['sets_df']
 page = SidebarView().render_navigation()
 names = {exercise.exercise_id: exercise.name for exercise in input_data.exercises}
 if page == 'Overview':
-    OverviewView(manager, names).render()
+    OverviewView(manager, names, input_data=input_data).render()
 elif page == 'Analysis':
     AnalysisView(input_data, frame, manager=manager, exercise_names=names).render()
 elif page == 'Plan':
@@ -289,7 +289,7 @@ def test_highlight_opens_exact_exercise_and_clears_hidden_date_filter(
         as_of=AS_OF,
     )
     source = APP.replace(
-        "    OverviewView(manager, names).render()",
+        "    OverviewView(manager, names, input_data=input_data).render()",
         "    from ui.training_insights_view import render_training_insights\n    render_training_insights(st.session_state['test_report'], names)",
     )
     app = AppTest.from_string(source, default_timeout=45)

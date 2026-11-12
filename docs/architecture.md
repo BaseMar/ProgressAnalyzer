@@ -72,11 +72,19 @@ operations:
    A confirmed alternative reuses the prepared input and supplies its own
    exercise ID and equipment step.
 
-Overview prepares one context covering its history and four-week preview
-window. Next-workout selection, ordinary targets, alternative previews and
-attention annotations share those inputs. The annotation date filter still
-selects the recent 28 days by actual execution date. Future preview slots do
-not extend the evidence cutoff or admit future logs.
+Overview's **Next workout** prepares one context covering its history and four-week
+preview window. Workout selection, ordinary targets and alternative previews
+share those inputs. Future preview slots do not extend the evidence cutoff or
+admit future logs.
+
+Overview's **Progress** receives the already cached `MetricsInput` from the entry
+point. `metrics/recorded_progress.py` compares the latest two recorded sessions
+per catalog exercise, selecting latest results within 28 actual days while keeping
+older preceding evidence. It does not read plan contexts or issue extra database
+queries. It works without plans, links or plan storage; the active-plan selector
+lives in Next workout. Recorded sources have no invented schedule or prescription
+(`InsightSource` plan fields are `None`). `metrics/training_insights.py` retains
+its separate plan-specific rules for plan-context observations.
 
 The next-workout view uses the prepared workout's target identities.
 `metrics/recommendation_history.py` owns the pure selection of confirmed alternatives.

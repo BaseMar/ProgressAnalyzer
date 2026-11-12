@@ -6,6 +6,9 @@ from datetime import date
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from data_manager import DataManager
+from mapper import map_workout_exercise, map_workout_session, map_workout_set
+from metrics.input import MetricsInput
 from metrics.overview_summary import overview_conclusion, workout_focus
 from metrics.training_insights import compute_training_insights
 from models.progression import (
@@ -25,7 +28,7 @@ from data_manager import DataManager
 from ui.overview_view import OverviewView
 manager = object.__new__(DataManager)
 manager.engine = st.session_state['test_engine']
-OverviewView(manager, {1: 'Bench Press', 2: 'Machine Chest Press'}).render(as_of=st.session_state['as_of'])
+OverviewView(manager, {1: 'Bench Press', 2: 'Machine Chest Press'}, input_data=st.session_state['input_data']).render(as_of=st.session_state['as_of'])
 """
 
 
@@ -34,6 +37,20 @@ def start_app(engine, saved, *, app_source=OVERVIEW_APP):
     app.session_state["test_engine"] = engine
     app.session_state["adherence_plan"] = saved.plan_id
     app.session_state["as_of"] = AS_OF
+    manager = DataManager(engine=engine)
+    app.session_state["input_data"] = MetricsInput(
+        sessions=[map_workout_session(row) for row in manager.load_sessions().to_dict("records")],
+        workout_exercises=[
+            map_workout_exercise(row) for row in manager.load_workout_exercises().to_dict("records")
+        ],
+        sets=[map_workout_set(row) for row in manager.load_sets_raw().to_dict("records")],
+        exercises=[],
+        exercise_muscle_targets=[],
+        muscle_groups=[],
+        body_measurements=[],
+        body_composition=[],
+        deload_exercise_ids=manager.load_deload_exercise_ids(as_of=AS_OF),
+    )
     app.run()
     assert not app.exception
     assert not app.error
@@ -158,8 +175,8 @@ def test_active_plan_survives_widget_cleanup_and_removed_plan_selection(schedule
     engine, _, old, _ = schedule_data
     saved = seed(schedule_data)
     source = OVERVIEW_APP.replace(
-        "OverviewView(manager, {1: 'Bench Press', 2: 'Machine Chest Press'}).render(as_of=st.session_state['as_of'])",
-        "if not st.session_state.get('hide_overview'):\n    OverviewView(manager, {1: 'Bench Press', 2: 'Machine Chest Press'}).render(as_of=st.session_state['as_of'])",
+        "OverviewView(manager, {1: 'Bench Press', 2: 'Machine Chest Press'}, input_data=st.session_state['input_data']).render(as_of=st.session_state['as_of'])",
+        "if not st.session_state.get('hide_overview'):\n    OverviewView(manager, {1: 'Bench Press', 2: 'Machine Chest Press'}, input_data=st.session_state['input_data']).render(as_of=st.session_state['as_of'])",
     )
     app = start_app(engine, saved, app_source=source)
     assert app.session_state["active_plan_id"] == saved.plan_id
@@ -191,7 +208,7 @@ from data_manager import DataManager
 from ui.overview_view import OverviewView
 manager = object.__new__(DataManager)
 manager.engine = st.session_state['test_engine']
-OverviewView(manager, {1: 'Bench Press'}).render(as_of=st.session_state['as_of'])
+OverviewView(manager, {1: 'Bench Press'}, input_data=st.session_state['input_data']).render(as_of=st.session_state['as_of'])
 """,
     )
     assert not any(item.label == "Calendar & recorded sessions" for item in app.expander)
@@ -236,7 +253,7 @@ def test_conclusion_uses_current_deload_phase_not_selected_future_workout(schedu
     assert "lighter week" in conclusion.title
 
 
-def test_overview_has_clear_empty_and_unavailable_states():
+def test_overview_has_clear_empty_and_unavailable_states(sample_input):
     for manager_source, expected in [
         (
             "SimpleNamespace(adherence_storage_ready=lambda: True, load_training_plans=lambda: [])",
@@ -246,11 +263,19 @@ def test_overview_has_clear_empty_and_unavailable_states():
     ]:
         app = AppTest.from_string(f"""
 from types import SimpleNamespace
+import streamlit as st
 from ui.overview_view import OverviewView
-OverviewView({manager_source}).render()
-""").run()
+OverviewView({manager_source}, input_data=st.session_state['input_data']).render(as_of=st.session_state['as_of'])
+""")
+        app.session_state["input_data"] = replace(
+            sample_input, sessions=[], workout_exercises=[], sets=[]
+        )
+        app.session_state["as_of"] = AS_OF
+        app.run()
         assert not app.exception
         assert any(expected in item.value for item in app.info)
+        assert any("No exercises recorded" in item.value for item in app.info)
+        assert len(app.metric) == 3
 
 
 def test_overview_displays_every_exercise_without_full_workout_disclosure(schedule_data):
@@ -270,3 +295,41 @@ def test_overview_displays_every_exercise_without_full_workout_disclosure(schedu
         item.label.startswith("Full workout") or item.label == "Why these targets?"
         for item in app.expander
     )
+
+
+@pytest.mark.parametrize(
+    "manager_source",
+    [
+        "SimpleNamespace(adherence_storage_ready=lambda: False)",
+        "SimpleNamespace(adherence_storage_ready=lambda: True, load_training_plans=lambda: [])",
+    ],
+)
+def test_recorded_progress_survives_absent_plan_or_plan_storage(manager_source):
+    from test_recorded_progress import data as recorded_data
+    from test_recorded_progress import entry
+
+    app = AppTest.from_string(f"""
+from types import SimpleNamespace
+import streamlit as st
+from ui.overview_view import OverviewView
+OverviewView({manager_source}, {{1: 'Bench Press'}}, input_data=st.session_state['input_data']).render(as_of=st.session_state['as_of'])
+""")
+    app.session_state["as_of"] = AS_OF
+    app.session_state["input_data"] = recorded_data(
+        entry(1, date(2026, 4, 1), rir=1),
+        entry(2, date(2026, 5, 18), (9, 9, 9), rir=1),
+    )
+    app.run()
+    assert not app.exception and not app.error
+    assert [item.value for item in app.metric] == ["1", "0", "0"]
+    assert app.button(key="insight_history_more_output_1")
+
+
+def test_changing_active_plan_does_not_change_recorded_progress(schedule_data):
+    engine, _, original, _ = schedule_data
+    saved = seed(schedule_data)
+    app = start_app(engine, saved)
+    before = [item.value for item in app.metric]
+    app.selectbox(key="adherence_plan").select(original.plan_id).run()
+    assert not app.exception and not app.error
+    assert [item.value for item in app.metric] == before == ["0", "1", "0"]

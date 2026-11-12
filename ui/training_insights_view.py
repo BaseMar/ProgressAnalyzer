@@ -11,7 +11,9 @@ def render_training_insights(report, exercise_names=None, *, show_target_actions
     names = exercise_names or {}
     section_header("What changed · what to do")
     if not report.annotations and not report.highlighted_annotations:
-        st.caption("No recorded comparisons in this period yet. Link a session to start.")
+        st.caption(
+            "No recorded comparisons in this period yet. Record another workout to compare results."
+        )
         return
     highlights = report.highlighted_annotations
     remaining = [item for item in report.annotations if item not in highlights]
@@ -58,7 +60,7 @@ def render_training_insights(report, exercise_names=None, *, show_target_actions
             title = f"{name}: {insight.observation}" if name else insight.observation
             _observation(title, insight.evidence, action)
     st.caption(
-        f"{report.assessed_contexts} paired exercise contexts · {report.limited_contexts} with limited evidence. "
+        f"{report.assessed_contexts} exercise comparisons · {report.limited_contexts} awaiting comparable data. "
         + (
             f"Showing {len(visible)} observations; {report.omitted_annotations} others are omitted here. "
             if report.omitted_annotations

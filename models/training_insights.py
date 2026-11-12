@@ -43,14 +43,14 @@ class InsightSet:
 @dataclass(frozen=True)
 class InsightSource:
     session_id: int | None
-    scheduled_date: date
+    scheduled_date: date | None
     performed_on: date | None
     workout: str
     context: tuple
     phase: str
-    planned_sets: int
-    target_min: int
-    target_max: int
+    planned_sets: int | None
+    target_min: int | None
+    target_max: int | None
     target_rir: int | None
     sets: tuple[InsightSet, ...]
     excluded_kinds: tuple[str, ...]

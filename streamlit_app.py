@@ -55,7 +55,7 @@ def main() -> None:
     names = {exercise.exercise_id: exercise.name for exercise in raw_input_data.exercises}
     if selected_page == "Overview":
         page_title("Overview", "Training Overview")
-        OverviewView(DataManager(), names).render()
+        OverviewView(DataManager(), names, input_data=raw_input_data).render()
     elif selected_page == "Analysis":
         AnalysisView(raw_input_data, sets_dataframe, exercise_names=names).render()
     elif selected_page == "Plan":

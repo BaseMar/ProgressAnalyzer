@@ -118,7 +118,7 @@ def test_migration_closes_api_roles_preserves_rows_and_keeps_backend_writes(expo
     assert migrate(engine, apply=True) == [v010_application_access_security.REVISION]
     assert snapshot(engine) == before
     assert_closed(engine)
-    assert len(DataManager(engine=engine).load_sets_ui()) == 370
+    assert len(DataManager(engine=engine).load_sets_ui()) == len(before["workout_sets"]) > 0
     assert DataManager(engine=engine).add_exercise("Chest Dip")
 
 
@@ -165,6 +165,8 @@ def test_sqlite_bootstrap_records_security_revision_without_postgres_ddl(tmp_pat
         assert result["migrations"][-1] == v010_application_access_security.REVISION
         assert len(inspect(engine).get_table_names()) == 20
         assert migrate(engine, apply=True) == []
-        assert len(DataManager(engine=engine).load_sets_ui()) == 370
+        assert (
+            len(DataManager(engine=engine).load_sets_ui()) == result["counts"]["workout_sets"] > 0
+        )
     finally:
         engine.dispose()
