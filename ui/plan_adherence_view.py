@@ -98,20 +98,7 @@ class PlanAdherenceView:
                 width="stretch",
                 key="weekly_plan_execution",
             )
-        st.caption(
-            "Includes elapsed planned days and linked workouts performed through today, even when planned for later. Weeks follow planned dates. An unlinked workout is not proof that it was skipped."
-        )
-        if any(row["training_phase"] == "deload" for row in performance):
-            st.caption(
-                "Deload dates use reduced set/repetition targets for resistance exercises. Deload logs are excluded from exercise progress comparisons."
-            )
-        with st.expander("Definitions & source data"):
-            st.caption(
-                f"On the planned day: {summary['on_time_workouts']}/{summary['linked_workouts']} linked workouts. RIR missing: {overview['missing_rir']}/{overview['recorded_sets']} logged sets."
-            )
-            st.caption(
-                "Coverage uses inferred or explicitly marked working sets, plus unknown-effort and timed logs; deload uses its own targets. Light/low-effort work stays in history. Missing RIR is not zero. These indicators do not measure technique or muscle growth."
-            )
+        with st.expander("Source data"):
             if report["workouts"]:
                 st.dataframe(
                     pd.DataFrame(

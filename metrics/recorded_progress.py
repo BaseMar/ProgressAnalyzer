@@ -78,6 +78,7 @@ def _execution(session, exercises, sets_by_exercise, deload_ids):
                 meaning.source,
                 meaning.reason,
                 **load_record(item),
+                unit="seconds" if timed else "reps",
             )
         )
     if len(exercises) != 1:
@@ -188,6 +189,55 @@ def _comparison(previous, current):
     )
 
 
+def _recorded_histories(data, *, cutoff, exercise_id=None):
+    exercises_by_session = defaultdict(lambda: defaultdict(list))
+    sets_by_exercise = defaultdict(list)
+    for exercise in data.workout_exercises:
+        if exercise_id is not None and exercise.exercise_id != exercise_id:
+            continue
+        exercises_by_session[exercise.session_id][exercise.exercise_id].append(exercise)
+    for item in data.sets:
+        sets_by_exercise[item.workout_exercise_id].append(item)
+    histories = defaultdict(list)
+    for session in sorted(data.sessions, key=_session_order):
+        if to_date(session.session_date) > cutoff:
+            continue
+        for catalog_id, exercises in exercises_by_session[session.session_id].items():
+            histories[catalog_id].append(
+                _execution(session, exercises, sets_by_exercise, data.deload_exercise_ids)
+            )
+    return histories
+
+
+def compare_recorded_exercise(data, exercise_id, *, as_of, start=None, end=None):
+    """Expose the latest pair and its evidence using Overview's comparison rules.
+
+    The latest execution must be inside the selected period. Its immediate
+    predecessor may be older. Never filter out an incomplete log, changed load
+    convention, or deload to find a more favorable pair.
+    """
+    cutoff = min(as_of, end) if end is not None else as_of
+    history = _recorded_histories(data, cutoff=cutoff, exercise_id=exercise_id).get(exercise_id)
+    if not history or (start is not None and history[-1].source.performed_on < start):
+        return None
+    current = history[-1]
+    previous = history[-2] if len(history) > 1 else None
+    problem = _pair_problem(previous, current)
+    if problem is None:
+        return _comparison(previous, current)
+    return TrainingInsight(
+        "limited_evidence",
+        35,
+        "No comparable change available",
+        problem[0].upper() + problem[1:] + ".",
+        "Review the source sessions in History. The latest recorded execution remains the comparison baseline.",
+        "limited",
+        "Same latest-pair rules as Overview; incomplete or ineligible executions are never skipped.",
+        tuple(item.source for item in (previous, current) if item is not None),
+        exercise_id,
+    )
+
+
 def compute_recorded_progress(data, *, as_of, start=None, end=None):
     """Count each exercise once, using its latest result within the actual-date window.
 
@@ -196,21 +246,8 @@ def compute_recorded_progress(data, *, as_of, start=None, end=None):
     records. A long gap is shown in the evidence dates, never hidden by a plan
     recommendation cutoff. Annotation limits cannot bias counts or highlights.
     """
-    exercises_by_session = defaultdict(lambda: defaultdict(list))
-    sets_by_exercise = defaultdict(list)
-    for exercise in data.workout_exercises:
-        exercises_by_session[exercise.session_id][exercise.exercise_id].append(exercise)
-    for item in data.sets:
-        sets_by_exercise[item.workout_exercise_id].append(item)
-    histories = defaultdict(list)
     cutoff = min(as_of, end) if end is not None else as_of
-    for session in sorted(data.sessions, key=_session_order):
-        if to_date(session.session_date) > cutoff:
-            continue
-        for exercise_id, exercises in exercises_by_session[session.session_id].items():
-            histories[exercise_id].append(
-                _execution(session, exercises, sets_by_exercise, data.deload_exercise_ids)
-            )
+    histories = _recorded_histories(data, cutoff=cutoff)
     annotations, limitations = [], []
     statuses = Counter()
     for history in histories.values():

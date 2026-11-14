@@ -70,6 +70,8 @@ class AnalysisView:
                 filters=exercise_filters,
                 selection=selection,
                 exercise_options=choices,
+                input_data=self.input,
+                selected_month=month,
             ).render()
         elif topic == "Plan consistency":
             PlanAdherenceView(
@@ -90,7 +92,6 @@ class AnalysisView:
                     version = manager.load_effective_training_plan(plan_id, date.today())
                     if version is not None:
                         targets, missing = weekly_plan_sets(version.draft, self.input)
-                        st.caption(f"Target: {version.draft.name}")
                         if missing:
                             targets = None
                             names = {item.exercise_id: item.name for item in self.input.exercises}

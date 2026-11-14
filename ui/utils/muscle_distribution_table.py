@@ -46,5 +46,4 @@ def render_weekly_distribution(body_df, period_weeks, period_label, *, weekly_ta
             "Target %": st.column_config.NumberColumn("Plan %", format="%.0f%%"),
         },
     )
-    st.caption(f"{period_label} | {period_weeks:.1f} weeks")
     return summary

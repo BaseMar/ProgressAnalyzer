@@ -168,8 +168,8 @@ def test_recorded_exercise_analysis_preserves_unplanned_exercises_without_rankin
     assert not any(item.label == "Filters" for item in app.expander)
     assert not app.exception
     app.selectbox(key="analysis_recorded_exercise").select(2).run()
-    assert len(app.get("plotly_chart")) == 1
-    assert not app.metric
+    assert len(app.get("plotly_chart")) == 2
+    assert [item.value for item in app.metric] == ["84 kg", "—", "1"]
     assert any("60 kg" in item.value and "12 reps" in item.value for item in app.caption)
     assert any("1 logged sets across 1 sessions" in item.value for item in app.caption)
     assert not any(
@@ -184,7 +184,7 @@ def test_recorded_exercise_analysis_preserves_unplanned_exercises_without_rankin
     assert not app.exception
     assert app.selectbox(key="analysis_month").value == "All time"
     assert app.selectbox(key="analysis_recorded_exercise").value == 2
-    assert len(app.get("plotly_chart")) == 1
+    assert len(app.get("plotly_chart")) == 2
 
 
 def test_history_body_input_and_overlay_are_reachable_without_other_page_forms(

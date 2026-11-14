@@ -35,9 +35,7 @@ def render_progress_ranking(exercise_metrics, *, filters):
     trends = tuple(item for item in report.trends if item.measure == measure)
     top, bottom = ranking_groups(trends)
     st.subheader("Top 5 / Bottom 5")
-    st.caption(
-        f"{measure} · first versus last windows of up to 3 sessions in this period. Open Exercises to inspect a full history."
-    )
+    st.caption(measure)
     with st.container(key="analysis_rankings"):
         columns = st.columns(2, gap="large")
         for column, title, items, message in (
@@ -59,10 +57,6 @@ def render_progress_ranking(exercise_metrics, *, filters):
                     )
                 else:
                     st.info(message)
-    st.caption(
-        f"{len(trends)} exercises with usable history. {len(report.unavailable_exercise_ids)} without a comparable trend in either measure. "
-        "Bottom 5 includes decreases and unchanged results; missing data is excluded."
-    )
 
 
 def ranking_chart(items):
@@ -96,7 +90,7 @@ def ranking_chart(items):
                 [escape(item.name), item.baseline, item.current, item.sessions, item.window]
                 for item in items
             ],
-            hovertemplate="<b>%{customdata[0]}</b><br>Change: %{x:+.2f}%<br>First window: %{customdata[1]:.2f}<br>Last window: %{customdata[2]:.2f}<br>%{customdata[3]} sessions · %{customdata[4]} per window<extra></extra>",
+            hovertemplate="<b>%{customdata[0]}</b><br>Change: %{x:+.2f}%<extra></extra>",
         )
     )
     fig.update_layout(**PLOTLY_LAYOUT)

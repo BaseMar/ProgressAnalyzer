@@ -54,6 +54,29 @@ conventions remain separate; unknown loads are gaps, not zero. These means
 describe recorded work, including light and unknown-effort sets. Detailed set
 records remain in History; Exercises does not include a Recorded sets disclosure.
 
+Inside **Exercises**, the selected exercise has three visible sections in order:
+
+- **Recorded history** starts with the session-mean chart, with load-convention
+  and unit controls where needed.
+- **Estimated strength** plots the existing best eligible e1RM per session and
+  the same early/late window change as the Progress ranking. Actual RIR may
+  differ between these estimates. Bodyweight and timed work have no e1RM;
+  periods with mixed load conventions do not receive a strength trend.
+- **Latest comparison** shows the latest recorded execution in the selected
+  period beside its immediate predecessor, one working set per row with load,
+  repetitions/seconds and recorded RIR. The predecessor may be before the period.
+  It uses Overview's comparison rules and retains incomplete latest logs,
+  deloads and changed load conventions as explanations rather than skipping them.
+  Only unchanged per-set loads and RIR receive a repetition-change verdict;
+  timed work does not require RIR. This section uses complete recorded executions
+  rather than the history chart's local load/unit filters.
+
+All three sections use the shared Analysis period and appear on the same page,
+with Estimated strength followed by Latest comparison below the recorded-history charts.
+Section headings separate the information; no additional view selector is needed.
+Overview's exercise links open this page, and future targets remain under
+Overview → Next workout.
+
 The **Progress** ranking compares first and last windows of up to three sessions
 using each session's best estimated 1RM, or longest eligible hold. Windows never
 overlap. When both are available, choose **Estimated strength** or **Hold time**

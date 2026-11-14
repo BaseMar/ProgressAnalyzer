@@ -85,7 +85,7 @@ def test_empty_period_keeps_the_selected_exercise_and_has_a_recovery_action(
     assert not app.exception and not app.error
     assert app.selectbox(key="analysis_recorded_exercise").value == 2
     assert app.selectbox(key="analysis_month").value == "All time"
-    assert len(app.get("plotly_chart")) == 1
+    assert len(app.get("plotly_chart")) == 2
 
 
 def test_duplicate_names_and_long_exercise_names_stay_selectable(
@@ -129,7 +129,7 @@ ExerciseView(st.session_state['metrics']).render()
 
 def test_exercise_chart_is_shown_without_a_recorded_sets_disclosure(sample_input):
     app = _exercise_app(source(sample_input, [(60.0, 8), (65.0, 9)]))
-    assert len(app.get("plotly_chart")) == 1
+    assert len(app.get("plotly_chart")) == 2
     assert not app.dataframe
     assert not any(item.label == "Recorded sets" for item in app.expander)
     assert any("65 kg" in item.value and "9 reps" in item.value for item in app.caption)
@@ -183,7 +183,7 @@ AnalysisView(st.session_state['input'],pd.DataFrame(),manager=object()).render()
     assert app.selectbox(key="analysis_ranking_measure").value == "Estimated strength"
     app.selectbox(key="analysis_ranking_measure").select("Hold time").run()
     assert not app.exception
-    assert any(item.value.startswith("Hold time ·") for item in app.caption)
+    assert any(item.value == "Hold time" for item in app.caption)
     import json
 
     chart = json.loads(app.get("plotly_chart")[0].proto.spec)

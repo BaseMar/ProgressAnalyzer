@@ -38,6 +38,7 @@ class InsightSet:
     total_load_kg: float | None = None
     body_mass_kg: float | None = None
     assistance_kg: float | None = None
+    unit: Literal["reps", "seconds"] = "reps"
 
 
 @dataclass(frozen=True)

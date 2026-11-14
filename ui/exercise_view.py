@@ -8,6 +8,7 @@ from typing import Dict
 import pandas as pd
 import streamlit as st
 
+from ui.exercise_progress_view import render_estimated_strength, render_latest_comparison
 from ui.utils.analysis_kpis import recorded_set_value
 from ui.utils.load_charts import mean_load_history_chart
 from ui.utils.set_load_inputs import LOAD_LABELS
@@ -17,12 +18,21 @@ class ExerciseView:
     """Present the active exercise analysis using precomputed metrics."""
 
     def __init__(
-        self, exercises_metrics: Dict, *, filters=None, selection=None, exercise_options=None
+        self,
+        exercises_metrics: Dict,
+        *,
+        filters=None,
+        selection=None,
+        exercise_options=None,
+        input_data=None,
+        selected_month=None,
     ) -> None:
         self.exercises_metrics = exercises_metrics
         self.filters = filters
         self.selection = selection
         self.options = exercise_options
+        self.input_data = input_data
+        self.selected_month = selected_month
 
     def render(self) -> None:
         if not self.exercises_metrics.get("per_exercise") and not self.options:
@@ -67,10 +77,18 @@ class ExerciseView:
                 st.button(
                     "Show all history", on_click=_show_all_history, key="analysis_show_all_history"
                 )
+            if self.input_data is not None:
+                render_latest_comparison(self.input_data, selected, self.selected_month)
             return
         with self.filters if self.filters is not None else st.container():
             points = self._select_load_series(points)
+        st.subheader("Recorded history")
         self._render_selected_results(points)
+        st.divider()
+        render_estimated_strength(selected, exercise)
+        if self.input_data is not None:
+            st.divider()
+            render_latest_comparison(self.input_data, selected, self.selected_month)
 
     def _select_load_series(self, points):
         kinds = list(dict.fromkeys(item["load_type"] for item in points))
@@ -113,9 +131,6 @@ class ExerciseView:
         fig = mean_load_history_chart(points)
         if fig is not None:
             st.plotly_chart(fig, width="stretch", key="recorded_load_history")
-        st.caption(
-            "Session means describe all logged sets, including light and unknown-effort work. Read repetitions or time together with load; direction alone does not establish improvement."
-        )
         if any(item["total_load_kg"] is None for item in points):
             st.caption("Some load values are missing.")
 

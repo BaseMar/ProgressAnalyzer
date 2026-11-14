@@ -47,8 +47,21 @@ set-allocation chart follows it without retaining an old iframe viewport height
 after switching between narrow and wide screens. Labels remain escaped; the
 renderer does not enable JavaScript.
 
-`ExerciseView.render()` and `BodyMetricsView.render()` each have one active
-display path. History calls the existing body-measurement form for entry.
+`ExerciseView.render()` shows recorded session means, followed by visible sections
+for eligible estimated-strength history and then the latest per-set comparison.
+`ui/exercise_progress_view.py` owns the two sections below the history charts.
+No extra view selector or panel state is used. Comparisons receive
+the already loaded full `MetricsInput` and the selected month; pure
+`metrics.recorded_progress.compare_recorded_exercise` reuses Overview's history
+selection and comparison rules, keeping the preceding session available across
+month boundaries and retaining incomplete latest records. `InsightSet.unit`
+preserves seconds even when a timed set is classified as deload or invalid.
+Strength history reuses the existing per-session metric estimates and ranking
+windows. No plan reads, source writes or new database queries are introduced.
+Only recorded history exposes local load/unit filters; the other sections assess
+complete executions or one coherent strength convention in the selected period.
+Overview history links open the exercise page. `BodyMetricsView.render()` has one active display path.
+History calls the existing body-measurement form for entry.
 `metrics.utils.dates.to_date` is the shared date utility.
 
 ## Boundaries

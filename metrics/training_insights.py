@@ -46,6 +46,7 @@ def _source(row):
                 recorded_load(item),
                 item.get("body_mass_kg"),
                 item.get("assistance_kg"),
+                unit=row["unit"],
             )
             for item in row["sets"]
         ),
