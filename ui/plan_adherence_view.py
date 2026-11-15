@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from data_manager import DataManager
 from metrics.plan_adherence import compute_plan_adherence
+from metrics.plan_patterns import summarize_recurring_deviations
 from metrics.plan_performance import compute_plan_performance
 from metrics.plan_summary import summarize_plan
 from metrics.training_block import deload_adjusted_input
@@ -98,6 +99,11 @@ class PlanAdherenceView:
                 width="stretch",
                 key="weekly_plan_execution",
             )
+        self.render_recurring_deviations(
+            summarize_recurring_deviations(
+                performance, as_of=date.today(), settings_by_version=block_settings
+            )
+        )
         with st.expander("Source data"):
             if report["workouts"]:
                 st.dataframe(
@@ -117,6 +123,41 @@ class PlanAdherenceView:
                     hide_index=True,
                     width="stretch",
                 )
+
+    def render_recurring_deviations(self, report):
+        section_header("Recurring deviations")
+        if not report["patterns"]:
+            st.info(
+                "No repeated deviations in recent workouts."
+                if report["assessed_contexts"]
+                else "At least three assessable workout logs for the same plan position are needed."
+            )
+            return
+        rows = []
+        for item in report["patterns"]:
+            unit = "s" if item["unit"] == "seconds" else "reps"
+            labels = {
+                "incomplete_sets": f"Incomplete set log ({item['planned_sets']} planned)",
+                "below_range": f"Below {item['target_min']}–{item['target_max']} {unit}",
+                "above_range": f"Above {item['target_min']}–{item['target_max']} {unit}",
+                "below_target_rir": f"RIR below {item['target_rir']}",
+            }
+            rows.append(
+                {
+                    "Exercise": self._name(item["exercise_id"]),
+                    "Workout": f"{item['workout']} · position {item['position']}",
+                    "Deviation": labels[item["code"]],
+                    "Occurrences / assessed": f"{item['occurrences']}/{item['assessed']}",
+                    "Last seen": item["last_seen"],
+                }
+            )
+        st.dataframe(
+            pd.DataFrame(rows),
+            hide_index=True,
+            width="stretch",
+            key="recurring_plan_deviations",
+            column_config={"Last seen": st.column_config.DateColumn(format="DD MMM YYYY")},
+        )
 
     def render_performance(self, rows):
         section_header("Exercise trends")

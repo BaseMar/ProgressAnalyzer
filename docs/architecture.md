@@ -64,6 +64,14 @@ Overview history links open the exercise page. `BodyMetricsView.render()` has on
 History calls the existing body-measurement form for entry.
 `metrics.utils.dates.to_date` is the shared date utility.
 
+Plan consistency passes its existing period-filtered `compute_plan_performance`
+output and version block settings to pure `metrics/plan_patterns.py`.
+`summarize_recurring_deviations` selects recent ordinary linked dates, separates
+plan-position/actual-exercise histories and prescription segments, and returns
+patterns with per-check assessed counts and source session/date/unknown evidence.
+`PlanAdherenceView` renders one table below Weekly execution. No new source reads,
+saved metrics, schema changes or progression decisions are introduced.
+
 ## Boundaries
 
 ```mermaid

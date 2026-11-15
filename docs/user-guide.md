@@ -77,6 +77,17 @@ Section headings separate the information; no additional view selector is needed
 Overview's exercise links open this page, and future targets remain under
 Overview → Next workout.
 
+**Plan consistency** shows **Recurring deviations** below Weekly execution.
+The compact table identifies repeated incomplete set logs, results below/above
+the prescribed range, and RIR below target. It shows the actual exercise, workout
+position, occurrences among assessed recent logs and the last occurrence date.
+It uses up to four recent ordinary linked workout dates in the selected period,
+requiring at least three assessed logs and two mismatches. Changed prescriptions
+start a new assessment segment; replacements have separate histories. See
+[calculation rules](calculation-rules.md#6-plan-consistency-recorded-does-not-always-mean-in-range)
+for missing-data and counting rules. No extra controls or workout-entry fields
+are needed.
+
 The **Progress** ranking compares first and last windows of up to three sessions
 using each session's best estimated 1RM, or longest eligible hold. Windows never
 overlap. When both are available, choose **Estimated strength** or **Hold time**

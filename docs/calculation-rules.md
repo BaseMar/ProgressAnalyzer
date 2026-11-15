@@ -289,6 +289,27 @@ and linked workout updates the summary immediately, including partial workouts.
 Unperformed slots scheduled for today or later do not lower the result.
 An unlinked workout means “no linked record”, not proof of a missed session.
 
+**Recurring deviations**, below Weekly execution, summarizes the latest four
+ordinary linked workout dates for each plan position and actual exercise within
+the selected period. At least three assessed observations and two occurrences
+are required for a pattern. The checks cover incomplete set logs, quantities
+below/above the prescribed range, and any recorded RIR below the target.
+
+The window follows actual execution dates, counting multiple same-day logs once
+and retaining the latest. Deload and future or unlinked workouts are excluded.
+Identical plan revisions retain history; a changed prescription, position or
+block setting starts a new segment. Confirmed replacements remain separate.
+
+Missing RIR stays unknown. Partial logs can confirm an observed range/RIR
+violation, but cannot establish that all planned sets met those targets. Missing
+sets are assessed as incomplete logging, without assuming they were skipped.
+Invalid or ambiguous logs remain in the recent window with unknown assessments;
+light/low-effort exclusions do not by themselves prove an incomplete log.
+**Occurrences / assessed** counts known outcomes for each check, so denominators
+can differ. **Last seen** is the actual date of the latest observed mismatch.
+These application thresholds describe repeated target mismatches; they do not
+diagnose a plateau or change progression recommendations.
+
 ### 7. Body measurements: what changed over time?
 
 Select weight, a circumference or a body-composition measurement in
