@@ -5,11 +5,9 @@ from __future__ import annotations
 from collections import Counter
 from typing import Dict
 
-import pandas as pd
 import streamlit as st
 
 from ui.exercise_progress_view import render_estimated_strength, render_latest_comparison
-from ui.utils.analysis_kpis import recorded_set_value
 from ui.utils.load_charts import mean_load_history_chart
 from ui.utils.set_load_inputs import LOAD_LABELS
 
@@ -127,32 +125,11 @@ class ExerciseView:
         return points
 
     def _render_selected_results(self, points):
-        self._render_history_context(points)
         fig = mean_load_history_chart(points)
         if fig is not None:
             st.plotly_chart(fig, width="stretch", key="recorded_load_history")
         if any(item["total_load_kg"] is None for item in points):
             st.caption("Some load values are missing.")
-
-    @staticmethod
-    def _render_history_context(points):
-        latest_description = ""
-        if points:
-            latest = max(
-                points,
-                key=lambda item: (
-                    pd.Timestamp(item["date"]),
-                    item.get("session_order", item["session_id"]),
-                    item["workout_exercise_id"],
-                    item["set_number"],
-                ),
-            )
-            item = {**latest, "seconds": latest["quantity"], "reps": latest["quantity"]}
-            latest_description = f"Latest set: {recorded_set_value(item, latest['unit'])} - {latest['date']:%d %b %Y}"
-        st.caption(
-            latest_description
-            + f" · {len(points)} logged sets across {len({item['session_id'] for item in points})} sessions in this period."
-        )
 
 
 def _show_all_history():

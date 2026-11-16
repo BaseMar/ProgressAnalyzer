@@ -10,6 +10,7 @@ from streamlit.testing.v1 import AppTest
 from data_manager import DataManager
 from db.plan_adherence import actual_exercises, actual_sets
 from db.set_loads import loads
+from db.workout_sessions import save_workout_session
 from mapper import map_workout_set
 from models.set_load import SetLoad
 from test_plan_schedule import schedule_data as schedule_data
@@ -204,7 +205,7 @@ def open_hang(app):
     app.date_input(key="entry_date").set_value(date(2026, 2, 15)).run()
     app.selectbox(key="entry_exercise").select(2).run()
     assert app.radio(key="entry_2_measure").value == "Seconds"
-    assert app.selectbox(key="entry_2_kind").value == "bodyweight"
+    assert not any(item.label == "Load type" for item in app.selectbox)
     return app
 
 
@@ -246,7 +247,7 @@ def test_assisted_entry_saves_unknown_or_measured_support(entry_data, assistance
     app = start_entry(entry_data)
     app.date_input(key="entry_date").set_value(date(2026, 2, 15)).run()
     app.selectbox(key="entry_exercise").select(4).run()
-    assert app.selectbox(key="entry_4_kind").value == "assisted_bodyweight"
+    assert not any(item.label == "Load type" for item in app.selectbox)
     assert app.number_input(key="entry_4_assistance").value is None
     if assistance is not None:
         app.number_input(key="entry_4_assistance").set_value(assistance).run()
@@ -298,11 +299,16 @@ render_set_load_correction(manager, session_id=sid, workout_date=date(2026, 2, 1
 
 
 def test_history_correction_keeps_legacy_until_explicitly_changed(entry_data):
-    entry_data.add_full_session(
+    save_workout_session(
+        entry_data.engine,
         date(2026, 2, 15),
         "Legacy",
-        "Dead hang",
-        [{"reps": 40, "duration_seconds": 40, "weight": 0, "rir": None}],
+        [
+            {
+                "name": "Dead hang",
+                "sets": [{"reps": 40, "duration_seconds": 40, "weight": 0, "rir": None}],
+            }
+        ],
         None,
         None,
     )
@@ -331,7 +337,7 @@ from ui.sidebar_upload import SidebarUpload
 manager = object.__new__(DataManager)
 manager.engine = st.session_state["engine"]
 upload = SidebarUpload(manager=manager)
-parsed = upload._parse_txt("1. Dead hang\\nWorking: 40s / 30s\\n2. Bench Press\\n8x60\\nRIR: 2")
+parsed = upload._parse_txt("1. Dead hang\\nWorking: 40s @+5 kg / 30s\\n2. Bench Press\\n8x60\\nRIR: 2")
 reviewed = upload._review_loads(parsed, date(2026, 2, 15), "test")
 st.session_state["reviewed"] = reviewed
 if st.button("Save import", key="import_save"):
@@ -340,16 +346,10 @@ if st.button("Save import", key="import_save"):
 """
 
 
-def test_import_preserves_original_by_default_and_can_add_body_mass(entry_data):
+def test_import_resolves_bodyweight_and_external_without_type_selection(entry_data):
     app = start_entry(entry_data, IMPORT_APP)
-    assert app.selectbox(key="import_test_0_kind").value == "legacy"
-    assert all("load" not in item for ex in app.session_state["reviewed"] for item in ex["sets"])
-    app.selectbox(key="import_test_0_kind").select("bodyweight").run()
-    app.session_state["import_test_0_weights"] = {
-        "edited_rows": {0: {"kg": 5.0}},
-        "added_rows": [],
-        "deleted_rows": [],
-    }
+    assert not app.selectbox and not app.get("data_editor")
+    assert all("load" in item for ex in app.session_state["reviewed"] for item in ex["sets"])
     app.button(key="import_save").click().run()
     assert not app.exception and not app.error
     rows = entry_data.load_sets_ui()
@@ -357,7 +357,7 @@ def test_import_preserves_original_by_default_and_can_add_body_mass(entry_data):
     assert rows.session_id.nunique() == 1
     hang = rows.loc[rows.exercise_name == "Dead hang"]
     assert [map_workout_set(row).load.total_load_kg for row in hang.to_dict("records")] == [85, 80]
-    assert rows.loc[rows.exercise_name == "Bench Press", "load_type"].isna().all()
+    assert (rows.loc[rows.exercise_name == "Bench Press", "load_type"] == "external").all()
 
 
 def test_history_badges_show_time_body_added_weight_and_support():

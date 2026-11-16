@@ -179,6 +179,12 @@ apply. A plan revision retains the calendar unless the user explicitly changes i
   allows 0 kg additional load. Store confirmation separately and preserve the
   original kg. Explicit newer additional-load records take priority. Recorded
   0 kg needs no confirmation.
+- Migration 011 and the separate history-normalization command can materialize
+  these confirmed conventions as explicit set snapshots, retaining originals.
+  Automatic new entry/import uses the same exercise profiles; recommendations
+  consume the saved snapshots and profile-aware bodyweight safeguards. This
+  removes artificial Original log/External weight boundaries without merging
+  genuinely different loads or changing progression thresholds.
 - Unknown body mass or assistance in an explicit convention limits load comparisons.
 - Unilateral sets require a consistent per-side convention. The model does not
   measure each side separately or confirm an unrecorded second side.

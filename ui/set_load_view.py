@@ -39,6 +39,12 @@ def render_set_load_correction(manager, *, session_id, workout_date):
             )
             row = rows[set_id]
             current = map_workout_set(row).load
+            original = manager.load_original_set_load(set_id)
+            if original is not None:
+                st.caption(f"Before normalization: {original['weight']:g} kg")
+                if st.button("Restore original entry", key=f"restore_load_{set_id}"):
+                    manager.restore_original_set_load(session_id, set_id)
+                    st.rerun()
             if current is not None:
                 st.caption("Saved: " + format_load(current))
             else:

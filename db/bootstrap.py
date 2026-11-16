@@ -67,6 +67,9 @@ def bootstrap_database(engine, *, demo=False, as_of=None):
             from db.demo_data import seed_demo
 
             seed_demo(scope, metadata.tables, as_of=as_of)
+            from db.normalize_load_history import normalize_history
+
+            normalize_history(scope, as_of=as_of)
         counts = {
             name: connection.execute(select(func.count()).select_from(table)).scalar_one()
             for name, table in metadata.tables.items()

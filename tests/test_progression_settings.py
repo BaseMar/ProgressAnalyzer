@@ -139,6 +139,7 @@ def test_upgrade_preserves_legacy_plan_without_assuming_a_block(plan_engine, mon
         "008_starting_loads",
         "009_exercise_history_load_settings",
         "010_application_access_security",
+        "011_exercise_load_profiles",
     ]
     assert migration_runner.migrate(plan_engine, apply=True) == []
     saved = load_training_plan_version(plan_engine, version_id)

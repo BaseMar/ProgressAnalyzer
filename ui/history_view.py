@@ -15,6 +15,7 @@ from data_manager import DataManager
 from mapper import map_workout_set
 from ui.body_metrics_view import BodyMetricsView
 from ui.exercise_replacements_view import ExerciseReplacementsView
+from ui.load_profiles_view import render_load_profile_settings
 from ui.plan_schedule_view import PlanScheduleView
 from ui.set_load_view import render_set_load_correction
 from ui.sidebar_upload import SidebarUpload
@@ -130,6 +131,7 @@ class HistoryView:
             ):
                 self.schedule.plan_id = None
                 self.schedule.version_dates = []
+        render_load_profile_settings(self.dm)
         self._render_history()
 
     def _select_plan(self):

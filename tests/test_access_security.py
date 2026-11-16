@@ -162,8 +162,8 @@ def test_sqlite_bootstrap_records_security_revision_without_postgres_ddl(tmp_pat
     engine = create_engine(f"sqlite:///{tmp_path / 'local.sqlite3'}")
     try:
         result = bootstrap_database(engine, demo=True)
-        assert result["migrations"][-1] == v010_application_access_security.REVISION
-        assert len(inspect(engine).get_table_names()) == 20
+        assert v010_application_access_security.REVISION in result["migrations"]
+        assert len(inspect(engine).get_table_names()) == 22
         assert migrate(engine, apply=True) == []
         assert (
             len(DataManager(engine=engine).load_sets_ui()) == result["counts"]["workout_sets"] > 0

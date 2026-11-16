@@ -7,6 +7,7 @@ APPLICATION_TABLES = frozenset(
         "body_composition",
         "body_measurements",
         "exercise_history_load_settings",
+        "exercise_load_profiles",
         "exercise_muscle_map",
         "exercises",
         "recommendation_starting_loads",
@@ -23,6 +24,7 @@ APPLICATION_TABLES = frozenset(
         "workout_sessions",
         "workout_set_classifications",
         "workout_set_loads",
+        "workout_set_load_originals",
         "workout_sets",
     )
 )

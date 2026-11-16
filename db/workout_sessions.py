@@ -6,6 +6,8 @@ from datetime import timedelta
 import pandas as pd
 from sqlalchemy import Date, Time, bindparam, text
 
+from db.load_profiles import profiles, store_profile
+from db.read_cache import has_table
 from db.set_classifications import classifications
 from db.set_loads import insert_set_load, set_load_storage_ready
 from models.set_load import SetLoad
@@ -72,6 +74,12 @@ def save_workout_session(
                 if not res:
                     raise ValueError("Exercise not found")
                 exercise_id = res[0]
+                profile = exercise.get("load_profile")
+                if profile is not None:
+                    if profile.exercise_id != exercise_id:
+                        raise ValueError("The load profile belongs to another exercise")
+                    if has_table(conn, profiles.name):
+                        store_profile(conn, profile)
 
                 insert_we = text(
                     "INSERT INTO workout_exercises (session_id, exercise_id) VALUES (:sid, :eid) RETURNING workout_exercise_id;"

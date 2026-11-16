@@ -6,6 +6,15 @@ from typing import Any, Dict, List
 import pandas as pd
 
 from db.connection import get_engine
+from db.load_profiles import (
+    load_original_set_load,
+    load_profile_catalog,
+    load_resolved_profiles,
+    profile_storage_ready,
+    restore_original_set_load,
+    save_profile,
+)
+from db.normalize_load_history import audit_history, normalize_history
 from db.plan_adherence import (
     adherence_storage_ready,
     load_plan_adherence,
@@ -53,6 +62,7 @@ from db.training_plans import (
 )
 from db.workout_sessions import save_workout_session
 from models.training_plan import TrainingPlanDraft, TrainingPlanVersion
+from services.load_resolution import prepare_load_entries
 from services.recommendations import (
     load_workout_recommendations,
     prepare_plan_context,
@@ -102,6 +112,36 @@ class DataManager:
 
     def suggest_body_mass(self, on_date):
         return suggest_body_mass(self.engine, on_date)
+
+    def load_exercise_load_profiles(self, *, on_date=None, exercise_ids=None):
+        return load_resolved_profiles(self.engine, on_date=on_date, exercise_ids=exercise_ids)
+
+    def load_exercise_load_catalog(self):
+        return load_profile_catalog(self.engine)
+
+    def exercise_load_profile_storage_ready(self):
+        return profile_storage_ready(self.engine)
+
+    def load_original_set_load(self, set_id):
+        return load_original_set_load(self.engine, set_id)
+
+    @_refresh_after_write
+    def restore_original_set_load(self, session_id, set_id):
+        return restore_original_set_load(self.engine, session_id, set_id)
+
+    def prepare_load_entries(self, exercises, workout_date):
+        return prepare_load_entries(self, exercises, workout_date)
+
+    def audit_load_history(self):
+        return audit_history(self.engine)
+
+    @_refresh_after_write
+    def normalize_load_history(self, *, exercise_ids=None, overrides=()):
+        return normalize_history(self.engine, exercise_ids=exercise_ids, overrides=overrides)
+
+    @_refresh_after_write
+    def save_exercise_load_profile(self, profile):
+        return save_profile(self.engine, profile)
 
     def load_deload_exercise_ids(self, *, as_of=None):
         return load_deload_exercise_ids(self.engine, as_of=as_of)
@@ -267,6 +307,8 @@ class DataManager:
         self, session_date, notes, exercises_data, session_start=None, session_end=None
     ):
         """Persist a workout, then refresh the shared input cache."""
+        if self.set_load_storage_ready():
+            exercises_data = self.prepare_load_entries(exercises_data, session_date)
         return save_workout_session(
             self.engine, session_date, notes, exercises_data, session_start, session_end
         )

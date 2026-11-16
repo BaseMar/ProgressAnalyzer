@@ -2,14 +2,12 @@ import hashlib
 import re
 from datetime import datetime
 
-import pandas as pd
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
 from data_manager import DataManager
 from db.exercise_muscle_resolver import resolve_exercise
 from ui.utils.exercise_matcher import normalize
-from ui.utils.set_load_inputs import make_set_load, render_load_inputs, render_total_loads
 
 
 class SidebarUpload:
@@ -88,36 +86,16 @@ class SidebarUpload:
                 "Load details need database setup. Import will preserve the original kg values."
             )
             return parsed
-        output = []
-        with self.ui.expander("Review body mass and load types"):
-            for index, exercise in enumerate(parsed):
-                self.ui.markdown(f"**{exercise['name']}**")
-                key = f"import_{scope}_{index}"
-                settings = render_load_inputs(self.dm, workout_date, key=key)
-                sets = [dict(item) for item in exercise["sets"]]
-                if settings[0] != "legacy":
-                    frame = pd.DataFrame(
-                        {"Set": range(1, len(sets) + 1), "kg": [item["weight"] for item in sets]}
-                    )
-                    edited = st.data_editor(
-                        frame,
-                        key=f"{key}_weights",
-                        hide_index=True,
-                        disabled=["Set"],
-                        column_config={
-                            "kg": st.column_config.NumberColumn(
-                                "Weight (kg)" if settings[0] == "external" else "Additional kg",
-                                min_value=0.0,
-                                required=True,
-                            )
-                        },
-                    )
-                    for item, weight in zip(sets, edited["kg"]):
-                        item["weight"] = float(weight)
-                        item["load"] = make_set_load(settings, weight)
-                    render_total_loads(settings, edited["kg"])
-                output.append({**exercise, "sets": sets})
-        return output
+        mapped = [
+            {
+                **exercise,
+                "name": st.session_state.get("exercise_mapping", {}).get(
+                    exercise["name"], exercise["name"]
+                ),
+            }
+            for exercise in parsed
+        ]
+        return self.dm.prepare_load_entries(mapped, workout_date)
 
     def _process(self, parsed, workout_date, start_time, end_time):
         """Process and validate parsed exercises before importing."""
@@ -370,7 +348,7 @@ class SidebarUpload:
 
         while index < len(lines):
             line = lines[index].strip()
-            next_line = lines[index + 1].strip() if index + 1 < len(lines) else ""
+            next_line = self._following_work_line(lines, index)
             inline_name, inline_data = self._split_name_and_inline_data(line)
 
             if inline_name and inline_data and not self._is_metadata_line(line):
@@ -390,7 +368,7 @@ class SidebarUpload:
 
                 while index < len(lines):
                     candidate = lines[index].strip()
-                    following = lines[index + 1].strip() if index + 1 < len(lines) else ""
+                    following = self._following_work_line(lines, index)
                     if (
                         candidate
                         and not self._is_metadata_line(candidate)
@@ -408,6 +386,14 @@ class SidebarUpload:
             index += 1
 
         return blocks
+
+    def _following_work_line(self, lines, index):
+        for line in lines[index + 1 :]:
+            line = line.strip()
+            if not line or (self._is_metadata_line(line) and not self._contains_set_token(line)):
+                continue
+            return line
+        return ""
 
     def _split_name_and_inline_data(self, line: str) -> tuple[str, str]:
         """Split a line that contains both exercise name and set data."""
@@ -432,6 +418,7 @@ class SidebarUpload:
         """Parse one exercise block into set dictionaries."""
         set_tokens = []
         rir_values = []
+        metadata = self._load_metadata(lines)
 
         for line in lines:
             if not line:
@@ -481,10 +468,38 @@ class SidebarUpload:
                     "rir": rir,
                     **({"duration_seconds": duration_seconds} if duration_seconds else {}),
                     **({"is_warmup": token["is_warmup"]} if "is_warmup" in token else {}),
+                    **metadata,
+                    **({"_weight_mode": "additional"} if token.get("additional") else {}),
                 }
             )
 
         return sets_data
+
+    def _load_metadata(self, lines):
+        result = {}
+        for line in lines:
+            mode = re.match(
+                r"^(?:weight|kg)\s*:\s*(additional|body[_ ]mass|total|assistance)\s*$",
+                line,
+                re.IGNORECASE,
+            )
+            if mode:
+                result["_weight_mode"] = mode.group(1).lower().replace(" ", "_")
+            mass = re.match(
+                r"^(?:body mass|masa ciała|masa ciala)\s*(?:\(kg\))?\s*:\s*(\d+(?:[.,]\d+)?)",
+                line,
+                re.IGNORECASE,
+            )
+            if mass:
+                result["_body_mass_kg"] = float(mass.group(1).replace(",", "."))
+            assistance = re.match(
+                r"^(?:assistance|wspomaganie)\s*(?:\(kg\))?\s*:\s*(\d+(?:[.,]\d+)?)",
+                line,
+                re.IGNORECASE,
+            )
+            if assistance:
+                result["_assistance_kg"] = float(assistance.group(1).replace(",", "."))
+        return result
 
     def _parse_work_tokens(self, line: str) -> list[dict]:
         """Find weighted or duration-based set tokens in source order."""
@@ -527,6 +542,8 @@ class SidebarUpload:
                         re.IGNORECASE,
                     )
                 )
+                if match.groupdict().get("additional"):
+                    tokens[-1]["additional"] = True
                 if labels:
                     tokens[-1]["is_warmup"] = labels[-1].group(1).lower() not in (
                         "working",
@@ -540,11 +557,11 @@ class SidebarUpload:
     def _set_token_matches(self, line: str):
         """Find reps/weight token regex matches in source order."""
         pattern = re.compile(
-            r"(?<![\dA-Za-z])(?P<reps>\d{1,3})\s*(?:x|\*)\s*(?P<weight>\d+(?:[\.,]\d+)?)\s*(?:kg)?",
+            r"(?<![\dA-Za-z])(?P<reps>\d{1,3})\s*(?:x|\*)\s*(?P<additional>\+)?(?P<weight>\d+(?:[\.,]\d+)?)\s*(?:kg)?",
             re.IGNORECASE,
         )
         at_pattern = re.compile(
-            r"(?<![\dA-Za-z])(?P<reps>\d{1,3})\s*@\s*(?P<weight>\d+(?:[\.,]\d+)?)\s*(?:kg)?",
+            r"(?<![\dA-Za-z])(?P<reps>\d{1,3})\s*@\s*(?P<additional>\+)?(?P<weight>\d+(?:[\.,]\d+)?)\s*(?:kg)?",
             re.IGNORECASE,
         )
 
@@ -567,7 +584,7 @@ class SidebarUpload:
     def _duration_unit_pattern(self):
         return re.compile(
             r"(?<![\dA-Za-z])(?P<duration_seconds>\d{1,4})\s*(?:s|sec|secs|sek|sekund|seconds)\b"
-            r"(?:\s*@\s*(?P<weight>\d+(?:[\.,]\d+)?)\s*(?:kg)?)?",
+            r"(?:\s*@\s*(?P<additional>\+)?(?P<weight>\d+(?:[\.,]\d+)?)\s*(?:kg)?)?",
             re.IGNORECASE,
         )
 
@@ -601,6 +618,12 @@ class SidebarUpload:
         return bool(re.search(r"\bRIR\b", line, re.IGNORECASE))
 
     def _is_metadata_line(self, line: str) -> bool:
+        if re.match(
+            r"^\s*(weight|kg|body mass|assistance|masa ciała|masa ciala|wspomaganie)\s*(?:\(kg\))?\s*:",
+            line,
+            re.IGNORECASE,
+        ):
+            return True
         return bool(
             re.match(r"^\s*(time|date|workout|godzina|czas|data|trening)\b", line, re.IGNORECASE)
         )

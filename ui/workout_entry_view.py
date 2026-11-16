@@ -13,7 +13,6 @@ from ui.utils.set_load_inputs import (
     make_set_load,
     render_load_inputs,
     render_total_loads,
-    suggested_load_type,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,8 +50,10 @@ def render_workout_entry(manager):
             manager,
             day,
             key=key,
-            default=suggested_load_type(names[exercise_id]),
             allow_legacy=False,
+            automatic_kind=manager.load_exercise_load_profiles(
+                on_date=day, exercise_ids=(int(exercise_id),)
+            )[exercise_id].load_type,
         )
         count = st.number_input(
             "Number of sets", min_value=1, max_value=50, value=3, step=1, key=f"{key}_count"

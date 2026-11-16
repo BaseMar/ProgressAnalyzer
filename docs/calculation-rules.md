@@ -51,6 +51,22 @@ editable suggestion. Its value is saved with the set, so a later weigh-in does
 not change an old workout. Missing mass or unknown assistance leaves the total
 **unknown**; resistance-band assistance is not guessed.
 
+Exercise-level load profiles now select these conventions automatically for
+entry/import. Explicit per-set metadata takes priority over a remembered profile;
+saved profiles retain their catalog identity across renames. Only explicit
+history through the workout date can supply an inferred default. Plain TXT
+kilograms follow the profile's input convention; `8x+5` always declares additional
+weight. The physical mass/support values remain distinct from exercise type.
+
+History normalization adds explicit external snapshots to original external-load
+records without changing their numeric load. Confirmed body-mass-only records
+become zero additional kg with their original kg saved as the body-mass snapshot.
+Unassisted bodyweight records at zero kg can be resolved without guessing a
+positive value's meaning. Other ambiguous old records remain unresolved until a
+profile convention is supplied. Existing explicit snapshots and future records
+are preserved. Every normalized set retains its original load in an audit table;
+later weigh-ins do not modify the saved snapshot.
+
 ### 2. Volume: how much recorded work?
 
 For repetition-based exercises:

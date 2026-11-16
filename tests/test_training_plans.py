@@ -103,6 +103,7 @@ def test_migration_preview_is_read_only_and_apply_is_repeatable(engine):
         "008_starting_loads",
         "009_exercise_history_load_settings",
         "010_application_access_security",
+        "011_exercise_load_profiles",
     ]
     assert "schema_migrations" not in inspect(engine).get_table_names()
     assert migrate(engine, apply=True) == [
@@ -116,6 +117,7 @@ def test_migration_preview_is_read_only_and_apply_is_repeatable(engine):
         "008_starting_loads",
         "009_exercise_history_load_settings",
         "010_application_access_security",
+        "011_exercise_load_profiles",
     ]
     assert migrate(engine, apply=True) == []
     assert migrate(engine) == []
@@ -284,5 +286,6 @@ def test_conflicting_schema_does_not_mark_migration_applied(engine):
         "008_starting_loads",
         "009_exercise_history_load_settings",
         "010_application_access_security",
+        "011_exercise_load_profiles",
     ]
     assert "training_plans" not in inspect(engine).get_table_names()

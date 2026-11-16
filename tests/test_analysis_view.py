@@ -132,7 +132,7 @@ def test_exercise_chart_is_shown_without_a_recorded_sets_disclosure(sample_input
     assert len(app.get("plotly_chart")) == 2
     assert not app.dataframe
     assert not any(item.label == "Recorded sets" for item in app.expander)
-    assert any("65 kg" in item.value and "9 reps" in item.value for item in app.caption)
+    assert not any("Latest set:" in item.value for item in app.caption)
 
 
 def test_timed_chart_retains_missing_load_notice_without_a_source_table(sample_input):

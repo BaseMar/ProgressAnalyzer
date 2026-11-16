@@ -15,6 +15,7 @@ from db.read_cache import read_scope
 from metrics.measurement_timeline import measurement_timeline
 from ui.analysis_view import AnalysisView
 from ui.history_view import HistoryView
+from ui.loading_view import loading_screen, update_loading_screen
 from ui.overview_view import OverviewView
 from ui.sidebar_view import SidebarView
 from ui.training_plan_view import TrainingPlanView
@@ -45,10 +46,15 @@ def _load_global_styles() -> None:
 def main() -> None:
     """Replace the previous route before loading or rendering the next page."""
     selected_page = SidebarView().render_navigation()
-    with st.spinner(f"Loading {selected_page}…"):
+    with loading_screen(
+        f"Loading {selected_page}",
+        "Loading your training history",
+        enabled=st.session_state.get("_loaded_route") != selected_page,
+    ):
         page = st.empty()
         with page.container(key=f"route_{selected_page}"):
             _render_page(selected_page)
+        st.session_state["_loaded_route"] = selected_page
 
 
 def _render_page(selected_page):
@@ -59,6 +65,7 @@ def _render_page(selected_page):
         st.error(f"Failed to load data: {exc}")
         st.stop()
 
+    update_loading_screen(f"Preparing {selected_page}")
     names = {exercise.exercise_id: exercise.name for exercise in raw_input_data.exercises}
     if selected_page == "Overview":
         page_title("Overview", "Training Overview")
@@ -94,16 +101,21 @@ def run(*, hosted=False):
     from db.connection import database_scope
     from db.public_demo import session_demo_database
 
-    database = session_demo_database()
-    with database_scope(database.engine, database.cache_key):
-        with st.container(key="public_demo_notice"):
-            st.info("Interactive demo · Fictional data · Changes last for this browser session")
-        if st.sidebar.button("Reset demo", key="reset_public_demo"):
-            load_data.clear(database.cache_key)
-            session_demo_database.clear()
-            st.session_state.clear()
-            st.rerun()
-        main()
+    with loading_screen(
+        "Preparing your workspace",
+        "Setting up your training demo",
+        enabled="_loaded_route" not in st.session_state,
+    ):
+        database = session_demo_database()
+        with database_scope(database.engine, database.cache_key):
+            with st.container(key="public_demo_notice"):
+                st.info("Interactive demo · Fictional data · Changes last for this browser session")
+            if st.sidebar.button("Reset demo", key="reset_public_demo"):
+                load_data.clear(database.cache_key)
+                session_demo_database.clear()
+                st.session_state.clear()
+                st.rerun()
+            main()
 
 
 if __name__ == "__main__":

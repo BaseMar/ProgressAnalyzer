@@ -37,6 +37,126 @@
 
 section.main > div { padding-top: 0; }
 
+/* Navigation loading screen: real work only, with no fake progress percentage. */
+/* Streamlit can interrupt cleanup writes on stop/rerun. Never leave an overlay
+   visible after the script finishes, even if its last HTML delta remains. */
+.stApp:not([data-test-script-state="running"]) .app-loading-screen {
+    display: none;
+}
+
+.app-loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem;
+    background:
+        radial-gradient(ellipse at 50% 42%, rgba(0, 173, 181, 0.12), transparent 55%),
+        #222831;
+    color: var(--text-primary);
+    animation: app-loading-reveal 160ms ease-out 100ms both;
+}
+
+.app-loading-card {
+    width: min(100%, 480px);
+    text-align: center;
+    padding: clamp(1.5rem, 5vw, 3rem) 1rem;
+}
+
+.app-loading-mark {
+    display: grid;
+    place-items: center;
+    width: 88px;
+    height: 88px;
+    margin: 0 auto 2rem;
+    border: 1px solid rgba(0, 173, 181, 0.35);
+    border-radius: 24px;
+    background: rgba(0, 173, 181, 0.07);
+    color: var(--accent);
+    box-shadow: 0 0 48px rgba(0, 173, 181, 0.08);
+    animation: app-loading-breathe 2s ease-in-out infinite;
+}
+
+.app-loading-barbell { position: relative; width: 64px; height: 48px; }
+.app-loading-barbell::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 22px;
+    height: 4px;
+    border-radius: 2px;
+    background: currentColor;
+}
+.app-loading-plate {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    width: 6px;
+    border-radius: 3px;
+    background: currentColor;
+}
+.app-loading-plate.outer-left { left: 8px; top: 14px; bottom: 14px; }
+.app-loading-plate.inner-left { left: 18px; }
+.app-loading-plate.inner-right { right: 18px; }
+.app-loading-plate.outer-right { right: 8px; top: 14px; bottom: 14px; }
+
+.app-loading-brand {
+    margin-bottom: 0.8rem;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+.app-loading-title {
+    font-size: clamp(24px, 5vw, 32px);
+    font-weight: 650;
+    line-height: 1.25;
+    letter-spacing: -0.5px;
+}
+
+.app-loading-detail {
+    margin-top: 0.8rem;
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.app-loading-track {
+    position: relative;
+    height: 4px;
+    margin: 2rem auto 0;
+    max-width: 280px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.09);
+}
+
+.app-loading-bar {
+    position: absolute;
+    inset-block: 0;
+    width: 40%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgba(0, 173, 181, 0.3), var(--accent), #83e1e5);
+    box-shadow: 0 0 14px rgba(0, 173, 181, 0.4);
+    animation: app-loading-travel 1.4s ease-in-out infinite;
+}
+
+@keyframes app-loading-reveal { from { opacity: 0; } to { opacity: 1; } }
+@keyframes app-loading-breathe { 50% { box-shadow: 0 0 48px rgba(0, 173, 181, 0.2); } }
+@keyframes app-loading-travel {
+    from { transform: translateX(-110%); }
+    to { transform: translateX(360%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-loading-screen, .app-loading-mark, .app-loading-bar { animation: none; }
+    .app-loading-bar { left: 30%; }
+}
+
 .st-key-public_demo_notice {
     padding-top: 2rem;
 }

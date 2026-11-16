@@ -13,6 +13,7 @@ from metrics.muscle_volume import weekly_plan_sets
 from ui.body_metrics_view import BodyMetricsView
 from ui.body_parts_view import BodyPartsView
 from ui.exercise_view import ExerciseView
+from ui.loading_view import loading_screen
 from ui.plan_adherence_view import PlanAdherenceView
 from ui.progress_ranking_view import render_progress_ranking
 from ui.utils.active_plan import select_active_plan
@@ -49,7 +50,13 @@ class AnalysisView:
         for topic, tab in zip(topics, tabs):
             if tab.open:
                 with tab:
-                    self._render_topic(topic, filtered, month)
+                    with loading_screen(
+                        f"Loading {topic}",
+                        f"Preparing {topic}",
+                        enabled=st.session_state.get("_loaded_analysis_topic") != topic,
+                    ):
+                        self._render_topic(topic, filtered, month)
+                    st.session_state["_loaded_analysis_topic"] = topic
 
     def _render_topic(self, topic, filtered, month):
         selection = st.container(key="analysis_selection")

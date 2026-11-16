@@ -14,15 +14,26 @@ LOAD_LABELS = {
 
 
 def render_load_inputs(
-    manager, workout_date, *, key, current=None, default="legacy", allow_legacy=True
+    manager,
+    workout_date,
+    *,
+    key,
+    current=None,
+    default="legacy",
+    allow_legacy=True,
+    automatic_kind=None,
 ):
     options = list(LOAD_LABELS) if allow_legacy else list(LOAD_LABELS)[1:]
-    kind = st.selectbox(
-        "Load type",
-        options,
-        index=options.index(default),
-        format_func=LOAD_LABELS.get,
-        key=f"{key}_kind",
+    kind = (
+        automatic_kind
+        if automatic_kind is not None
+        else st.selectbox(
+            "Load type",
+            options,
+            index=options.index(default),
+            format_func=LOAD_LABELS.get,
+            key=f"{key}_kind",
+        )
     )
     if kind == "legacy":
         return kind, None, None

@@ -29,6 +29,13 @@ def workout_template(upcoming, recommendation, exercise_names):
                 f"Target: {planned.set_count} sets, {planned.target_min}–{planned.target_max} {unit}; "
                 f"RIR: {reserve}; load to be selected"
             )
+        if any(
+            goal.load_type in ("bodyweight", "assisted_bodyweight", "manual_bodyweight")
+            for goal in item.goals
+        ):
+            lines.append("Weight: additional")
+            if any(goal.load_type == "assisted_bodyweight" for goal in item.goals):
+                lines.append("Assistance (kg):")
         lines.append("Result:")
         lines.append("RIR:")
         lines.append("")

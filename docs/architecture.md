@@ -19,9 +19,15 @@ All routes initially share `data_loader.load_data()`. Navigation renders before
 source loading, and each route lives inside a single `st.empty()` placeholder
 with a route-specific container key. Replacing this block clears the previous
 page before slow source loading or rendering, preventing old charts and controls
-from remaining under the new route. A native spinner identifies a slow-loading
-view. This does not change cache lifetimes or
-authentication boundaries.
+from remaining under the new route. `ui.loading_view` displays a full-screen
+loading overlay during startup, route changes and Analysis tab changes. Nested
+loading scopes share one screen and update its stage; stable placeholder slots
+keep route replacement consistent across reruns. Ordinary form and filter reruns
+do not open the overlay. It follows actual work without artificial delays or
+percentage estimates. Cleanup removes it on completion; a script-state CSS guard
+also hides it when Streamlit interrupts cleanup during a stop or rerun. Reduced
+motion preferences disable animations. Cache lifetimes and authentication
+boundaries are unchanged.
 
 | Route | Presentation and calculation ownership |
 | --- | --- |
@@ -139,6 +145,22 @@ new-render refresh remain unchanged. Callers should prepare a new context
 after changing source data instead of keeping an old snapshot across writes.
 
 ## Recorded history and mapping
+
+`models/load_profile.py` and pure `metrics/load_profiles.py` define exercise
+conventions. `db/load_profiles.py` resolves saved profiles, cutoff-limited
+explicit history and catalog defaults. `services/load_resolution.py` prepares
+canonical per-set snapshots before a DataManager workout write; `db/workout_sessions`
+saves snapshots and remembered profiles in the same transaction. Existing
+per-set details override defaults. No load-type selectors are required in manual
+entry or TXT import; occasional profile corrections live in History.
+
+Migration 011 stores exercise profiles and per-set original/normalized snapshots.
+`db/normalize_load_history.py` offers a read-only audit and a separate atomic,
+idempotent application. It does not reinterpret positive unknown bodyweight kg,
+overwrite explicit snapshots, or normalize future records. All calculation,
+recommendation and UI readers then consume the same persisted load metadata.
+Original snapshots permit guarded restoration without clobbering later edits.
+The migration runner reapplies access hardening after later schema additions.
 
 [`db/recorded_workouts.py`](../db/recorded_workouts.py) owns recorded-exercise
 table descriptions and `load_recorded_exercises`. The reader accepts a

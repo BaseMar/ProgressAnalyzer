@@ -294,8 +294,9 @@ ExerciseView(st.session_state["metrics"]).render()
     app.run()
     assert not app.exception and not app.error
     assert not app.metric
-    assert any("85 kg total" in item.value and "35 s" in item.value for item in app.caption)
-    assert any("2 logged sets across 2 sessions" in item.value for item in app.caption)
+    assert not any(
+        "Latest set:" in item.value or "logged sets across" in item.value for item in app.caption
+    )
     assert len(app.get("plotly_chart")) == 1
     assert not any("Body mass +" in item.value for item in app.caption)
     assert not any(item.key == "recorded_exercise_series" for item in app.radio)

@@ -8,6 +8,10 @@ See [calculation rules](calculation-rules.md) for terminology and analytical for
 
 The app has four pages. Each answers a different question.
 
+A loading screen appears while the app starts or prepares a different page or
+Analysis tab. It closes as soon as the view is ready, without adding a wait.
+Ordinary form edits and filter changes keep the current view visible.
+
 | Page | Start here when you want to… |
 | --- | --- |
 | **Overview** | Review recent progress, or open Next workout to copy training targets. |
@@ -190,11 +194,19 @@ the [recommendation rules](progression-rules.md), which own the decision policy.
 
 Choose **History → Enter workout manually** for reps/seconds, weight,
 RIR and set purpose. For explicit bodyweight work, weight means **additional kg**;
-body mass and assistance have separate fields.
+body mass and assistance have separate fields. The exercise's load type is chosen
+automatically from its saved profile, confirmed history or catalog rules.
+External-load exercises have no type selector; bodyweight exercises show only
+the relevant body-mass/assistance fields.
 
 History shows the saved load components.
 **Body mass and load details** corrects an individual set.
-Older logs keep their original kg convention until explicitly corrected.
+**Exercise load settings → Edit exercise conventions** is an optional correction
+tool for the exact catalog exercise. It remembers how kilograms are written in
+TXT notes and how unspecified old entries should be interpreted. An unresolved
+history list identifies exercises that need a one-time decision.
+Normalized sets retain an archived original. **Restore original entry** restores
+that snapshot unless the set was subsequently edited.
 
 ### TXT workout import
 
@@ -225,9 +237,23 @@ the RIR values follow the same order.
 | Missing RIR | Leave it out; the value stays unknown. |
 
 Unknown exercise names can be matched to the catalog or added as a new exercise.
-Before importing explicit bodyweight sets, open **Review body mass and load types**
-and check the convention and estimated total. The default preserves the TXT log's
-original kg meaning. An import saves all exercises together or rolls back.
+Load types are resolved automatically; there is no per-exercise load-type review.
+Existing explicit set details have priority. An import saves all exercises and
+their body-mass snapshots together or rolls back. A profile that remembers old
+body-mass-only TXT notes keeps interpreting plain kilograms that way; use an
+explicit `+` for additional weight, or the unambiguous metadata below:
+
+```text
+1. Pull-up
+Weight: additional
+Body mass: 80
+Result: 8x+5 / 8x0
+RIR: 2 / 2
+```
+
+`Body mass` is optional when an earlier measurement is available. `Assistance:
+20` explicitly records measured support in kg. Copied bodyweight workout notes
+include `Weight: additional`, so their result kilograms remain unambiguous.
 
 Previously saved Polish notes remain supported, including `Godzina`/`Godz.`
 time labels, `Cel:` target lines and `Wynik:` result lines. New exports use English.
@@ -259,8 +285,8 @@ This gives three timed sets of 30, 45 and 60 seconds.
 Choose **Measure = seconds** in the plan. RIR may stay empty; repetitions in
 reserve do not mean seconds in reserve.
 
-The TXT duration notation does not encode added hanging weight.
-Use the import load review or manual entry to set the load components.
+For additional hanging weight, use `45s @+5 kg`. `30s` means no additional weight.
+The exercise profile and earlier body-mass measurement supply the other load details.
 
 </details>
 

@@ -100,13 +100,22 @@ def _confirmed(connection, session_ids):
 
 @read_cached
 def _manual_load_ids(connection):
-    return frozenset(
+    result = set(
         row.exercise_id
         for row in connection.execute(
             select(catalog_exercises.c.exercise_id, catalog_exercises.c.exercise_name)
         )
         if suggested_load_type(row.exercise_name) in ("bodyweight", "assisted_bodyweight")
     )
+    from db.load_profiles import profiles
+
+    if has_table(connection, profiles.name):
+        for eid, kind in connection.execute(select(profiles.c.exercise_id, profiles.c.load_type)):
+            if kind == "external":
+                result.discard(eid)
+            else:
+                result.add(eid)
+    return frozenset(result)
 
 
 @read_cached

@@ -134,9 +134,24 @@ before starting Streamlit; direct installations use the explicit commands below.
 | 008 | Saved manual starting loads per exercise and prescription, separate from recorded training history. |
 | 009 | User-confirmed meanings of legacy bodyweight history, scoped to the exact exercise. |
 | 010 | RLS and Data API privilege restrictions for application tables, sequences and future table defaults. |
+| 011 | Exercise load profiles and archived originals for reversible history normalization. |
 
 `python -m db.migrate` previews pending revisions without writing.
 `python -m db.migrate --apply` applies them and records successful revisions.
+
+After migration 011, unify known historical conventions separately:
+
+```powershell
+python -m db.normalize_load_history
+python -m db.normalize_load_history --apply
+```
+
+The first command audits without modifying data. The second archives originals
+and converts only resolvable unspecified sets in one transaction. Explicit loads
+and future sets remain unchanged; ambiguous bodyweight kilograms require a
+one-time interpretation under History → Exercise load settings. A rerun does not
+convert the same set twice. A per-set restoration is available in History's
+load correction panel and will not overwrite a subsequent manual correction.
 
 <details>
 <summary>Migration and data-handling details</summary>

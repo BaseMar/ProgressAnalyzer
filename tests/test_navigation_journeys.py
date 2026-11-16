@@ -170,8 +170,9 @@ def test_recorded_exercise_analysis_preserves_unplanned_exercises_without_rankin
     app.selectbox(key="analysis_recorded_exercise").select(2).run()
     assert len(app.get("plotly_chart")) == 2
     assert [item.value for item in app.metric] == ["84 kg", "—", "1"]
-    assert any("60 kg" in item.value and "12 reps" in item.value for item in app.caption)
-    assert any("1 logged sets across 1 sessions" in item.value for item in app.caption)
+    assert not any(
+        "Latest set:" in item.value or "logged sets across" in item.value for item in app.caption
+    )
     assert not any(
         "Top Strength" in item.value or "Weakest Strength" in item.value for item in app.markdown
     )
