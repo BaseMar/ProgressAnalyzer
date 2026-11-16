@@ -29,6 +29,12 @@ also hides it when Streamlit interrupts cleanup during a stop or rerun. Reduced
 motion preferences disable animations. Cache lifetimes and authentication
 boundaries are unchanged.
 
+Loading styles live in `ui/styles/loading.css` and are delivered in the same
+`st.html` delta as the screen markup. The backdrop is opaque immediately; it has
+no opacity transition. While the screen is active, scoped styles hide the sidebar,
+collapsed sidebar control, Streamlit header, toolbar and running-status widget.
+Those controls return on completion or script interruption.
+
 | Route | Presentation and calculation ownership |
 | --- | --- |
 | Overview | `OverviewView`, `NextWorkoutView`, `TrainingInsightsView`; prepared recommendations and recent observations |
@@ -72,6 +78,13 @@ complete executions or one coherent strength convention in the selected period.
 Overview history links open the exercise page. `BodyMetricsView.render()` has one active display path.
 History calls the existing body-measurement form for entry.
 `metrics.utils.dates.to_date` is the shared date utility.
+
+Overview and Analysis use `section_header` for their major content sections.
+Each title has the same labelled rule and accessible level-two heading. Styles
+scoped to these routes give subsequent sections a 40 px top margin, plus the
+native 16 px block gap, with no extra top margin on the first section. Exercise
+history uses these separators in place of standalone dividers; muscle allocation
+uses the same spacing rather than additional padding on its containers.
 
 Plan consistency passes its existing period-filtered `compute_plan_performance`
 output and version block settings to pure `metrics/plan_patterns.py`.

@@ -10,7 +10,7 @@ import pandas as pd
 import streamlit as st
 from PIL import Image, ImageDraw
 
-from ui.utils.ui_helpers import ACCENT, MUTED, SURFACE, TEXT, chart_label
+from ui.utils.ui_helpers import ACCENT, MUTED, SURFACE, TEXT, section_header
 
 BODY_IMAGE_PATH = Path(__file__).resolve().parents[1] / "wzorzec" / "human_body.png"
 STATUS_META = {
@@ -131,7 +131,7 @@ EXCLUDED_OVERLAY_REGIONS = {
 
 def render_body_heatmap(heatmap_df: pd.DataFrame, period_weeks: float, period_label: str) -> None:
     """Color only against the active plan's weighted weekly targets."""
-    chart_label("Muscle map")
+    section_header("Muscle map")
     _render_heatmap_html(heatmap_df, period_weeks)
 
 

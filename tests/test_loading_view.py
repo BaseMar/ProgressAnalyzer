@@ -33,6 +33,8 @@ def placeholders(monkeypatch):
 
 def test_loading_status_escapes_text_updates_real_stages_and_clears(placeholders):
     with loading_screen("Loading <Analysis>", "History & plan"):
+        assert placeholders[0].markup[-1].startswith("<style>")
+        assert "position: fixed" in placeholders[0].markup[-1]
         assert 'role="status"' in placeholders[0].markup[-1]
         assert "Loading &lt;Analysis&gt;" in placeholders[0].markup[-1]
         assert "History &amp; plan" in placeholders[0].markup[-1]

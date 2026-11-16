@@ -3,10 +3,12 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
 from html import escape
+from pathlib import Path
 
 import streamlit as st
 
 _active_screen = ContextVar("active_loading_screen", default=None)
+_LOADING_CSS = (Path(__file__).with_name("styles") / "loading.css").read_text(encoding="utf-8")
 
 
 class LoadingScreen:
@@ -17,6 +19,9 @@ class LoadingScreen:
 
     def update(self, detail):
         self.placeholder.html(
+            # One HTML delta installs both styles and markup before the browser
+            # paints. A separate global-style delta can arrive a frame later.
+            f"<style>{_LOADING_CSS}</style>"
             '<div class="app-loading-screen" role="status" aria-live="polite" '
             'aria-busy="true" aria-atomic="true">'
             '<div class="app-loading-card">'

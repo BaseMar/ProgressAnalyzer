@@ -11,6 +11,9 @@ The app has four pages. Each answers a different question.
 A loading screen appears while the app starts or prepares a different page or
 Analysis tab. It closes as soon as the view is ready, without adding a wait.
 Ordinary form edits and filter changes keep the current view visible.
+The sidebar and Streamlit toolbar are hidden while the loading screen is shown.
+Overview and Analysis share one section-heading style and consistent spacing
+between their main content sections.
 
 | Page | Start here when you want to… |
 | --- | --- |

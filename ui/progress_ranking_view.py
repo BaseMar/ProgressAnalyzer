@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from metrics.progress_ranking import rank_exercise_progress, ranking_groups
-from ui.utils.ui_helpers import ACCENT, MUTED, PLOTLY_LAYOUT, TEXT, WARN
+from ui.utils.ui_helpers import ACCENT, MUTED, PLOTLY_LAYOUT, TEXT, WARN, section_header
 
 
 def render_progress_ranking(exercise_metrics, *, filters):
@@ -34,7 +34,7 @@ def render_progress_ranking(exercise_metrics, *, filters):
             measure = st.selectbox("Ranking measure", measures, key="analysis_ranking_measure")
     trends = tuple(item for item in report.trends if item.measure == measure)
     top, bottom = ranking_groups(trends)
-    st.subheader("Top 5 / Bottom 5")
+    section_header("Top 5 / Bottom 5", first=True)
     st.caption(measure)
     with st.container(key="analysis_rankings"):
         columns = st.columns(2, gap="large")

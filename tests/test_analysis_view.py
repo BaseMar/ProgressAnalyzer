@@ -47,7 +47,7 @@ AnalysisView(st.session_state['input'], pd.DataFrame(), manager=object()).render
     app.run()
     assert not app.exception and not app.error
     assert app.session_state["analysis_tab"] == "Progress"
-    assert any("Top 5 / Bottom 5" in item.value for item in app.subheader)
+    assert any("Top 5 / Bottom 5" in item.value for item in app.markdown)
     assert not any(item.key == "analysis_recorded_exercise" for item in app.selectbox)
     assert len(app.get("plotly_chart")) == 1
     assert any("No decreases" in item.value for item in app.info)

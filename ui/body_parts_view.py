@@ -13,7 +13,7 @@ import streamlit as st
 from metrics.muscle_volume import allocation_components
 from ui.utils.body_heatmap import render_body_heatmap
 from ui.utils.muscle_distribution_table import render_weekly_distribution
-from ui.utils.ui_helpers import ACCENT, PLOTLY_LAYOUT
+from ui.utils.ui_helpers import ACCENT, PLOTLY_LAYOUT, section_header
 
 
 class BodyPartsView:
@@ -158,6 +158,7 @@ class BodyPartsView:
         with st.container(key="analysis_muscle_map"):
             render_body_heatmap(summary, period_weeks, period_label)
         with st.container(key="analysis_muscle_allocation"):
+            section_header("Set allocation")
             if body_df.empty:
                 st.info("Log a workout to see set allocation.")
             else:

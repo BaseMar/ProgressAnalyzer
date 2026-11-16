@@ -11,6 +11,7 @@ from ui.loading_view import loading_screen
 from ui.next_workout_view import NextWorkoutView
 from ui.training_insights_view import render_training_insights
 from ui.utils.active_plan import select_active_plan
+from ui.utils.ui_helpers import section_header
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ class OverviewView:
     def _render_progress(self, start, as_of):
         report = compute_recorded_progress(self.input_data, as_of=as_of, start=start)
         with st.container(key="overview_progress_summary"):
-            st.subheader("Your progress")
+            section_header("Your progress", first=True)
             counts = report.exercise_progress
             with st.container(key="overview_progress_kpis"):
                 improving, unchanged, lower = st.columns(3)

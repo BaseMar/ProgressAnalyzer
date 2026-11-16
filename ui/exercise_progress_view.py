@@ -13,12 +13,12 @@ from metrics.load_metrics import describe_load
 from metrics.progress_ranking import rank_exercise_progress
 from metrics.recorded_progress import compare_recorded_exercise
 from metrics.utils.dates import to_date
-from ui.utils.ui_helpers import ACCENT, PLOTLY_LAYOUT
+from ui.utils.ui_helpers import ACCENT, PLOTLY_LAYOUT, section_header
 
 
 def render_latest_comparison(input_data, exercise_id, selected_month, *, as_of=None):
     """Show the actual latest pair, including evidence that prevents a verdict."""
-    st.subheader("Latest comparison")
+    section_header("Latest comparison")
     if input_data is None:
         st.info("Open this exercise from Analysis to compare its recorded sessions.")
         return
@@ -88,7 +88,7 @@ def _number_text(value):
 
 def render_estimated_strength(exercise_id, exercise, *, as_of=None):
     """Reuse the eligible session estimates and the ranking's window calculation."""
-    st.subheader("Estimated strength")
+    section_header("Estimated strength")
     cutoff = as_of or date.today()
     dynamic = [
         point

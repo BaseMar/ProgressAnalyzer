@@ -3,11 +3,11 @@
 import streamlit as st
 
 from metrics.muscle_distribution import build_weekly_distribution
-from ui.utils.ui_helpers import chart_label
+from ui.utils.ui_helpers import section_header
 
 
 def render_weekly_distribution(body_df, period_weeks, period_label, *, weekly_targets=None):
-    chart_label("Weekly muscle sets")
+    section_header("Weekly muscle sets", first=True)
     summary = build_weekly_distribution(body_df, period_weeks, weekly_targets)
     parts = summary["Body Part"].tolist()
     if st.session_state.get("analysis_muscle_part") not in parts:

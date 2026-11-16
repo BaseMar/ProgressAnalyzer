@@ -154,7 +154,7 @@ def test_default_focus_shows_recorded_starting_loads_when_source_rir_is_missing(
     engine, _, _, _ = schedule_data
     saved = seed(schedule_data, rir=None)
     app = start_app(engine, saved)
-    assert any(item.value == "Your progress" for item in app.subheader)
+    assert "Your progress" in markup(app)
     assert "62.5 kg" not in markup(app)
     assert all(item.value == "\u2014" for item in app.metric)
     assert not any("Awaiting comparable data:" in item.value for item in app.caption)
@@ -166,7 +166,7 @@ def test_legacy_plan_shows_progression_without_requiring_a_block(schedule_data):
     engine, _, _, _ = schedule_data
     saved = seed(schedule_data, progression=False)
     app = start_app(engine, saved)
-    assert any(item.value == "Your progress" for item in app.subheader)
+    assert "Your progress" in markup(app)
     select_topic(app, "Next workout")
     assert any("Normal training" in item.value for item in app.markdown)
     assert not any(item.label == "Workout details" for item in app.expander)

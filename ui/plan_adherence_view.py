@@ -18,7 +18,7 @@ from metrics.training_block import deload_adjusted_input
 from ui.utils.active_plan import select_active_plan
 from ui.utils.analysis_kpis import recorded_set_value
 from ui.utils.plan_charts import exercise_history_chart, weekly_execution_chart
-from ui.utils.ui_helpers import chart_label, section_header
+from ui.utils.ui_helpers import section_header
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class PlanAdherenceView:
 
     def render(self, *, mode="consistency"):
         if mode == "consistency":
-            section_header("Plan consistency")
+            section_header("Plan consistency", first=True)
         try:
             if not self.dm.adherence_storage_ready():
                 st.info("Plan analysis is not available until setup is complete.")
@@ -93,7 +93,7 @@ class PlanAdherenceView:
         if not summary["due_workouts"]:
             st.info("No elapsed planned days or linked workouts recorded in this period yet.")
         else:
-            chart_label("Weekly execution")
+            section_header("Weekly execution")
             st.plotly_chart(
                 weekly_execution_chart(overview["weeks"]),
                 width="stretch",

@@ -40,6 +40,7 @@ class BodyMetricsView:
 
     def render(self) -> None:
         """Render the selected recorded measurement and its source dates."""
+        section_header("Recorded measurements", first=True)
         timeline = self.body_metrics.get("timeline", [])
         if not timeline:
             st.info("No body composition data available.")

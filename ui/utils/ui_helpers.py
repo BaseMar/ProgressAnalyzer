@@ -9,6 +9,8 @@ Shared UI utilities for all views.
 
 from __future__ import annotations
 
+from html import escape
+
 import pandas as pd
 import streamlit as st
 
@@ -69,10 +71,12 @@ def format_number(value, decimals: int = 1) -> str:
         return "—"
 
 
-def section_header(title: str) -> None:
+def section_header(title: str, *, first: bool = False) -> None:
     """Render a labelled horizontal rule as a section divider."""
+    modifier = " section-header--first" if first else ""
     st.markdown(
-        f'<div class="section-header"><span>{title}</span><div class="section-rule"></div></div>',
+        f'<div class="section-header{modifier}"><span role="heading" aria-level="2">{escape(title)}</span>'
+        '<div class="section-rule" aria-hidden="true"></div></div>',
         unsafe_allow_html=True,
     )
 

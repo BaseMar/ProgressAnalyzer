@@ -1,6 +1,7 @@
 """Exercise sections retain latest evidence, units and existing strength estimates."""
 
 import json
+import re
 from dataclasses import replace
 from datetime import date
 
@@ -15,6 +16,14 @@ from test_navigation_journeys import select_analysis_tab, start_app
 from test_plan_schedule import schedule_data as schedule_data
 from test_recorded_progress import AS_OF, FIRST, SECOND, data, entry
 from ui.utils.data_filter import filter_data_by_month
+
+
+def section_titles(app):
+    return [
+        title
+        for item in app.markdown
+        for title in re.findall(r'<span role="heading" aria-level="2">(.*?)</span>', item.value)
+    ]
 
 
 def exercise_app(input_data, section, *, month="All time"):
@@ -112,7 +121,7 @@ def test_comparison_panel_shows_per_set_results_and_previous_month_evidence():
     assert table.iloc[0, 2] == "60 kg × 9 reps · RIR 1"
     assert not app.caption
     page = exercise_app(data(entry(1, FIRST), entry(2, SECOND, (9, 8, 8))), "All", month="2026-11")
-    assert [item.value for item in page.subheader] == [
+    assert section_titles(page) == [
         "Recorded history",
         "Estimated strength",
         "Latest comparison",
@@ -246,7 +255,7 @@ def test_exercise_sections_and_shared_period_survive_navigation(
     assert "08 May 2026" in app.dataframe[0].value.columns[-1]
     select_analysis_tab(app, "Progress")
     select_analysis_tab(app, "Exercises")
-    assert [item.value for item in app.subheader] == [
+    assert section_titles(app) == [
         "Recorded history",
         "Estimated strength",
         "Latest comparison",

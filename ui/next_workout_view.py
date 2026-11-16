@@ -87,7 +87,7 @@ class NextWorkoutView:
     def render(self, plan_id, versions, *, context=None, history=None, as_of=None):
         with st.container(key="next_workout_workspace"):
             as_of = as_of or date.today()
-            section_header("Next workout")
+            section_header("Next workout", first=True)
             try:
                 return self._render(plan_id, versions, history, as_of, context=context)
             except SQLAlchemyError:

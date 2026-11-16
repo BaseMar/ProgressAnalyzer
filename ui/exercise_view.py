@@ -10,6 +10,7 @@ import streamlit as st
 from ui.exercise_progress_view import render_estimated_strength, render_latest_comparison
 from ui.utils.load_charts import mean_load_history_chart
 from ui.utils.set_load_inputs import LOAD_LABELS
+from ui.utils.ui_helpers import section_header
 
 
 class ExerciseView:
@@ -80,12 +81,10 @@ class ExerciseView:
             return
         with self.filters if self.filters is not None else st.container():
             points = self._select_load_series(points)
-        st.subheader("Recorded history")
+        section_header("Recorded history", first=True)
         self._render_selected_results(points)
-        st.divider()
         render_estimated_strength(selected, exercise)
         if self.input_data is not None:
-            st.divider()
             render_latest_comparison(self.input_data, selected, self.selected_month)
 
     def _select_load_series(self, points):
