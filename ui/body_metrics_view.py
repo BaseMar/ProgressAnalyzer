@@ -77,9 +77,6 @@ class BodyMetricsView:
         if len(points) == 1:
             st.caption("One observation; no trend yet.")
         line_chart(points.set_index("date"), selected)
-        st.caption(
-            "These are recorded measurements. Direction alone does not establish improvement; device estimates may vary."
-        )
 
     def _add_measurement_form(self) -> None:
         """Provide forms for adding new body composition and measurement data."""

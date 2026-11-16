@@ -92,10 +92,6 @@ class OverviewView:
         report = compute_recorded_progress(self.input_data, as_of=as_of, start=start)
         with st.container(key="overview_progress_summary"):
             st.subheader("Your progress")
-            st.caption(f"Last 28 days: {start:%d %b} to {as_of:%d %b %Y}")
-            st.caption(
-                "All recorded exercises · latest result versus its previous session, including history before your plan."
-            )
             counts = report.exercise_progress
             with st.container(key="overview_progress_kpis"):
                 improving, unchanged, lower = st.columns(3)
@@ -120,9 +116,6 @@ class OverviewView:
                     ),
                 ):
                     column.metric(label, value if counts.compared else "\u2014", help=explanation)
-            st.caption(
-                f"Compared exercises: {counts.compared}. Awaiting comparable data: {counts.unassessed}."
-            )
             if not counts.compared and counts.unassessed:
                 st.caption(
                     "A comparison needs two recorded results with the same working set count, loads and actual RIR (repetitions in reserve). Timed work does not need RIR. Plan targets and session links do not affect these counts."

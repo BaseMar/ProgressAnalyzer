@@ -151,18 +151,21 @@ class BodyPartsView:
             st.info("No body part data available.")
             body_df = pd.DataFrame(columns=["Body Part", "Total_Sets", "Total_Volume", "Sessions"])
         period_weeks, period_label = self._training_period()
-        summary = render_weekly_distribution(
-            body_df, period_weeks, period_label, weekly_targets=self.weekly_targets
-        )
-        render_body_heatmap(summary, period_weeks, period_label)
-        if body_df.empty:
-            st.info("Log a workout to see set allocation.")
-        else:
-            st.plotly_chart(
-                _bar_fig(body_df, "Total_Sets", "Sets in selected period"),
-                width="stretch",
-                key="analysis_muscle_sets",
+        with st.container(key="analysis_muscle_summary"):
+            summary = render_weekly_distribution(
+                body_df, period_weeks, period_label, weekly_targets=self.weekly_targets
             )
+        with st.container(key="analysis_muscle_map"):
+            render_body_heatmap(summary, period_weeks, period_label)
+        with st.container(key="analysis_muscle_allocation"):
+            if body_df.empty:
+                st.info("Log a workout to see set allocation.")
+            else:
+                st.plotly_chart(
+                    _bar_fig(body_df, "Total_Sets", "Sets in selected period"),
+                    width="stretch",
+                    key="analysis_muscle_sets",
+                )
 
 
 def _bar_fig(body_df: pd.DataFrame, y_field: str, y_title: str):

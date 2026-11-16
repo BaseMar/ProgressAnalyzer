@@ -18,8 +18,6 @@ def render_training_insights(report, exercise_names=None, *, show_target_actions
     highlights = report.highlighted_annotations
     remaining = [item for item in report.annotations if item not in highlights]
     visible = [*highlights, *remaining][: len(report.annotations)]
-    if highlights:
-        st.caption("Highlights use relative changes in reps or time at unchanged load and reserve.")
     for insight in visible:
         name = (
             names.get(insight.exercise_id, f"Exercise #{insight.exercise_id}")
@@ -59,15 +57,6 @@ def render_training_insights(report, exercise_names=None, *, show_target_actions
         else:
             title = f"{name}: {insight.observation}" if name else insight.observation
             _observation(title, insight.evidence, action)
-    st.caption(
-        f"{report.assessed_contexts} exercise comparisons · {report.limited_contexts} awaiting comparable data. "
-        + (
-            f"Showing {len(visible)} observations; {report.omitted_annotations} others are omitted here. "
-            if report.omitted_annotations
-            else ""
-        )
-        + "These observations do not measure technique or muscle growth."
-    )
 
 
 def _observation(title, evidence, action):

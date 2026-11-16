@@ -1273,6 +1273,11 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
 .st-key-analysis_navigation [role="tab"] {
     min-height: 44px;
 }
+
+.st-key-analysis_muscle_map,
+.st-key-analysis_muscle_allocation {
+    padding-top: 2.5rem;
+}
 @container (max-width: 1000px) {
     .st-key-analysis_rankings [data-testid="stHorizontalBlock"] {
         flex-direction: column;

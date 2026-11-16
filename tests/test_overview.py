@@ -132,7 +132,7 @@ def test_overview_starts_with_progress_and_separates_next_workout(schedule_data)
         "Lower results",
     ]
     assert [item.value for item in app.metric] == ["0", "1", "0"]
-    assert any("Compared exercises: 1" in item.value for item in app.caption)
+    assert not any("Compared exercises:" in item.value for item in app.caption)
     assert "Your training today" not in html
     assert "62.5 kg · 3 × 6 reps" not in html
     assert len(app.metric) == 3 and not app.dataframe and not app.get("plotly_chart")
@@ -157,7 +157,7 @@ def test_default_focus_shows_recorded_starting_loads_when_source_rir_is_missing(
     assert any(item.value == "Your progress" for item in app.subheader)
     assert "62.5 kg" not in markup(app)
     assert all(item.value == "\u2014" for item in app.metric)
-    assert any("Awaiting comparable data: 1" in item.value for item in app.caption)
+    assert not any("Awaiting comparable data:" in item.value for item in app.caption)
     select_topic(app, "Next workout")
     assert "Source RIR is incomplete" in markup(app)
 
