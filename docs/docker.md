@@ -108,7 +108,7 @@ and renders all four application pages inside the runtime image. It also
 checks that the app runs without root and that private host files are absent.
 
 The job saves a synthetic workout, removes and recreates the containers while
-keeping the volume, then compares fingerprints of all twenty tables. The
+keeping the volume, then compares fingerprints of all application tables. The
 record must survive and the demo must not be seeded again. The workflow uses
 a deliberately invalid host `.env` URL to verify that container settings select
 the internal database instead.

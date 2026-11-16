@@ -18,6 +18,12 @@ for page in ('Overview', 'Analysis', 'Plan', 'History'):
     app.session_state['nav_selected'] = page
     app.run()
     assert not app.exception and not app.error, page
+    if page == 'Overview':
+        assert app.session_state['overview_tab'] == 'Progress'
+        assert not any(item.label == 'Upcoming workout' for item in app.selectbox)
+        app.session_state['overview_tab'] = 'Next workout'
+        app.run()
+        assert not app.exception and not app.error, 'Next workout'
     if page == 'Analysis':
         assert app.session_state['analysis_tab'] == 'Progress'
         for tab in ('Exercises', 'Plan consistency', 'Muscles', 'Body measurements'):
@@ -61,7 +67,8 @@ from sqlalchemy import inspect
 from db.connection import get_engine
 engine = get_engine()
 tables = sorted(inspect(engine).get_table_names())
-assert len(tables) == 20
+assert len(tables) == 22, f'Unexpected application tables: {tables}'
+assert {'exercise_load_profiles', 'workout_set_load_originals'}.issubset(tables)
 counts, fingerprints = {}, {}
 with engine.connect() as connection:
     for table in tables:
@@ -137,7 +144,7 @@ def main():
                     four_pages_before_and_after_restart=True,
                     application_runs_without_root=True,
                     private_files_excluded=True,
-                    tables=20,
+                    tables=len(after["counts"]),
                     persisted_after_container_recreation=True,
                     demo_not_reseeded=True,
                 ),
