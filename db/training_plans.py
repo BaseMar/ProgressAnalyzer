@@ -4,7 +4,7 @@ from collections import Counter
 from datetime import date
 from uuid import uuid4
 
-from sqlalchemy import Column, Integer, MetaData, Table, func, select
+from sqlalchemy import Column, Integer, MetaData, Table, func, literal, select
 
 from db.migrations.v001_training_plans import define_tables
 from db.migrations.v005_progression_settings import define_table
@@ -189,48 +189,54 @@ def _load_version(connection, version_id: int) -> TrainingPlanVersion | None:
 
 
 def _load_versions(connection, version_rows):
-    """Load all snapshot children in batches, independent of version count."""
+    """Fetch snapshot days, prescriptions, lineage and settings in one round trip."""
     if not version_rows:
         return []
     version_ids = [row["version_id"] for row in version_rows]
-    day_rows = (
-        connection.execute(
-            select(days).where(days.c.version_id.in_(version_ids)).order_by(days.c.position)
-        )
-        .mappings()
-        .all()
+    has_lineage = has_table(connection, exercise_lineage.name)
+    history_key = (
+        exercise_lineage.c.history_key if has_lineage else literal(None).label("history_key")
     )
-    exercise_rows = (
+    source = days.outerjoin(exercises).outerjoin(
+        progression_settings, progression_settings.c.version_id == days.c.version_id
+    )
+    if has_lineage:
+        source = source.outerjoin(exercise_lineage)
+    rows = (
         connection.execute(
-            select(exercises)
-            .join(days, exercises.c.day_id == days.c.day_id)
+            select(
+                days.c.day_id,
+                days.c.version_id,
+                days.c.name,
+                days.c.weekday,
+                exercises.c.exercise_id,
+                exercises.c.set_count,
+                exercises.c.target_min,
+                exercises.c.target_max,
+                exercises.c.target_unit,
+                exercises.c.target_rir,
+                exercises.c.weight_increment,
+                history_key,
+                progression_settings.c.block_start,
+                progression_settings.c.block_weeks,
+            )
+            .select_from(source)
             .where(days.c.version_id.in_(version_ids))
             .order_by(days.c.position, exercises.c.position)
         )
         .mappings()
         .all()
     )
-    items_by_day = {day["day_id"]: [] for day in day_rows}
-    lineage = (
-        dict(
-            connection.execute(
-                select(exercise_lineage.c.plan_exercise_id, exercise_lineage.c.history_key).where(
-                    exercise_lineage.c.plan_exercise_id.in_(
-                        [row["plan_exercise_id"] for row in exercise_rows]
-                    )
-                )
-            ).all()
-        )
-        if (exercise_rows and has_table(connection, exercise_lineage.name))
-        else {}
-    )
-    settings = {
-        row["version_id"]: ProgressionSettings(row["block_start"], row["block_weeks"])
-        for row in connection.execute(
-            select(progression_settings).where(progression_settings.c.version_id.in_(version_ids))
-        ).mappings()
-    }
-    for row in exercise_rows:
+    day_rows, items_by_day, settings = {}, {}, {}
+    for row in rows:
+        day_rows.setdefault(row["day_id"], row)
+        items_by_day.setdefault(row["day_id"], [])
+        if row["block_start"] is not None and row["version_id"] not in settings:
+            settings[row["version_id"]] = ProgressionSettings(
+                row["block_start"], row["block_weeks"]
+            )
+        if row["exercise_id"] is None:
+            continue
         items_by_day[row["day_id"]].append(
             PlannedExercise(
                 exercise_id=row["exercise_id"],
@@ -240,7 +246,7 @@ def _load_versions(connection, version_rows):
                 target_unit=row["target_unit"],
                 target_rir=row["target_rir"],
                 weight_increment=row["weight_increment"],
-                history_key=lineage.get(row["plan_exercise_id"]),
+                history_key=row["history_key"],
             )
         )
     return [
@@ -253,7 +259,7 @@ def _load_versions(connection, version_rows):
                 version["effective_from"],
                 tuple(
                     TrainingDay(day["name"], day["weekday"], tuple(items_by_day[day["day_id"]]))
-                    for day in day_rows
+                    for day in day_rows.values()
                     if day["version_id"] == version["version_id"]
                 ),
                 progression=settings.get(version["version_id"]),
@@ -273,16 +279,20 @@ def load_training_plan_version(engine, version_id: int) -> TrainingPlanVersion |
 def load_effective_training_plan(engine, plan_id: int, on_date: date) -> TrainingPlanVersion | None:
     """Resolve the snapshot applicable on a date, excluding future revisions."""
     with engine.connect() as connection:
-        version_id = connection.execute(
-            select(versions.c.version_id)
-            .where(
-                versions.c.plan_id == plan_id,
-                versions.c.effective_from <= on_date,
+        version = (
+            connection.execute(
+                select(versions)
+                .where(
+                    versions.c.plan_id == plan_id,
+                    versions.c.effective_from <= on_date,
+                )
+                .order_by(versions.c.effective_from.desc())
+                .limit(1)
             )
-            .order_by(versions.c.effective_from.desc())
-            .limit(1)
-        ).scalar_one_or_none()
-        return _load_version(connection, version_id) if version_id is not None else None
+            .mappings()
+            .one_or_none()
+        )
+        return _load_versions(connection, [version])[0] if version is not None else None
 
 
 @read_cached
@@ -301,8 +311,7 @@ def load_training_plan_versions(engine, plan_id: int) -> list[TrainingPlanVersio
 
 
 @read_cached
-def load_training_plans(engine) -> list[TrainingPlanVersion]:
-    """List each plan's latest saved snapshot, including future versions."""
+def _latest_plan_rows(engine):
     latest = (
         select(
             versions.c.plan_id,
@@ -325,4 +334,18 @@ def load_training_plans(engine) -> list[TrainingPlanVersion]:
             .mappings()
             .all()
         )
+        return rows
+
+
+@read_cached
+def load_training_plan_names(engine) -> dict[int, str]:
+    """Plan selectors need names, not every latest snapshot's prescriptions."""
+    return {row["plan_id"]: row["name"] for row in _latest_plan_rows(engine)}
+
+
+@read_cached
+def load_training_plans(engine) -> list[TrainingPlanVersion]:
+    """List each plan's latest saved snapshot, including future versions."""
+    rows = _latest_plan_rows(engine)
+    with engine.connect() as connection:
         return _load_versions(connection, rows)

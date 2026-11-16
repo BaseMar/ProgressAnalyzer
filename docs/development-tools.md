@@ -134,6 +134,14 @@ itself is not part of the local verification evidence.
 
 ## Verification records
 
+`python scripts/benchmark_project.py` measures the real application renderer on
+a disposable synthetic database. It captures one cache-cold sample and three warm
+reruns per view. Use `--case overview`, `--case overview_next_workout` or repeated
+`--case` options to focus the run. `--live` explicitly selects read-only measurements
+against the configured personal database; fingerprints verify unchanged contents.
+The [16 November performance report](archive/overview-analysis-optimization.md)
+records the Overview and Analysis optimization and measurement limits.
+
 The [stage 7 verification record](archive/dependency-tooling-verification.md)
 contains the fresh-environment checks, measured test counts and regression
 comparisons at that release. Use the [Tests workflow](../.github/workflows/tests.yml)

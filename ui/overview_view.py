@@ -7,6 +7,7 @@ import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
 from metrics.recorded_progress import compute_recorded_progress
+from ui.loading_view import loading_screen
 from ui.next_workout_view import NextWorkoutView
 from ui.training_insights_view import render_training_insights
 from ui.utils.active_plan import select_active_plan
@@ -23,12 +24,31 @@ class OverviewView:
     def render(self, *, as_of=None):
         as_of = as_of or date.today()
         start = as_of - timedelta(days=27)
+        topics = ["Progress", "Next workout"]
+        if st.session_state.get("overview_tab") not in topics:
+            saved = st.session_state.get("overview_active_tab")
+            st.session_state["overview_tab"] = saved if saved in topics else "Progress"
         with st.container(key="overview_tabs"):
-            progress, next_workout = st.tabs(["Progress", "Next workout"])
-        with progress:
-            self._render_progress(start, as_of)
-        with next_workout:
-            return self._render_next_workout(as_of)
+            tabs = st.tabs(topics, key="overview_tab", on_change="rerun")
+        st.session_state["overview_active_tab"] = st.session_state["overview_tab"]
+        for topic, tab in zip(topics, tabs):
+            if tab.open:
+                with (
+                    tab,
+                    loading_screen(
+                        f"Loading {topic}",
+                        "Preparing recorded progress"
+                        if topic == "Progress"
+                        else "Preparing workout targets",
+                        enabled=st.session_state.get("_loaded_overview_topic") != topic,
+                    ),
+                ):
+                    if topic == "Progress":
+                        result = self._render_progress(start, as_of)
+                    else:
+                        result = self._render_next_workout(as_of)
+                st.session_state["_loaded_overview_topic"] = topic
+                return result
 
     def _render_next_workout(self, as_of):
         try:
@@ -37,7 +57,7 @@ class OverviewView:
                     "Plan analysis needs setup. Your recorded sessions are available in History."
                 )
                 return None, ()
-            plans = self.dm.load_training_plans()
+            plans = self.dm.load_training_plan_names()
             with st.container(key="overview_plan_filter"):
                 plan_id = select_active_plan(plans)
             if plan_id is None:

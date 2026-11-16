@@ -1,6 +1,6 @@
 """Share read results within one render, never across users or Streamlit reruns."""
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from functools import wraps
 from threading import Lock
@@ -12,6 +12,27 @@ from sqlalchemy.engine import Connection, Engine
 _current = ContextVar("render_reads", default=None)
 _installed = WeakSet()
 _install_lock = Lock()
+
+
+class _ConnectionReader:
+    """Let existing readers borrow a connection without closing its transaction."""
+
+    def __init__(self, connection):
+        self.connection = connection
+
+    def connect(self):
+        return nullcontext(self.connection)
+
+
+@contextmanager
+def shared_read_connection(source):
+    """Group consecutive source reads, ending before UI widgets or writes run.
+
+    The caller owns the lifetime. This does not retain a connection across
+    renders, threads or workspaces, and preserves caller-owned adapters.
+    """
+    with source.connect() as connection:
+        yield _ConnectionReader(connection)
 
 
 def _key(value):
@@ -39,7 +60,7 @@ def _before_execute(connection, cursor, statement, parameters, context, executem
     # Invalidate before a write so services also see their uncommitted changes.
     # Unknown statements invalidate conservatively, including data-changing CTEs.
     sql = " ".join(statement.upper().split())
-    control = sql in (
+    control = sql.startswith(("SAVEPOINT ", "RELEASE SAVEPOINT ")) or sql in (
         "BEGIN",
         "SET TRANSACTION READ ONLY",
         "PRAGMA QUERY_ONLY=ON",
@@ -103,11 +124,14 @@ def read_cached(function):
     @wraps(function)
     def wrapped(source, *args, **kwargs):
         cache = _current.get()
+        cache_source = source.connection if isinstance(source, _ConnectionReader) else source
         # Transaction adapters retain their caller-owned connection semantics.
-        if cache is None or not isinstance(source, (Engine, Connection)):
+        if cache is None or not isinstance(cache_source, (Engine, Connection)):
             return function(source, *args, **kwargs)
-        install_read_invalidation(source.engine if isinstance(source, Connection) else source)
-        key = (function, _key(source), _key(args), _key(kwargs))
+        install_read_invalidation(
+            cache_source.engine if isinstance(cache_source, Connection) else cache_source
+        )
+        key = (function, _key(cache_source), _key(args), _key(kwargs))
         if key not in cache.values:
             cache.values[key] = function(source, *args, **kwargs)
         return cache.values[key]

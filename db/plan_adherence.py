@@ -3,12 +3,12 @@
 from dataclasses import replace
 from datetime import date
 
-from sqlalchemy import Column, Integer, MetaData, Table, func, select
+from sqlalchemy import Column, Integer, MetaData, Table, func, literal, select
 from sqlalchemy.exc import IntegrityError
 
 from db.migrations.v003_exercise_matches import define_table
 from db.plan_schedule import links, load_scheduled_workouts, sessions
-from db.read_cache import has_table, read_cached
+from db.read_cache import has_table, read_cached, shared_read_connection
 from db.recorded_workouts import actual_exercises as actual_exercises
 from db.recorded_workouts import actual_sets as actual_sets
 from db.recorded_workouts import catalog_exercises, load_recorded_exercises
@@ -38,11 +38,17 @@ def adherence_storage_ready(engine):
 @read_cached
 def _plan_targets(engine, plan_id):
     with engine.connect() as connection:
+        has_lineage = has_table(connection, exercise_lineage.name)
+        history_key = (
+            exercise_lineage.c.history_key if has_lineage else literal(None).label("history_key")
+        )
+        source = targets.join(days).join(versions)
+        if has_lineage:
+            source = source.outerjoin(exercise_lineage)
         rows = (
             connection.execute(
-                select(targets)
-                .join(days, targets.c.day_id == days.c.day_id)
-                .join(versions, days.c.version_id == versions.c.version_id)
+                select(targets, history_key)
+                .select_from(source)
                 .where(versions.c.plan_id == plan_id)
                 .order_by(targets.c.position)
             )
@@ -50,21 +56,6 @@ def _plan_targets(engine, plan_id):
             .all()
         )
         by_day = {}
-        lineage = (
-            dict(
-                connection.execute(
-                    select(
-                        exercise_lineage.c.plan_exercise_id, exercise_lineage.c.history_key
-                    ).where(
-                        exercise_lineage.c.plan_exercise_id.in_(
-                            [row["plan_exercise_id"] for row in rows]
-                        )
-                    )
-                ).all()
-            )
-            if (rows and has_table(connection, exercise_lineage.name))
-            else {}
-        )
         for row in rows:
             by_day.setdefault(row["day_id"], []).append(
                 PlannedTarget(
@@ -77,7 +68,7 @@ def _plan_targets(engine, plan_id):
                         row["target_unit"],
                         row["target_rir"],
                         row["weight_increment"],
-                        history_key=lineage.get(row["plan_exercise_id"]),
+                        history_key=row["history_key"],
                     ),
                 )
             )
@@ -120,6 +111,11 @@ def _manual_load_ids(connection):
 
 @read_cached
 def load_plan_adherence(engine, plan_id, start, end) -> PlanAdherenceInput:
+    with shared_read_connection(engine) as source:
+        return _load_plan_adherence(source, plan_id, start, end)
+
+
+def _load_plan_adherence(engine, plan_id, start, end):
     slots = load_scheduled_workouts(engine, plan_id, start, end)
     session_ids = {slot.session_id for slot in slots if slot.session_id is not None}
     by_day = _plan_targets(engine, plan_id) if slots else {}
@@ -137,24 +133,21 @@ def load_plan_adherence(engine, plan_id, start, end) -> PlanAdherenceInput:
 
 @read_cached
 def _performance_bounds(engine, plan_id):
+    last_linked = (
+        select(func.max(links.c.scheduled_date))
+        .join(days, links.c.day_id == days.c.day_id)
+        .join(versions, days.c.version_id == versions.c.version_id)
+        .where(versions.c.plan_id == plan_id)
+        .scalar_subquery()
+    )
     with engine.connect() as connection:
-        first = connection.execute(
-            select(func.min(versions.c.effective_from)).where(
-                versions.c.plan_id == plan_id,
-            )
-        ).scalar_one()
-        last_linked = connection.execute(
-            select(func.max(links.c.scheduled_date))
-            .join(
-                days,
-                links.c.day_id == days.c.day_id,
-            )
-            .join(versions, days.c.version_id == versions.c.version_id)
-            .where(
-                versions.c.plan_id == plan_id,
-            )
-        ).scalar_one()
-    return first, last_linked
+        return tuple(
+            connection.execute(
+                select(func.min(versions.c.effective_from), last_linked).where(
+                    versions.c.plan_id == plan_id,
+                )
+            ).one()
+        )
 
 
 @read_cached
@@ -183,6 +176,11 @@ def load_plan_performance(engine, plan_id, start, end) -> PlanAdherenceInput:
     Include linked future slots too: a workout may have been recorded early.
     Comparisons are ordered by actual session date/time, never planned date.
     """
+    with shared_read_connection(engine) as source:
+        return _load_plan_performance(source, plan_id, start, end)
+
+
+def _load_plan_performance(engine, plan_id, start, end):
     first, last_linked = _performance_bounds(engine, plan_id)
     data = load_plan_adherence(
         engine, plan_id, min(start, first or start), max(end, date.today(), last_linked or end)

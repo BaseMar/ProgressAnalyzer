@@ -55,6 +55,7 @@ from db.starting_loads import load_starting_loads, save_starting_loads, starting
 from db.training_context import load_deload_exercise_ids
 from db.training_plans import (
     load_effective_training_plan,
+    load_training_plan_names,
     load_training_plan_versions,
     load_training_plans,
     save_training_plan,
@@ -230,6 +231,9 @@ class DataManager:
 
     def load_training_plans(self) -> list[TrainingPlanVersion]:
         return load_training_plans(self.engine)
+
+    def load_training_plan_names(self) -> dict[int, str]:
+        return load_training_plan_names(self.engine)
 
     def load_training_plan_versions(self, plan_id: int) -> list[TrainingPlanVersion]:
         return load_training_plan_versions(self.engine, plan_id)

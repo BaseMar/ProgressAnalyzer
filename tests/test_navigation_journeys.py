@@ -139,6 +139,9 @@ def test_analysis_period_applies_to_body_data_and_keeps_other_questions_hidden(
     assert not any(item.label == "Measurement records" for item in app.expander)
     app.button(key="nav_Overview").click().run()
     assert not any(item.label == "Analysis period" for item in app.selectbox)
+    assert not any(item.label == "Upcoming workout" for item in app.selectbox)
+    app.session_state["overview_tab"] = "Next workout"
+    app.run()
     assert any(item.label == "Upcoming workout" for item in app.selectbox)
     app.button(key="nav_Analysis").click().run()
     assert app.selectbox(key="analysis_month").value == "2026-05"

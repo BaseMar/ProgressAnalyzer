@@ -32,11 +32,12 @@ OverviewView(manager, {1: 'Bench Press', 2: 'Machine Chest Press'}, input_data=s
 """
 
 
-def start_app(engine, saved, *, app_source=OVERVIEW_APP):
+def start_app(engine, saved, *, app_source=OVERVIEW_APP, topic="Progress"):
     app = AppTest.from_string(app_source, default_timeout=30)
     app.session_state["test_engine"] = engine
     app.session_state["adherence_plan"] = saved.plan_id
     app.session_state["as_of"] = AS_OF
+    app.session_state["overview_tab"] = topic
     manager = DataManager(engine=engine)
     app.session_state["input_data"] = MetricsInput(
         sessions=[map_workout_session(row) for row in manager.load_sessions().to_dict("records")],
@@ -59,6 +60,13 @@ def start_app(engine, saved, *, app_source=OVERVIEW_APP):
 
 def markup(app):
     return "\n".join(item.value for item in app.markdown)
+
+
+def select_topic(app, topic):
+    app.session_state["overview_tab"] = topic
+    app.run()
+    assert not app.exception and not app.error
+    return app
 
 
 def target(action="maintain", *, pid=1, reason="mixed_loads"):
@@ -126,9 +134,9 @@ def test_overview_starts_with_progress_and_separates_next_workout(schedule_data)
     assert [item.value for item in app.metric] == ["0", "1", "0"]
     assert any("Compared exercises: 1" in item.value for item in app.caption)
     assert "Your training today" not in html
-    assert "62.5 kg · 3 × 6 reps" in html
+    assert "62.5 kg · 3 × 6 reps" not in html
     assert len(app.metric) == 3 and not app.dataframe and not app.get("plotly_chart")
-    assert len([item for item in app.selectbox if item.label == "Active plan"]) == 1
+    assert not app.selectbox
     assert not any(
         item.label.startswith("Full workout") or item.label == "Why these targets?"
         for item in app.expander
@@ -136,6 +144,10 @@ def test_overview_starts_with_progress_and_separates_next_workout(schedule_data)
     # The annotation points to the target rather than copying its numbers.
     insight_html = [item.value for item in app.markdown if "analysis-insight" in item.value]
     assert all("62.5 kg" not in value for value in insight_html)
+    select_topic(app, "Next workout")
+    assert "62.5 kg · 3 × 6 reps" in markup(app)
+    assert not app.metric
+    assert len([item for item in app.selectbox if item.label == "Active plan"]) == 1
 
 
 def test_default_focus_shows_recorded_starting_loads_when_source_rir_is_missing(schedule_data):
@@ -144,9 +156,10 @@ def test_default_focus_shows_recorded_starting_loads_when_source_rir_is_missing(
     app = start_app(engine, saved)
     assert any(item.value == "Your progress" for item in app.subheader)
     assert "62.5 kg" not in markup(app)
-    assert "Source RIR is incomplete" in markup(app)
     assert all(item.value == "\u2014" for item in app.metric)
     assert any("Awaiting comparable data: 1" in item.value for item in app.caption)
+    select_topic(app, "Next workout")
+    assert "Source RIR is incomplete" in markup(app)
 
 
 def test_legacy_plan_shows_progression_without_requiring_a_block(schedule_data):
@@ -154,6 +167,7 @@ def test_legacy_plan_shows_progression_without_requiring_a_block(schedule_data):
     saved = seed(schedule_data, progression=False)
     app = start_app(engine, saved)
     assert any(item.value == "Your progress" for item in app.subheader)
+    select_topic(app, "Next workout")
     assert any("Normal training" in item.value for item in app.markdown)
     assert not any(item.label == "Workout details" for item in app.expander)
     assert "Target not available yet" not in markup(app)
@@ -162,7 +176,7 @@ def test_legacy_plan_shows_progression_without_requiring_a_block(schedule_data):
 def test_future_workout_selection_and_alternative_step_still_work_in_full_view(schedule_data):
     engine, _, _, _ = schedule_data
     saved = seed(schedule_data, actual_id=2)
-    app = start_app(engine, saved)
+    app = start_app(engine, saved, topic="Next workout")
     selector = next(item for item in app.selectbox if item.key.endswith("_exercise"))
     selector.select(2).run()
     next(item for item in app.number_input if "Weight step" in item.label).set_value(5.0).run()
@@ -178,7 +192,7 @@ def test_active_plan_survives_widget_cleanup_and_removed_plan_selection(schedule
         "OverviewView(manager, {1: 'Bench Press', 2: 'Machine Chest Press'}, input_data=st.session_state['input_data']).render(as_of=st.session_state['as_of'])",
         "if not st.session_state.get('hide_overview'):\n    OverviewView(manager, {1: 'Bench Press', 2: 'Machine Chest Press'}, input_data=st.session_state['input_data']).render(as_of=st.session_state['as_of'])",
     )
-    app = start_app(engine, saved, app_source=source)
+    app = start_app(engine, saved, app_source=source, topic="Next workout")
     assert app.session_state["active_plan_id"] == saved.plan_id
     app.session_state["hide_overview"] = True
     app.run()
@@ -256,7 +270,7 @@ def test_conclusion_uses_current_deload_phase_not_selected_future_workout(schedu
 def test_overview_has_clear_empty_and_unavailable_states(sample_input):
     for manager_source, expected in [
         (
-            "SimpleNamespace(adherence_storage_ready=lambda: True, load_training_plans=lambda: [])",
+            "SimpleNamespace(adherence_storage_ready=lambda: True, load_training_plan_names=lambda: {})",
             "Start with a Training Plan",
         ),
         ("SimpleNamespace(adherence_storage_ready=lambda: False)", "Plan analysis needs setup"),
@@ -273,9 +287,11 @@ OverviewView({manager_source}, input_data=st.session_state['input_data']).render
         app.session_state["as_of"] = AS_OF
         app.run()
         assert not app.exception
-        assert any(expected in item.value for item in app.info)
         assert any("No exercises recorded" in item.value for item in app.info)
         assert len(app.metric) == 3
+        select_topic(app, "Next workout")
+        assert any(expected in item.value for item in app.info)
+        assert not app.metric
 
 
 def test_overview_displays_every_exercise_without_full_workout_disclosure(schedule_data):
@@ -288,7 +304,7 @@ def test_overview_displays_every_exercise_without_full_workout_disclosure(schedu
     plan = save_training_plan(
         engine, replace(saved.draft, days=(replace(day, exercises=exercises),))
     )
-    app = start_app(engine, plan)
+    app = start_app(engine, plan, topic="Next workout")
     cards = next(item.value for item in app.markdown if 'class="recommendation-list"' in item.value)
     assert cards.count('class="recommendation-exercise"') == 3
     assert not any(
@@ -330,6 +346,21 @@ def test_changing_active_plan_does_not_change_recorded_progress(schedule_data):
     saved = seed(schedule_data)
     app = start_app(engine, saved)
     before = [item.value for item in app.metric]
+    select_topic(app, "Next workout")
     app.selectbox(key="adherence_plan").select(original.plan_id).run()
     assert not app.exception and not app.error
+    select_topic(app, "Progress")
     assert [item.value for item in app.metric] == before == ["0", "1", "0"]
+
+
+def test_progress_never_accesses_the_plan_manager(sample_input):
+    app = AppTest.from_string("""
+import streamlit as st
+from ui.overview_view import OverviewView
+OverviewView(object(), input_data=st.session_state['input_data']).render(as_of=st.session_state['as_of'])
+""")
+    app.session_state["input_data"] = sample_input
+    app.session_state["as_of"] = AS_OF
+    app.run()
+    assert not app.exception and not app.error
+    assert len(app.metric) == 3 and not app.selectbox

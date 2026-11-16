@@ -3,7 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 from contextvars import Context
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import timedelta
 from threading import Barrier, current_thread
 from types import SimpleNamespace
@@ -18,7 +18,11 @@ from db.plan_adherence import load_plan_performance
 from db.plan_schedule import load_scheduled_workouts
 from db.progression import load_workout_recommendations
 from db.read_cache import has_table, install_read_invalidation, read_cached, read_scope
-from db.training_plans import load_training_plan_versions, save_training_plan
+from db.training_plans import (
+    load_training_plan_names,
+    load_training_plan_versions,
+    save_training_plan,
+)
 from models.set_load import SetLoad
 from scripts.baseline_fixture import AS_OF, create_fixture
 from scripts.baseline_snapshot import capture_snapshot, snapshot_reference
@@ -74,6 +78,7 @@ def test_versions_are_batched_and_repeated_history_reads_do_no_sql(workload):
             event.remove(engine, "before_cursor_execute", count)
 
     original_count = measure_versions()
+    assert original_count <= 3  # Schema discovery, parent versions, joined children.
     for offset in range(1, 5):
         with patch("db.training_plans.date") as clock:
             clock.today.return_value = AS_OF
@@ -90,6 +95,62 @@ def test_versions_are_batched_and_repeated_history_reads_do_no_sql(workload):
 
         action()
         assert probe.measure(action)["sql_count"] == 0
+
+
+def test_plan_names_require_only_one_query_and_match_latest_saved_snapshots(workload):
+    from db.training_plans import load_training_plans
+
+    engine, _ = workload
+    expected = {item.plan_id: item.draft.name for item in load_training_plans(engine)}
+    with ReadOnlyProbe(engine) as probe, read_scope():
+        assert probe.measure(lambda: load_training_plan_names(engine))["sql_count"] == 1
+        assert load_training_plan_names(engine) == expected
+        assert probe.measure(lambda: load_training_plan_names(engine))["sql_count"] == 0
+
+
+def test_cached_input_loading_borrows_one_connection_and_releases_it(workload):
+    from data_loader import _read_data
+    from scripts.baseline_snapshot import digest, normalized
+
+    engine, _ = workload
+    expected, expected_frame = _read_data(DataManager(engine=engine))
+    checkouts, checkins = [], []
+
+    def checkout(*args):
+        checkouts.append(1)
+
+    def checkin(*args):
+        checkins.append(1)
+
+    event.listen(engine, "checkout", checkout)
+    event.listen(engine, "checkin", checkin)
+    try:
+        with patch("data_manager.get_engine", return_value=engine), read_scope():
+            load_data.clear()
+            actual, actual_frame = load_data()
+            assert len(checkouts) == len(checkins) == 1
+            assert digest(normalized(asdict(actual))) == digest(normalized(asdict(expected)))
+            assert actual_frame.equals(expected_frame)
+    finally:
+        event.remove(engine, "checkout", checkout)
+        event.remove(engine, "checkin", checkin)
+
+
+def test_optional_mapping_failure_does_not_abort_remaining_shared_source_reads(workload):
+    engine, _ = workload
+    with engine.begin() as connection:
+        connection.exec_driver_sql("DROP TABLE exercise_muscle_map")
+    with (
+        patch("data_manager.get_engine", return_value=engine),
+        ReadOnlyProbe(engine) as probe,
+        read_scope(),
+    ):
+        load_data.clear()
+        result = []
+        probe.measure(lambda: result.append(load_data()[0]))
+        assert result[0].exercise_muscle_targets == []
+        assert result[0].sets and result[0].body_measurements and result[0].body_composition
+        assert any(sql.startswith("ROLLBACK TO SAVEPOINT") for sql, _ in probe.statements)
 
 
 def test_contexts_engines_and_scope_exit_never_share_results():

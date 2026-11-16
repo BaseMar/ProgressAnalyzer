@@ -14,6 +14,7 @@ behavior and commands, use the [documentation index](../README.md).
 | [Recommendation implementation plan](recommendation-system-implementation-plan.md) | Approved progression decisions and staged rollout; manual-start policy was later superseded by history-based starts |
 | [Recommendation validation](recommendation-system-validation.md) | Checks performed for the 8 November recommendation release and its follow-up |
 | [Training plan configuration](training-plan-recommendation-configuration.md) | Approved personal plan revision, saved on 8 November and effective from 10 November 2026 |
+| [Overview and Analysis loading](overview-analysis-optimization.md) | Read-only before/after measurements, lazy Overview tabs and consolidated plan reads on 16 November 2026 |
 
 These records are not a fresh acceptance test of the current checkout. In
 particular, the 5 November migration list and test totals predate later revisions.

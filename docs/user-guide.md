@@ -41,6 +41,9 @@ exercise can be compared, cards show a dash rather than a misleading zero. Choos
 full workout in a centered panel. The copy action is near the top; the workout
 date and training phase remain visible. The active-plan selector is in this tab
 and changes upcoming targets, not the recorded Progress summary.
+Only the open Overview tab is loaded: Progress does not prepare future workout
+targets in the background. Your last selected tab is remembered when switching
+pages.
 
 **Analysis** opens on **Progress**, with **Top 5 / Bottom 5** exercise trends.
 Native tabs lead to **Exercises**, **Plan consistency**, **Muscles** and

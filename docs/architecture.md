@@ -20,7 +20,7 @@ source loading, and each route lives inside a single `st.empty()` placeholder
 with a route-specific container key. Replacing this block clears the previous
 page before slow source loading or rendering, preventing old charts and controls
 from remaining under the new route. `ui.loading_view` displays a full-screen
-loading overlay during startup, route changes and Analysis tab changes. Nested
+loading overlay during startup, route changes and Overview/Analysis tab changes. Nested
 loading scopes share one screen and update its stage; stable placeholder slots
 keep route replacement consistent across reruns. Ordinary form and filter reruns
 do not open the overlay. It follows actual work without artificial delays or
@@ -36,8 +36,11 @@ boundaries are unchanged.
 | Plan | `TrainingPlanView`; versioned routine drafts and training-block configuration |
 | History | `HistoryView`, `PlanScheduleView`; entry/import, linking, replacements, set/load corrections and measurement entry |
 
-Analysis uses stateful native `st.tabs(on_change="rerun")`, defaulting to Progress,
-and checks `.open` before computing the selected tab. Rankings reuse the cached
+Overview and Analysis use stateful native `st.tabs(on_change="rerun")`, defaulting
+to Progress, and check `.open` before computing the selected tab. Overview does
+not read plans or prepare recommendations while Progress is open; Next workout
+does not compute the recorded-progress report. Remembered tab choices survive
+navigation and widget cleanup. Analysis rankings reuse the loaded
 exercise metric series through pure `metrics/progress_ranking.py`; their immutable
 window evidence lives in `models/progress_ranking.py`. No extra source reads are
 introduced. Exercise choices come from the full recorded catalog, while chart inputs
@@ -232,6 +235,20 @@ Read scopes use a `ContextVar`, with engine identity and service arguments in
 their keys. Nested services reuse the scope; exit, early return and exceptions
 discard it. Results are never retained between reruns or shared between concurrent
 render contexts. Callers treat the returned collections as read-only.
+
+`shared_read_connection` groups source-table loading and linked-plan history reads
+into short-lived transactions. Nested readers borrow the connection without
+checking it out or closing it again. Each group releases it before views render
+widgets or perform writes. This reduces transaction round trips without retaining
+connections or snapshots between renders. Unknown caller-owned adapters keep
+their existing transaction semantics. The optional muscle-map reader uses a
+savepoint so its fallback cannot abort the other source reads on PostgreSQL.
+
+Active-plan selectors in Overview and Analysis use `load_training_plan_names`,
+which reads only the latest saved names. Full version readers fetch days,
+prescriptions, optional lineage and block settings with one joined query after
+selecting the version rows. Linked-plan targets join lineage in the same query.
+The cache lifetime and write invalidation rules above still apply.
 
 SQLAlchemy listeners invalidate scoped reads before writes and again when a
 written transaction commits or rolls back. Closing an ordinary read connection

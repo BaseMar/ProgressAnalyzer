@@ -1,10 +1,16 @@
 """One persistent plan context shared by the current and historical views."""
 
+from collections.abc import Mapping
+
 import streamlit as st
 
 
 def select_active_plan(plans):
-    by_id = {item.plan_id: item for item in plans}
+    by_id = (
+        dict(plans)
+        if isinstance(plans, Mapping)
+        else {item.plan_id: item.draft.name for item in plans}
+    )
     if not by_id:
         st.session_state.pop("active_plan_id", None)
         return None
@@ -20,7 +26,7 @@ def select_active_plan(plans):
         "Active plan",
         list(by_id),
         key=widget_key,
-        format_func=lambda value: by_id[value].draft.name,
+        format_func=by_id.__getitem__,
     )
     st.session_state["active_plan_id"] = selected
     return selected

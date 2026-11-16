@@ -1,0 +1,523 @@
+{
+  "measured_on": "2026-11-16",
+  "baseline_commit": "d7c2a8ef4e9f847d4811ba64cc31bf7d029b4f6f",
+  "optimized_parent_commit": "d7c2a8ef4e9f847d4811ba64cc31bf7d029b4f6f",
+  "optimized_working_tree_dirty": true,
+  "mode": "live_postgresql",
+  "analysis_period": "All time",
+  "environment": {
+    "python": "3.12.2",
+    "streamlit": "1.66.1",
+    "sqlalchemy": "2.0.44",
+    "pandas": "2.3.3",
+    "numpy": "2.3.5",
+    "plotly": "6.5.0",
+    "platform": "Windows",
+    "machine": "AMD64",
+    "logical_cpus": 4
+  },
+  "dataset_counts": {
+    "body_composition": 11,
+    "body_measurements": 9,
+    "exercise_history_load_settings": 2,
+    "exercise_load_profiles": 60,
+    "exercise_muscle_map": 190,
+    "exercises": 60,
+    "recommendation_starting_loads": 4,
+    "schema_migrations": 11,
+    "training_plan_days": 30,
+    "training_plan_exercise_lineage": 210,
+    "training_plan_exercise_matches": 5,
+    "training_plan_exercises": 210,
+    "training_plan_progression": 5,
+    "training_plan_session_links": 10,
+    "training_plan_versions": 6,
+    "training_plans": 1,
+    "workout_exercises": 912,
+    "workout_sessions": 132,
+    "workout_set_classifications": 60,
+    "workout_set_load_originals": 2580,
+    "workout_set_loads": 2609,
+    "workout_sets": 2609
+  },
+  "method": "Actual personal_app.py AppTest: one cache-cold render, three warm reruns. Imports and pool initialized. Read-only PostgreSQL; browser painting excluded.",
+  "overview_comparison": "Before computes both tabs; after computes only the open tab. Combined after output was checked against the before Overview output hash.",
+  "before": {
+    "renders": {
+      "overview": {
+        "warm_median_ms": 2863.813,
+        "output_sha256": "003936af835ff0b2447760539f8f2b765936111e133930e48035a7dd7b198577",
+        "cold": {
+          "elapsed_ms": 5762.779,
+          "sql_count": 38,
+          "sql_ms": 2114.83
+        },
+        "warm": [
+          {
+            "elapsed_ms": 2907.594,
+            "sql_count": 29,
+            "sql_ms": 1315.78
+          },
+          {
+            "elapsed_ms": 2834.129,
+            "sql_count": 29,
+            "sql_ms": 1273.392
+          },
+          {
+            "elapsed_ms": 2863.813,
+            "sql_count": 29,
+            "sql_ms": 1258.112
+          }
+        ]
+      },
+      "analysis_progress": {
+        "warm_median_ms": 202.152,
+        "output_sha256": "09a34b8f7c575dddf088e7265cec91313d6d941ed0003814cf1365d7c130fbe5",
+        "cold": {
+          "elapsed_ms": 2749.973,
+          "sql_count": 10,
+          "sql_ms": 752.61
+        },
+        "warm": [
+          {
+            "elapsed_ms": 207.672,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 180.714,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 202.152,
+            "sql_count": 0,
+            "sql_ms": 0
+          }
+        ]
+      },
+      "analysis_recorded_exercises": {
+        "warm_median_ms": 136.249,
+        "output_sha256": "6a88d0ee0673a92ca026f783f0315e59abd5af0503904f9dd837a12ee9f4f8e1",
+        "cold": {
+          "elapsed_ms": 2751.241,
+          "sql_count": 10,
+          "sql_ms": 771.391
+        },
+        "warm": [
+          {
+            "elapsed_ms": 136.249,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 134.279,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 182.045,
+            "sql_count": 0,
+            "sql_ms": 0
+          }
+        ]
+      },
+      "analysis_consistency": {
+        "warm_median_ms": 2165.488,
+        "output_sha256": "aa66aacbebe4ae4ad84735acc530124eac93dbb5dfc9f40448e3718d3290f3d1",
+        "cold": {
+          "elapsed_ms": 4442.707,
+          "sql_count": 33,
+          "sql_ms": 1774.863
+        },
+        "warm": [
+          {
+            "elapsed_ms": 2151.028,
+            "sql_count": 24,
+            "sql_ms": 1051.578
+          },
+          {
+            "elapsed_ms": 2170.635,
+            "sql_count": 24,
+            "sql_ms": 1066.163
+          },
+          {
+            "elapsed_ms": 2165.488,
+            "sql_count": 24,
+            "sql_ms": 1038.166
+          }
+        ]
+      },
+      "analysis_muscle_map": {
+        "warm_median_ms": 1177.296,
+        "output_sha256": "2df85b461dcb78aaef2572ec4a39762a36a98a56249fab158af4207aa9930164",
+        "cold": {
+          "elapsed_ms": 4507.94,
+          "sql_count": 21,
+          "sql_ms": 1202.996
+        },
+        "warm": [
+          {
+            "elapsed_ms": 1177.296,
+            "sql_count": 12,
+            "sql_ms": 514.679
+          },
+          {
+            "elapsed_ms": 1115.222,
+            "sql_count": 12,
+            "sql_ms": 524.96
+          },
+          {
+            "elapsed_ms": 1196.753,
+            "sql_count": 12,
+            "sql_ms": 519.24
+          }
+        ]
+      },
+      "analysis_measurements": {
+        "warm_median_ms": 92.072,
+        "output_sha256": "41c79df5a9c5ec6f84233d0ffe62682593e59541f8a453364bd0b64aa3ae11af",
+        "cold": {
+          "elapsed_ms": 2540.71,
+          "sql_count": 10,
+          "sql_ms": 785.394
+        },
+        "warm": [
+          {
+            "elapsed_ms": 41.246,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 92.072,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 95.713,
+            "sql_count": 0,
+            "sql_ms": 0
+          }
+        ]
+      }
+    },
+    "calculations": {
+      "exercise_metrics": {
+        "samples_ms": [
+          90.881,
+          61.293,
+          63.715
+        ],
+        "median_ms": 63.715
+      },
+      "plan_adherence": {
+        "samples_ms": [
+          2.232,
+          1.479,
+          1.624
+        ],
+        "median_ms": 1.624
+      },
+      "plan_performance": {
+        "samples_ms": [
+          3.72,
+          3.039,
+          3.442
+        ],
+        "median_ms": 3.442
+      },
+      "training_insights": {
+        "samples_ms": [
+          5.026,
+          5.513,
+          5.682
+        ],
+        "median_ms": 5.513
+      },
+      "muscle_allocation": {
+        "samples_ms": [
+          0.306,
+          0.247,
+          0.319
+        ],
+        "median_ms": 0.306
+      },
+      "measurements": {
+        "samples_ms": [
+          0.069,
+          0.053,
+          0.054
+        ],
+        "median_ms": 0.054
+      }
+    },
+    "database_read_only_verified": true,
+    "database_unchanged": true
+  },
+  "after": {
+    "renders": {
+      "overview": {
+        "warm_median_ms": 58.673,
+        "output_sha256": "a2506a51fcccc5e9497f0689de0e4d9fa2e1512a794d85abe684d46333395867",
+        "cold": {
+          "elapsed_ms": 2219.743,
+          "sql_count": 12,
+          "sql_ms": 955.57
+        },
+        "warm": [
+          {
+            "elapsed_ms": 60.578,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 57.481,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 58.673,
+            "sql_count": 0,
+            "sql_ms": 0
+          }
+        ]
+      },
+      "overview_next_workout": {
+        "warm_median_ms": 1967.145,
+        "output_sha256": "3bba5b15cbcf233ffedd6f533e5cc48a18280d557d7c395e77140e2f16ed411d",
+        "cold": {
+          "elapsed_ms": 3309.24,
+          "sql_count": 31,
+          "sql_ms": 1757.395
+        },
+        "warm": [
+          {
+            "elapsed_ms": 1967.145,
+            "sql_count": 20,
+            "sql_ms": 945.822
+          },
+          {
+            "elapsed_ms": 1917.092,
+            "sql_count": 20,
+            "sql_ms": 900.159
+          },
+          {
+            "elapsed_ms": 2070.246,
+            "sql_count": 20,
+            "sql_ms": 919.684
+          }
+        ]
+      },
+      "analysis_progress": {
+        "warm_median_ms": 128.548,
+        "output_sha256": "09a34b8f7c575dddf088e7265cec91313d6d941ed0003814cf1365d7c130fbe5",
+        "cold": {
+          "elapsed_ms": 1696.959,
+          "sql_count": 12,
+          "sql_ms": 859.583
+        },
+        "warm": [
+          {
+            "elapsed_ms": 172.122,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 126.591,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 128.548,
+            "sql_count": 0,
+            "sql_ms": 0
+          }
+        ]
+      },
+      "analysis_recorded_exercises": {
+        "warm_median_ms": 137.943,
+        "output_sha256": "6a88d0ee0673a92ca026f783f0315e59abd5af0503904f9dd837a12ee9f4f8e1",
+        "cold": {
+          "elapsed_ms": 1707.329,
+          "sql_count": 12,
+          "sql_ms": 894.377
+        },
+        "warm": [
+          {
+            "elapsed_ms": 180.191,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 135.326,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 137.943,
+            "sql_count": 0,
+            "sql_ms": 0
+          }
+        ]
+      },
+      "analysis_consistency": {
+        "warm_median_ms": 1466.582,
+        "output_sha256": "aa66aacbebe4ae4ad84735acc530124eac93dbb5dfc9f40448e3718d3290f3d1",
+        "cold": {
+          "elapsed_ms": 2732.696,
+          "sql_count": 26,
+          "sql_ms": 1487.696
+        },
+        "warm": [
+          {
+            "elapsed_ms": 1466.759,
+            "sql_count": 15,
+            "sql_ms": 685.197
+          },
+          {
+            "elapsed_ms": 1390.92,
+            "sql_count": 15,
+            "sql_ms": 662.126
+          },
+          {
+            "elapsed_ms": 1466.582,
+            "sql_count": 15,
+            "sql_ms": 707.792
+          }
+        ]
+      },
+      "analysis_muscle_map": {
+        "warm_median_ms": 877.296,
+        "output_sha256": "2df85b461dcb78aaef2572ec4a39762a36a98a56249fab158af4207aa9930164",
+        "cold": {
+          "elapsed_ms": 2982.796,
+          "sql_count": 15,
+          "sql_ms": 974.98
+        },
+        "warm": [
+          {
+            "elapsed_ms": 877.296,
+            "sql_count": 4,
+            "sql_ms": 200.926
+          },
+          {
+            "elapsed_ms": 965.03,
+            "sql_count": 4,
+            "sql_ms": 179.553
+          },
+          {
+            "elapsed_ms": 842.988,
+            "sql_count": 4,
+            "sql_ms": 182.329
+          }
+        ]
+      },
+      "analysis_measurements": {
+        "warm_median_ms": 40.123,
+        "output_sha256": "41c79df5a9c5ec6f84233d0ffe62682593e59541f8a453364bd0b64aa3ae11af",
+        "cold": {
+          "elapsed_ms": 1583.869,
+          "sql_count": 12,
+          "sql_ms": 848.587
+        },
+        "warm": [
+          {
+            "elapsed_ms": 40.123,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 40.204,
+            "sql_count": 0,
+            "sql_ms": 0
+          },
+          {
+            "elapsed_ms": 39.527,
+            "sql_count": 0,
+            "sql_ms": 0
+          }
+        ]
+      },
+      "workout_switch": {
+        "warm_median_ms": 1888.943,
+        "warm": [
+          {
+            "elapsed_ms": 1888.943,
+            "sql_count": 20,
+            "sql_ms": 899.691
+          },
+          {
+            "elapsed_ms": 1983.468,
+            "sql_count": 20,
+            "sql_ms": 961.055
+          },
+          {
+            "elapsed_ms": 1888.325,
+            "sql_count": 21,
+            "sql_ms": 8503.697
+          }
+        ]
+      }
+    },
+    "calculations": {
+      "exercise_metrics": {
+        "samples_ms": [
+          128.986,
+          59.836,
+          59.697
+        ],
+        "median_ms": 59.836
+      },
+      "plan_adherence": {
+        "samples_ms": [
+          1.544,
+          1.519,
+          1.424
+        ],
+        "median_ms": 1.519
+      },
+      "plan_performance": {
+        "samples_ms": [
+          3.268,
+          3.754,
+          3.355
+        ],
+        "median_ms": 3.355
+      },
+      "training_insights": {
+        "samples_ms": [
+          5.164,
+          5.798,
+          5.401
+        ],
+        "median_ms": 5.401
+      },
+      "muscle_allocation": {
+        "samples_ms": [
+          0.33,
+          0.251,
+          0.232
+        ],
+        "median_ms": 0.251
+      },
+      "measurements": {
+        "samples_ms": [
+          0.113,
+          0.057,
+          0.053
+        ],
+        "median_ms": 0.057
+      }
+    },
+    "database_read_only_verified": true,
+    "database_unchanged": true
+  },
+  "verification": {
+    "tests_passed": 779,
+    "tests_skipped": 20,
+    "tests_deselected": 1,
+    "deselection_reason": "Existing unrelated local password length change",
+    "analysis_output_hashes_unchanged": true,
+    "combined_overview_output_hash_unchanged": true
+  }
+}

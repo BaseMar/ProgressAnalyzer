@@ -94,7 +94,7 @@ class AnalysisView:
         try:
             manager = self.dm if self.dm is not None else DataManager()
             if manager.training_plan_storage_ready():
-                plan_id = select_active_plan(manager.load_training_plans())
+                plan_id = select_active_plan(manager.load_training_plan_names())
                 if plan_id is not None:
                     version = manager.load_effective_training_plan(plan_id, date.today())
                     if version is not None:

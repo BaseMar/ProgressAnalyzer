@@ -14,6 +14,7 @@ import streamlit as st
 
 from data_manager import DataManager
 from db.connection import database_cache_key
+from db.read_cache import shared_read_connection
 from mapper import (
     map_body_composition,
     map_body_measurement,
@@ -43,7 +44,12 @@ def _load_data(cache_key: str) -> Tuple[MetricsInput, pd.DataFrame]:
         - MetricsInput: structured domain objects for metrics computation
         - pd.DataFrame: raw sets data with joined names for UI display
     """
-    dm = DataManager()
+    with shared_read_connection(DataManager().engine) as source:
+        return _read_data(DataManager(engine=source))
+
+
+def _read_data(dm):
+    """Map all source tables using one short-lived read transaction."""
     sets_df = dm.load_sets_ui()
 
     sessions = [map_workout_session(row) for row in dm.load_sessions().to_dict("records")]

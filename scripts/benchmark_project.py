@@ -59,7 +59,17 @@ class ReadOnlyProbe:
         upper = sql.upper()
         control = upper in ("SET TRANSACTION READ ONLY", "PRAGMA QUERY_ONLY=ON")
         readable = (
-            upper.startswith(("SELECT ", "SHOW ", "PRAGMA MAIN.", "PRAGMA TEMP."))
+            upper.startswith(
+                (
+                    "SELECT ",
+                    "SHOW ",
+                    "PRAGMA MAIN.",
+                    "PRAGMA TEMP.",
+                    "SAVEPOINT ",
+                    "RELEASE SAVEPOINT ",
+                    "ROLLBACK TO SAVEPOINT ",
+                )
+            )
             or upper == "PRAGMA QUERY_ONLY"
         )
         if not control and not readable:
@@ -160,6 +170,8 @@ PROTECTED_TABLES = (
     "training_plan_exercise_lineage",
     "recommendation_starting_loads",
     "exercise_history_load_settings",
+    "exercise_load_profiles",
+    "workout_set_load_originals",
     "schema_migrations",
 )
 
@@ -226,6 +238,7 @@ def render_case(probe, plan_id, state, runs):
 
 CASE_NAMES = (
     "overview",
+    "overview_next_workout",
     "analysis_progress",
     "analysis_recorded_exercises",
     "analysis_consistency",
@@ -239,7 +252,8 @@ CASE_NAMES = (
 
 def render_benchmarks(probe, plan, as_of, runs, selected=None):
     cases = {
-        "overview": dict(nav_selected="Overview"),
+        "overview": dict(nav_selected="Overview", overview_tab="Progress"),
+        "overview_next_workout": dict(nav_selected="Overview", overview_tab="Next workout"),
         "analysis_progress": dict(nav_selected="Analysis", analysis_tab="Progress"),
         "analysis_recorded_exercises": dict(
             nav_selected="Analysis",
@@ -278,6 +292,7 @@ def render_benchmarks(probe, plan, as_of, runs, selected=None):
     app = AppTest.from_file(str(ROOT / "personal_app.py"), default_timeout=120)
     app.session_state["active_plan_id"] = plan.plan_id
     app.session_state["adherence_plan"] = plan.plan_id
+    app.session_state["overview_tab"] = "Next workout"
     app.run()
     check_app(app)
     switches = []

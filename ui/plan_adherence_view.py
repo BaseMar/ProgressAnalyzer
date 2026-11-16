@@ -39,13 +39,13 @@ class PlanAdherenceView:
             if not self.dm.adherence_storage_ready():
                 st.info("Plan analysis is not available until setup is complete.")
                 return
-            plans = {item.plan_id: item for item in self.dm.load_training_plans()}
+            plans = self.dm.load_training_plan_names()
             if not plans:
                 st.info(
                     "Create a plan in Plan, then link sessions in History to start the analysis. Recorded exercise history is available under Exercises."
                 )
                 return
-            plan_id = select_active_plan(plans.values())
+            plan_id = select_active_plan(plans)
             versions = self.dm.load_training_plan_versions(plan_id)
             if self.selected_month not in (None, "All time"):
                 start = date.fromisoformat(f"{self.selected_month}-01")

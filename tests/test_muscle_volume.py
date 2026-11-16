@@ -177,7 +177,7 @@ def test_plan_read_failure_keeps_reference_visible(
     def fail(_):
         raise SQLAlchemyError("Unavailable")
 
-    monkeypatch.setattr(DataManager, "load_training_plans", fail)
+    monkeypatch.setattr(DataManager, "load_training_plan_names", fail)
     app.run()
     assert not app.exception and not app.error
     assert pd.isna(ranges_table(app).loc["Chest", "Target"])

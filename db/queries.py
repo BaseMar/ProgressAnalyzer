@@ -22,7 +22,10 @@ def get_exercise_muscle_targets(engine) -> pd.DataFrame:
     """)
     try:
         with engine.connect() as connection:
-            return pd.read_sql(query, connection)
+            # The loader can lend one connection for all source reads. Keep
+            # this optional-table failure from aborting that PostgreSQL transaction.
+            with connection.begin_nested():
+                return pd.read_sql(query, connection)
     except Exception:
         logging.getLogger(__name__).exception("load_exercise_muscle_targets failed")
         return pd.DataFrame(

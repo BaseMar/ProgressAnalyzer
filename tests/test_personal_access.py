@@ -133,7 +133,9 @@ def test_owner_can_open_every_route_and_logout_clears_private_drafts(owner_datab
     assert not app.exception and not app.error
     assert reads.called
     assert PASSWORD_KEY not in app.session_state
-    assert "Private owner plan" in app.selectbox[0].options
+    app.session_state["overview_tab"] = "Next workout"
+    app.run()
+    assert "Private owner plan" in app.selectbox(key="adherence_plan").options
     for page in ("Analysis", "Plan", "History", "Overview"):
         app.sidebar.button(key="nav_" + page).click().run()
         assert not app.exception and not app.error
@@ -143,7 +145,10 @@ def test_owner_can_open_every_route_and_logout_clears_private_drafts(owner_datab
     assert AUTH_KEY not in app.session_state
     assert "private_editor_draft" not in app.session_state
     assert app.sidebar.radio(key="workspace_mode").value == "Demo"
-    assert "Private owner plan" not in app.selectbox[0].options
+    assert not app.selectbox
+    app.session_state["overview_tab"] = "Next workout"
+    app.run()
+    assert "Private owner plan" not in app.selectbox(key="adherence_plan").options
     app.sidebar.radio(key="workspace_mode").set_value("Personal").run()
     assert app.text_input(key=PASSWORD_KEY)
 
