@@ -137,7 +137,7 @@ def test_new_history_overrides_saved_manual_choices_and_then_drives_progression(
     log(engine, sessions, 2, date(2026, 5, 18), (60.0, 55.0, 50.0))
     app.run()
     assert "Saved starting loads" not in exercise_html(app)
-    assert "Starting loads read automatically" in exercise_html(app)
+    assert "Recorded loads, using the current plan targets." in exercise_html(app)
     assert not [n for n in app.number_input if n.key.startswith("manual_start_")]
     item = first_recommendation(engine, plan).exercises[0]
     assert [g.weight for g in item.goals] == [60.0, 55.0, 50.0]

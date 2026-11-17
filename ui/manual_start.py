@@ -47,12 +47,6 @@ def reference_texts(records):
     return lines
 
 
-def reference_html(records):
-    return "".join(
-        f'<p class="recommendation-source">{escape(line)}</p>' for line in reference_texts(records)
-    )
-
-
 def selected_start(item, goals, *, saved):
     return replace(
         item,
@@ -98,7 +92,7 @@ def choose_starting_loads(result, upcoming, names, references, manager):
         "Edit starting loads" if editing else "Choose starting loads", expanded=editing
     ):
         st.caption(
-            "No usable starting-load history was found for these exercises. Enter any missing loads below; complete choices are saved automatically. Recorded training history takes priority once available."
+            "Enter starting loads; complete choices save automatically. Training history takes priority."
         )
         if not storage_ready:
             st.warning(
@@ -118,9 +112,7 @@ def choose_starting_loads(result, upcoming, names, references, manager):
             load_type = suggested_load_type(name)
             is_bodyweight = load_type in ("bodyweight", "assisted_bodyweight")
             if is_bodyweight:
-                st.caption(
-                    "Enter additional load or assistance, not body mass. Historical kilograms are not converted into a future setting."
-                )
+                st.caption("Enter added weight or assistance, excluding body mass.")
             context_key = starting_load_key(upcoming, item, result.block)
             scope = f"manual_start_{context_key}_{item.scheduled_date}"
             # Refresh old widgets when another preview or browser tab saves a change.
@@ -185,9 +177,7 @@ def choose_starting_loads(result, upcoming, names, references, manager):
                         st.session_state[marker] = tuple(
                             (goal.weight, goal.assistance_kg) for goal in goals
                         )
-                    st.caption(
-                        "Starting loads saved. Use Edit starting loads to change them until training history establishes the next target."
-                    )
+                    st.caption("Saved. Use Edit starting loads to adjust.")
                 choices[item.plan_exercise_id] = selected_start(item, goals, saved=storage_ready)
             else:
                 choices.pop(item.plan_exercise_id, None)

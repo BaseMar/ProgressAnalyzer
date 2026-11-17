@@ -134,7 +134,7 @@ def test_overview_starts_with_progress_and_separates_next_workout(schedule_data)
     assert [item.value for item in app.metric] == ["0", "1", "0"]
     assert not any("Compared exercises:" in item.value for item in app.caption)
     assert "Your training today" not in html
-    assert "62.5 kg · 3 × 6 reps" not in html
+    assert "3 × 6 reps · 62.5 kg" not in html
     assert len(app.metric) == 3 and not app.dataframe and not app.get("plotly_chart")
     assert not app.selectbox
     assert not any(
@@ -145,7 +145,7 @@ def test_overview_starts_with_progress_and_separates_next_workout(schedule_data)
     insight_html = [item.value for item in app.markdown if "analysis-insight" in item.value]
     assert all("62.5 kg" not in value for value in insight_html)
     select_topic(app, "Next workout")
-    assert "62.5 kg · 3 × 6 reps" in markup(app)
+    assert "3 × 6 reps · 62.5 kg" in markup(app)
     assert not app.metric
     assert len([item for item in app.selectbox if item.label == "Active plan"]) == 1
 
@@ -181,7 +181,7 @@ def test_future_workout_selection_and_alternative_step_still_work_in_full_view(s
     selector.select(2).run()
     next(item for item in app.number_input if "Weight step" in item.label).set_value(5.0).run()
     assert not app.exception
-    assert "65 kg · 3 × 6 reps" in markup(app)
+    assert "3 × 6 reps · 65 kg" in markup(app)
     assert "Instead of Bench Press" in markup(app)
 
 

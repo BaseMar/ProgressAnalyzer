@@ -176,7 +176,11 @@ controls automatic deloads.
 
 **Overview → Next workout** previews an unlinked planned workout from today
 onward. Choose another upcoming date to see all planned exercises and their targets.
-Every exercise is visible directly, with its relevant notes and source sessions.
+Every exercise is visible directly, with its target and a short instruction.
+Important caveats, such as missing RIR or older history, remain visible.
+Identical sets share one line, for example **3 × 10 reps · 60 kg**. Different
+repetitions, loads or assistance appear in numbered rows. The common RIR target
+is shown once below the sets. Recorded source sessions are available in History.
 Overview's numeric next action comes from that same preview.
 
 **Copy preview** uses a short note with empty **Time:**, **Result:** and **RIR:**
@@ -184,8 +188,9 @@ lines. Append your actual values after training; no placeholders need to be remo
 Targets remain separate suggestions and are ignored during import.
 
 Starting suggestions use the exact exercise's usable history, including older
-plans and unlinked sessions. The source entry is shown with the current range
-and RIR. An exercise without usable history keeps **Choose starting loads**;
+plans and unlinked sessions. The starting target uses the current range
+and RIR. An exercise without usable history keeps **Choose starting loads**,
+where detailed recorded references remain available;
 complete manual choices are saved, the form disappears, and **Edit starting loads**
 reopens them. Actual history takes priority over saved manual defaults.
 

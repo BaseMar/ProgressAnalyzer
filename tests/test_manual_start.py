@@ -57,9 +57,11 @@ def test_unlinked_history_before_plan_supplies_starting_loads_without_progressio
     plan = seed_without_records(engine, source)
     app = start_app(engine, plan)
     html = exercise_html(app)
-    assert "27 Apr 2026" in html and "90 kg" in html
+    assert "90 kg" in html
+    assert "Based on:" not in html and "27 Apr 2026" not in html
     assert "Starting loads" in html
-    assert "3 × 6–10 reps · RIR ≥ 2" in html
+    assert "3 × 6–10 reps · 90 kg" in html
+    assert "RIR ≥ 2" in html
     assert "Target not available yet" not in html
     assert not [n for n in app.number_input if n.key.startswith("manual_start_")]
     assert snapshot(engine) == before
@@ -96,7 +98,8 @@ def test_manual_fallback_without_history_saves_across_dates_and_browser_sessions
     app.run()
     assert not app.exception
     assert "Starting loads selected" in exercise_html(app)
-    assert "55 kg · 3 × 6–10 reps · RIR ≥ 2" in exercise_html(app)
+    assert "3 × 6–10 reps · 55 kg" in exercise_html(app)
+    assert "RIR ≥ 2" in exercise_html(app)
     template = app.code[0].value
     assert "Target: 55 kg · 3 × 6–10 reps · RIR ≥ 2" in template
     assert "Result:\nRIR:" in template
@@ -187,7 +190,7 @@ NextWorkoutView(st.session_state['manager'],st.session_state['names']).render(
     fields = [n for n in app.number_input if "Pull-Up" in n.label]
     assert len(fields) == 3
     assert all("additional load (kg)" in n.label and n.value is None for n in fields)
-    assert "90.3 kg recorded" in exercise_html(app)
+    assert any("90.3 kg recorded" in item.value for item in app.caption)
     for field in fields:
         field.set_value(0.0)
     app.run()

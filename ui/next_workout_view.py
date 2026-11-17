@@ -15,65 +15,87 @@ from ui.manual_start import (
     MANUAL_START_REASONS,
     choose_starting_loads,
     prescription_summary,
-    reference_html,
 )
 from ui.utils.copy_workout import copy_workout
+from ui.utils.recommendation_sets import recommendation_sets_html
 from ui.utils.ui_helpers import section_header
 
 logger = logging.getLogger(__name__)
 
 
 def recommendation_note(item):
-    if item.reason_code in (
-        "manual_start",
-        "changed_set_count",
-        "history_gap",
-        "manual_start_selected",
-        "reuse_exercise_baseline",
-    ):
-        return item.reason
+    if item.reason_code == "manual_start_selected":
+        return (
+            "Saved starting loads. Log and link the workout."
+            if item.reason.startswith("Saved starting loads.")
+            else "Starting loads for this preview. Log and link the workout."
+        )
     notes = {
-        "one_more_rep": "Try one additional total rep in the first set below the ceiling; retain per-set loads and reserve.",
-        "upper_range_confirmed": "All sets reached the ceiling at one common load. One complete result is enough: add one equipment step.",
-        "equalize_loads": "Bring lighter sets toward the first working load within 10% per set. Raised sets start at the lower rep bound.",
-        "minimum_not_met": "Reduce the affected set by one equipment step after the first failure at the minimum.",
-        "reduction_step_not_supported": "Choose a lower load for the affected set manually; no positive lower equipment setting is available.",
-        "manual_start": "Review the source history and choose the working start manually for this context.",
-        "more_time": "Try up to five additional seconds in one set within the time range.",
-        "time_ceiling_manual": "Time ceiling reached. Choose a new range or load manually.",
-        "confirm_upper_range": "Repeat the upper range with enough reserve before increasing weight.",
-        "rir_below_target": "Keep the load: at least one previous set had less reserve than planned.",
-        "below_range": "Keep the load and work towards the planned repetition range.",
-        "mixed_loads": "Keep each set's logged load; automatic increases need one common working load.",
-        "mixed_range": "Some sets exceeded the range while others stayed below its upper bound.",
-        "timed_exercise": "Keep the logged load and time range; automatic timed progression is not supported.",
-        "bodyweight_load_manual": "Choose additional weight or assistance manually. Keep the displayed rep target; less assistance increases difficulty. Future body mass is not assumed.",
-        "unknown_load": "Add the missing body mass or assistance in History before comparing loads.",
-        "mixed_load_convention": "The latest sets use different load conventions. Choose the next load manually.",
-        "zero_load": "Keep this target; adding external load requires a manual decision.",
-        "weight_step_not_supported": "The available weight step is too large for an automatic increase.",
-        "scheduled_deload": "Lighter week: same sets and recorded repetitions, 30–40% less load, target RIR 3–4.",
-        "resume_after_deload": "Return to the last ordinary loads. Establish progression again in this block.",
-        "no_history": "Choose working loads using the recorded results below. Log and link the completed workout to establish a baseline.",
-        "no_normal_baseline": "No comparable normal workout is linked in this block. Review any earlier records below and choose working loads manually. Log and link the completed workout to establish a baseline.",
-        "reuse_exercise_baseline": "Starting loads from this exercise's history. Use the current range and RIR; adjust the load as needed. A changed workout or prescription needs a new execution before automatic increases.",
-        "changed_set_count": "History is available, but the set count changed. Choose loads for the new sets manually.",
-        "incomplete_sets": "Review the latest linked workout: its matching working-set count is incomplete.",
-        "light_sets": "Light sets remain in history; log the planned ordinary work before increasing the target.",
-        "low_effort_sets": "Sets above RIR 5 remain in history and do not establish an ordinary progression target.",
-        "missing_rir": "Complete the missing RIR values in the source workout.",
+        "one_more_rep": "Add one rep; keep each set's load and RIR.",
+        "upper_range_confirmed": "Every set reached the upper rep limit.",
+        "equalize_loads": "Bring lighter sets toward the first working load.",
+        "minimum_not_met": "Below the minimum: reduce the affected set by one step.",
+        "reduction_step_not_supported": "Choose a lower load manually for the affected set.",
+        "manual_start": "Plan context changed. Choose starting loads.",
+        "more_time": "Add up to five seconds within the planned range.",
+        "time_ceiling_manual": "Time limit reached. Choose a new range or load.",
+        "confirm_upper_range": "Repeat the upper rep limit at the planned RIR.",
+        "rir_below_target": "Keep the load; the previous RIR was below target.",
+        "below_range": "Keep the load and work toward the planned range.",
+        "mixed_loads": "Keep per-set loads; increases require equal working loads.",
+        "mixed_range": "Keep the load until every set reaches the upper limit.",
+        "timed_exercise": "Keep the recorded load and planned time range.",
+        "bodyweight_load_manual": "Choose added weight or assistance; keep the displayed rep target.",
+        "unknown_load": "Complete body mass or assistance in History.",
+        "mixed_load_convention": "Load conventions differ. Choose the next load manually.",
+        "zero_load": "Keep this target; choose any added load manually.",
+        "weight_step_not_supported": "The weight step is too large. Choose the load manually.",
+        "scheduled_deload": "Keep repetitions; use lighter loads and RIR 3–4.",
+        "resume_after_deload": "Return to your last regular loads.",
+        "no_history": "No usable history. Choose starting loads.",
+        "no_normal_baseline": "No regular baseline in this block. Choose starting loads.",
+        "reuse_exercise_baseline": "Recorded loads, using the current plan targets.",
+        "changed_set_count": "Set count changed. Choose starting loads.",
+        "incomplete_sets": "Check the incomplete set log in History.",
+        "light_sets": "Log regular working sets before increasing the load.",
+        "low_effort_sets": "Sets above RIR 5 cannot confirm progression.",
+        "missing_rir": "Complete RIR in the latest linked workout.",
         "missing_target_rir": "Set target RIR in Plan → Progression & RIR.",
-        "history_gap": "The last comparable workout is too old. Establish a new baseline.",
-        "invalid_values": "Review the source workout's load and RIR values.",
-        "deload_load_not_supported": "Choose a deload load manually; this load or equipment step is unsupported.",
-        "deload_timed_not_supported": "Choose a timed deload target manually; automatic targets are not supported.",
-        "already_recorded": "This workout has already been linked. Select another upcoming workout.",
+        "history_gap": "History is old. Choose starting loads.",
+        "invalid_values": "Correct the recorded load or RIR in History.",
+        "deload_load_not_supported": "Choose a lighter deload load manually.",
+        "deload_timed_not_supported": "Choose a lighter timed deload target manually.",
+        "already_recorded": "Already linked. Select another workout.",
     }
     if item.reason_code in ("missing_weight_step", "invalid_weight_step"):
         if item.actual_exercise_id != item.planned_exercise_id:
-            return "Enter a positive weight step for this alternative in the options above."
+            return "Set a positive weight step for this alternative."
         return "Set the available weight step in Plan → Progression & RIR."
     return notes.get(item.reason_code, item.reason)
+
+
+def recommendation_notices(item):
+    """Keep actionable caveats compact; source metadata belongs in History."""
+    replacements = {
+        "Set purpose inferred from RIR and order; explicit corrections in History take precedence.": None,
+        "Additional load is 0 kg; future body mass is not assumed.": None,
+        "Legacy kilograms were confirmed as body mass only: additional load is 0 kg.": None,
+        "Later heavier trials are capped at the first recorded working load for this start.": "Later heavier sets capped at the first working load.",
+        "This starting load comes from older history. Verify it during training before progressing.": "Older history: verify the starting load during training.",
+        "Source RIR is incomplete. These recorded loads do not confirm an automatic increase.": "Source RIR is incomplete; verify the starting load.",
+        "Possible plateau: four comparable executions without output or confirmed reserve improvement. Review rest, technique and recovery; sets are not added automatically.": "Possible plateau: review rest, technique and recovery.",
+    }
+    notices = []
+    for notice in item.notices:
+        if notice.startswith("Source entry #"):
+            continue
+        if notice.startswith("History contains "):
+            notice = notice.split(". ", 1)[0] + "."
+        else:
+            notice = replacements.get(notice, notice)
+        if notice:
+            notices.append(notice)
+    return tuple(dict.fromkeys(notices))
 
 
 class NextWorkoutView:
@@ -180,7 +202,6 @@ class NextWorkoutView:
                 return self._exercise(
                     item,
                     prescriptions[item.plan_exercise_id],
-                    references.get(item.actual_exercise_id, ()),
                 )
 
             template = workout_template(upcoming, result, self.names)
@@ -189,9 +210,7 @@ class NextWorkoutView:
                     template, key=f"copy_workout_{plan_id}_{slot.day_id}_{slot.scheduled_date}"
                 )
                 with st.expander("Copy preview"):
-                    st.caption(
-                        "Paste into Samsung Notes. After training, enter your actual results and RIR."
-                    )
+                    st.caption("Paste into Samsung Notes; fill in results and RIR after training.")
                     st.code(template, language=None, wrap_lines=True)
             st.markdown(
                 '<div class="recommendation-list">'
@@ -227,7 +246,7 @@ class NextWorkoutView:
         scope = f"recommendation_{plan_id}_{slot.day_id}_{slot.scheduled_date}"
         with st.expander("Use a confirmed alternative"):
             st.caption(
-                "Choose an alternative previously approved for this workout context. Choices apply to this preview only; confirm the actual replacement after logging the session."
+                "Preview a previously approved alternative. Confirm the actual replacement in History."
             )
             for position, item in enumerate(recommendations, start=1):
                 if not alternatives[position]:
@@ -262,7 +281,7 @@ class NextWorkoutView:
                     steps[actual] = value
         return substitutions, steps
 
-    def _exercise(self, item, planned=None, references=()):
+    def _exercise(self, item, planned=None):
         label = {
             "increase_reps": "Add a rep",
             "increase_time": "Add time",
@@ -293,25 +312,20 @@ class NextWorkoutView:
             if item.actual_exercise_id != item.planned_exercise_id
             else ""
         )
-        sources = []
-        for index, (sid, day) in enumerate(zip(item.evidence_session_ids, item.evidence_dates)):
-            workout = item.evidence_workouts[index] if index < len(item.evidence_workouts) else ""
-            sources.append(
-                f"{day:%d %b %Y}" + (f" · {workout}" if workout else "") + f" · session #{sid}"
+        notice_text = " ".join(recommendation_notices(item))
+        notices = f"<p>{escape(notice_text)}</p>" if notice_text else ""
+        goals = recommendation_sets_html(item)
+        if not item.goals:
+            fallback = (
+                prescription_summary(planned) + " · choose working loads"
+                if planned is not None and item.reason_code in MANUAL_START_REASONS
+                else goal_summary(item)
             )
-        evidence = (
-            f'<p class="recommendation-source">Based on: {escape("; ".join(sources))}</p>'
-            if sources
-            else ""
-        )
-        notices = "".join(f"<p>{escape(notice)}</p>" for notice in item.notices)
-        goal = goal_summary(item)
-        if not item.goals and planned is not None and item.reason_code in MANUAL_START_REASONS:
-            goal = prescription_summary(planned) + " · choose working loads"
+            goals = f'<div class="recommendation-goal">{escape(fallback)}</div>'
         return (
             '<div class="recommendation-exercise"><div class="recommendation-exercise-top">'
             f"<div><strong>{escape(self._name(item.actual_exercise_id))}</strong>{original}</div>"
             f'<span class="recommendation-action recommendation-action--{item.action}">{label}</span></div>'
-            f'<div class="recommendation-goal">{escape(goal)}</div>'
-            f"<p>{escape(recommendation_note(item))}</p>{notices}{evidence}{reference_html(references)}</div>"
+            f"{goals}"
+            f"<p>{escape(recommendation_note(item))}</p>{notices}</div>"
         )

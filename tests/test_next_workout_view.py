@@ -21,6 +21,7 @@ from models.training_plan import ProgressionSettings, TrainingDay
 from test_plan_schedule import schedule_data as schedule_data
 from test_progression import PLAN
 from ui.next_workout_view import goal_summary
+from ui.utils.recommendation_sets import recommendation_sets_html
 
 START = date(2026, 5, 4)
 AS_OF = date(2026, 5, 20)
@@ -131,9 +132,11 @@ def test_next_normal_goal_and_evidence_render_without_changing_logged_data(sched
         before = connection.execute(select(actual_sets)).mappings().all()
     app = start_app(engine, plan)
     assert app.selectbox(key=f"next_workout_{plan.plan_id}").value.endswith(str(NEXT))
-    assert "62.5 kg · 3 × 6 reps · RIR ≥ 2" in exercise_html(app)
+    assert "3 × 6 reps · 62.5 kg" in exercise_html(app)
+    assert "RIR ≥ 2" in exercise_html(app)
     assert "Increase load" in exercise_html(app)
-    assert "session #3" in exercise_html(app)
+    assert "Based on:" not in exercise_html(app)
+    assert "session #3" not in exercise_html(app)
     assert not app.dataframe
     with engine.connect() as connection:
         assert connection.execute(select(actual_sets)).mappings().all() == before
@@ -156,13 +159,15 @@ def test_deload_and_return_render_as_different_decisions(schedule_data):
     normal = load_scheduled_workouts(engine, plan.plan_id, date(2026, 6, 8), date(2026, 6, 8))[0]
     assign_scheduled_session(engine, normal.day_id, normal.scheduled_date, 3)
     app = start_app(engine, plan, as_of=date(2026, 6, 15))
-    assert "40 kg · 3 × 10 reps · RIR 3–4" in exercise_html(app)
+    assert "3 × 10 reps · 40 kg" in exercise_html(app)
+    assert "RIR 3–4" in exercise_html(app)
     assert "recommendation-phase--deload" in rendered(app)
     key = f"{normal.day_id}:2026-06-22"
     app.selectbox(key=f"next_workout_{plan.plan_id}").select(key).run()
     assert not app.exception
     assert "Return after deload" in exercise_html(app)
-    assert "60 kg · 3 × 6–10 reps · RIR ≥ 2" in exercise_html(app)
+    assert "3 × 6–10 reps · 60 kg" in exercise_html(app)
+    assert "RIR ≥ 2" in exercise_html(app)
 
 
 @pytest.mark.parametrize(
@@ -210,7 +215,7 @@ def test_automatic_working_sets_need_no_label_editor_before_recommendations(sche
     plan = seed(schedule_data, classification=None)
     app = start_app(engine, plan)
     assert "Increase load" in exercise_html(app)
-    assert "62.5 kg · 3 × 6 reps" in exercise_html(app)
+    assert "3 × 6 reps · 62.5 kg" in exercise_html(app)
     with engine.connect() as connection:
         assert connection.execute(select(classifications)).all() == []
 
@@ -228,7 +233,7 @@ def test_not_started_block_explains_date_and_offers_later_workouts(schedule_data
     next_slot = load_scheduled_workouts(engine, plan.plan_id, date(2026, 6, 1), date(2026, 6, 1))[0]
     app.selectbox(key=f"next_workout_{plan.plan_id}").select(f"{next_slot.day_id}:2026-06-01").run()
     assert not app.exception
-    assert "establish a baseline" in exercise_html(app)
+    assert "No regular baseline in this block. Choose starting loads." in exercise_html(app)
 
 
 def test_confirmed_alternative_uses_own_history_step_and_resets_for_another_date(schedule_data):
@@ -241,11 +246,11 @@ def test_confirmed_alternative_uses_own_history_step_and_resets_for_another_date
     assert not app.exception
     assert "Machine Chest Press" in exercise_html(app)
     assert "Instead of Barbell Bench Press" in exercise_html(app)
-    assert "Enter a positive weight step" in exercise_html(app)
+    assert "Set a positive weight step" in exercise_html(app)
     step = next(item for item in app.number_input if "Weight step" in item.label)
     step.set_value(5.0).run()
     assert not app.exception
-    assert "65 kg · 3 × 6 reps" in exercise_html(app)
+    assert "3 × 6 reps · 65 kg" in exercise_html(app)
     next_slot = load_scheduled_workouts(
         engine, plan.plan_id, NEXT + timedelta(days=7), NEXT + timedelta(days=7)
     )[0]
@@ -313,6 +318,61 @@ def test_goal_summary_preserves_unequal_sets_and_zero_rir():
     mixed = replace(item, goals=(SetGoal(60.0, 6, 10, "reps"), SetGoal(65.0, 6, 10, "reps")))
     assert "S1: 60 kg × 6–10 reps" in goal_summary(mixed)
     assert "S2: 65 kg × 6–10 reps" in goal_summary(mixed)
+
+
+@pytest.mark.parametrize("kind", ["bodyweight", "assisted_bodyweight"])
+def test_card_bodyweight_targets_preserve_assistance_reps_and_reserve(kind):
+    goal = SetGoal(
+        5.0,
+        6,
+        10,
+        "reps",
+        load_type=kind,
+        assistance_kg=20.0 if kind == "assisted_bodyweight" else None,
+    )
+    item = ExerciseRecommendation(
+        1, 1, 1, NEXT, "maintain", (goal,) * 3, 0, "bodyweight_load_manual", ""
+    )
+    setting = "bodyweight + 5 kg" + (" · assistance 20 kg" if kind == "assisted_bodyweight" else "")
+    text = recommendation_sets_html(item)
+    assert "3 × 6–10 reps · " + setting in text
+    assert text.count("RIR ≥ 0") == 1
+    # Copy/export keeps the existing per-set format.
+    assert "S1:" in goal_summary(item) and "S3:" in goal_summary(item)
+    mixed = replace(item, goals=(goal, replace(goal, weight=10.0, minimum=8, maximum=8)))
+    text = recommendation_sets_html(mixed)
+    assert "Set 1" in text and "bodyweight + 5 kg" in text
+    assert "Set 2" in text and "bodyweight + 10 kg" in text
+    assert "8 reps" in text and text.count("RIR ≥ 0") == 1
+    if kind == "assisted_bodyweight":
+        different_assistance = replace(item, goals=(goal, replace(goal, assistance_kg=15.0)))
+        text = recommendation_sets_html(different_assistance)
+        assert "Set 1" in text and "assistance 20 kg" in text
+        assert "Set 2" in text and "assistance 15 kg" in text
+    timed = replace(
+        item, target_rir=None, goals=(replace(goal, unit="seconds", minimum=30, maximum=30),) * 2
+    )
+    assert "2 × 30 s · " + setting in recommendation_sets_html(timed)
+    assert "RIR" not in recommendation_sets_html(timed)
+
+
+def test_card_set_rows_keep_output_order_loads_and_missing_values_distinct():
+    goals = (SetGoal(60, 10, 10, "reps"), SetGoal(60, 9, 9, "reps"), SetGoal(55, 8, 8, "reps"))
+    item = ExerciseRecommendation(
+        1, 1, 1, NEXT, "maintain", goals, 3, "mixed_loads", "", target_rir_max=4
+    )
+    text = recommendation_sets_html(item)
+    assert text.index("10 reps") < text.index("9 reps") < text.index("8 reps")
+    assert text.count('class="recommendation-set-row"') == 3
+    assert text.count("60 kg") == 2 and "55 kg" in text
+    assert text.count("RIR 3–4") == 1
+    unknown = replace(item, goals=(replace(goals[0], weight=0), replace(goals[0], weight=None)))
+    text = recommendation_sets_html(unknown)
+    assert "0 kg" in text and "choose load" in text
+    assisted = replace(
+        item, goals=(replace(goals[0], load_type="assisted_bodyweight", assistance_kg=None),)
+    )
+    assert "assistance unknown" in recommendation_sets_html(assisted)
 
 
 def test_historical_analytics_has_no_duplicate_next_workout(schedule_data):

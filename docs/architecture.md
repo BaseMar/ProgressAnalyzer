@@ -154,6 +154,13 @@ its separate plan-specific rules for plan-context observations.
 
 The next-workout view uses the prepared workout's target identities.
 `metrics/recommendation_history.py` owns the pure selection of confirmed alternatives.
+Cards use short presentation notes and actionable caveats, without source-session
+paragraphs or raw references. Detailed manual-start references stay in the existing
+setup expander. `ui/utils/recommendation_sets.py` groups identical set targets
+for cards and gives different targets numbered rows in their recorded order.
+The target RIR appears once per exercise, including zero and deload ranges.
+Load conventions, missing values and assistance remain explicit. Copied workouts
+and other callers retain their existing `goal_summary` formatting.
 
 Contexts are local variables rebuilt for each render. They are not written to
 the database or retained in session state. Existing write invalidation and
