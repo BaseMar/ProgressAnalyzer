@@ -382,7 +382,7 @@ def test_database_revision_recovers_local_and_cross_workout_baselines(revised_pl
     assert chosen.exercises[0].evidence_dates == (monday,)
 
 
-def test_preview_displays_source_dates_and_confirmed_alternative_after_revision(
+def test_preview_hides_source_dates_and_keeps_confirmed_alternative_after_revision(
     revised_plan_history,
 ):
     dm, plan, next_day, monday, thursday, names = revised_plan_history
@@ -410,11 +410,15 @@ NextWorkoutView(st.session_state['manager'], st.session_state['names']).render(
     assert not app.exception
     html = "\n".join(item.value for item in app.markdown)
     assert "Seated Cable Row" in html and "Choose starting load" in html
-    assert f"{thursday:%d %b %Y} · Upper B" in html
-    assert f"{monday:%d %b %Y} · Upper A" in html
+    assert "Based on:" not in html
+    assert f"{thursday:%d %b %Y} · Upper B" not in html
+    assert f"{monday:%d %b %Y} · Upper A" not in html
+    assert "3 × 6–10 reps · 85 kg" in html
     alternative = next(item for item in app.selectbox if item.key.endswith("_exercise"))
     alternative.select(6).run()
     assert not app.exception
     html = "\n".join(item.value for item in app.markdown)
     assert "Instead of Barbell Bench Press" in html
-    assert "Choose starting load" in html
+    assert "Starting loads" in html
+    assert "3 × 6–10 reps · 85 kg" in html
+    assert "Based on:" not in html
