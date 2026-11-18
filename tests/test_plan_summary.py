@@ -29,11 +29,10 @@ def test_range_percentage_uses_logged_sets_while_coverage_uses_plan():
     report = compute_plan_adherence(data, as_of=TODAY)
     performance = compute_plan_performance(data, as_of=TODAY)
     summary = summarize_plan(report, performance)
-    assert summary["workout_pct"] == 100
     assert summary["set_pct"] == 200 / 3
     assert summary["range_pct"] == 50
-    assert summary["largest_gap"] == ("Upper", 1)
-    assert summary["missing_rir"] == 2
+    assert summary["recorded_sets"] == 2
+    assert summary["in_range"] == 1
     assert summary["weeks"][0]["partial"] == 1
 
 
@@ -82,7 +81,6 @@ def test_saturday_arm_day_performed_on_wednesday_counts_on_friday_without_duplic
         report = compute_plan_adherence(data, as_of=as_of)
         performance = compute_plan_performance(data, as_of=as_of)
         current = summarize_plan(report, performance)
-        assert current["workout_pct"] == 100
         assert current["set_pct"] == 100
         assert current["recorded_sets"] == 3
         assert current["in_range"] == 3
@@ -98,7 +96,6 @@ def test_empty_denominators_remain_unknown_not_zero_percent():
     data = replace(example(), workouts=())
     summary = summarize_plan(compute_plan_adherence(data, as_of=TODAY), [])
     assert summary["range_pct"] is None
-    assert summary["workout_pct"] is None
     assert summary["set_pct"] is None
     assert summary["weeks"] == []
 

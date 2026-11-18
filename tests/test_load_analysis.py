@@ -14,9 +14,7 @@ from metrics.progression import recommend_normal_workout
 from metrics.set_interpretation import interpret_sets
 from metrics.training_insights import compute_training_insights
 from metrics.utils.set_values import (
-    set_effective_sets,
     set_estimated_1rm,
-    set_intensity,
     set_volume,
 )
 from models.set_load import SetLoad
@@ -92,21 +90,17 @@ def test_dynamic_volume_uses_total_supported_mass_without_bodyweight_e1rm(
     item = inp.sets[0]
     assert set_volume(item) == total * 8
     assert set_estimated_1rm(item) is None
-    assert set_intensity(item) is None
     exercise = compute_exercise_metrics(inp)["per_exercise"][1]
     assert exercise["total_volume"] == total * 8
     assert exercise["per_session_volume"][0]["volume"] == total * 8
-    assert exercise["estimated_1rm_max"] is None
+    assert exercise["per_session_1rm"] == []
 
 
 def test_unknown_mass_does_not_become_zero_load_or_complete_volume(sample_input):
     inp = source(sample_input, [(SetLoad("bodyweight", 5, None), 8)])
     exercise = compute_exercise_metrics(inp)["per_exercise"][1]
-    assert exercise["unknown_load_sets"] == 1
-    assert not exercise["volume_complete"]
     assert exercise["per_session_volume"][0]["volume"] is None
     assert exercise["per_set_performance"][0]["total_load_kg"] is None
-    assert exercise["unknown_total_load_sets"] == 1
     assert exercise["per_session_1rm"] == []
 
 
@@ -120,15 +114,17 @@ def test_external_e1rm_stays_available_alongside_bodyweight_work(sample_input):
     exercise = compute_exercise_metrics(inp)["per_exercise"][1]
     assert len(exercise["per_session_1rm"]) == 1
     assert exercise["per_session_1rm"][0]["session_id"] == 1
-    assert exercise["estimated_1rm_max"] == pytest.approx(set_estimated_1rm(inp.sets[0]))
+    assert exercise["per_session_1rm"][0]["estimated_1rm"] == round(
+        set_estimated_1rm(inp.sets[0]), 2
+    )
 
 
 def test_timed_work_has_no_tonnage_e1rm_or_duration_based_set_multiplier(sample_input):
     inp = source(sample_input, [(SetLoad("bodyweight", 5, 80), 90)], timed=True)
     assert set_volume(inp.sets[0]) == 0
-    assert set_effective_sets(inp.sets[0]) == 1
     exercise = compute_exercise_metrics(inp)["per_exercise"][1]
     assert exercise["timed_sets"] == 1 and exercise["dynamic_sets"] == 0
+    assert exercise["total_sets"] == 1
     body = BodyPartsView({"per_exercise": {1: exercise}})._build_bodypart_df()
     assert body.loc[body["Body Part"] == "Chest", "Total_Sets"].item() == 0
     assert body.loc[body["Body Part"] == "Chest", "Timed_Sets"].item() == 1
@@ -182,7 +178,7 @@ def test_assistance_reduction_increases_total_load_without_inventing_regression(
 def test_equal_total_with_different_body_and_external_mass_compares_reps(sample_input):
     old, new = SetLoad("bodyweight", 5, 80), SetLoad("bodyweight", 0, 85)
     inp = source(sample_input, [(old, 8), (new, 9)])
-    assert compute_exercise_metrics(inp)["per_exercise"][1]["estimated_1rm_max"] is None
+    assert compute_exercise_metrics(inp)["per_exercise"][1]["per_session_1rm"] == []
     row = compute_plan_performance(data(entry(1, old), entry(2, new, 9)), as_of=AS_OF)[1]
     assert row["reps_delta"] == 3
 

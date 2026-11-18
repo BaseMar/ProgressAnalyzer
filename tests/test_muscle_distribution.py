@@ -63,6 +63,10 @@ def test_plan_and_recorded_allocation_use_identical_roles_and_factors(sample_inp
             assert actual.loc[group, field] == value
     assert allocation["Forearms"]["Indirect_Sets"] == 3
     assert allocation["Forearms"]["Total_Sets"] == 0.75
+    weekly = build_weekly_distribution(actual.reset_index(), 1.0).set_index("Body Part")
+    assert weekly.loc["Forearms", "Indirect / week"] == 3
+    assert weekly.loc["Forearms", "Direct / week"] == 0
+    assert weekly.loc["Forearms", "Sets / Week"] == 0.75
 
 
 def test_raw_and_weighted_weekly_values_share_one_period_denominator():
@@ -82,6 +86,8 @@ def test_raw_and_weighted_weekly_values_share_one_period_denominator():
         build_weekly_distribution(frame, 2.0, {"Biceps": 12.0}).set_index("Body Part").loc["Biceps"]
     )
     assert row["Sets / Week"] == 5
+    assert row["Direct / week"] == 3
+    assert row["Indirect / week"] == 4
     assert row["Target %"] == pytest.approx(100 * 5 / 12)
     assert row["Status"] == "under"
 
@@ -95,6 +101,8 @@ def test_normalized_muscle_names_merge_instead_of_losing_exposure():
     )
     row = build_weekly_distribution(frame, 1.0, {"Chest": 5.0}).set_index("Body Part").loc["Chest"]
     assert row["Sets / Week"] == 5
+    assert row["Direct / week"] == 5
+    assert row["Indirect / week"] == 0
     assert row["Status"] == "on_target"
 
 
@@ -121,13 +129,28 @@ def test_untrained_muscle_in_plan_gets_target_and_zero_actual():
         build_weekly_distribution(frame, 1.0, {"Biceps": 6.0}).set_index("Body Part").loc["Biceps"]
     )
     assert row["Target"] == 6 and row["Sets / Week"] == 0
+    assert row["Direct / week"] == row["Indirect / week"] == 0
     assert row["Status"] == "under"
 
 
-def test_table_contains_only_the_four_essential_fields(schedule_data, sample_input, sets_dataframe):
+def test_table_shows_raw_roles_alongside_weighted_plan_comparison(
+    schedule_data, sample_input, sets_dataframe
+):
     app = open_muscle_distribution(schedule_data, sample_input, sets_dataframe)
     table = app.dataframe[0].value
-    assert list(table.columns) == ["Body Part", "Target", "Recorded / week", "Target %"]
+    assert list(table.columns) == [
+        "Body Part",
+        "Direct / week",
+        "Indirect / week",
+        "Recorded / week",
+        "Target",
+        "Target %",
+    ]
+    values = ranges_table(app)
+    assert values.loc["Chest", "Direct / week"] == values.loc["Chest", "Recorded / week"]
+    assert values.loc["Chest", "Indirect / week"] == 0
+    assert values.loc["Triceps", "Direct / week"] == 0
+    assert values.loc["Triceps", "Indirect / week"] == values.loc["Chest", "Direct / week"]
     assert not app.expander
     assert not any(item.key == "muscle_reference_group" for item in app.selectbox)
     assert not any("doi.org" in item.value or "Counting" in item.value for item in app.markdown)
@@ -154,5 +177,39 @@ BodyPartsView({"per_exercise": {1: {"body_part": "Chest", "total_sets": 4, "tota
     assert not app.exception and not app.error
     table = app.dataframe[0].value.set_index("Body Part")
     assert table.loc["Chest", "Recorded / week"] == 2
+    assert pd.isna(table.loc["Chest", "Direct / week"])
+    assert pd.isna(table.loc["Chest", "Indirect / week"])
     assert "Unclassified / week" not in table
     assert not app.expander
+
+
+def test_partial_roles_do_not_present_partial_counts_as_complete():
+    frame = pd.DataFrame(
+        [
+            {
+                "Body Part": "Back",
+                "Total_Sets": 3,
+                "Direct_Sets": 3,
+                "Indirect_Sets": 0,
+                "Unclassified_Sets": 0,
+            },
+            {
+                "Body Part": "Back",
+                "Total_Sets": 1,
+                "Direct_Sets": 0,
+                "Indirect_Sets": 0,
+                "Unclassified_Sets": 2,
+            },
+        ]
+    )
+    row = build_weekly_distribution(frame, 2, {"Back": 4}).set_index("Body Part").loc["Back"]
+    assert row["Sets / Week"] == 2
+    assert row["Target %"] == 50
+    assert pd.isna(row["Direct / week"]) and pd.isna(row["Indirect / week"])
+
+
+def test_weighted_totals_without_roles_do_not_invent_direct_or_indirect_counts():
+    frame = pd.DataFrame([{"Body Part": "Back", "Total_Sets": 3}])
+    row = build_weekly_distribution(frame, 1).set_index("Body Part").loc["Back"]
+    assert row["Sets / Week"] == 3
+    assert pd.isna(row["Direct / week"]) and pd.isna(row["Indirect / week"])

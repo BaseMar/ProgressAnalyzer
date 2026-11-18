@@ -30,7 +30,7 @@ def test_one_session_with_many_sets_is_not_a_progress_comparison(sample_input):
     )
     exercise = compute_exercise_metrics(data)["per_exercise"][1]
     assert exercise["strength_trend_1rm"] is None
-    assert exercise["volume_trend"] is None
+    assert len(exercise["per_session_1rm"]) == 1
 
 
 def test_best_session_result_is_independent_of_set_order_and_extra_warmup(sample_input):
@@ -69,8 +69,6 @@ def test_sessions_on_same_day_follow_start_time_and_count_separately(sample_inpu
     )
 
     exercise = compute_exercise_metrics(data)["per_exercise"][1]
-    assert exercise["sessions_count"] == 2
-    assert exercise["avg_sets_per_session"] == 1
     assert [point["session_id"] for point in exercise["per_session_1rm"]] == [2, 1]
     assert len(exercise["per_session_volume"]) == 2
 
@@ -94,4 +92,4 @@ def test_duration_progress_uses_longest_set_in_each_session(sample_input):
 
 def test_empty_training_data_has_no_recorded_series(sample_input):
     data = training_input(sample_input, [], [])
-    assert compute_exercise_metrics(data) == {"per_exercise": {}, "global": {}}
+    assert compute_exercise_metrics(data) == {"per_exercise": {}}

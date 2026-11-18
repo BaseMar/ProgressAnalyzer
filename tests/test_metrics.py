@@ -22,12 +22,15 @@ def test_compute_exercise_metrics_aggregates_targets_and_progress(sample_input):
 
     assert bench["exercise_name"] == "Bench Press"
     assert bench["total_sets"] == 4
-    assert bench["sessions_count"] == 2
-    assert bench["avg_sets_per_session"] == 2
-    # Total session volumes: 1880 kg -> 1970 kg, rather than individual sets.
-    assert bench["volume_trend"] == 90
-    assert "Chest (primary): Pectoralis" in bench["muscle_target_summary"]
-    assert result["global"]["most_trained_exercise"] == 1
+    assert bench["dynamic_sets"] == 4
+    assert [point["volume"] for point in bench["per_session_volume"]] == [1880, 1970]
+    assert bench["muscle_targets"][0] == {
+        "muscle_group": "Chest",
+        "muscle_name": "Pectoralis",
+        "role": "primary",
+        "set_factor": 1.0,
+    }
+    assert [point["estimated_1rm"] for point in bench["per_session_1rm"]] == [139.33, 145.67]
 
 
 def test_compute_exercise_metrics_handles_duration_exercises():
@@ -57,12 +60,12 @@ def test_compute_exercise_metrics_handles_duration_exercises():
     result = compute_exercise_metrics(input_data)
     plank = result["per_exercise"][1]
 
-    assert plank["total_reps"] == 0
     assert plank["total_volume"] == 0
-    assert plank["total_duration_seconds"] == 120
-    assert plank["best_duration_seconds"] == 75
-    assert plank["effective_sets"] == pytest.approx(2.0)
-    assert plank["estimated_1rm_max"] is None
+    assert plank["total_sets"] == plank["timed_sets"] == 2
+    assert plank["dynamic_sets"] == 0
+    assert [point["duration_seconds"] for point in plank["per_session_best_duration"]] == [45, 75]
+    assert plank["duration_trend_seconds"] == 30
+    assert plank["per_session_1rm"] == []
 
 
 def test_compute_exercise_metrics_treats_nan_duration_as_strength_set():
@@ -80,7 +83,9 @@ def test_compute_exercise_metrics_treats_nan_duration_as_strength_set():
     result = compute_exercise_metrics(input_data)
     bench = result["per_exercise"][1]
 
-    assert bench["total_reps"] == 10
+    assert bench["dynamic_sets"] == 1
+    assert bench["timed_sets"] == 0
     assert bench["total_volume"] == 1000
-    assert bench["total_duration_seconds"] == 0
-    assert bench["estimated_1rm_max"] == pytest.approx(133.333333)
+    assert bench["per_set_performance"][0]["quantity"] == 10
+    assert bench["per_session_duration"] == []
+    assert bench["per_session_1rm"][0]["estimated_1rm"] == 133.33

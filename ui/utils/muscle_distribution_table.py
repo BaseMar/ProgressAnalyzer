@@ -21,7 +21,7 @@ def render_weekly_distribution(body_df, period_weeks, period_label, *, weekly_ta
     recorded.metric(
         "Recorded sets / week",
         f"{row['Sets / Week']:.1f}",
-        help="Weighted dynamic set equivalents, averaged over the selected period. Timed sets are shown separately.",
+        help="Weighted dynamic set equivalents, averaged over the selected period. Timed holds are excluded.",
     )
     target.metric(
         "Plan sets / week",
@@ -33,16 +33,30 @@ def render_weekly_distribution(body_df, period_weeks, period_label, *, weekly_ta
         f"{row['Target %']:.0f}%" if row["Target"] is not None and row["Target"] > 0 else "—",
         help="Recorded weekly set equivalents divided by the plan target. Higher is not automatically better; a zero target has no percentage.",
     )
-    display = summary[["Body Part", "Target", "Sets / Week", "Target %"]].rename(
-        columns={"Sets / Week": "Recorded / week"}
-    )
+    display = summary[
+        ["Body Part", "Direct / week", "Indirect / week", "Sets / Week", "Target", "Target %"]
+    ].rename(columns={"Sets / Week": "Recorded / week"})
     st.dataframe(
         display,
         hide_index=True,
         width="stretch",
         column_config={
+            "Direct / week": st.column_config.NumberColumn(
+                "Direct / week",
+                format="%.1f",
+                help="Dynamic sets with this muscle as the primary target, before weighting. Blank when roles are incomplete.",
+            ),
+            "Indirect / week": st.column_config.NumberColumn(
+                "Indirect / week",
+                format="%.1f",
+                help="Dynamic sets with a secondary or stabilizing role, before weighting. Stabilizer sets count once. Blank when roles are incomplete.",
+            ),
             "Target": st.column_config.NumberColumn("Plan target", format="%.1f"),
-            "Recorded / week": st.column_config.NumberColumn("Recorded / week", format="%.1f"),
+            "Recorded / week": st.column_config.NumberColumn(
+                "Recorded / week",
+                format="%.1f",
+                help="Dynamic sets multiplied by the saved muscle factors. This weighted value can differ from direct plus indirect counts.",
+            ),
             "Target %": st.column_config.NumberColumn("Plan %", format="%.0f%%"),
         },
     )

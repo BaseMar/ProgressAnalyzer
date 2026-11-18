@@ -69,7 +69,7 @@ def test_same_load_compares_reps_and_checks_range_and_rir():
     assert rows[1]["in_range"] == 3
     assert rows[1]["range_met"]
     assert rows[1]["rir_status"] == "At target"
-    assert rows[1]["rir_delta"] == 0
+    assert [item["rir"] for item in rows[1]["sets"]] == [2, 2, 2]
     assert rows[1]["previous"]["session_id"] == 1
 
 
@@ -87,10 +87,9 @@ def test_missing_rir_is_not_zero_and_target_zero_is_valid():
         ),
         as_of=AS_OF,
     )
-    assert rows[0]["avg_rir"] is None
+    assert all(item["rir"] is None for item in rows[0]["sets"])
     assert rows[0]["rir_status"] == "Incomplete RIR data"
-    assert rows[1]["avg_rir"] == 0
-    assert rows[1]["rir_delta"] is None
+    assert [item["rir"] for item in rows[1]["sets"]] == [0, 0, 0]
     assert rows[1]["rir_status"].startswith("Below target")
     zero = replace(PlannedExercise(1, 3, 6, 10), target_rir=0)
     assert (

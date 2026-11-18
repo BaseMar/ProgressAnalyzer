@@ -8,12 +8,12 @@
     "version": 1
   },
   "sections": {
-    "adherence": "c09289b582866ee0779b848f7457bdc7ebc0e5615bb70b62452b833ba47ae3c8",
+    "adherence": "05c981fb4b213610b4fc4dd00b5afec12482473bf41ea4b0001353e2c1cb1d92",
     "measurements": "a10943414cc973ea8a5f0434f053b00a2f56943251da1a307f34ef8d344f0234",
     "phase_cases": "b305bf2a83e74a2fe74594cdcce92aa2e01022d4eaddc9f8ebff63da5f356490",
-    "plan_performance": "8606332abd0068bfc8362201043a78111aeef318d148827b747c9fcf6d64749f",
+    "plan_performance": "b0f74b466bb4d867165cc26577fb1e3d1f7cf857e5e7a16ab4121d4e1d22b7c0",
     "recommendations": "1ee1d130efc09f4c3a1943fc658d02191a038d73a1a0d4085816c1dbfbb08f7d",
-    "recorded_exercises": "6fd9dd5321e15dee01afca881677fa88972949e9665d5cf774ae50d8c051df56",
+    "recorded_exercises": "b16f4c5a4f1acb2393674a1c0d771e2e4fee3d93ff826adc35afc64b839b2aa5",
     "weekly_allocation": "59ce681a2094e9891a1b3a41bfa7270cdf83ce23abbf9444dca05914ab426cbb"
   },
   "examples": {

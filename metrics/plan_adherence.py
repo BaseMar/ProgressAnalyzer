@@ -162,8 +162,6 @@ def compute_plan_adherence(
     summary = {
         "due_workouts": len(eligible),
         "linked_workouts": sum(row["linked"] for row in eligible),
-        "complete_workouts": sum(row["complete"] for row in eligible),
-        "on_time_workouts": sum(row["on_time"] for row in eligible),
     }
     for name in ("planned_sets", "covered_sets", "planned_exercises", "covered_exercises"):
         summary[name] = sum(row[name] for row in eligible)

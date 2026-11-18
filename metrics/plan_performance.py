@@ -63,7 +63,6 @@ def _target_result(sets, planned, interpretations):
         "range_met": not missing and in_range == planned.set_count,
         "rir_status": rir_status,
         "rir_known_sets": len(known),
-        "avg_rir": sum(known) / len(known) if known and len(known) == len(sets) else None,
         "progression_eligible": bool(sets)
         and all(meaning.progression_eligible for meaning in interpretations),
         "sets": tuple(
@@ -85,7 +84,7 @@ def _target_result(sets, planned, interpretations):
 
 
 def _comparison(current, previous):
-    result = {"previous": previous, "reps_delta": None, "seconds_delta": None, "rir_delta": None}
+    result = {"previous": previous, "reps_delta": None, "seconds_delta": None}
     if not current["sets"]:
         excluded = current.get("excluded_set_kinds", ())
         result["comparison"] = (
@@ -118,8 +117,6 @@ def _comparison(current, previous):
             result["comparison"] = (
                 f"{'More' if delta > 0 else 'Fewer' if delta < 0 else 'Same'} {'seconds' if field == 'seconds' else 'reps'} at the same load"
             )
-        if current["avg_rir"] is not None and previous["avg_rir"] is not None:
-            result["rir_delta"] = current["avg_rir"] - previous["avg_rir"]
     return result
 
 
@@ -195,7 +192,6 @@ def compute_plan_performance(
                     "previous": None,
                     "reps_delta": None,
                     "seconds_delta": None,
-                    "rir_delta": None,
                     "comparison": "Deload: reduced training demand; excluded from progression comparisons",
                 }
             output.append({**current, **comparison})

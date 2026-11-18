@@ -152,6 +152,8 @@ If 16 weighted sets were logged across 14 days, the result is
 | --- | --- |
 | **Plan target** | One reference week of the active plan version effective today. |
 | **Recorded / week** | Your logged weighted sets, averaged over the selected period. |
+| **Direct / week** | Dynamic sets where the muscle has a primary role, before weighting. |
+| **Indirect / week** | Dynamic sets with a secondary or stabilizing role, before weighting. Stabilizers count once. |
 | **Plan %** | Recorded weekly allocation divided by the target. |
 | Blue / green / amber on the map | Below / within / above the plan's ±10% comparison band. |
 | Target 0 / blank | No dynamic sets planned / target unavailable. |
@@ -167,6 +169,8 @@ effective date.
   **All time** spans the first through last metric date, including rest days.
 - Primary-role counts are direct; secondary and stabilizer counts are indirect.
   Raw counts and weighted equivalents are different measures.
+  The direct and indirect columns use the same weekly denominator as the weighted
+  total. Both remain blank if any recorded dynamic sets have an unknown role.
 - Missing roles are not inferred from factor size. Saved weighted contributions
   remain included. Without detailed mappings, the catalog body part is used
   as a primary target with factor 1.

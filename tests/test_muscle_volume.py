@@ -65,7 +65,6 @@ def test_timed_sets_are_separate_from_dynamic_distribution():
                 1: {
                     "body_part": "Abs",
                     "total_sets": 2,
-                    "effective_sets": 6.0,
                     "dynamic_sets": 0,
                     "timed_sets": 2,
                     "total_volume": 0.0,

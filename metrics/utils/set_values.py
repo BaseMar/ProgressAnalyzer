@@ -55,15 +55,6 @@ def set_volume(workout_set: Any) -> float:
     return set_reps(workout_set) * load if load is not None else 0.0
 
 
-def set_intensity(workout_set: Any) -> float | None:
-    if is_duration_set(workout_set) or load_type(workout_set) in (
-        "bodyweight",
-        "assisted_bodyweight",
-    ):
-        return None
-    return set_weight(workout_set) * (1 + set_reps(workout_set) / 30)
-
-
 def set_estimated_1rm(workout_set: Any) -> float | None:
     if is_duration_set(workout_set) or load_type(workout_set) in (
         "bodyweight",
@@ -71,20 +62,3 @@ def set_estimated_1rm(workout_set: Any) -> float | None:
     ):
         return None
     return estimate_1rm(set_weight(workout_set), set_reps(workout_set))
-
-
-def set_effective_sets(workout_set: Any) -> float:
-    # Historical alias: count recorded sets, never turn seconds into hard sets.
-    return 1.0
-
-
-def load_summary(sets):
-    dynamic = [item for item in sets if not is_duration_set(item)]
-    missing = sum(total_load_kg(item) is None for item in dynamic)
-    return {
-        "dynamic_sets": len(dynamic),
-        "timed_sets": len(sets) - len(dynamic),
-        "unknown_load_sets": missing,
-        "volume_complete": missing == 0,
-        "unknown_total_load_sets": sum(total_load_kg(item) is None for item in sets),
-    }

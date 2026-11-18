@@ -50,7 +50,6 @@ def test_body_parts_view_builds_weighted_bodypart_dataframe():
                 ],
                 "total_sets": 4,
                 "total_volume": 4000,
-                "estimated_1rm_avg": 120.0,
                 "per_session_1rm": [{"date": date(2026, 5, 1)}],
             },
             2: {
@@ -58,7 +57,6 @@ def test_body_parts_view_builds_weighted_bodypart_dataframe():
                 "muscle_targets": [],
                 "total_sets": 2,
                 "total_volume": 1000,
-                "estimated_1rm_avg": 90.0,
                 "per_session_1rm": [{"date": date(2026, 5, 2)}],
             },
         }

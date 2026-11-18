@@ -1,4 +1,4 @@
-"""Freeze current semantic results before changing loading, caching and architecture."""
+"""Freeze maintained semantic results across calculation and architecture changes."""
 
 import json
 import sqlite3
@@ -11,6 +11,9 @@ from scripts.baseline_fixture import AS_OF, create_fixture
 from scripts.baseline_snapshot import capture_snapshot, digest, snapshot_reference
 from scripts.benchmark_project import ReadOnlyProbe, database_fingerprint
 
+# The November 2026 cleanup removes unused aggregates from the earlier snapshot.
+# Its updated hashes were derived by pruning those fields from pre-cleanup output;
+# every retained value was checked for exact equality before accepting the reference.
 REFERENCE = json.loads(
     (Path(__file__).parent / "fixtures/project_baseline.json").read_text(encoding="utf-8")
 )
@@ -26,7 +29,7 @@ def baseline():
 
 
 @pytest.mark.parametrize("section", sorted(REFERENCE["sections"]))
-def test_current_outputs_match_preoptimization_reference(baseline, section):
+def test_current_outputs_match_reference(baseline, section):
     snapshot = baseline[2]
     assert snapshot["fixture"] == REFERENCE["fixture"]
     assert digest(snapshot[section]) == REFERENCE["sections"][section], (

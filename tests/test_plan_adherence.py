@@ -53,9 +53,9 @@ def test_substitute_counts_only_after_confirmation_and_preserves_actual_identity
     assert before["summary"]["covered_sets"] == 0
     approved = replace(data, matches=(ExerciseMatch(1, 101, 201),))
     after = compute_plan_adherence(approved, as_of=TODAY)
-    assert after["summary"]["complete_workouts"] == 1
+    assert after["workouts"][0]["complete"]
     assert after["summary"]["covered_sets"] == 3
-    assert after["summary"]["on_time_workouts"] == 0
+    assert not after["workouts"][0]["on_time"]
     assert after["workouts"][0]["details"][0]["replacement_exercise_id"] == 2
     assert approved.recorded[0].exercise_id == 2
     assert approved.workouts[0].targets[0].exercise.exercise_id == 1
@@ -164,7 +164,7 @@ def test_recorded_execution_counts_immediately_even_before_planned_date(
     assert before["summary"]["linked_workouts"] == 1
     assert before["summary"]["planned_sets"] == 3
     assert before["summary"]["covered_sets"] == count
-    assert before["summary"]["on_time_workouts"] == (planned_date == recorded_date)
+    assert before["workouts"][0]["on_time"] == (planned_date == recorded_date)
     assert before["workouts"][0]["eligible"]
 
 
@@ -281,7 +281,7 @@ def test_confirm_and_remove_replacement_roundtrip_without_modifying_training_log
         load_plan_adherence(engine, plan.plan_id, start, start), as_of=date.today()
     )
     assert report["summary"]["covered_sets"] == 3
-    assert report["summary"]["on_time_workouts"] == 0
+    assert not report["workouts"][0]["on_time"]
     with engine.connect() as connection:
         assert (
             connection.execute(
