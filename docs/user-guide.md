@@ -149,7 +149,8 @@ In **Plan**, choose **Create a new plan** or select a saved plan:
 
 1. Set the name and effective date.
 2. Add named workouts and weekdays; select one **Workout to edit**.
-3. Add exercises and set their counts, ranges and unit: reps or seconds.
+3. Add exercises to the workout list. Select one to edit its counts, ranges and
+   unit: reps or seconds; the target preview updates with your changes.
 4. Set target RIR and an available weight step in the exercise fields.
 5. Save. To revise a saved routine, choose **Edit plan**.
 
@@ -158,7 +159,7 @@ exercises or pages.
 
 ### Configure a training block
 
-Under **Progression & training block**, choose a start date and a length of
+Under **Training block → Deload schedule**, choose a start date and a length of
 6, 7 or 8 weeks. The last week is reserved for deload.
 
 ```text

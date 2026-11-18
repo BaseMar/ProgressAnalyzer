@@ -102,10 +102,10 @@ def test_one_exercise_form_and_draft_survive_navigation_before_saving(
     assert not app.exception
     assert app.session_state["plan_create_mode"] is True
     assert app.text_input(key="plan_editor_new_name").value == "Persistent draft"
-    assert app.selectbox(key="plan_editor_new_day_0_active_exercise").value == 1
+    assert app.radio(key="plan_editor_new_day_0_active_exercise").value == 1
     assert app.number_input(key="plan_editor_new_day_0_ex_1_sets").value == 5
     assert app.number_input(key="plan_editor_new_day_0_ex_1_rir").value == 1
-    app.selectbox(key="plan_editor_new_day_0_active_exercise").select(0).run()
+    app.radio(key="plan_editor_new_day_0_active_exercise").set_value(0).run()
     assert app.number_input(key="plan_editor_new_day_0_ex_0_sets").value == 3
     app.button(key="plan_editor_new_save").click().run()
     assert not app.exception

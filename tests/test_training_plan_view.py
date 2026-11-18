@@ -228,3 +228,50 @@ def test_switching_workouts_preserves_unsaved_fields_and_uses_no_spreadsheet(pla
     saved = load_training_plans(plan_engine)[0]
     assert [day.name for day in saved.draft.days] == ["Upper A", "Core"]
     assert saved.draft.days[0].exercises[0].target_rir == 0
+
+
+def test_empty_workout_can_be_rebuilt_without_losing_plan_details(plan_engine):
+    app = start_app(plan_engine)
+    app.text_input(key="plan_editor_new_name").set_value("Rebuilt plan")
+    app.text_input(key="plan_editor_new_day_0_name").set_value("Core")
+    app.button(key="plan_editor_new_day_0_ex_0_remove").click().run()
+    assert not app.exception
+    assert not app.number_input
+    app.button(key="plan_editor_new_day_0_add_exercise").click().run()
+    assert app.radio(key="plan_editor_new_day_0_active_exercise").value == 1
+    app.selectbox(key="plan_editor_new_day_0_ex_1_exercise_id").select(2)
+    app.selectbox(key="plan_editor_new_day_0_ex_1_unit").select("seconds")
+    app.number_input(key="plan_editor_new_day_0_ex_1_minimum").set_value(45)
+    app.number_input(key="plan_editor_new_day_0_ex_1_maximum").set_value(45)
+    app.button(key="plan_editor_new_save").click().run()
+    assert not app.exception and not app.error
+    saved = load_training_plans(plan_engine)[0]
+    assert saved.draft.name == "Rebuilt plan"
+    assert saved.draft.days[0].name == "Core"
+    assert saved.draft.days[0].exercises[0].target_min == 45
+    assert saved.draft.days[0].exercises[0].target_unit == "seconds"
+
+
+def test_target_preview_tracks_selected_exercise_and_keeps_zero_reserve(plan_engine):
+    app = start_app(plan_engine)
+    app.selectbox(key="plan_editor_new_day_0_ex_0_exercise_id").select(1)
+    app.number_input(key="plan_editor_new_day_0_ex_0_sets").set_value(4)
+    app.number_input(key="plan_editor_new_day_0_ex_0_minimum").set_value(8)
+    app.number_input(key="plan_editor_new_day_0_ex_0_maximum").set_value(8)
+    app.number_input(key="plan_editor_new_day_0_ex_0_rir").set_value(0)
+    app.button(key="plan_editor_new_day_0_add_exercise").click().run()
+    app.selectbox(key="plan_editor_new_day_0_ex_1_unit").select("seconds")
+    app.number_input(key="plan_editor_new_day_0_ex_1_minimum").set_value(30)
+    app.number_input(key="plan_editor_new_day_0_ex_1_maximum").set_value(60)
+    app.run()
+    preview = next(
+        item.value for item in app.markdown if 'class="plan-target-preview"' in item.value
+    )
+    assert "3 × 30–60 seconds" in preview
+    assert "RIR 0" not in preview
+    app.radio(key="plan_editor_new_day_0_active_exercise").set_value(0).run()
+    preview = next(
+        item.value for item in app.markdown if 'class="plan-target-preview"' in item.value
+    )
+    assert "4 × 8 reps" in preview
+    assert "RIR 0" in preview

@@ -40,7 +40,6 @@ class TrainingPlanView:
 
     def render(self):
         page_title("Plan", "Your training plan")
-        st.caption("Define the weekly reference used to analyse your workout logs.")
         try:
             if not self.dm.training_plan_storage_ready():
                 st.info(
@@ -63,16 +62,29 @@ class TrainingPlanView:
             st.session_state["plan_create_mode"] = False
         create = st.session_state.get("plan_create_mode", not plans)
         with st.container(key="plan_main_actions"):
-            new, edit = st.columns(2)
-            new.button(
-                "Create a new plan",
-                key="plan_create_new",
-                type="primary",
-                width="stretch",
-                icon=":material/add:",
-                on_click=_set_plan_mode,
-                args=(True,),
+            selection, new, edit = st.columns([3, 1.3, 1.3], vertical_alignment="bottom")
+            with selection:
+                if create:
+                    st.markdown(
+                        '<div class="plan-mode-label">New plan<span>Unsaved draft</span></div>',
+                        unsafe_allow_html=True,
+                    )
+                    selected = None
+                else:
+                    selected = select_active_plan(plans.values())
+            source = None if create else plans.get(selected)
+            editing = (
+                source is None or st.session_state.get("plan_editing_version") == source.version_id
             )
+            if not create:
+                new.button(
+                    "Create a new plan",
+                    key="plan_create_new",
+                    width="stretch",
+                    icon=":material/add:",
+                    on_click=_set_plan_mode,
+                    args=(True,),
+                )
             if create and plans:
                 edit.button(
                     "Back to saved plans",
@@ -81,35 +93,47 @@ class TrainingPlanView:
                     on_click=_set_plan_mode,
                     args=(False,),
                 )
-        selected = select_active_plan(plans.values()) if not create else None
-        source = None if create else plans.get(selected)
-        editing = (
-            source is None or st.session_state.get("plan_editing_version") == source.version_id
-        )
-        if source:
-            with edit:
-                st.button(
-                    "Finish editing" if editing else "Edit plan",
+            elif source:
+                edit.button(
+                    "Back to plan" if editing else "Edit plan",
                     key=f"plan_edit_{source.version_id}",
                     width="stretch",
+                    type="secondary" if editing else "primary",
+                    icon=":material/arrow_back:" if editing else ":material/edit:",
                     on_click=_set_plan_mode,
                     args=(False, None if editing else source.version_id),
                 )
-            st.caption(
-                f"Version {source.version_number} - applies from {source.draft.effective_from:%d %b %Y}"
-            )
-            if not editing:
-                self._overview(source.draft, source.version_id)
+        if source and not editing:
+            self._plan_summary(source)
+            self._overview(source.draft, source.version_id)
         if editing:
             self._render_editor(source)
-        if source:
+        if source and not editing:
             self._render_history(source.plan_id)
 
+    @staticmethod
+    def _plan_summary(source):
+        draft = source.draft
+        block = (
+            f"<span>{draft.progression.block_weeks}-week block · final week deload</span>"
+            if draft.progression
+            else ""
+        )
+        st.markdown(
+            '<div class="plan-summary">'
+            '<div class="plan-summary-title">'
+            f"<h2>{escape(draft.name)}</h2><span>Version {source.version_number} · "
+            f"from {draft.effective_from:%d %b %Y}</span></div>"
+            '<div class="plan-summary-stats">'
+            f"<span><strong>{len(draft.days)}</strong> workouts / week</span>"
+            f"<span><strong>{sum(len(day.exercises) for day in draft.days)}</strong> exercises</span>"
+            f"<span><strong>{sum(item.set_count for day in draft.days for item in day.exercises)}</strong> sets / week</span>"
+            f"</div>{block}</div>",
+            unsafe_allow_html=True,
+        )
+
     def _overview(self, draft, version_id):
-        if draft.progression:
-            st.caption(
-                f"Training block: from {draft.progression.block_start:%d %b %Y} · {draft.progression.block_weeks} weeks · final week reserved for deload"
-            )
+        section_header("Weekly schedule", first=True)
         cards = []
         for day in sorted(draft.days, key=lambda item: item.weekday):
             cards.append(
@@ -120,7 +144,7 @@ class TrainingPlanView:
         st.markdown(
             '<div class="plan-week-grid">' + "".join(cards) + "</div>", unsafe_allow_html=True
         )
-        section_header("Exercises in your plan")
+        section_header("Workout details")
         index = st.selectbox(
             "Workout",
             range(len(draft.days)),
@@ -129,17 +153,29 @@ class TrainingPlanView:
                 f"{WEEKDAYS[draft.days[value].weekday]} · {draft.days[value].name}"
             ),
         )
+        rows = []
         for position, item in enumerate(draft.days[index].exercises, start=1):
-            rir = f" · RIR {item.target_rir}" if item.target_rir is not None else ""
+            rir = f"RIR {item.target_rir}" if item.target_rir is not None else ""
             weight_step = (
-                f" · step {item.weight_increment:g} kg" if item.weight_increment is not None else ""
+                f"{item.weight_increment:g} kg step" if item.weight_increment is not None else ""
             )
-            st.markdown(
+            detail = " · ".join(filter(None, (rir, weight_step)))
+            rows.append(
                 '<div class="plan-reference-row">'
-                f"<span>{position:02d} · {escape(self.labels.get(item.exercise_id, 'Unknown exercise'))}</span>"
-                f"<strong>{item.set_count} × {item.target_min}–{item.target_max} {item.target_unit}{rir}{weight_step}</strong></div>",
-                unsafe_allow_html=True,
+                f'<span class="plan-exercise-number">{position:02d}</span>'
+                '<div class="plan-reference-name">'
+                f"<strong>{escape(self.labels.get(item.exercise_id, 'Unknown exercise'))}</strong>"
+                f"<span>{escape(detail)}</span></div>"
+                f'<strong class="plan-reference-target">{self._target_label(item.set_count, item.target_min, item.target_max, item.target_unit)}</strong></div>'
             )
+        st.markdown(
+            '<div class="plan-exercise-list">' + "".join(rows) + "</div>", unsafe_allow_html=True
+        )
+
+    @staticmethod
+    def _target_label(sets, minimum, maximum, unit):
+        quantity = str(minimum) if minimum == maximum else f"{minimum}–{maximum}"
+        return f"{sets} × {quantity} {unit}"
 
     @staticmethod
     def _exercise(item=None, uid=0):
@@ -185,11 +221,7 @@ class TrainingPlanView:
             st.session_state[store_key] = dict(days=days, next_day=len(days))
         store = st.session_state[store_key]
         self._capture(scope, store)
-        st.subheader("Edit plan" if source else "Create a new plan")
-        st.caption(
-            "Your draft is kept when you switch workouts, exercises or pages. Save below when the whole routine is ready."
-        )
-        section_header("1. Plan details")
+        section_header("Plan details", first=True)
         minimum = (
             max(date.today(), source.draft.effective_from + timedelta(days=1)) if source else None
         )
@@ -211,158 +243,8 @@ class TrainingPlanView:
             if source:
                 st.caption("Saving creates a new version; previous targets remain in history.")
         store["name"], store["start"] = name, start
-        section_header("2. Workouts and exercises")
-        action = None
-        if store["days"]:
-            ids = [day["uid"] for day in store["days"]]
-            if "select_next" in store:
-                st.session_state[f"{scope}_active_day"] = store.pop("select_next")
-            if st.session_state.get(f"{scope}_active_day") not in ids:
-                st.session_state[f"{scope}_active_day"] = (
-                    store.get("selected_day") if store.get("selected_day") in ids else ids[0]
-                )
-            day_id = st.selectbox(
-                "Workout to edit",
-                ids,
-                key=f"{scope}_active_day",
-                format_func=lambda value: next(
-                    f"{ids.index(value) + 1:02d} · {WEEKDAYS[day['weekday']]} · {day['name'] or 'Untitled workout'}"
-                    for day in store["days"]
-                    if day["uid"] == value
-                ),
-            )
-            day = next(item for item in store["days"] if item["uid"] == day_id)
-            prefix = f"{scope}_day_{day_id}"
-            with st.container(key="training_workout_editor"):
-                left, right = st.columns([2, 1])
-                left.text_input(
-                    "Workout name",
-                    value=day["name"],
-                    placeholder="e.g. Upper A",
-                    max_chars=120,
-                    key=f"{prefix}_name",
-                )
-                right.selectbox(
-                    "Planned weekday",
-                    range(7),
-                    index=day["weekday"],
-                    format_func=lambda value: WEEKDAYS[value],
-                    key=f"{prefix}_weekday",
-                )
-                selected_exercise = None
-                if day["exercises"]:
-                    exercise_ids = [item["uid"] for item in day["exercises"]]
-                    exercise_key = f"{prefix}_active_exercise"
-                    if "select_exercise_next" in day:
-                        st.session_state[exercise_key] = day.pop("select_exercise_next")
-                    if st.session_state.get(exercise_key) not in exercise_ids:
-                        st.session_state[exercise_key] = (
-                            day.get("selected_exercise")
-                            if day.get("selected_exercise") in exercise_ids
-                            else exercise_ids[0]
-                        )
-                    st.caption(
-                        f"{len(exercise_ids)} exercises in this workout. Select one to edit; all changes are saved together."
-                    )
-                    selected_exercise = st.selectbox(
-                        "Exercise to edit",
-                        exercise_ids,
-                        key=exercise_key,
-                        format_func=lambda value: next(
-                            f"{index + 1:02d} · {self.labels.get(item['exercise_id'], 'Choose an exercise')}"
-                            for index, item in enumerate(day["exercises"])
-                            if item["uid"] == value
-                        ),
-                    )
-                for index, item in enumerate(day["exercises"]):
-                    if item["uid"] != selected_exercise:
-                        continue
-                    ex_prefix = f"{prefix}_ex_{item['uid']}"
-                    with st.container(key=f"plan_exercise_{day_id}_{item['uid']}"):
-                        with st.container(key=f"{ex_prefix}_controls"):
-                            title, up, down, remove = st.columns([5, 1, 1, 1])
-                            title.markdown(
-                                f'<div class="plan-workout-heading">Exercise {index + 1:02d}</div>',
-                                unsafe_allow_html=True,
-                            )
-                            if up.button(
-                                "↑",
-                                key=f"{ex_prefix}_up",
-                                help="Move exercise up",
-                                disabled=index == 0,
-                            ):
-                                action = ("move", day_id, index, -1)
-                            if down.button(
-                                "↓",
-                                key=f"{ex_prefix}_down",
-                                help="Move exercise down",
-                                disabled=index == len(day["exercises"]) - 1,
-                            ):
-                                action = ("move", day_id, index, 1)
-                            if remove.button(
-                                "×", key=f"{ex_prefix}_remove", help="Remove exercise"
-                            ):
-                                action = ("remove_exercise", day_id, item["uid"])
-                        options = [None, *self.labels]
-                        st.selectbox(
-                            "Exercise",
-                            options,
-                            index=options.index(item["exercise_id"]),
-                            format_func=lambda value: (
-                                "Choose an exercise" if value is None else self.labels[value]
-                            ),
-                            key=f"{ex_prefix}_exercise_id",
-                        )
-                        sets, lower, upper, unit = st.columns(4)
-                        sets.number_input(
-                            "Sets", min_value=1, value=item["sets"], step=1, key=f"{ex_prefix}_sets"
-                        )
-                        lower.number_input(
-                            "Minimum",
-                            min_value=1,
-                            value=item["minimum"],
-                            step=1,
-                            key=f"{ex_prefix}_minimum",
-                        )
-                        upper.number_input(
-                            "Maximum",
-                            min_value=1,
-                            value=item["maximum"],
-                            step=1,
-                            key=f"{ex_prefix}_maximum",
-                        )
-                        unit.selectbox(
-                            "Measure",
-                            ["reps", "seconds"],
-                            index=0 if item["unit"] == "reps" else 1,
-                            key=f"{ex_prefix}_unit",
-                        )
-                        left, right = st.columns(2)
-                        left.number_input(
-                            "Target RIR",
-                            help="Repetitions in reserve: how many more reps you could perform after a set. Leave blank if unknown.",
-                            min_value=0,
-                            value=item["rir"],
-                            step=1,
-                            key=f"{ex_prefix}_rir",
-                        )
-                        increment = (
-                            float(item["increment"]) if item["increment"] is not None else None
-                        )
-                        right.number_input(
-                            "Available weight step (kg)",
-                            min_value=0.01,
-                            value=increment,
-                            step=0.25,
-                            format="%.2f",
-                            key=f"{ex_prefix}_increment",
-                            help="Use the same weight convention as your workout log, including per-dumbbell weights if applicable. Leave blank if unknown.",
-                        )
-                add, remove = st.columns(2)
-                if add.button("Add exercise", key=f"{prefix}_add_exercise", icon=":material/add:"):
-                    action = ("add_exercise", day_id)
-                if remove.button("Remove workout", key=f"{prefix}_remove"):
-                    action = ("remove_day", day_id)
+        section_header("Weekly routine")
+        action = self._render_workout_editor(scope, store)
         self._capture(scope, store)
         if action:
             day = next(item for item in store["days"] if item["uid"] == action[1])
@@ -388,9 +270,9 @@ class TrainingPlanView:
             store["next_day"] += 1
             store["select_next"] = uid
             st.rerun()
-        st.caption("Edit one workout at a time. All workouts are saved together below.")
+        section_header("Training block")
         saved_settings = source.draft.progression if source else None
-        with st.expander("Progression & training block"):
+        with st.expander("Deload schedule"):
             enabled = (
                 True
                 if saved_settings
@@ -425,16 +307,27 @@ class TrainingPlanView:
                     key=f"{scope}_block_weeks",
                 )
                 store["block_start"], store["block_weeks"] = block_start, block_weeks
-                st.caption(
-                    "Blocks repeat from this date; the final week of each block is deload. A new plan version keeps this anchor; change it explicitly to restart the schedule."
-                )
-            st.caption(
-                "See next-workout targets, deloads and their explanations in Overview → Next workout."
+                st.caption("The block repeats from this date; its final week is deload.")
+        section_header("Save plan")
+        with st.container(key="training_plan_save"):
+            summary, save = st.columns([3, 1], vertical_alignment="center")
+            summary.markdown(
+                '<div class="plan-save-summary"><strong>'
+                + escape(name.strip() or "Untitled plan")
+                + f"</strong><span>{len(store['days'])} workouts · "
+                + f"{sum(len(day['exercises']) for day in store['days'])} exercises"
+                + "</span></div>",
+                unsafe_allow_html=True,
             )
-        section_header("3. Save your plan")
-        if st.button(
-            "Save new version" if source else "Save plan", key=f"{scope}_save", type="primary"
-        ):
+            save_requested = save.button(
+                "Save new version" if source else "Save plan",
+                key=f"{scope}_save",
+                type="primary",
+                icon=":material/check:",
+                width="stretch",
+            )
+            st.caption("Saves all workouts. Your draft stays available until then.")
+        if save_requested:
             try:
                 days = []
                 for day in store["days"]:
@@ -477,8 +370,208 @@ class TrainingPlanView:
             st.session_state["plan_next_selection"] = saved.plan_id
             st.rerun()
 
+    def _render_workout_editor(self, scope, store):
+        if not store["days"]:
+            st.info("Add a workout to start building your week.")
+            return None
+        ids = [day["uid"] for day in store["days"]]
+        day_key = f"{scope}_active_day"
+        selected_day = store.pop(
+            "select_next", st.session_state.get(day_key, store.get("selected_day"))
+        )
+        # The client stores option labels. Resend the selected ID when edits rename them.
+        st.session_state[day_key] = selected_day if selected_day in ids else ids[0]
+        day_labels = {
+            day[
+                "uid"
+            ]: f"{index + 1:02d} · {WEEKDAYS[day['weekday']]} · {day['name'] or 'Untitled workout'}"
+            for index, day in enumerate(store["days"])
+        }
+        action = None
+        with st.container(key="plan_editor_workspace"):
+            navigation, details = st.columns([1, 1.7], gap="large")
+            with navigation, st.container(key="training_workout_editor"):
+                day_id = st.selectbox(
+                    "Workout to edit",
+                    ids,
+                    key=day_key,
+                    format_func=day_labels.__getitem__,
+                )
+                day = next(item for item in store["days"] if item["uid"] == day_id)
+                prefix = f"{scope}_day_{day_id}"
+                st.text_input(
+                    "Workout name",
+                    value=day["name"],
+                    placeholder="e.g. Upper A",
+                    max_chars=120,
+                    key=f"{prefix}_name",
+                )
+                st.selectbox(
+                    "Planned weekday",
+                    range(7),
+                    index=day["weekday"],
+                    format_func=lambda value: WEEKDAYS[value],
+                    key=f"{prefix}_weekday",
+                )
+                st.markdown(
+                    '<div class="plan-panel-heading" role="heading" aria-level="3">Exercises</div>',
+                    unsafe_allow_html=True,
+                )
+                selected_exercise = None
+                if day["exercises"]:
+                    exercise_ids = [item["uid"] for item in day["exercises"]]
+                    exercise_key = f"{prefix}_active_exercise"
+                    selected_exercise = day.pop(
+                        "select_exercise_next",
+                        st.session_state.get(exercise_key, day.get("selected_exercise")),
+                    )
+                    st.session_state[exercise_key] = (
+                        selected_exercise if selected_exercise in exercise_ids else exercise_ids[0]
+                    )
+                    with st.container(key="plan_exercise_navigation"):
+                        exercise_labels = {
+                            item[
+                                "uid"
+                            ]: f"{index + 1:02d} · {self.labels.get(item['exercise_id'], 'Choose an exercise')}"
+                            for index, item in enumerate(day["exercises"])
+                        }
+                        selected_exercise = st.radio(
+                            "Exercise to edit",
+                            exercise_ids,
+                            key=exercise_key,
+                            label_visibility="collapsed",
+                            width="stretch",
+                            format_func=exercise_labels.__getitem__,
+                        )
+                else:
+                    st.caption("No exercises yet.")
+                if st.button(
+                    "Add exercise",
+                    key=f"{prefix}_add_exercise",
+                    icon=":material/add:",
+                    width="stretch",
+                ):
+                    action = ("add_exercise", day_id)
+                if st.button(
+                    "Remove workout",
+                    key=f"{prefix}_remove",
+                    icon=":material/delete:",
+                    width="stretch",
+                ):
+                    action = ("remove_day", day_id)
+            with details:
+                if selected_exercise is None:
+                    with st.container(key="plan_empty_exercise"):
+                        st.markdown(
+                            '<div class="plan-empty-state"><span class="plan-panel-heading">Exercise targets</span>'
+                            "<strong>Build this workout</strong>"
+                            "<p>Add an exercise to set its repetitions, time and reserve.</p></div>",
+                            unsafe_allow_html=True,
+                        )
+                else:
+                    index, item = next(
+                        (index, item)
+                        for index, item in enumerate(day["exercises"])
+                        if item["uid"] == selected_exercise
+                    )
+                    exercise_action = self._render_exercise_editor(scope, store, day, index, item)
+                    action = exercise_action or action
+        return action
+
+    def _render_exercise_editor(self, scope, store, day, index, item):
+        day_id = day["uid"]
+        prefix = f"{scope}_day_{day_id}_ex_{item['uid']}"
+        action = None
+        with st.container(key="training_exercise_editor"):
+            with st.container(key=f"{prefix}_controls"):
+                title, up, down, remove = st.columns([5, 1, 1, 1], vertical_alignment="center")
+                title.markdown(
+                    f'<div class="plan-panel-heading" role="heading" aria-level="3">Exercise {index + 1:02d}</div>',
+                    unsafe_allow_html=True,
+                )
+                if up.button(
+                    "↑",
+                    key=f"{prefix}_up",
+                    help="Move exercise up",
+                    disabled=index == 0,
+                ):
+                    action = ("move", day_id, index, -1)
+                if down.button(
+                    "↓",
+                    key=f"{prefix}_down",
+                    help="Move exercise down",
+                    disabled=index == len(day["exercises"]) - 1,
+                ):
+                    action = ("move", day_id, index, 1)
+                if remove.button("×", key=f"{prefix}_remove", help="Remove exercise"):
+                    action = ("remove_exercise", day_id, item["uid"])
+            options = [None, *self.labels]
+            st.selectbox(
+                "Exercise",
+                options,
+                index=options.index(item["exercise_id"]),
+                format_func=lambda value: (
+                    "Choose an exercise" if value is None else self.labels[value]
+                ),
+                key=f"{prefix}_exercise_id",
+            )
+            with st.container(key="plan_target_fields"):
+                sets, unit = st.columns(2)
+                sets.number_input(
+                    "Sets", min_value=1, value=item["sets"], step=1, key=f"{prefix}_sets"
+                )
+                unit.selectbox(
+                    "Measure",
+                    ["reps", "seconds"],
+                    index=0 if item["unit"] == "reps" else 1,
+                    key=f"{prefix}_unit",
+                )
+                lower, upper = st.columns(2)
+                lower.number_input(
+                    "Minimum", min_value=1, value=item["minimum"], step=1, key=f"{prefix}_minimum"
+                )
+                upper.number_input(
+                    "Maximum", min_value=1, value=item["maximum"], step=1, key=f"{prefix}_maximum"
+                )
+                rir, step = st.columns(2)
+                rir.number_input(
+                    "Target RIR",
+                    min_value=0,
+                    value=item["rir"],
+                    step=1,
+                    key=f"{prefix}_rir",
+                    help="Repetitions in reserve after a set. Leave blank if unknown.",
+                )
+                step.number_input(
+                    "Weight step (kg)",
+                    min_value=0.01,
+                    value=float(item["increment"]) if item["increment"] is not None else None,
+                    step=0.25,
+                    format="%.2f",
+                    key=f"{prefix}_increment",
+                    help="Smallest available increase, using the same weight convention as your log. Leave blank if unknown.",
+                )
+            self._capture(scope, store)
+            extra = " · ".join(
+                filter(
+                    None,
+                    (
+                        f"RIR {item['rir']}" if item["rir"] is not None else "",
+                        f"{item['increment']:g} kg step" if item["increment"] is not None else "",
+                    ),
+                )
+            )
+            st.markdown(
+                '<div class="plan-target-preview"><span>Target per workout</span>'
+                f"<strong>{self._target_label(item['sets'], item['minimum'], item['maximum'], item['unit'])}</strong>"
+                f"<small>{escape(extra)}</small></div>",
+                unsafe_allow_html=True,
+            )
+        return action
+
     def _render_history(self, plan_id):
-        with st.expander("Version history"):
+        section_header("Version history")
+        with st.expander("Previous versions"):
             try:
                 history = self.dm.load_training_plan_versions(plan_id)
             except SQLAlchemyError:

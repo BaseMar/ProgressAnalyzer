@@ -1108,15 +1108,6 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
     .calendar-weekday { font-size: 9px; letter-spacing: 0; }
 }
 
-/* Training-plan editor: use the same surfaces as the calendar and KPI cards. */
-.st-key-training_plan_details,
-[class*="st-key-training_workout_"] {
-    padding: 20px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: rgba(57, 62, 70, 0.22);
-}
-
 .plan-workout-heading {
     padding-top: 8px;
     color: var(--accent);
@@ -1124,36 +1115,6 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
     font-weight: 700;
     letter-spacing: 1.3px;
     text-transform: uppercase;
-}
-
-[class*="st-key-training_workout_"] [data-testid="stTextInput"] input,
-.st-key-training_plan_details [data-testid="stTextInput"] input {
-    color: var(--text-primary);
-    background: var(--bg-base);
-}
-
-[class*="st-key-training_workout_"] button[kind="secondary"] {
-    color: var(--text-muted);
-    background: transparent;
-    border-color: var(--border);
-    border-radius: var(--radius-sm);
-}
-
-[class*="st-key-training_workout_"] button[kind="secondary"]:hover {
-    color: var(--accent);
-    border-color: var(--accent-border);
-    background: var(--accent-dim);
-}
-
-[class*="st-key-plan_editor_"][class*="_save"] button[kind="primary"] {
-    color: var(--bg-base);
-    border-color: var(--accent);
-    background: var(--accent);
-    border-radius: var(--radius-sm);
-}
-
-[class*="st-key-plan_editor_"][class*="_save"] button[kind="primary"] p {
-    color: inherit;
 }
 
 .analysis-insight {
@@ -1172,11 +1133,11 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
     min-height: 44px;
 }
 
-:is(.st-key-route_Overview, .st-key-route_Analysis) .section-header {
+:is(.st-key-route_Overview, .st-key-route_Analysis, .st-key-route_Plan) .section-header {
     margin: 40px 0 0;
 }
 
-:is(.st-key-route_Overview, .st-key-route_Analysis) .section-header--first {
+:is(.st-key-route_Overview, .st-key-route_Analysis, .st-key-route_Plan) .section-header--first {
     margin-top: 0;
 }
 @container (max-width: 1000px) {
@@ -1187,79 +1148,6 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
         width: 100%;
         min-width: 100%;
         flex: 1 1 100%;
-    }
-}
-
-.plan-week-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-    gap: 12px;
-    margin: 12px 0 20px;
-}
-
-.plan-week-card {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    padding: 16px;
-    background: rgba(57, 62, 70, 0.22);
-    border: 1px solid var(--border);
-    border-top: 2px solid var(--accent);
-    border-radius: var(--radius-md);
-}
-
-.plan-week-card > span {
-    color: var(--accent);
-    font-size: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    font-weight: 600;
-}
-
-.plan-week-card > strong { color: var(--text-primary); font-size: 15px; }
-.plan-week-card > small { color: var(--text-muted); font-size: 11px; }
-
-.plan-reference-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-}
-.plan-reference-row > strong { color: var(--accent); font-size: 12px; font-weight: 500; }
-
-[class*="st-key-plan_exercise_"] {
-    padding: 16px;
-    margin: 4px 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--bg-base);
-}
-
-@media (max-width: 640px) {
-    .st-key-training_plan_details,
-    [class*="st-key-training_workout_"] { padding: 14px; }
-    [class*="st-key-plan_editor_"][class*="_controls"] [data-testid="stHorizontalBlock"] {
-        flex-direction: row;
-        flex-wrap: nowrap;
-        gap: 8px;
-    }
-    [class*="st-key-plan_editor_"][class*="_controls"] [data-testid="stColumn"] {
-        flex: 0 0 34px;
-        min-width: 0;
-        width: 34px;
-    }
-    [class*="st-key-plan_editor_"][class*="_controls"] [data-testid="stColumn"]:first-child {
-        flex: 1 1 auto;
-        width: auto;
-    }
-    [class*="st-key-plan_editor_"][class*="_controls"] button {
-        min-width: 32px;
-        padding-left: 6px;
-        padding-right: 6px;
     }
 }
 
@@ -1294,10 +1182,10 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
     .st-key-workout_calendar [data-testid="stHorizontalBlock"]:has([data-testid="stSelectbox"]) > [data-testid="stColumn"] {
         width: 100%; min-width: 100%; flex: 1 1 100%;
     }
-    :is(.st-key-history_actions, .st-key-training_plan_details, .st-key-training_workout_editor, .st-key-history_import) [data-testid="stHorizontalBlock"] {
+    :is(.st-key-history_actions, .st-key-history_import) [data-testid="stHorizontalBlock"] {
         flex-wrap: wrap;
     }
-    :is(.st-key-history_actions, .st-key-training_plan_details, .st-key-training_workout_editor, .st-key-history_import) [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+    :is(.st-key-history_actions, .st-key-history_import) [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
         width: 100%; min-width: 100%; flex: 1 1 100%;
     }
     .st-key-workout_calendar { padding: 8px; }
@@ -1307,21 +1195,7 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
     .st-key-calendar_grid [data-testid="stButton"] button { height: 48px; min-height: 48px; padding-inline: 0; }
     .calendar-blank { height: 48px; }
     .recommendation-phase, .recommendation-action { white-space: normal; }
-    .plan-week-grid { grid-template-columns: 1fr; }
     .st-key-history_actions button p { white-space: normal; }
-}
-/* Editor controls are an intentional row, even when the surrounding form stacks. */
-.st-key-training_workout_editor [class*="_controls"] [data-testid="stHorizontalBlock"] {
-    flex-direction: row; flex-wrap: nowrap; gap: 8px;
-}
-.st-key-training_workout_editor [class*="_controls"] [data-testid="stColumn"] {
-    width: 44px; min-width: 0; flex: 0 0 44px;
-}
-.st-key-training_workout_editor [class*="_controls"] [data-testid="stColumn"]:first-child {
-    width: auto; min-width: 0; flex: 1 1 0;
-}
-.st-key-training_workout_editor [class*="_controls"] button {
-    width: 44px; min-width: 44px; min-height: 44px; padding-inline: 0;
 }
 @media (max-width: 640px) {
     .block-container { padding-inline: .75rem; }
@@ -1335,12 +1209,8 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
 @media (min-width: 3200px) { .block-container { max-width: 2600px; } }
 
 /* Task entry points remain prominent without changing the existing palette. */
-:is(.st-key-plan_main_actions, .st-key-history_actions) [data-testid="stButton"] button {
+.st-key-history_actions [data-testid="stButton"] button {
     min-height: 48px;
-}
-@container (max-width: 700px) {
-    .st-key-plan_main_actions [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
-    .st-key-plan_main_actions [data-testid="stColumn"] { width: 100%; min-width: 100%; flex: 1 1 100%; }
 }
 
 .st-key-overview_progress_summary, .st-key-overview_progress_insights { max-width: 1400px; }
@@ -1357,6 +1227,119 @@ div[data-testid="stExpander"] button[kind="secondary"]:active{
 .st-key-overview_plan_filter { margin-bottom: 12px; }
 .st-key-overview_tabs [role="tablist"] { margin-top: 8px; }
 .st-key-overview_tabs [role="tabpanel"] { padding-top: 20px; }
+
+/* Plan: a weekly reference and a focused workout editor. */
+.st-key-route_Plan { max-width: 1400px; }
+.st-key-plan_main_actions {
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: rgba(57, 62, 70, 0.22);
+    margin: 8px 0 16px;
+}
+.st-key-plan_main_actions button { min-height: 44px; }
+.plan-mode-label { font-size: 16px; font-weight: 600; padding-block: 4px; }
+.plan-mode-label span { display: block; color: var(--text-muted); font-size: 12px; font-weight: 400; }
+.plan-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 20px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: rgba(57, 62, 70, 0.22);
+    margin-bottom: 16px;
+}
+.plan-summary-title h2 { margin: 0 0 6px; padding: 0; font-size: 24px; letter-spacing: -.4px; overflow-wrap: anywhere; }
+.plan-summary-title > span, .plan-summary > span { font-size: 12px; color: var(--text-muted); }
+.plan-summary > span { grid-column: 1 / -1; }
+.plan-summary-stats { display: flex; gap: 40px; flex-wrap: wrap; }
+.plan-summary-stats > span { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--text-muted); }
+.plan-summary-stats strong { font-size: 24px; line-height: 1.2; color: var(--text-primary); font-weight: 600; }
+.plan-week-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.plan-week-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent);
+    border-radius: var(--radius-lg);
+    background: rgba(57, 62, 70, 0.22);
+}
+.plan-week-card > span { color: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
+.plan-week-card > strong { font-size: 18px; color: var(--text-primary); }
+.plan-week-card > small { font-size: 12px; color: var(--text-muted); }
+.plan-exercise-list { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.plan-reference-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+.plan-reference-row:last-child { border-bottom: 0; }
+.plan-exercise-number { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.plan-reference-name { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.plan-reference-name > strong { font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.plan-reference-name > span { color: var(--text-muted); font-size: 12px; }
+.plan-reference-name > span:empty { display: none; }
+.plan-reference-target { font-size: 15px; font-weight: 600; padding: 8px 12px; color: var(--accent); background: var(--accent-dim); border-radius: var(--radius-sm); }
+.st-key-training_plan_details,
+.st-key-training_workout_editor,
+.st-key-training_exercise_editor,
+.st-key-training_plan_save,
+.st-key-plan_empty_exercise {
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: rgba(57, 62, 70, 0.22);
+}
+.st-key-training_exercise_editor { border-top: 2px solid var(--accent); }
+.st-key-route_Plan [data-testid="stTextInput"] input,
+.st-key-route_Plan [data-testid="stNumberInput"] input,
+.st-key-route_Plan [data-baseweb="select"] > div { background: var(--bg-base); color: var(--text-primary); }
+.st-key-route_Plan [data-testid="stWidgetLabel"] p { font-size: 11px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; }
+.plan-panel-heading { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1.3px; line-height: 1.6; }
+.st-key-plan_exercise_navigation [role="radiogroup"] { gap: 8px; }
+.st-key-plan_exercise_navigation [role="radiogroup"] > div { width: 100%; min-width: 0; }
+.st-key-plan_exercise_navigation [data-testid="stRadioOption"] { width: 100%; margin: 0; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); min-height: 44px; box-sizing: border-box; }
+.st-key-plan_exercise_navigation [data-testid="stRadioOption"]:has(input:checked) { background: var(--accent-dim); border-color: var(--accent-border); }
+.st-key-plan_exercise_navigation [data-testid="stRadioOption"]:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.st-key-plan_exercise_navigation [data-testid="stRadioOption"] p { overflow-wrap: anywhere; font-size: 13px; }
+.st-key-plan_target_fields { padding-block: 12px; border-top: 1px solid var(--border); }
+.plan-target-preview { display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: var(--radius-md); background: var(--accent-dim); border: 1px solid var(--accent-border); }
+.plan-target-preview > span { color: var(--text-muted); font-size: 11px; }
+.plan-target-preview > strong { font-size: 24px; font-weight: 600; color: var(--text-primary); }
+.plan-target-preview > small { color: var(--text-muted); font-size: 12px; }
+.plan-target-preview > small:empty { display: none; }
+.plan-save-summary { display: flex; flex-direction: column; gap: 5px; }
+.plan-save-summary > strong { font-size: 17px; overflow-wrap: anywhere; }
+.plan-save-summary > span { color: var(--text-muted); font-size: 12px; }
+.plan-empty-state { min-height: 240px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+.plan-empty-state > strong { font-size: 22px; }
+.plan-empty-state > p { color: var(--text-muted); font-size: 13px; }
+.st-key-plan_editor_workspace [class*="_controls"] [data-testid="stHorizontalBlock"] { flex-direction: row; flex-wrap: nowrap; gap: 8px; }
+.st-key-plan_editor_workspace [class*="_controls"] [data-testid="stColumn"] { width: 44px; min-width: 0; flex: 0 0 44px; }
+.st-key-plan_editor_workspace [class*="_controls"] [data-testid="stColumn"]:first-child { width: auto; flex: 1 1 0; }
+.st-key-plan_editor_workspace [class*="_controls"] button { width: 44px; min-width: 44px; min-height: 44px; padding-inline: 0; }
+@container (max-width: 900px) {
+    .st-key-plan_editor_workspace [data-testid="stHorizontalBlock"]:has(.st-key-training_workout_editor) { flex-direction: column; }
+    .st-key-plan_editor_workspace [data-testid="stHorizontalBlock"]:has(.st-key-training_workout_editor) > [data-testid="stColumn"] { width: 100%; min-width: 100%; flex: 1 1 100%; }
+    .st-key-plan_main_actions [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
+    .st-key-plan_main_actions [data-testid="stColumn"] { width: calc(50% - 8px); min-width: 0; flex: 1 1 calc(50% - 8px); }
+    .st-key-plan_main_actions [data-testid="stColumn"]:first-child { width: 100%; min-width: 100%; flex: 1 1 100%; }
+}
+@container (max-width: 600px) {
+    .st-key-training_plan_details [data-testid="stHorizontalBlock"],
+    .st-key-training_plan_save [data-testid="stHorizontalBlock"] { flex-direction: column; }
+    .st-key-training_plan_details [data-testid="stHorizontalBlock"] > [data-testid="stColumn"],
+    .st-key-training_plan_save [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { width: 100%; min-width: 100%; flex: 1 1 100%; }
+    .st-key-plan_target_fields [data-testid="stHorizontalBlock"] { flex-direction: row; flex-wrap: nowrap; gap: 12px; }
+    .st-key-plan_target_fields [data-testid="stColumn"] { width: calc(50% - 6px); min-width: 0; flex: 1 1 0; }
+    .plan-week-grid { grid-template-columns: 1fr; }
+    .plan-summary { padding: 20px; grid-template-columns: 1fr; }
+    .plan-summary-stats { gap: 20px; }
+    .plan-reference-row { grid-template-columns: 24px minmax(0, 1fr); gap: 8px 12px; padding: 16px; }
+    .plan-reference-target { grid-column: 2; justify-self: start; }
+    .st-key-training_plan_details, .st-key-training_workout_editor, .st-key-training_exercise_editor,
+    .st-key-training_plan_save, .st-key-plan_empty_exercise { padding: 16px; }
+}
 
 /* Three exercise-result counters stay compact, with fully readable labels. */
 .st-key-overview_progress_kpis [data-testid="stMetric"] { padding: 16px 8px; }
