@@ -124,3 +124,26 @@ def test_calendar_resets_month_outside_available_history():
     assert not app.exception
     assert app.selectbox(key="history_month").value == "2024-04"
     assert session_count(app) == 1
+
+
+def test_repeated_exercise_executions_keep_separate_cards_and_recorded_reserve():
+    app = AppTest.from_string(
+        """
+from unittest.mock import Mock
+import pandas as pd
+from ui.history_view import HistoryView
+rows = [dict(session_id=1, session_date=pd.Timestamp("2026-11-13"),
+             workout_exercise_id=wid, exercise_name="Bench Press", set_number=1,
+             repetitions=10, weight=60.0, rir=rir)
+        for wid, rir in [(20, 0), (10, None)]]
+HistoryView({}, pd.DataFrame(rows), data_manager=Mock())._render_day_sessions(pd.DataFrame(rows))
+""",
+        default_timeout=30,
+    ).run()
+    assert not app.exception
+    cards = [item.value for item in app.markdown if 'class="history-exercise"' in item.value]
+    assert len(cards) == 2
+    assert "RIR 0" in cards[0]
+    assert "RIR —" in cards[1]
+    assert "2 exercises · 2 sets" in "".join(item.value for item in app.markdown)
+    assert len(app.expander) == 1

@@ -8,11 +8,27 @@ _COPY = components.component(
 <span role="status" aria-live="polite"></span>
 <textarea hidden readonly aria-label="Workout to copy"></textarea>""",
     css="""
-button { width: 100%; min-height: 44px; border-radius: 8px; padding: 10px 16px;
-    background: #00adb5; color: #111820; border: 1px solid #00adb5;
-    font: 600 15px sans-serif; cursor: pointer; }
-button:hover { background: #26bec5; }
-button:focus-visible { outline: 3px solid #eeeeee; outline-offset: 2px; }
+button { position: relative; overflow: hidden; width: 100%; min-height: 44px;
+    border-radius: 10px; padding: 10px 18px;
+    background: linear-gradient(135deg, #25c5cd, #00adb5); color: #122b30;
+    border: 1px solid rgba(67, 222, 228, .65);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 3px 10px rgba(0, 173, 181, .14);
+    font: 600 14px / 1.3 sans-serif; letter-spacing: .1px; cursor: pointer;
+    transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+button::after { content: ''; position: absolute; top: 0; left: 12px; right: 12px;
+    height: 1px; background: linear-gradient(90deg, transparent, #00adb5, transparent);
+    opacity: 0; pointer-events: none; transition: opacity .18s ease; }
+@media (hover: hover) {
+    button:hover { border-color: #65dce2; transform: translateY(-1px);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 5px 18px rgba(0, 173, 181, .26); }
+    button:hover::after { opacity: 1; }
+}
+button:active { transform: translateY(0) scale(.985); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .16); }
+button:focus-visible { outline: 2px solid #00adb5; outline-offset: 3px;
+    box-shadow: 0 0 0 4px rgba(0, 173, 181, .12); }
+@media (prefers-reduced-motion: reduce) {
+    button, button::after { transition: none !important; transform: none !important; }
+}
 [role="status"] { display: block; font: 13px sans-serif; color: #a9b5bf; margin-top: 6px; }
 [role="status"]:empty { display: none; }
 textarea { width: 100%; min-height: 180px; box-sizing: border-box; margin-top: 8px;

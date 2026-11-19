@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from data_manager import DataManager
 from db.exercise_muscle_resolver import resolve_exercise
 from ui.utils.exercise_matcher import normalize
+from ui.utils.ui_helpers import section_header
 
 
 class SidebarUpload:
@@ -23,7 +24,10 @@ class SidebarUpload:
         return st.sidebar if getattr(self, "_sidebar", True) else st
 
     def render(self):
-        self.ui.subheader("Import workout")
+        if getattr(self, "_sidebar", True):
+            self.ui.subheader("Import workout")
+        else:
+            section_header("Import workout", first=True)
 
         if "adding_exercise" not in st.session_state:
             st.session_state.adding_exercise = False

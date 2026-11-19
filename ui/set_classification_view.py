@@ -1,6 +1,7 @@
 """Optional corrections inside recorded-session details, not a required workflow."""
 
 import logging
+from contextlib import nullcontext
 
 import pandas as pd
 import streamlit as st
@@ -13,17 +14,15 @@ from metrics.set_interpretation import interpret_sets
 logger = logging.getLogger(__name__)
 
 
-def render_set_classification(manager=None, *, session_id=None):
+def render_set_classification(manager=None, *, session_id=None, embedded=False):
     dm = manager if manager is not None else DataManager()
-    with st.expander("Set interpretation · optional correction"):
-        st.caption(
-            "Sets are interpreted automatically. Open an exception only when a recorded set was interpreted incorrectly."
-        )
+    with nullcontext() if embedded else st.expander("Set interpretation · optional correction"):
         if not st.toggle(
             "Correct a set",
             key=f"set_exception_{session_id if session_id is not None else 'picker'}",
         ):
             return
+        st.caption("Override a set only when its automatic interpretation is incorrect.")
         try:
             if not dm.classification_storage_ready():
                 st.info("Set labelling is not available until setup is complete.")

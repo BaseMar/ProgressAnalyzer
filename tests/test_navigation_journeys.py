@@ -275,6 +275,13 @@ def test_history_main_actions_open_import_and_manual_entry_directly(
     assert not app.get("file_uploader")
     assert app.button(key="entry_save")
     assert not app.error
+    app.button(key="history_add_measurement_button").click().run()
+    assert not app.exception
+    assert len(app.form) == 2
+    assert not app.get("data_editor") and not app.get("file_uploader")
+    app.button(key="history_close_measurement").click().run()
+    assert not app.form
+    assert any(item.key.startswith("history_date_") for item in app.button)
 
 
 def test_create_plan_button_and_back_preserve_draft(schedule_data, sample_input, sets_dataframe):

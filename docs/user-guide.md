@@ -120,9 +120,14 @@ correction remain available in History.
 keeps plan details, workouts/exercises and saving on one page. Training blocks
 are optional; an existing block is preserved when editing a version.
 
-**History** has direct **Import workout TXT** and **Enter workout manually**
-actions. Calendar controls are under **Calendar settings**; session corrections
-are under **Correct or delete this session** below the recorded sets.
+**History** has direct **Import workout TXT**, **Enter workout manually** and
+**Body measurements** actions. One entry panel opens at a time. Recorded sessions
+occupy the main column below the full-width calendar. **Calendar settings**,
+including the active plan and planned-workout toggle, stay visible above the
+calendar grid. Each set shows its reserve; missing RIR stays unknown.
+Corrections and deletion are under **Session tools** below the recorded sets;
+exercise conventions remain under **Data settings**. Open **Plan assignments** below the logs to link
+planned workouts.
 
 ## Your first plan and workout
 

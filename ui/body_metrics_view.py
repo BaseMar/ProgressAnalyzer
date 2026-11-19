@@ -81,20 +81,20 @@ class BodyMetricsView:
 
     def _add_measurement_form(self) -> None:
         """Provide forms for adding new body composition and measurement data."""
-        section_header("Add New Body Metrics")
-        st.caption("Log body composition or measurements. One entry per day per type.")
+        section_header("Body measurements", first=True)
 
         tabs = st.tabs(["Body Composition", "Body Measurements"])
 
         with tabs[0]:
             with st.form("body_composition_form"):
                 date = st.date_input("Measurement date")
-                weight = st.number_input("Weight (kg)", step=0.1)
-                fat_pct = st.number_input("Body Fat (%)", step=0.1)
-                muscle_mass = st.number_input("Muscle Mass (kg)", step=0.1)
-                fat_mass = st.number_input("Fat Mass (kg)", step=0.1)
-                water_mass = st.number_input("Water Mass (kg)", step=0.1)
-                submitted = st.form_submit_button("Save Body Composition")
+                left, right = st.columns(2)
+                weight = left.number_input("Weight (kg)", step=0.1)
+                fat_pct = right.number_input("Body Fat (%)", step=0.1)
+                muscle_mass = left.number_input("Muscle Mass (kg)", step=0.1)
+                fat_mass = right.number_input("Fat Mass (kg)", step=0.1)
+                water_mass = left.number_input("Water Mass (kg)", step=0.1)
+                submitted = st.form_submit_button("Save Body Composition", type="primary")
 
             if submitted:
                 if self._measurement_exists(date, category="composition"):
@@ -109,14 +109,15 @@ class BodyMetricsView:
         with tabs[1]:
             with st.form("body_measurements_form"):
                 date = st.date_input("Measurement date", key="measure_date")
-                chest = st.number_input("Chest (cm)", step=0.1)
-                waist = st.number_input("Waist (cm)", step=0.1)
-                abdomen = st.number_input("Abdomen (cm)", step=0.1)
-                hips = st.number_input("Hips (cm)", step=0.1)
-                thigh = st.number_input("Thigh (cm)", step=0.1)
-                calf = st.number_input("Calf (cm)", step=0.1)
-                biceps = st.number_input("Biceps (cm)", step=0.1)
-                submitted = st.form_submit_button("Save Measurements")
+                left, right = st.columns(2)
+                chest = left.number_input("Chest (cm)", step=0.1)
+                waist = right.number_input("Waist (cm)", step=0.1)
+                abdomen = left.number_input("Abdomen (cm)", step=0.1)
+                hips = right.number_input("Hips (cm)", step=0.1)
+                thigh = left.number_input("Thigh (cm)", step=0.1)
+                calf = right.number_input("Calf (cm)", step=0.1)
+                biceps = left.number_input("Biceps (cm)", step=0.1)
+                submitted = st.form_submit_button("Save Measurements", type="primary")
 
             if submitted:
                 if self._measurement_exists(date, category="measurements"):

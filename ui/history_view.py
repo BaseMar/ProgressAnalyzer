@@ -54,7 +54,12 @@ def _set_pills(ex_df: pd.DataFrame) -> str:
             ) + load_text
         if pd.notna(row.get("is_warmup")) and bool(row.get("is_warmup")):
             value = f"WU · {value}"
-        pills.append(f'<span class="set-pill">{value}</span>')
+        rir = row.get("rir")
+        reserve = f"RIR {rir:g}" if pd.notna(rir) else "RIR —"
+        pills.append(
+            f'<span class="set-pill"><span>{escape(value)}</span>'
+            f"<small>Set {int(row['set_number'])} · {reserve}</small></span>"
+        )
     return "".join(pills)
 
 
@@ -89,15 +94,15 @@ class HistoryView:
         if "history_workout_notice" in st.session_state:
             st.success(st.session_state.pop("history_workout_notice"))
         with st.container(key="history_actions"):
-            upload, manual = st.columns(2)
+            upload, manual, body = st.columns(3)
             if upload.button(
                 "Import workout TXT",
                 key="history_add_workout_button",
-                type="primary",
                 width="stretch",
                 icon=":material/upload_file:",
             ):
                 st.session_state["history_add_workout"] = True
+                st.session_state["history_add_measurement"] = False
                 st.session_state["workout_entry_mode"] = "Import TXT"
             if manual.button(
                 "Enter workout manually",
@@ -106,33 +111,47 @@ class HistoryView:
                 icon=":material/edit_note:",
             ):
                 st.session_state["history_add_workout"] = True
+                st.session_state["history_add_measurement"] = False
                 st.session_state["workout_entry_mode"] = "Enter exercise"
-        with st.expander("Body measurements"):
-            if st.button("Add body measurement", key="history_add_measurement_button"):
+            if body.button(
+                "Body measurements",
+                key="history_add_measurement_button",
+                icon=":material/straighten:",
+                width="stretch",
+            ):
                 st.session_state["history_add_measurement"] = not st.session_state.get(
                     "history_add_measurement", False
                 )
+                st.session_state["history_add_workout"] = False
         if st.session_state.get("history_add_workout"):
             with st.container(key="history_import"):
-                if st.button("Close entry", key="history_close_import"):
-                    st.session_state["history_add_workout"] = False
-                    st.rerun()
+                with st.container(key="history_entry_actions"):
+                    if st.button(
+                        "Close entry", key="history_close_import", icon=":material/close:"
+                    ):
+                        st.session_state["history_add_workout"] = False
+                        st.rerun()
                 mode = st.session_state.get("workout_entry_mode", "Import TXT")
                 if mode == "Import TXT":
                     SidebarUpload(manager=self.dm).render()
                 else:
                     render_workout_entry(self.dm)
         if st.session_state.get("history_add_measurement"):
-            BodyMetricsView(self.metrics.get("body", {}), manager=self.dm)._add_measurement_form()
-        with st.expander("Calendar settings"):
-            self._select_plan()
-            if self.schedule.plan_id is not None and not st.toggle(
-                "Show planned workouts", value=True, key="calendar_plan_overlay"
-            ):
-                self.schedule.plan_id = None
-                self.schedule.version_dates = []
-        render_load_profile_settings(self.dm)
+            with st.container(key="history_measurement_entry"):
+                with st.container(key="history_entry_actions"):
+                    if st.button(
+                        "Close measurements",
+                        key="history_close_measurement",
+                        icon=":material/close:",
+                    ):
+                        st.session_state["history_add_measurement"] = False
+                        st.rerun()
+                BodyMetricsView(
+                    self.metrics.get("body", {}), manager=self.dm
+                )._add_measurement_form()
         self._render_history()
+        section_header("Data settings")
+        render_load_profile_settings(self.dm)
 
     def _select_plan(self):
         try:
@@ -150,19 +169,63 @@ class HistoryView:
             st.warning("Plan overlay is unavailable. Recorded sessions remain accessible.")
 
     def _render_history(self) -> None:
-        section_header("Session History")
+        section_header(
+            "Workout history",
+            first=not (
+                st.session_state.get("history_add_workout")
+                or st.session_state.get("history_add_measurement")
+            ),
+        )
 
-        df = self.sets_df.copy()
-        if df.empty and self.selected_month in (None, "All time") and self.schedule.plan_id is None:
+        with st.container(key="history_calendar_panel"):
+            with st.container(key="history_calendar_settings"):
+                section_header("Calendar settings", first=True)
+                plan, overlay = st.columns([3, 1], vertical_alignment="bottom")
+                with plan:
+                    self._select_plan()
+                with overlay:
+                    if self.schedule.plan_id is not None and not st.toggle(
+                        "Show planned workouts", value=True, key="calendar_plan_overlay"
+                    ):
+                        self.schedule.plan_id = None
+                        self.schedule.version_dates = []
+            df = self.sets_df.copy()
+            empty = (
+                df.empty
+                and self.selected_month in (None, "All time")
+                and self.schedule.plan_id is None
+            )
+            if not empty:
+                df = df.reindex(
+                    columns=list(dict.fromkeys([*df.columns, "session_date", "session_id"]))
+                )
+                df["session_date"] = pd.to_datetime(df["session_date"])
+                session_counts = df.groupby(df["session_date"].dt.date)["session_id"].nunique()
+                with st.container(key="workout_calendar"):
+                    selected_day = self._render_calendar(session_counts)
+        if empty:
             st.info("No workout history yet.")
             return
+        with st.container(key="history_workspace"):
+            with st.container(key="history_day_details"):
+                selected_count = session_counts.get(selected_day, 0)
+                st.markdown(
+                    '<div class="calendar-detail-heading">'
+                    f"<span>Sessions on {selected_day:%d %b %Y}</span>"
+                    f'<span class="calendar-count">{selected_count} '
+                    f"{'session' if selected_count == 1 else 'sessions'}</span></div>",
+                    unsafe_allow_html=True,
+                )
+                day_df = df.loc[df["session_date"].dt.date == selected_day]
+                if day_df.empty:
+                    st.info("No sessions recorded for this day.")
+                else:
+                    self._render_day_sessions(day_df)
+                if self.schedule.plan_id is not None:
+                    with st.expander("Plan assignments", key="history_plan_assignments"):
+                        self._render_day_plan(selected_day)
 
-        df = df.reindex(columns=list(dict.fromkeys([*df.columns, "session_date", "session_id"])))
-        df["session_date"] = pd.to_datetime(df["session_date"])
-        session_counts = df.groupby(df["session_date"].dt.date)["session_id"].nunique()
-        with st.container(key="workout_calendar"):
-            selected_day = self._render_calendar(session_counts)
-
+    def _render_day_plan(self, selected_day):
         self.schedule.render_day(selected_day, self.scheduled_workouts)
         linked = [
             slot
@@ -179,30 +242,10 @@ class HistoryView:
                 except SQLAlchemyError:
                     st.error("Replacement data could not be loaded. Please try again.")
 
-        selected_count = session_counts.get(selected_day, 0)
-        st.markdown(
-            '<div class="calendar-detail-heading">'
-            f"<span>Sessions on {selected_day:%d %b %Y}</span>"
-            f'<span class="calendar-count">{selected_count} '
-            f"{'session' if selected_count == 1 else 'sessions'}</span></div>",
-            unsafe_allow_html=True,
-        )
-        df = df.loc[df["session_date"].dt.date == selected_day]
-        if df.empty:
-            st.info("No sessions recorded for this day.")
-            return
-
-        self._render_day_sessions(df)
-
     def _render_calendar(self, session_counts: pd.Series) -> date:
         """Render the month card and return its selected date."""
         training_dates = set(session_counts.index)
-        title_col, month_col = st.columns([2, 1])
-        with title_col:
-            st.markdown(
-                '<div class="calendar-eyebrow">Training activity</div>',
-                unsafe_allow_html=True,
-            )
+        title_col, month_col = st.columns([3, 1], vertical_alignment="center")
         with month_col:
             if self.selected_month not in (None, "All time"):
                 month = date.fromisoformat(f"{self.selected_month}-01")
@@ -244,7 +287,7 @@ class HistoryView:
             day for day in training_dates if (day.year, day.month) == (month.year, month.month)
         )
         month_sessions = sum(session_counts[day] for day in month_dates)
-        st.markdown(
+        title_col.markdown(
             '<div class="calendar-heading">'
             f'<div class="calendar-month">{month:%B} <span>{month:%Y}</span></div>'
             '<div class="calendar-summary">'
@@ -315,7 +358,7 @@ class HistoryView:
                 if self.schedule.plan_id is not None
                 else ""
             )
-            + "</div><span>Select a day to explore your sessions</span></div>",
+            + "</div></div>",
             unsafe_allow_html=True,
         )
         return st.session_state[selection_key]
@@ -324,48 +367,43 @@ class HistoryView:
         """Render the existing session cards for the chosen day."""
         from ui.set_classification_view import render_set_classification
 
-        if "is_warmup" in df and df["is_warmup"].eq(True).any():
-            st.caption(
-                "Log totals preserve all recorded sets. Analysis interprets effort and warm-ups automatically."
-            )
         grouped = df.groupby(["session_id", "session_date"], sort=False)
 
         for (session_id, session_date), session_df in grouped:
-            duration = session_df.get(
-                "duration_seconds", pd.Series(0, index=session_df.index)
-            ).fillna(0)
-            dynamic = session_df.loc[duration <= 0]
-            total_volume = (dynamic["repetitions"] * dynamic["weight"]).sum()
             total_sets = len(session_df)
-            exercises_count = session_df["exercise_name"].nunique()
-            volume_str = f"{total_volume:,.0f}".replace(",", "\u202f")
-
-            label = f"{session_date:%d %b %Y}   \u00b7   {total_sets} sets   \u00b7   {exercises_count} exercises"
-            if (
-                not session_df.get("load_type", pd.Series(dtype=str))
-                .isin(["bodyweight", "assisted_bodyweight"])
-                .any()
-                and not dynamic.empty
-            ):
-                label += f"   \u00b7   {volume_str} kg"
-
-            with st.expander(label, icon=":material/event:", expanded=True):
-                for exercise, ex_df in session_df.groupby("exercise_name"):
+            group_key = (
+                "workout_exercise_id" if "workout_exercise_id" in session_df else "exercise_name"
+            )
+            exercises_count = session_df[group_key].nunique()
+            with st.container(key=f"history_session_{session_id}"):
+                st.markdown(
+                    '<div class="history-session-heading">'
+                    f"<strong>Session #{int(session_id)}</strong>"
+                    f"<span>{exercises_count} exercises · {total_sets} sets</span></div>",
+                    unsafe_allow_html=True,
+                )
+                for position, (_, ex_df) in enumerate(
+                    session_df.groupby(group_key, sort=False), start=1
+                ):
+                    exercise = ex_df["exercise_name"].iloc[0]
                     st.markdown(
-                        f'<p class="exercise-label">{escape(str(exercise))}</p>'
-                        f'<div class="set-pills">{_set_pills(ex_df)}</div>',
+                        '<div class="history-exercise">'
+                        '<div class="history-exercise-heading">'
+                        f"<span>{position:02d}</span><strong>{escape(str(exercise))}</strong></div>"
+                        f'<div class="set-pills">{_set_pills(ex_df)}</div></div>',
                         unsafe_allow_html=True,
                     )
-                with st.expander("Correct or delete this session"):
-                    render_set_classification(self.dm, session_id=int(session_id))
+                with st.expander(
+                    "Session tools", key=f"history_tools_{session_id}", icon=":material/tune:"
+                ):
+                    render_set_classification(self.dm, session_id=int(session_id), embedded=True)
                     render_set_load_correction(
-                        self.dm, session_id=int(session_id), workout_date=session_date.date()
+                        self.dm,
+                        session_id=int(session_id),
+                        workout_date=session_date.date(),
+                        embedded=True,
                     )
-
-                    st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
-
-                    col1, col2 = st.columns([0.8, 0.2])
-                    with col2:
+                    with st.container(key=f"history_delete_{session_id}"):
                         if st.button(
                             "Delete Session",
                             key=f"del_{session_id}",

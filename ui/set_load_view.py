@@ -1,6 +1,7 @@
 """Explicit per-set load corrections inside recorded workout history."""
 
 import logging
+from contextlib import nullcontext
 
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
@@ -16,8 +17,8 @@ from ui.utils.set_load_inputs import (
 logger = logging.getLogger(__name__)
 
 
-def render_set_load_correction(manager, *, session_id, workout_date):
-    with st.expander("Body mass and load details"):
+def render_set_load_correction(manager, *, session_id, workout_date, embedded=False):
+    with nullcontext() if embedded else st.expander("Body mass and load details"):
         if not st.toggle("Edit set load", key=f"edit_load_{session_id}"):
             return
         try:

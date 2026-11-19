@@ -14,12 +14,13 @@ from ui.utils.set_load_inputs import (
     render_load_inputs,
     render_total_loads,
 )
+from ui.utils.ui_helpers import section_header
 
 logger = logging.getLogger(__name__)
 
 
 def render_workout_entry(manager):
-    st.subheader("Enter exercise")
+    section_header("Enter exercise", first=True)
     try:
         if not manager.set_load_storage_ready():
             st.info("Manual load entry needs database setup. TXT import remains available.")
@@ -33,18 +34,23 @@ def render_workout_entry(manager):
         labels = {
             key: name + (f" · #{key}" if counts[name] > 1 else "") for key, name in names.items()
         }
-        day = st.date_input("Workout date", value=date.today(), key="entry_date")
-        exercise_id = st.selectbox(
+        day_field, exercise_field = st.columns([1, 2])
+        day = day_field.date_input("Workout date", value=date.today(), key="entry_date")
+        exercise_id = exercise_field.selectbox(
             "Exercise", list(names), format_func=labels.get, key="entry_exercise"
         )
         key = f"entry_{exercise_id}"
         default_measure = 1 if "deadhang" in "".join(normalize(names[exercise_id]).split()) else 0
-        measure = st.radio(
+        measure_field, count_field = st.columns([2, 1])
+        measure = measure_field.radio(
             "Measure",
             ["Repetitions", "Seconds"],
             index=default_measure,
             horizontal=True,
             key=f"{key}_measure",
+        )
+        count = count_field.number_input(
+            "Number of sets", min_value=1, max_value=50, value=3, step=1, key=f"{key}_count"
         )
         settings = render_load_inputs(
             manager,
@@ -54,9 +60,6 @@ def render_workout_entry(manager):
             automatic_kind=manager.load_exercise_load_profiles(
                 on_date=day, exercise_ids=(int(exercise_id),)
             )[exercise_id].load_type,
-        )
-        count = st.number_input(
-            "Number of sets", min_value=1, max_value=50, value=3, step=1, key=f"{key}_count"
         )
         value_column = "Seconds" if measure == "Seconds" else "Reps"
         base = pd.DataFrame(
@@ -89,9 +92,7 @@ def render_workout_entry(manager):
                 ),
             },
         )
-        st.caption(
-            "Save one exercise at a time. Exercises entered for the same date are appended to that day's latest session."
-        )
+        st.caption("Each saved exercise is added to this date’s latest session.")
         render_total_loads(settings, edited["kg"])
         if not st.button("Save exercise", type="primary", key="entry_save"):
             return
