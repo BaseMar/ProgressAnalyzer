@@ -4,6 +4,7 @@ from datetime import date
 
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, event
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import StaticPool
 from streamlit.testing.v1 import AppTest
 
@@ -128,6 +129,70 @@ def test_revision_preserves_old_snapshot(plan_engine):
     assert len(history) == 2
     assert history[1].draft.days[0].exercises[0].set_count == 4
     assert history[1].draft.effective_from > date.today()
+
+
+def test_delete_requires_confirmation_and_last_plan_returns_to_creation(plan_engine):
+    app = start_app(plan_engine)
+    create_plan(app)
+    saved = load_training_plans(plan_engine)[0]
+    assert app.button(key=f"plan_delete_{saved.plan_id}").disabled
+    app.checkbox(key=f"plan_delete_confirm_{saved.plan_id}").check().run()
+    assert not app.button(key=f"plan_delete_{saved.plan_id}").disabled
+    app.button(key=f"plan_delete_{saved.plan_id}").click().run()
+    assert not app.exception and not app.error
+    assert load_training_plans(plan_engine) == []
+    assert app.success and "Plan deleted" in app.success[0].value
+    assert app.text_input(key="plan_editor_new_name")
+    assert "active_plan_id" not in app.session_state
+    assert "adherence_plan" not in app.session_state
+    assert load_training_plans(plan_engine) == []
+    fresh = start_app(plan_engine)
+    assert fresh.text_input(key="plan_editor_new_name")
+
+
+def test_delete_selects_remaining_plan_and_clears_deleted_draft(plan_engine):
+    from dataclasses import replace
+
+    from db.training_plans import save_training_plan
+
+    app = start_app(plan_engine)
+    create_plan(app)
+    saved = load_training_plans(plan_engine)[0]
+    other = save_training_plan(plan_engine, replace(saved.draft, name="Other plan"))
+    app.button(key=f"plan_edit_{saved.version_id}").click().run()
+    app.text_input(key=f"plan_editor_{saved.version_id}_name").set_value("Unsaved edit")
+    app.button(key=f"plan_edit_{saved.version_id}").click().run()
+    app.checkbox(key=f"plan_delete_confirm_{saved.plan_id}").check().run()
+    app.button(key=f"plan_delete_{saved.plan_id}").click().run()
+    assert not app.exception and not app.error
+    assert load_training_plans(plan_engine) == [other]
+    assert app.selectbox(key="adherence_plan").value == other.plan_id
+    assert app.session_state["active_plan_id"] == other.plan_id
+    assert f"plan_editor_{saved.version_id}_draft" not in app.session_state
+    assert app.button(key=f"plan_delete_{other.plan_id}").disabled
+
+
+def test_failed_delete_keeps_plan_and_allows_retry(plan_engine, monkeypatch):
+    from data_manager import DataManager
+
+    app = start_app(plan_engine)
+    create_plan(app)
+    saved = load_training_plans(plan_engine)[0]
+    original = DataManager.delete_training_plan
+
+    def fail(*args, **kwargs):
+        raise OperationalError("delete", {}, RuntimeError("unavailable"))
+
+    monkeypatch.setattr(DataManager, "delete_training_plan", fail)
+    app.checkbox(key=f"plan_delete_confirm_{saved.plan_id}").check().run()
+    app.button(key=f"plan_delete_{saved.plan_id}").click().run()
+    assert not app.exception
+    assert "could not be deleted" in app.error[0].value
+    assert load_training_plans(plan_engine) == [saved]
+    monkeypatch.setattr(DataManager, "delete_training_plan", original)
+    app.button(key=f"plan_delete_{saved.plan_id}").click().run()
+    assert not app.exception and not app.error
+    assert load_training_plans(plan_engine) == []
 
 
 def test_add_and_remove_workouts_keeps_remaining_inputs_and_time_targets(plan_engine):

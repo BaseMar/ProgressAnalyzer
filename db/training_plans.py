@@ -1,4 +1,4 @@
-"""Transactional plan snapshots. Revisions append rows; they never edit history."""
+"""Transactional plan snapshots with explicit deletion of an entire plan."""
 
 from collections import Counter
 from datetime import date
@@ -34,6 +34,42 @@ def training_plan_storage_ready(engine) -> bool:
     """Check availability without creating or modifying tables."""
     with engine.connect() as connection:
         return (set(tables) | {progression_settings.name}).issubset(table_names(connection))
+
+
+def delete_training_plan(engine, plan_id: int) -> bool:
+    """Delete all plan versions and assignments atomically, preserving workouts."""
+    from db.plan_adherence import matches
+    from db.plan_schedule import links
+
+    with engine.begin() as connection:
+        locked = connection.execute(
+            select(plans.c.plan_id).where(plans.c.plan_id == plan_id).with_for_update()
+        ).scalar_one_or_none()
+        if locked is None:
+            return False
+
+        version_ids = select(versions.c.version_id).where(versions.c.plan_id == plan_id)
+        day_ids = select(days.c.day_id).where(days.c.version_id.in_(version_ids))
+        target_ids = select(exercises.c.plan_exercise_id).where(exercises.c.day_id.in_(day_ids))
+        if has_table(connection, matches.name):
+            connection.execute(matches.delete().where(matches.c.plan_exercise_id.in_(target_ids)))
+        if has_table(connection, links.name):
+            connection.execute(links.delete().where(links.c.day_id.in_(day_ids)))
+        if has_table(connection, exercise_lineage.name):
+            connection.execute(
+                exercise_lineage.delete().where(exercise_lineage.c.plan_exercise_id.in_(target_ids))
+            )
+        connection.execute(exercises.delete().where(exercises.c.day_id.in_(day_ids)))
+        connection.execute(days.delete().where(days.c.version_id.in_(version_ids)))
+        if has_table(connection, progression_settings.name):
+            connection.execute(
+                progression_settings.delete().where(
+                    progression_settings.c.version_id.in_(version_ids)
+                )
+            )
+        connection.execute(versions.delete().where(versions.c.plan_id == plan_id))
+        connection.execute(plans.delete().where(plans.c.plan_id == plan_id))
+        return True
 
 
 def _load_progression(connection, version_id):

@@ -22,6 +22,7 @@ from sqlalchemy.schema import CreateTable
 from db.migrate import migrate
 from db.training_plans import (
     days,
+    delete_training_plan,
     exercises,
     load_effective_training_plan,
     load_training_plan_version,
@@ -31,7 +32,12 @@ from db.training_plans import (
     save_training_plan,
     versions,
 )
-from models.training_plan import PlannedExercise, TrainingDay, TrainingPlanDraft
+from models.training_plan import (
+    PlannedExercise,
+    ProgressionSettings,
+    TrainingDay,
+    TrainingPlanDraft,
+)
 
 
 @pytest.fixture
@@ -155,6 +161,97 @@ def test_revision_keeps_previous_snapshot_and_catalog_returns_latest(engine, dra
     assert load_training_plan_version(engine, old.version_id) == old
     assert load_training_plan_versions(engine, old.plan_id) == [old, new]
     assert load_training_plans(engine) == [new]
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_delete_plan_is_atomic_and_preserves_other_plans_and_workouts(engine, draft, fail):
+    from db.plan_adherence import matches
+    from db.plan_schedule import links
+    from db.read_cache import read_scope
+
+    migrate(engine, apply=True)
+    draft = replace(draft, progression=ProgressionSettings(draft.effective_from))
+    old = save_training_plan(engine, draft)
+    save_training_plan(engine, replace(draft, effective_from=date.today()), plan_id=old.plan_id)
+    other = save_training_plan(engine, replace(draft, name="Keep this plan"))
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
+    with engine.begin() as connection:
+        connection.execute(metadata.tables["workout_sessions"].insert().values(session_id=78))
+        connection.execute(
+            metadata.tables["workout_exercises"].insert(),
+            [{"workout_exercise_id": 11}, {"workout_exercise_id": 12}],
+        )
+        connection.execute(metadata.tables["workout_sets"].insert().values(set_id=21))
+        for plan, session_id, actual_id in ((old, 77, 11), (other, 78, 12)):
+            day_id = (
+                connection.execute(
+                    select(days.c.day_id).where(days.c.version_id == plan.version_id)
+                )
+                .scalars()
+                .first()
+            )
+            target_id = (
+                connection.execute(
+                    select(exercises.c.plan_exercise_id).where(exercises.c.day_id == day_id)
+                )
+                .scalars()
+                .first()
+            )
+            connection.execute(
+                links.insert().values(
+                    session_id=session_id, day_id=day_id, scheduled_date=draft.effective_from
+                )
+            )
+            connection.execute(
+                matches.insert().values(
+                    session_id=session_id, plan_exercise_id=target_id, workout_exercise_id=actual_id
+                )
+            )
+
+    def snapshot():
+        with engine.connect() as connection:
+            return {
+                name: connection.execute(select(table)).all()
+                for name, table in metadata.tables.items()
+            }
+
+    before = snapshot()
+
+    def reject_version_delete(connection, cursor, statement, parameters, context, executemany):
+        if statement.startswith("DELETE FROM training_plan_versions"):
+            raise IntegrityError(statement, parameters, RuntimeError("forced failure"))
+
+    if fail:
+        event.listen(engine, "before_cursor_execute", reject_version_delete)
+        try:
+            with pytest.raises(IntegrityError):
+                delete_training_plan(engine, old.plan_id)
+        finally:
+            event.remove(engine, "before_cursor_execute", reject_version_delete)
+        assert snapshot() == before
+        return
+
+    with read_scope():
+        assert len(load_training_plans(engine)) == 2
+        assert load_training_plan_version(engine, old.version_id) == old
+        assert delete_training_plan(engine, old.plan_id)
+        assert load_training_plans(engine) == [other]
+        assert load_training_plan_version(engine, old.version_id) is None
+        assert load_training_plan_versions(engine, old.plan_id) == []
+    assert not delete_training_plan(engine, old.plan_id)
+    assert not delete_training_plan(engine, 999)
+    after = snapshot()
+    for name in ("exercises", "workout_sessions", "workout_exercises", "workout_sets"):
+        assert after[name] == before[name]
+    assert len(after["training_plans"]) == 1
+    assert len(after["training_plan_versions"]) == 1
+    assert len(after["training_plan_days"]) == len(other.draft.days)
+    assert len(after["training_plan_exercises"]) == 3
+    assert len(after["training_plan_exercise_lineage"]) == 3
+    assert len(after["training_plan_progression"]) == 1
+    assert [row.session_id for row in after["training_plan_session_links"]] == [78]
+    assert [row.session_id for row in after["training_plan_exercise_matches"]] == [78]
 
 
 def test_invalid_revision_does_not_modify_history(engine, draft):

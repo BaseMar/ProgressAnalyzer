@@ -41,11 +41,13 @@ Recommendations show their source sessions and explain missing evidence.
 | --- | --- |
 | **Overview** | Read recent observations and explained targets for the next workout. |
 | **Analysis** | Explore exercise performance, plan consistency, muscle allocation and body measurements. |
-| **Plan** | Build a weekly routine, save dated revisions and configure training blocks. |
+| **Plan** | Build a weekly routine, save dated revisions, configure training blocks and delete plans. |
 | **History** | Enter or import workouts, link sessions, confirm replacements and correct set/load details. |
 
 - **Versioned plans:** historical sessions retain their original prescription;
   compatible plan positions keep a stable history identity across revisions.
+- **Plan deletion:** confirm deletion in the Plan page to remove all versions and
+  their workout assignments. Recorded workouts and sets remain in History.
 - **Exercise-based progression:** use exact-exercise history across plans and
   unlinked sessions. Repeat known results when effort data is incomplete;
   remembered manual choices cover exercises without usable history.

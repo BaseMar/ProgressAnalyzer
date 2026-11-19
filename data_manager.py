@@ -54,6 +54,7 @@ from db.set_loads import save_session_set_loads, set_load_storage_ready, suggest
 from db.starting_loads import load_starting_loads, save_starting_loads, starting_load_storage_ready
 from db.training_context import load_deload_exercise_ids
 from db.training_plans import (
+    delete_training_plan,
     load_effective_training_plan,
     load_training_plan_names,
     load_training_plan_versions,
@@ -228,6 +229,10 @@ class DataManager:
 
     def training_plan_storage_ready(self) -> bool:
         return training_plan_storage_ready(self.engine)
+
+    @_refresh_after_write
+    def delete_training_plan(self, plan_id: int) -> bool:
+        return delete_training_plan(self.engine, plan_id)
 
     def load_training_plans(self) -> list[TrainingPlanVersion]:
         return load_training_plans(self.engine)

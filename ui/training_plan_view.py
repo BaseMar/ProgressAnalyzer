@@ -54,6 +54,11 @@ class TrainingPlanView:
         if not self.labels:
             st.info("Add exercises to the catalog before creating a plan.")
             return
+        if st.session_state.pop("plan_deleted", False):
+            for key in ("adherence_plan", "active_plan_id", "plan_next_selection"):
+                st.session_state.pop(key, None)
+            st.session_state["plan_create_mode"] = not plans
+            st.session_state["plan_editing_version"] = None
         if "plan_saved_notice" in st.session_state:
             st.success(st.session_state.pop("plan_saved_notice"))
         if "plan_next_selection" in st.session_state:
@@ -62,7 +67,11 @@ class TrainingPlanView:
             st.session_state["plan_create_mode"] = False
         create = st.session_state.get("plan_create_mode", not plans)
         with st.container(key="plan_main_actions"):
-            selection, new, edit = st.columns([3, 1.3, 1.3], vertical_alignment="bottom")
+            actions = st.columns(
+                [3, 1.3, 1.3] if create else [3, 1.3, 1.3, 1.3],
+                vertical_alignment="bottom",
+            )
+            selection, new, edit = actions[:3]
             with selection:
                 if create:
                     st.markdown(
@@ -103,6 +112,8 @@ class TrainingPlanView:
                     on_click=_set_plan_mode,
                     args=(False, None if editing else source.version_id),
                 )
+                with actions[3]:
+                    self._render_delete(source)
         if source and not editing:
             self._plan_summary(source)
             self._overview(source.draft, source.version_id)
@@ -110,6 +121,44 @@ class TrainingPlanView:
             self._render_editor(source)
         if source and not editing:
             self._render_history(source.plan_id)
+
+    def _render_delete(self, source):
+        with st.popover("Delete plan", icon=":material/delete:", width="stretch"):
+            st.warning(
+                f'Delete "{source.draft.name}" and all its versions? '
+                "This permanently removes the plan and its workout assignments. "
+                "Recorded workouts and sets will remain in History."
+            )
+            confirmed = st.checkbox(
+                "I want to permanently delete this plan",
+                key=f"plan_delete_confirm_{source.plan_id}",
+            )
+            if not st.button(
+                "Delete plan",
+                key=f"plan_delete_{source.plan_id}",
+                icon=":material/delete:",
+                disabled=not confirmed,
+            ):
+                return
+            try:
+                history = self.dm.load_training_plan_versions(source.plan_id)
+                deleted = self.dm.delete_training_plan(source.plan_id)
+            except SQLAlchemyError:
+                logger.exception("Unable to delete training plan")
+                st.error("The plan could not be deleted. Please try again.")
+                return
+            version_ids = {version.version_id for version in history}
+            prefixes = tuple(f"plan_editor_{version_id}_" for version_id in version_ids)
+            for key in list(st.session_state):
+                if prefixes and key.startswith(prefixes):
+                    del st.session_state[key]
+            st.session_state["plan_deleted"] = True
+            st.session_state["plan_saved_notice"] = (
+                "Plan deleted. Recorded workouts and sets have been kept."
+                if deleted
+                else "This plan has already been deleted."
+            )
+            st.rerun()
 
     @staticmethod
     def _plan_summary(source):
