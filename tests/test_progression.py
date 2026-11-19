@@ -127,9 +127,16 @@ def test_incomplete_or_unknown_evidence_does_not_produce_numeric_increases(probl
             entry[2],
         )
     result = recommend(entry, target=upcoming(planned))
-    assert result.action == "insufficient_data"
+    assert result.action == "maintain"
     assert result.reason_code == code
-    assert result.goals == ()
+    assert [g.weight for g in result.goals[:2]] == [60.0, 60.0]
+    assert [(g.minimum, g.maximum) for g in result.goals[:2]] == [(10, 10), (10, 10)]
+    if problem == "partial":
+        assert result.goals[-1].weight is None
+        assert (result.goals[-1].minimum, result.goals[-1].maximum) == (6, 10)
+    else:
+        assert result.goals[-1].weight == 60.0
+        assert result.goals[-1].minimum == result.goals[-1].maximum == 9
 
 
 def test_one_low_rir_set_blocks_increase_even_when_mean_equals_target():
@@ -145,7 +152,7 @@ def test_one_low_rir_set_blocks_increase_even_when_mean_equals_target():
     result = recommend(entry)
     assert result.reason_code == "rir_below_target"
     assert result.action == "maintain"
-    assert all((item.minimum, item.maximum) == (6, 10) for item in result.goals)
+    assert [(item.minimum, item.maximum) for item in result.goals] == [(10, 10), (10, 10), (9, 9)]
 
 
 def test_below_minimum_corrects_load_and_excess_reps_are_capped():
@@ -202,7 +209,8 @@ def test_missing_weight_step_does_not_invent_one():
         target=upcoming(planned),
     )
     assert result.reason_code == "missing_weight_step"
-    assert not result.goals
+    assert result.action == "maintain"
+    assert [(g.weight, g.minimum, g.maximum) for g in result.goals] == [(60.0, 10, 10)] * 3
 
 
 def test_decimal_load_addition_has_no_binary_artifact():
@@ -213,6 +221,19 @@ def test_decimal_load_addition_has_no_binary_artifact():
         target=upcoming(planned),
     )
     assert result.goals[0].weight == 12.3
+
+
+def test_missing_weight_step_at_failure_preserves_known_loads_without_inventing_a_reduction():
+    planned = replace(PLAN, weight_increment=None)
+    item = recommend(
+        working(1, date(2026, 5, 18), (6, 8, 8), rir=0, planned=planned), target=upcoming(planned)
+    )
+    assert item.action == "maintain" and item.reason_code == "missing_weight_step"
+    assert [(g.weight, g.minimum, g.maximum) for g in item.goals] == [
+        (60.0, 6, 6),
+        (60.0, 8, 8),
+        (60.0, 8, 8),
+    ]
 
 
 def test_warmup_cannot_manufacture_a_top_result_or_change_the_goal():
@@ -260,9 +281,9 @@ def test_new_context_and_new_block_do_not_reuse_old_confirmations():
     assert result.reason_code == "upper_range_confirmed"
     changed = replace(PLAN, target_max=12)
     changed_result = recommend(*entries, target=upcoming(changed))
-    assert changed_result.reason_code == "manual_start"
-    assert changed_result.action == "insufficient_data"
-    assert not changed_result.goals
+    assert changed_result.reason_code == "prescription_changed"
+    assert changed_result.action == "maintain"
+    assert [(g.weight, g.minimum, g.maximum) for g in changed_result.goals] == [(60.0, 10, 10)] * 3
 
 
 def test_long_gap_and_same_day_confirmations_do_not_increase_load():

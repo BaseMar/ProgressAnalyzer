@@ -166,7 +166,7 @@ def test_deload_and_return_render_as_different_decisions(schedule_data):
     app.selectbox(key=f"next_workout_{plan.plan_id}").select(key).run()
     assert not app.exception
     assert "Return after deload" in exercise_html(app)
-    assert "3 × 6–10 reps · 60 kg" in exercise_html(app)
+    assert "3 × 10 reps · 60 kg" in exercise_html(app)
     assert "RIR ≥ 2" in exercise_html(app)
 
 
@@ -177,15 +177,15 @@ def test_deload_and_return_render_as_different_decisions(schedule_data):
         ({"planned": replace(PLAN, weight_increment=None)}, "Set the available weight step"),
     ],
 )
-def test_missing_data_gives_a_specific_next_action_and_no_invented_numeric_goal(
+def test_missing_data_preserves_recorded_goals_and_explains_what_blocks_increases(
     schedule_data, options, text_expected
 ):
     engine, _, _, _ = schedule_data
     plan = seed(schedule_data, **options)
     app = start_app(engine, plan)
     html = exercise_html(app)
-    assert "More data needed" in html
-    assert "Target not available yet" in html
+    assert "Repeat result" in html
+    assert "3 × 10 reps · 60 kg" in html
     assert text_expected in html
     assert "62.5 kg" not in html
 
@@ -195,8 +195,8 @@ def test_missing_source_rir_keeps_recorded_starting_loads_without_increasing_the
     plan = seed(schedule_data, rir=None)
     app = start_app(engine, plan)
     html = exercise_html(app)
-    assert "Starting loads" in html and "60 kg" in html
-    assert "Source RIR is incomplete" in html
+    assert "Repeat result" in html and "3 × 10 reps · 60 kg" in html
+    assert "complete RIR before increasing" in html
     assert "62.5 kg" not in html
     assert "Choose starting loads" not in [e.label for e in app.expander]
 

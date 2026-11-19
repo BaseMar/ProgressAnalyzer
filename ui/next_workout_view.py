@@ -40,7 +40,7 @@ def recommendation_note(item):
         "more_time": "Add up to five seconds within the planned range.",
         "time_ceiling_manual": "Time limit reached. Choose a new range or load.",
         "confirm_upper_range": "Repeat the upper rep limit at the planned RIR.",
-        "rir_below_target": "Keep the load; the previous RIR was below target.",
+        "rir_below_target": "Repeat the result; prioritize the planned RIR.",
         "below_range": "Keep the load and work toward the planned range.",
         "mixed_loads": "Keep per-set loads; increases require equal working loads.",
         "mixed_range": "Keep the load until every set reaches the upper limit.",
@@ -51,17 +51,18 @@ def recommendation_note(item):
         "zero_load": "Keep this target; choose any added load manually.",
         "weight_step_not_supported": "The weight step is too large. Choose the load manually.",
         "scheduled_deload": "Keep repetitions; use lighter loads and RIR 3–4.",
-        "resume_after_deload": "Return to your last regular loads.",
+        "resume_after_deload": "Repeat your last regular loads and reps.",
         "no_history": "No usable history. Choose starting loads.",
         "no_normal_baseline": "No regular baseline in this block. Choose starting loads.",
-        "reuse_exercise_baseline": "Recorded loads, using the current plan targets.",
-        "changed_set_count": "Set count changed. Choose starting loads.",
-        "incomplete_sets": "Check the incomplete set log in History.",
+        "reuse_exercise_baseline": "Repeat recorded results at the planned RIR.",
+        "changed_set_count": "Keep recorded sets; establish targets for new sets.",
+        "prescription_changed": "Keep compatible results at the current plan targets.",
+        "incomplete_sets": "Keep known results; complete missing sets in History.",
         "light_sets": "Log regular working sets before increasing the load.",
         "low_effort_sets": "Sets above RIR 5 cannot confirm progression.",
-        "missing_rir": "Complete RIR in the latest linked workout.",
+        "missing_rir": "Repeat known results; complete RIR before increasing.",
         "missing_target_rir": "Set target RIR in Plan → Progression & RIR.",
-        "history_gap": "History is old. Choose starting loads.",
+        "history_gap": "Older result: verify it before increasing.",
         "invalid_values": "Correct the recorded load or RIR in History.",
         "deload_load_not_supported": "Choose a lighter deload load manually.",
         "deload_timed_not_supported": "Choose a lighter timed deload target manually.",
@@ -189,7 +190,7 @@ class NextWorkoutView:
                 {
                     item.actual_exercise_id
                     for item in result.exercises
-                    if item.reason_code in MANUAL_START_REASONS
+                    if item.reason_code in MANUAL_START_REASONS and not item.goals
                 },
                 as_of=as_of,
             )
@@ -288,15 +289,19 @@ class NextWorkoutView:
             "equalize_weight": "Equalize loads",
             "increase_weight": "Increase load",
             "reduce_weight": "Reduce affected set",
-            "maintain": "Keep load",
+            "maintain": "Repeat result",
             "deload": "Deload",
             "insufficient_data": "More data needed",
         }[item.action]
         if item.reason_code == "resume_after_deload":
             label = "Return after deload"
         if item.reason_code == "reuse_exercise_baseline":
-            label = "Starting loads"
-        if item.reason_code in MANUAL_START_REASONS:
+            label = "Repeat result"
+        if item.reason_code in ("prescription_changed", "changed_set_count") and any(
+            g.minimum != g.maximum or g.weight is None for g in item.goals
+        ):
+            label = "Set target"
+        if item.reason_code in MANUAL_START_REASONS and not item.goals:
             label = "Choose starting load"
         if item.reason_code == "manual_start_selected":
             label = "Starting loads selected"

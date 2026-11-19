@@ -11,7 +11,7 @@ from models.progression import DeloadPolicy
 
 
 def comparison_context(slot, position, planned, actual_id):
-    """Shared identity used by both analytical comparisons and progression."""
+    """Strict analytical identity and prescription metadata for progression."""
     identity = (
         (planned.history_key, None, None)
         if planned.history_key

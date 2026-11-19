@@ -5,7 +5,7 @@ from db.exercise_starting_history import load_exercise_starting_history
 from db.plan_adherence import load_plan_performance
 from db.read_cache import read_cached, read_scope
 from db.training_plans import load_training_plan_versions
-from metrics.history_starting_loads import HISTORY_START_REASONS, with_history_starting_loads
+from metrics.history_starting_loads import with_history_starting_loads
 from metrics.progression import recommend_workout
 from models.plan_context import PlanReadContext, PreparedWorkout
 from models.progression import DeloadPolicy, ProgressionPolicy
@@ -35,13 +35,14 @@ def recommend_prepared_workout(
     substitutions=None,
     replacement_weight_steps=None,
 ):
-    """Reuse one linked-history snapshot when previewing confirmed alternatives.
-
-    Starting-load history remains a separate exact-exercise read. It cannot
-    become linked progression evidence merely because the inputs are shared.
-    """
+    """Apply one decision engine to linked and unlinked exact-exercise history."""
     data, upcoming, as_of = prepared.history, prepared.upcoming, prepared.as_of
     settings = prepared.settings_by_version
+    exercise_ids = {
+        (substitutions or {}).get(target.plan_exercise_id, target.exercise.exercise_id)
+        for target in upcoming.targets
+    }
+    history = load_exercise_starting_history(engine, exercise_ids, as_of=as_of)
     result = recommend_workout(
         data,
         upcoming,
@@ -52,16 +53,10 @@ def recommend_prepared_workout(
         deload_policy=deload_policy,
         substitutions=substitutions,
         replacement_weight_steps=replacement_weight_steps,
+        exercise_history=history,
     )
     if result.block.phase not in ("normal", "unconfigured"):
         return result
-    exercise_ids = {
-        item.actual_exercise_id
-        for item in result.exercises
-        if item.reason_code in HISTORY_START_REASONS
-        or any(g.load_type == "manual_bodyweight" for g in item.goals)
-    }
-    history = load_exercise_starting_history(engine, exercise_ids, as_of=as_of)
     return with_history_starting_loads(
         result,
         upcoming,

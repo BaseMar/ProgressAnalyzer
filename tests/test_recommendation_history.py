@@ -1,4 +1,4 @@
-"""A plan revision retains usable observations without inheriting increases."""
+"""Exercise history survives plan changes without concealing incomplete records."""
 
 from dataclasses import replace
 from datetime import date
@@ -39,13 +39,13 @@ def other_workout(entry, name="Upper B"):
         {"target_max": 12},
     ],
 )
-def test_changed_prescription_retains_evidence_for_manual_start(change):
+def test_changed_prescription_retains_exact_compatible_results(change):
     old = working(1, date(2026, 5, 18), (10, 10, 10))
     planned = replace(PLAN, **change)
     result = recommend(old, target=upcoming(planned))
-    assert (result.action, result.reason_code) == ("insufficient_data", "manual_start")
+    assert (result.action, result.reason_code) == ("maintain", "prescription_changed")
     assert result.target_rir == planned.target_rir
-    assert not result.goals
+    assert [(g.weight, g.minimum, g.maximum) for g in result.goals] == [(60.0, 10, 10)] * 3
     assert result.evidence_session_ids == (1,)
     assert result.evidence_workouts == ("Upper A",)
 
@@ -58,9 +58,10 @@ def test_same_exercise_in_another_workout_supplies_a_baseline():
         )
     )
     result = recommend(entry)
-    assert result.reason_code == "manual_start"
+    assert result.reason_code == "prescription_changed"
     assert result.actual_exercise_id == 1
-    assert not result.goals
+    assert [g.minimum for g in result.goals] == [7, 8, 7]
+    assert all(g.weight == 90.3 and g.minimum == g.maximum for g in result.goals)
     assert result.evidence_dates == (date(2026, 5, 14),)
     assert result.evidence_workouts == ("Upper B",)
 
@@ -69,18 +70,18 @@ def test_another_exercise_is_never_a_baseline_without_explicit_selection():
     entry = other_workout(working(1, date(2026, 5, 14), actual_id=2))
     assert recommend(entry).reason_code == "no_history"
     selected = recommend(entry, substitutions={101: 2})
-    assert selected.reason_code == "manual_start"
+    assert selected.reason_code == "one_more_rep"
     assert selected.actual_exercise_id == 2
 
 
-def test_reordered_exercise_keeps_a_baseline_without_carrying_confirmations():
+def test_reordered_exercise_keeps_compatible_progression_evidence():
     entry = working(1, date(2026, 5, 18), (10, 10, 10))
-    # A different position in the earlier workout is enough to reset increases.
+    # Moving the exercise does not change its recorded performance.
     rows = compute_plan_performance(data(entry), as_of=AS_OF)
     context = list(rows[0]["context"])
     context[3] = 4
     history, baseline = recommendation_history(rows, tuple(context), as_of=AS_OF, block_start=BLOCK)
-    assert baseline and history[-1]["session_id"] == 1
+    assert not baseline and history[-1]["session_id"] == 1
 
 
 @pytest.mark.parametrize(
@@ -92,11 +93,11 @@ def test_reordered_exercise_keeps_a_baseline_without_carrying_confirmations():
         ("light", "light_sets"),
     ],
 )
-def test_latest_local_problem_is_not_hidden_by_another_workout(problem, expected):
+def test_latest_problem_in_any_workout_is_not_hidden_by_older_success(problem, expected):
     entries = [working(1, date(2026, 5, 4))]
     last = working(
-        2,
-        date(2026, 5, 11),
+        3,
+        date(2026, 5, 18),
         (8, 8) if problem == "partial" else () if problem == "empty" else (8, 8, 8),
         rir=None if problem == "missing_rir" else 4 if problem == "light" else 2,
     )
@@ -106,11 +107,11 @@ def test_latest_local_problem_is_not_hidden_by_another_workout(problem, expected
             replace(last[1], sets=tuple(replace(s, is_warmup=None) for s in last[1].sets)),
             last[2],
         )
-    entries += [last, other_workout(working(3, date(2026, 5, 18), (10, 10, 10)))]
+    entries += [other_workout(working(2, date(2026, 5, 11), (10, 10, 10))), last]
     result = recommend(*entries, target=upcoming(replace(PLAN, target_rir=3)))
     assert result.reason_code == expected
-    assert not result.goals
-    assert result.evidence_session_ids == (2,)
+    assert bool(result.goals) == (problem in ("partial", "missing_rir"))
+    assert result.evidence_session_ids == (3,)
 
 
 def test_a_new_context_needs_new_upper_range_confirmations():
@@ -131,9 +132,13 @@ def test_baseline_preserves_mixed_loads_and_does_not_invent_new_sets():
     )
     revised = replace(PLAN, target_rir=3)
     result = recommend(entry, target=upcoming(revised))
-    assert result.reason_code == "manual_start" and not result.goals
+    assert result.reason_code == "prescription_changed"
+    assert [g.weight for g in result.goals] == [80.0, 60.0, 60.0]
+    assert [g.minimum for g in result.goals] == [10, 10, 9]
     result = recommend(entry, target=upcoming(replace(revised, set_count=4)))
-    assert result.reason_code == "changed_set_count" and not result.goals
+    assert result.reason_code == "changed_set_count"
+    assert [g.weight for g in result.goals] == [80.0, 60.0, 60.0, None]
+    assert (result.goals[-1].minimum, result.goals[-1].maximum) == (6, 10)
 
 
 def test_future_and_old_cross_workout_records_are_not_used_as_current_targets():
@@ -143,12 +148,13 @@ def test_future_and_old_cross_workout_records_are_not_used_as_current_targets():
     assert recommend(future).reason_code == "no_history"
 
 
-def test_block_reset_still_blocks_cross_workout_history():
+def test_block_reset_keeps_cross_workout_baseline_without_increasing():
     old = other_workout(working(1, date(2026, 5, 4)))
     result = recommend_workout(
         data(old), upcoming(), as_of=AS_OF, settings=ProgressionSettings(date(2026, 5, 15), 7)
     )
-    assert result.exercises[0].reason_code == "no_normal_baseline"
+    assert result.exercises[0].reason_code == "reuse_exercise_baseline"
+    assert result.exercises[0].action == "maintain"
 
 
 def unplanned(sid=1, day=date(2026, 5, 18), values=(12, 12, 12), **options):
@@ -161,9 +167,9 @@ def unplanned(sid=1, day=date(2026, 5, 18), values=(12, 12, 12), **options):
 def test_recorded_exercise_absent_from_old_plan_is_a_starting_load_without_inferred_replacement():
     entry = unplanned(weight=63.0)
     result = recommend(entry)
-    assert result.reason_code == "manual_start"
+    assert result.reason_code == "upper_range_confirmed"
     assert result.actual_exercise_id == 1
-    assert not result.goals
+    assert all(g.weight == 65.5 for g in result.goals)
     assert result.evidence_session_ids == (1,)
     assert compute_plan_adherence(data(entry), as_of=AS_OF)["summary"]["covered_sets"] == 0
     assert data(entry).matches == ()
@@ -176,7 +182,7 @@ def test_todays_extra_exercise_linked_to_yesterdays_slot_uses_actual_date():
     entry = unplanned(day=date(2026, 5, 19), weight=63.0)
     entry = (replace(entry[0], slot=replace(entry[0].slot, performed_on=AS_OF)), entry[1], None)
     result = recommend(entry)
-    assert result.reason_code == "manual_start"
+    assert result.reason_code == "upper_range_confirmed"
     assert result.evidence_dates == (AS_OF,)
     assert result.evidence_workouts == ("Upper A",)
 
@@ -221,15 +227,19 @@ def test_unplanned_baselines_respect_latest_evidence_barriers(problem, expected)
     else:
         entries = (older, latest)
     result = recommend(*entries)
-    assert result.reason_code == expected and not result.goals
+    assert result.reason_code == expected
+    assert bool(result.goals) == (problem in ("partial", "missing_rir"))
+    if result.goals:
+        assert result.evidence_session_ids == (2,)
+        assert result.goals[0].weight == 60.0
 
 
-def test_unplanned_upper_range_results_do_not_count_as_weight_increase_confirmations():
+def test_unplanned_upper_range_results_supply_exercise_progression_evidence():
     first = unplanned(1, date(2026, 5, 11), (10, 10, 10))
     second = unplanned(2, date(2026, 5, 18), (10, 10, 10))
     result = recommend(first, second)
-    assert result.reason_code == "manual_start"
-    assert not result.goals
+    assert result.reason_code == "upper_range_confirmed"
+    assert all(g.weight == 62.5 for g in result.goals)
     first_planned = working(2, date(2026, 5, 18), (10, 10, 10))
     assert recommend(first, first_planned).reason_code == "upper_range_confirmed"
 
@@ -358,7 +368,7 @@ def test_database_revision_recovers_local_and_cross_workout_baselines(revised_pl
     bench, incline, pullup, row = result.exercises
     assert bench.actual_exercise_id == 1 and not bench.goals
     for item in (incline, row):
-        assert item.reason_code == "reuse_exercise_baseline"
+        assert item.reason_code == "prescription_changed"
         assert item.target_rir == 2
     assert [g.weight for g in incline.goals] == [80.0, 70.0, 70.0]
     assert [g.weight for g in row.goals] == [85.0] * 3
@@ -378,7 +388,7 @@ def test_database_revision_recovers_local_and_cross_workout_baselines(revised_pl
         substitutions={bench.plan_exercise_id: 6},
     )
     assert chosen.exercises[0].actual_exercise_id == 6
-    assert chosen.exercises[0].reason_code == "reuse_exercise_baseline"
+    assert chosen.exercises[0].reason_code == "prescription_changed"
     assert chosen.exercises[0].evidence_dates == (monday,)
 
 
@@ -413,12 +423,12 @@ NextWorkoutView(st.session_state['manager'], st.session_state['names']).render(
     assert "Based on:" not in html
     assert f"{thursday:%d %b %Y} · Upper B" not in html
     assert f"{monday:%d %b %Y} · Upper A" not in html
-    assert "3 × 6–10 reps · 85 kg" in html
+    assert "3 × 9 reps · 85 kg" in html
     alternative = next(item for item in app.selectbox if item.key.endswith("_exercise"))
     alternative.select(6).run()
     assert not app.exception
     html = "\n".join(item.value for item in app.markdown)
     assert "Instead of Barbell Bench Press" in html
-    assert "Starting loads" in html
-    assert "3 × 6–10 reps · 85 kg" in html
+    assert "Repeat result" in html
+    assert "3 × 9 reps · 85 kg" in html
     assert "Based on:" not in html

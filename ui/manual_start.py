@@ -59,7 +59,11 @@ def selected_start(item, goals, *, saved):
 
 def choose_starting_loads(result, upcoming, names, references, manager):
     """Remember complete choices without treating them as logged performances."""
-    manual = [item for item in result.exercises if item.reason_code in MANUAL_START_REASONS]
+    manual = [
+        item
+        for item in result.exercises
+        if item.reason_code in MANUAL_START_REASONS and not item.goals
+    ]
     if not manual or result.block.phase not in ("normal", "unconfigured"):
         return result
     planned = {target.plan_exercise_id: target.exercise for target in upcoming.targets}

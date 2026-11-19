@@ -280,7 +280,9 @@ def test_deload_return_and_analytical_coverage_on_postgres(postgres):
         "resume_after_deload",
         (3,),
     )
-    assert [(goal.weight, goal.minimum, goal.maximum) for goal in item.goals] == [(60.0, 6, 10)] * 3
+    assert [(goal.weight, goal.minimum, goal.maximum) for goal in item.goals] == [
+        (60.0, 10, 10)
+    ] * 3
     rows = compute_plan_performance(
         load_plan_performance(postgres, saved.plan_id, DELOAD, RETURN),
         as_of=RETURN,

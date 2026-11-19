@@ -1,4 +1,4 @@
-"""Reuse recorded settings as a start; strict history alone permits progression."""
+"""Normalize legacy bodyweight targets and retain manual starting-load fallbacks."""
 
 from dataclasses import replace
 from math import isfinite
@@ -63,7 +63,7 @@ def with_history_starting_loads(
     legacy_body_mass_exercise_ids=frozenset(),
     max_history_gap_days=21,
 ):
-    """Fill starting targets from the latest usable ordinary exact-ID entry.
+    """Fill starting targets from the latest ordinary exact-ID entry.
 
     Dates, plan IDs and target changes do not prevent reading past loads. These
     suggestions never enter comparison history or manufacture logged sets.
@@ -76,6 +76,25 @@ def with_history_starting_loads(
         confirmed_body_mass = item.actual_exercise_id in legacy_body_mass_exercise_ids
         manual_bodyweight = item.actual_exercise_id in manual_load_exercise_ids
         legacy_zero = False
+        if (
+            not confirmed_body_mass
+            and manual_bodyweight
+            and any(g.load_type == "manual_bodyweight" for g in item.goals)
+            and any(
+                s.load is None and s.weight != 0
+                for r in history.get(item.actual_exercise_id, ())
+                if r["session_id"] in item.evidence_session_ids
+                for s in r["sets"]
+                if s.is_warmup is not True
+            )
+        ):
+            item = replace(
+                item,
+                action="insufficient_data",
+                goals=(),
+                reason_code="manual_start",
+                reason="Confirm the meaning of recorded bodyweight kilograms or choose added load manually.",
+            )
         if not confirmed_body_mass and any(g.load_type == "manual_bodyweight" for g in item.goals):
             for record in history.get(item.actual_exercise_id, ()):
                 if record["date"] > as_of or record["session_id"] not in item.evidence_session_ids:
@@ -102,20 +121,24 @@ def with_history_starting_loads(
                     "Additional load is 0 kg; future body mass is not assumed.",
                 ),
             )
-        if item.reason_code not in HISTORY_START_REASONS:
+        if item.reason_code not in HISTORY_START_REASONS or item.goals:
             output.append(item)
             continue
         planned = prescriptions[item.plan_exercise_id]
         source, sets = None, ()
-        for record in history.get(item.actual_exercise_id, ()):
-            if record["date"] > as_of:
-                continue
+        records = [r for r in history.get(item.actual_exercise_id, ()) if r["date"] <= as_of]
+        if records and sum(r["session_id"] == records[0]["session_id"] for r in records) > 1:
+            output.append(item)
+            continue
+        if records:
+            record = records[0]
             sets = _working_settings(
                 record, planned, legacy_bodyweight=manual_bodyweight and not confirmed_body_mass
             )
             if sets:
                 source = record
-                break
+            # An incomplete or unusable latest entry must remain visible;
+            # silently falling back to an older success hides missing evidence.
         if source is None:
             output.append(item)
             continue
@@ -126,15 +149,33 @@ def with_history_starting_loads(
         anchor = sets[0].weight
         goals = []
         for index in range(planned.set_count):
-            recorded = sets[min(index, len(sets) - 1)]
+            if index >= len(sets):
+                goals.append(
+                    SetGoal(None, planned.target_min, planned.target_max, planned.target_unit)
+                )
+                continue
+            recorded = sets[index]
+            quantity = (
+                recorded.duration_seconds
+                if planned.target_unit == "seconds"
+                else recorded.repetitions
+            )
+            exact = (
+                index < len(sets)
+                and quantity is not None
+                and (planned.target_min <= quantity <= planned.target_max)
+                and not (external and recorded.weight > anchor)
+            )
+            minimum = int(quantity) if exact else planned.target_min
+            maximum = minimum if exact else planned.target_max
             if recorded.load is None and (
                 confirmed_body_mass or (manual_bodyweight and recorded.weight == 0)
             ):
                 goals.append(
                     SetGoal(
                         0.0,
-                        planned.target_min,
-                        planned.target_max,
+                        minimum,
+                        maximum,
                         planned.target_unit,
                         load_type="bodyweight",
                         assistance_kg=0.0,
@@ -144,8 +185,8 @@ def with_history_starting_loads(
             goals.append(
                 SetGoal(
                     min(recorded.weight, anchor) if external else recorded.weight,
-                    planned.target_min,
-                    planned.target_max,
+                    minimum,
+                    maximum,
                     planned.target_unit,
                     load_type=recorded.load.load_type if recorded.load else "legacy",
                     assistance_kg=recorded.load.assistance_kg if recorded.load else None,
@@ -159,7 +200,7 @@ def with_history_starting_loads(
         if len(sets) != planned.set_count:
             notices.append(
                 f"History contains {len(sets)} working sets; this plan prescribes {planned.set_count}. "
-                "Use the recorded sets in order; additional planned sets repeat the last recorded working load."
+                "Use the recorded sets in order; additional planned sets require choosing a working load."
             )
         if external and any(s.weight > anchor for s in sets[1:]):
             notices.append(
@@ -182,8 +223,7 @@ def with_history_starting_loads(
                 action="maintain",
                 goals=tuple(goals),
                 reason_code="reuse_exercise_baseline",
-                reason="Starting loads read automatically from this exercise's training history. "
-                "Use the current set count, range and RIR. Log the completed workout to establish progression in this plan.",
+                reason="Repeat compatible recorded results using the current plan's reserve; establish targets only for new or changed sets.",
                 evidence_session_ids=(source["session_id"],),
                 evidence_dates=(source["date"],),
                 evidence_workouts=(source["workout"] or "Recorded workout (not linked to a plan)",),

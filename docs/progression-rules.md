@@ -2,7 +2,7 @@
 
 Maintained behavior reference. Starting loads come from the user's full
 exercise history when usable records exist, including after plan changes.
-Calculation version: `double-progression-2026-11-v2`.
+Calculation version: `double-progression-2026-11-v3`.
 
 ## Goal and confirmed preferences
 
@@ -57,34 +57,41 @@ increase assume sufficient reserve in every set. Targets do not predict results.
 | 60 x 12 / 50 x 12 / 50 x 12 | 60 x 12 / 55 x 8 / 55 x 8: an intermediate step within the 10% limit. |
 | 60 x 12 / 60 x 8 / 60 x 8 | 60 x 12 / 60 x 9 / 60 x 8. |
 | 60 x 12 / 60 x 12 / 60 x 12 | 62.5 x 8 / 62.5 x 8 / 62.5 x 8. |
-| One set at RIR 1 above the minimum, with target RIR 2 | No increase or automatic reduction; perform the range with the required reserve. |
-| RIR 0 at 12 reps | First stop earlier within the range; do not assume an exact conversion of two fewer reps into two more RIR. |
+| One set at RIR 1 above the minimum, with target RIR 2 | Repeat the recorded loads and reps without increasing; prioritize the required reserve. |
+| RIR 0 at 12 reps | Repeat the target with reserve as the priority; stop earlier if needed. Do not infer an exact reps-to-RIR conversion. |
 | RIR below target at 8 reps | After the first such execution, reduce that set by one available increment if the result remains positive. |
 | Fewer than 8 reps, reserve at or below target | Correct that set's load after the first execution. |
 | Below the minimum with substantial reserve | First perform the prescribed range with reserve, without automatically adding weight. |
 | Only a later set fails | Correct that set; do not automatically lower the entire exercise's starting load. |
 | No positive lower equipment setting | Select the affected set's load manually. |
 | Some sets exceed the upper bound | Cap targets at the upper bound; do not encourage further overshooting. |
-| Missing sets or RIR | No numeric increase; explain the missing evidence. |
+| Missing sets or RIR | Repeat known compatible loads and reps; new/missing sets retain ranges and unselected loads. No automatic increase. |
+| Missing equipment increment at the ceiling | Repeat the exact result; select an increment before increasing weight. |
 | Several recorded entries match one plan position | Require an explicit History assignment; do not select an arbitrary success. |
 
 ## Starting loads and comparability
 
-After a change to the plan, order, range, RIR, set count or block, read starting
-loads from the latest usable execution of the exact exercise across all history.
-Include previous plans and unlinked sessions. Preserve working-set load order;
-additional planned sets repeat the last working load. Later heavier trials do
-not raise the start above the first working load.
+Use the latest execution of the exact exercise across plans and unlinked sessions.
+Changing a plan name, workout, weekday or position does not reset progression.
+The same unit, a complete set count, valid load conventions and sufficient
+per-set reserve are still required before increasing a target.
 
-Exclude warm-ups, known deloads, invalid entries and future dates. Show the source
-alongside the current range and RIR. Reading history does not create executions
-or change recorded results.
+A changed range, RIR or set count first reuses compatible recorded loads and
+repetitions. Sets outside the new range retain their known load and use that
+range; extra planned sets have a range and an unselected load. No recorded
+sets are manufactured. A new block can reuse the preceding ordinary result
+without immediately increasing it. Later heavier trials do not automatically
+raise the starting load above the first working load.
 
-A starting-load suggestion does not confirm a weight increase. A recorded and
-linked execution in the current context enables progression under the existing
-rules. When usable history is unavailable, manual selection remains a fallback:
-complete choices are remembered, and the form disappears once all are filled.
-Actual history takes priority over remembered manual choices.
+Exclude warm-ups, known deloads, invalid values and future dates. An incomplete,
+empty or unknown-effort latest entry is never skipped for an older success.
+Repeat known compatible targets when only RIR, set count or recency is missing;
+do not increase them. Several separate entries in the same session require an
+unambiguous position match or a manual choice.
+
+Reading history does not create plan assignments or change recorded results.
+Without a usable baseline, complete manual choices are remembered and the form
+disappears once filled. Actual history takes priority over saved manual choices.
 
 Ordinary progression from an established baseline can still change targets
 automatically. A block calendar is not required for ordinary recommendations.
@@ -159,7 +166,7 @@ Deload is neither ordinary success nor regression. Do not compound reductions
 from successive lighter sessions. A moved deload session remains a deload;
 an ordinary workout performed during the deload period does not confirm normal
 progression either. After deload, resume the last ordinary baseline from the
-previous cycle without an immediate increase. The first ordinary execution
+previous cycle, including its exact repetitions, without an immediate increase. The first ordinary execution
 checks that baseline. Completeness, comparability and history-age limits still
 apply. A plan revision retains the calendar unless the user explicitly changes it.
 

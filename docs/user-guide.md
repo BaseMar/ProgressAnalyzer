@@ -142,8 +142,9 @@ planned workouts.
 
 Saving a new plan selects it automatically and updates muscle targets.
 For an exercise without usable history, **Choose starting loads** provides a
-remembered fallback. A recorded and linked workout establishes the evidence
-for ordinary progression. A block calendar is needed for automatic deloads;
+remembered fallback. Recorded exercise history, including unlinked sessions,
+can establish ordinary progression. Links identify plan execution and deloads.
+A block calendar is needed for automatic deloads;
 ordinary progression also works without it.
 
 ## Training plan and next workout
@@ -193,9 +194,15 @@ Overview's numeric next action comes from that same preview.
 lines. Append your actual values after training; no placeholders need to be removed.
 Targets remain separate suggestions and are ignored during import.
 
-Starting suggestions use the exact exercise's usable history, including older
-plans and unlinked sessions. The starting target uses the current range
-and RIR. An exercise without usable history keeps **Choose starting loads**,
+Recommendations use the latest exact-exercise history, including older plans
+and unlinked sessions. Changing the workout name or order preserves progression.
+Below-target RIR repeats the previous result with the planned reserve as the
+priority; failure at the minimum can still reduce the affected set's load.
+After deload, repeat the last ordinary loads and repetitions before increasing.
+Missing RIR or equipment increments retain known targets and block unsupported
+increases. Changed prescriptions preserve compatible results; new sets or
+incompatible repetition targets use the current range.
+An exercise without usable history keeps **Choose starting loads**,
 where detailed recorded references remain available;
 complete manual choices are saved, the form disappears, and **Edit starting loads**
 reopens them. Actual history takes priority over saved manual defaults.

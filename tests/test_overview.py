@@ -159,7 +159,8 @@ def test_default_focus_shows_recorded_starting_loads_when_source_rir_is_missing(
     assert all(item.value == "\u2014" for item in app.metric)
     assert not any("Awaiting comparable data:" in item.value for item in app.caption)
     select_topic(app, "Next workout")
-    assert "Source RIR is incomplete" in markup(app)
+    assert "Repeat known results; complete RIR before increasing." in markup(app)
+    assert "3 × 10 reps · 60 kg" in markup(app)
 
 
 def test_legacy_plan_shows_progression_without_requiring_a_block(schedule_data):

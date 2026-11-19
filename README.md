@@ -46,9 +46,9 @@ Recommendations show their source sessions and explain missing evidence.
 
 - **Versioned plans:** historical sessions retain their original prescription;
   compatible plan positions keep a stable history identity across revisions.
-- **History-based starting loads:** reuse the exact exercise's usable history
-  after a plan change, including older plans and unlinked sessions. Remembered
-  manual choices cover exercises without usable history.
+- **Exercise-based progression:** use exact-exercise history across plans and
+  unlinked sessions. Repeat known results when effort data is incomplete;
+  remembered manual choices cover exercises without usable history.
 - **Explained progression:** per-set targets account for repetitions, reserve,
   mixed loads, equipment increments, deloads and evidence completeness.
 - **Explicit load conventions:** body mass, additional weight and assistance

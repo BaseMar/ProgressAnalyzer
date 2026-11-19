@@ -4,7 +4,9 @@ from collections import Counter
 from dataclasses import replace
 from datetime import date
 
-from metrics.plan_performance import comparison_context, compute_plan_performance
+from metrics.plan_adherence import compatible_set
+from metrics.plan_performance import _target_result, comparison_context, compute_plan_performance
+from metrics.set_interpretation import interpret_sets
 from models.plan_adherence import PlannedTarget
 
 
@@ -36,8 +38,8 @@ def with_recorded_baselines(data, performances, planned, actual_id, *, as_of):
     A session link establishes its date, workout and block even when a recorded
     exercise wasn't in that version of the routine. Project that observation
     onto the upcoming prescription using the ordinary set interpretation rules.
-    Such rows supply starting loads only; they never establish plan coverage,
-    replacements or upper-range confirmations for the historical workout.
+    Such rows can supply exercise progression evidence; they never establish
+    plan coverage or replacements for the historical workout.
     """
     represented = {(row["session_id"], row["actual_exercise_id"]) for row in performances}
     occurrences = Counter((item.session_id, item.exercise_id) for item in data.recorded)
@@ -109,12 +111,10 @@ def changed_context_reason(latest, context, workout):
 
 
 def recommendation_history(performances, context, *, as_of, block_start):
-    """Return strict history or a baseline of the exact same actual exercise.
+    """Use the latest exact exercise, independently of workout names or order.
 
-    The latest execution in this workout takes priority, including incomplete
-    or empty records. Another workout is only a baseline when this workout has
-    no execution of the selected actual exercise. Different catalog IDs never
-    share loads, and a changed prescription never inherits confirmations.
+    Unit, set count and prescription still constrain progression. Ambiguous
+    repeated positions require an exact match instead of pooling their sets.
     """
     actual_id, unit = context[5], context[6]
     candidates = [
@@ -127,44 +127,79 @@ def recommendation_history(performances, context, *, as_of, block_start):
         and row["performed_on"] <= as_of
         and (block_start is None or row["performed_on"] >= block_start)
     ]
-    if context[1] is None and context[2] is None:
-        lineage = [
-            row
-            for row in performances
-            if row["context"][0] == context[0]
-            and not row.get("baseline_only")
-            and row["session_id"] is not None
-            and row["performed_on"] is not None
-            and row["performed_on"] <= as_of
-            and (block_start is None or row["performed_on"] >= block_start)
+    if not candidates:
+        return [], False
+    latest = candidates[-1]
+    same_session = [r for r in candidates if r["session_id"] == latest["session_id"]]
+    if len(same_session) > 1:
+        exact = [r for r in same_session if r["context"] == context]
+        latest = exact[0] if len(exact) == 1 else {**latest, "ambiguous_recorded_exercises": True}
+        return [latest], False
+    # Confirmations cannot cross a prescription change, but moving an exercise
+    # between workouts or plans does not reset an otherwise compatible result.
+    history = []
+    occurrences = Counter(row["session_id"] for row in candidates)
+    for row in reversed(candidates):
+        if row["context"][6:] != latest["context"][6:] or occurrences[row["session_id"]] > 1:
+            break
+        history.append(row)
+    return list(reversed(history)), latest["context"][7:] != context[7:]
+
+
+def exercise_history_observations(history, performances, planned, actual_id, context):
+    """Interpret cross-plan/unlinked records without adding plan assignments."""
+    linked = {}
+    for row in performances:
+        if row["actual_exercise_id"] == actual_id:
+            linked.setdefault(row["session_id"], []).append(row)
+    output = []
+    records = history.get(actual_id, ())
+    occurrences = Counter(r["session_id"] for r in records)
+    for record in reversed(records):
+        previous = linked.get(record["session_id"], ())
+        if occurrences[record["session_id"]] > 1 and previous:
+            # Explicitly matched repeated positions retain their identity.
+            if not any(r["session_id"] == record["session_id"] for r in output):
+                output.extend(previous)
+            continue
+        ordered = sorted(record["sets"], key=lambda item: item.set_number)
+        meanings = interpret_sets(ordered)
+        selected = [
+            (item, meaning)
+            for item, meaning in zip(ordered, meanings)
+            if meaning.counts_for_plan and compatible_set(item, planned.target_unit)
         ]
-        if lineage and lineage[-1]["context"] != context:
-            # Returning to an old exercise must not bridge an intervening
-            # exercise/replacement in the same stable position.
-            return candidates[-1:], True
-    local = [
-        row
-        for row in candidates
-        if workout_exercise_identity(row["context"]) == workout_exercise_identity(context)
-    ]
-    if local:
-        occurrences = Counter((row["session_id"], row["day_id"]) for row in local)
-        if any(count > 1 for count in occurrences.values()):
-            # Repeated positions of the same exercise have no unambiguous
-            # transferable identity after order/target changes.
-            return [
-                row for row in local if row["context"] == context and not row.get("baseline_only")
-            ], False
-        latest = local[-1]
-        if latest.get("baseline_only"):
-            return [latest], True
-        if latest["context"] == context:
-            # Do not bridge an intervening prescription/order change on return.
-            history = []
-            for row in reversed(local):
-                if row["context"] != context or row.get("baseline_only"):
-                    break
-                history.append(row)
-            return list(reversed(history)), False
-        return [latest], True
-    return (candidates[-1:], True) if candidates else ([], False)
+        source = (
+            previous[0]
+            if len(previous) == 1 and previous[0]["unit"] == planned.target_unit
+            else None
+        )
+        source_context = source["context"] if source else context
+        prescription = record.get("prescription")
+        if source is None and prescription and prescription["target_unit"] == planned.target_unit:
+            source_context = (
+                *context[:7],
+                prescription["set_count"],
+                prescription["target_min"],
+                prescription["target_max"],
+                prescription["target_rir"],
+            )
+        expected = replace(planned, set_count=source_context[7])
+        selected = selected[: expected.set_count]
+        sets, interpretations = zip(*selected) if selected else ((), ())
+        output.append(
+            {
+                "context": source_context,
+                "day_id": source["day_id"] if source else -record["workout_exercise_id"],
+                "session_id": record["session_id"],
+                "performed_on": record["date"],
+                "scheduled_date": source["scheduled_date"] if source else record["date"],
+                "workout": record["workout"] or "Recorded workout (not linked to a plan)",
+                "actual_exercise_id": actual_id,
+                "unit": planned.target_unit,
+                "excluded_set_kinds": tuple(m.kind for m in meanings if not m.counts_for_plan),
+                "ambiguous_recorded_exercises": occurrences[record["session_id"]] > 1,
+                **_target_result(sets, expected, interpretations),
+            }
+        )
+    return output

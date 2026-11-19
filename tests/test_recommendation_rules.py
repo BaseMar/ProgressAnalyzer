@@ -83,18 +83,24 @@ def test_large_equipment_step_never_creates_an_unavailable_setting():
     assert [g.weight for g in result.goals] == [60, 45, 45]
 
 
-def test_unknown_start_or_changed_prescription_is_manual():
+def test_unknown_start_is_manual_but_compatible_changed_prescription_repeats():
     source = entry(weights=(40, 50, 50))
     assert normal(source).reason_code == "manual_start"
     assert not normal(source).goals
     changed = replace(PLAN, target_max=15)
-    assert normal(entry(), planned=changed).reason_code == "manual_start"
-    assert not normal(entry(), planned=changed).goals
+    result = normal(entry(), planned=changed)
+    assert result.reason_code == "prescription_changed"
+    assert [(g.weight, g.minimum, g.maximum) for g in result.goals] == [
+        (60, 12, 12),
+        (55, 12, 12),
+        (55, 12, 12),
+    ]
 
 
 def test_history_gap_uses_actual_date_and_does_not_invent_a_load():
     result = normal(entry(day=TODAY - timedelta(days=22)))
-    assert result.reason_code == "history_gap" and not result.goals
+    assert result.reason_code == "history_gap" and result.action == "maintain"
+    assert [g.weight for g in result.goals] == [60, 55, 55]
 
 
 def test_four_flat_exposures_flag_possible_plateau_and_cite_all_four():
@@ -189,7 +195,9 @@ def test_returning_to_an_old_exercise_does_not_bridge_a_different_exercise_in_th
     old = entry(weights=(60,) * 3, planned=first, day=TODAY - timedelta(days=14))
     other = working(2, TODAY - timedelta(days=7), (12, 12, 12), planned=changed, actual_id=2)
     result = normal(old, other, planned=first)
-    assert result.reason_code == "manual_start" and not result.goals
+    assert result.reason_code == "upper_range_confirmed"
+    assert result.evidence_session_ids == (1,)
+    assert all(g.weight == 62.5 for g in result.goals)
     current = entry(weights=(60,) * 3, planned=first, sid=3, day=TODAY)
     assert normal(old, other, current, planned=first).action == "increase_weight"
 
@@ -201,7 +209,7 @@ def test_projected_unplanned_record_does_not_claim_the_future_positions_identity
     extra = working(2, TODAY - timedelta(days=7), (12, 12, 12), planned=source_plan, actual_id=1)
     extra = (replace(extra[0], slot=replace(extra[0].slot, name="Other workout")), extra[1], None)
     result = normal(local, extra, planned=planned)
-    assert result.action == "increase_weight" and result.evidence_session_ids == (1,)
+    assert result.action == "increase_weight" and result.evidence_session_ids == (2,)
 
 
 def test_deload_keeps_all_sets_and_actual_repetitions_and_reduces_load_30_to_40_percent():

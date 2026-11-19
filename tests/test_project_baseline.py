@@ -14,6 +14,8 @@ from scripts.benchmark_project import ReadOnlyProbe, database_fingerprint
 # The November 2026 cleanup removes unused aggregates from the earlier snapshot.
 # Its updated hashes were derived by pruning those fields from pre-cleanup output;
 # every retained value was checked for exact equality before accepting the reference.
+# The v3 recommendation update changes only recommendations and return targets;
+# adherence, analytical comparisons, exercise metrics and allocation remain equal.
 REFERENCE = json.loads(
     (Path(__file__).parent / "fixtures/project_baseline.json").read_text(encoding="utf-8")
 )
@@ -45,9 +47,9 @@ def test_reference_has_reviewable_starting_load_and_deload_examples(baseline):
         62.5
     ] * 3  # Latest ordinary unlinked history, not the future 200 kg entry.
     assert bench["rir"] == 3 and bench["action"] == "maintain"
-    assert [g[0] for g in row["goals"]] == [
-        70.0
-    ] * 4  # The changed set count retains recorded settings.
+    assert [g[0] for g in row["goals"]] == [70.0, 70.0, 70.0, None]
+    assert [g[1:3] for g in row["goals"]] == [[8, 8], [8, 8], [8, 8], [6, 10]]
+    assert [g[1:3] for g in bench["goals"]] == [[8, 8]] * 3
     assert all(g[0] == 0.0 and g[4] == "bodyweight" for g in pullup["goals"])
     assert [g[0] for g in curl["goals"]] == [12.0, 10.0, 10.0]
     assert hang["goals"][0][1] == 40 and plank["goals"][0][1] == 40
@@ -55,6 +57,7 @@ def test_reference_has_reviewable_starting_load_and_deload_examples(baseline):
     assert phases["ordinary_increase"]["exercises"][0]["action"] == "increase_weight"
     assert phases["deload"]["exercises"][0]["goals"][0][:3] == [40.0, 10, 10]
     assert phases["return_after_deload"]["exercises"][0]["reason"] == "resume_after_deload"
+    assert phases["return_after_deload"]["exercises"][0]["goals"][0][:3] == [60.0, 10, 10]
 
 
 def test_snapshot_cutoff_does_not_drift_with_a_later_wall_clock(baseline):

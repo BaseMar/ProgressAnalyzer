@@ -34,6 +34,31 @@ def weight_step_problem(step):
     return None
 
 
+def repeat_goals(planned, sets, *, manual_load=False):
+    """Retain known in-range results; leave new or incompatible sets as ranges."""
+    field = "seconds" if planned.target_unit == "seconds" else "reps"
+    output = []
+    for index in range(planned.set_count):
+        if index >= len(sets):
+            output.append(
+                SetGoal(None, planned.target_min, planned.target_max, planned.target_unit)
+            )
+            continue
+        item = sets[index]
+        quantity = item[field]
+        exact = planned.target_min <= quantity <= planned.target_max
+        goal = set_goal(
+            item,
+            int(quantity) if exact else planned.target_min,
+            None if exact else planned.target_max,
+            unit=planned.target_unit,
+        )
+        if manual_load and item.get("load_type", "legacy") == "legacy":
+            goal = replace(goal, weight=None, load_type="manual_bodyweight")
+        output.append(goal)
+    return tuple(output)
+
+
 def session_decision(planned, sets, step, policy, *, manual_load=False):
     """Return action, reason code, explanation and immutable per-set targets."""
     timed = planned.target_unit == "seconds"
@@ -111,7 +136,9 @@ def session_decision(planned, sets, step, policy, *, manual_load=False):
             )
         problem = weight_step_problem(step)
         if problem:
-            return "insufficient_data", *problem, ()
+            return result(
+                "maintain", *problem, repeat_goals(planned, sets, manual_load=manual_load)
+            )
         weights = [item["weight"] for item in sets]
         for index in failures:
             weight = weights[index]
@@ -134,8 +161,8 @@ def session_decision(planned, sets, step, policy, *, manual_load=False):
         return result(
             "maintain",
             "rir_below_target",
-            "Keep the load and planned range; finish earlier within that range to meet the reserve before increasing difficulty.",
-            [set_goal(item, planned.target_min, planned.target_max) for item in sets],
+            "Repeat the recorded loads and repetitions, prioritizing the planned reserve; do not increase difficulty yet.",
+            repeat_goals(planned, sets, manual_load=manual_load),
         )
     if any(item["reps"] < planned.target_min for item in sets):
         return result(
@@ -178,7 +205,7 @@ def session_decision(planned, sets, step, policy, *, manual_load=False):
         )
     problem = weight_step_problem(step)
     if problem:
-        return "insufficient_data", *problem, ()
+        return result("maintain", *problem)
 
     if any(not isclose(weight, anchor, rel_tol=0, abs_tol=1e-6) for weight in weights):
         next_weights = weights.copy()

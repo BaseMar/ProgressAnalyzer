@@ -212,7 +212,9 @@ def test_return_uses_last_normal_load_without_increase_or_deload_confirmation():
     )
     item = recommend(*entries, day=RETURN).exercises[0]
     assert (item.action, item.reason_code) == ("maintain", "resume_after_deload")
-    assert [(goal.weight, goal.minimum, goal.maximum) for goal in item.goals] == [(60.0, 6, 10)] * 3
+    assert [(goal.weight, goal.minimum, goal.maximum) for goal in item.goals] == [
+        (60.0, 10, 10)
+    ] * 3
     assert item.evidence_session_ids == (2,)
 
 
@@ -258,8 +260,7 @@ def test_long_gap_and_multiple_empty_cycles_do_not_reuse_stale_baselines():
         recommend(entry, day=RETURN + timedelta(days=7)).exercises[0].reason_code == "history_gap"
     )
     assert (
-        recommend(entry, day=RETURN + timedelta(weeks=7)).exercises[0].reason_code
-        == "no_normal_baseline"
+        recommend(entry, day=RETURN + timedelta(weeks=7)).exercises[0].reason_code == "history_gap"
     )
 
 
@@ -282,13 +283,13 @@ def test_moved_deload_and_normal_done_in_deload_do_not_confirm_increases():
     assert recommend(in_deload, day=RETURN).exercises[0].reason_code == "no_normal_baseline"
 
 
-def test_manual_block_reset_excludes_history_of_previous_settings():
+def test_manual_block_reset_preserves_ordinary_exercise_history():
     old = working(1, date(2026, 6, 8), (10, 10, 10))
     reset = ProgressionSettings(date(2026, 6, 1), 8)
     item = recommend(old, day=RETURN, settings=reset, settings_by_version={1: SETTINGS}).exercises[
         0
     ]
-    assert item.reason_code == "no_normal_baseline"
+    assert item.reason_code == "upper_range_confirmed"
 
 
 @pytest.mark.parametrize(
@@ -324,7 +325,7 @@ def test_initial_block_setup_reuses_linked_unconfigured_version(day, logged, cod
         (DELOAD, RETURN),
     ],
 )
-def test_initial_block_setup_excludes_preblock_and_deload_history(scheduled, performed):
+def test_initial_block_setup_retains_old_results_but_excludes_deload(scheduled, performed):
     entry = working(1, scheduled, (8, 8, 8))
     entry = (
         replace(entry[0], slot=replace(entry[0].slot, performed_on=performed)),
@@ -332,8 +333,13 @@ def test_initial_block_setup_excludes_preblock_and_deload_history(scheduled, per
         entry[2],
     )
     item = recommend(entry, day=RETURN, settings_by_version={1: None}).exercises[0]
-    assert item.reason_code == "no_normal_baseline"
-    assert not item.goals
+    if scheduled < START or performed < START:
+        assert item.reason_code == "history_gap"
+        assert [(g.weight, g.minimum, g.maximum) for g in item.goals] == [(60.0, 8, 8)] * 3
+        assert item.action == "maintain"
+    else:
+        assert item.reason_code == "no_normal_baseline"
+        assert not item.goals
 
 
 def test_unconfigured_not_started_linked_and_past_slots_are_explicit():

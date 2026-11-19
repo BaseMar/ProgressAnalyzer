@@ -1,15 +1,16 @@
 """Versioned recommendation service: evidence, ordinary decisions and deloads."""
 
 from dataclasses import replace
-from datetime import date, timedelta
+from datetime import date
 from decimal import ROUND_CEILING, Decimal
 from math import isfinite
 
 from metrics.load_metrics import recorded_load, same_loads
 from metrics.plan_performance import comparison_context, compute_plan_performance
-from metrics.progression_rules import session_decision, set_goal, weight_step_problem
+from metrics.progression_rules import repeat_goals, session_decision, set_goal, weight_step_problem
 from metrics.recommendation_history import (
     changed_context_reason,
+    exercise_history_observations,
     recommendation_history,
     with_recorded_baselines,
 )
@@ -78,6 +79,26 @@ def _evidence_problem(latest, planned, scheduled_date, policy):
     return None
 
 
+def _repeat_evidence(latest, planned, problem, manual_load):
+    """Missing effort/count/recency stops progression, not reuse of known results."""
+    sets = latest["sets"]
+    reusable = (
+        problem[0] in ("missing_rir", "missing_target_rir", "incomplete_sets", "history_gap")
+        and sets
+        and not latest.get("ambiguous_recorded_exercises")
+        and "invalid" not in latest.get("excluded_set_kinds", ())
+        and len({s.get("load_type", "legacy") for s in sets}) == 1
+        and all(
+            isfinite(s["weight"])
+            and s["weight"] >= 0
+            and recorded_load(s) is not None
+            and (s["rir"] is None or (isfinite(s["rir"]) and s["rir"] >= 0))
+            for s in sets
+        )
+    )
+    return repeat_goals(planned, sets, manual_load=manual_load) if reusable else ()
+
+
 def _plateau_history(history, planned, policy):
     if planned.target_unit != "reps" or len(history) < policy.plateau_exposures:
         return ()
@@ -126,6 +147,7 @@ def recommend_normal_workout(
     policy=ProgressionPolicy(),
     substitutions=None,
     replacement_weight_steps=None,
+    exercise_history=None,
 ):
     if type(as_of) is not date or type(upcoming.slot.scheduled_date) is not date:
         raise ValueError("Recommendation dates must be dates")
@@ -147,7 +169,13 @@ def recommend_normal_workout(
         planned = target.exercise
         actual_id = substitutions.get(target.plan_exercise_id, planned.exercise_id)
         context = comparison_context(upcoming.slot, position, planned, actual_id)
-        observed = with_recorded_baselines(data, performances, planned, actual_id, as_of=as_of)
+        observed = performances
+        if exercise_history is not None:
+            observed = exercise_history_observations(
+                exercise_history, observed, planned, actual_id, context
+            )
+        else:
+            observed = with_recorded_baselines(data, performances, planned, actual_id, as_of=as_of)
         history, baseline_only = recommendation_history(
             observed, context, as_of=as_of, block_start=block_start
         )
@@ -199,17 +227,34 @@ def recommend_normal_workout(
         latest, evidence = history[-1], (history[-1],)
         problem = _evidence_problem(latest, planned, upcoming.slot.scheduled_date, policy)
         if problem:
-            output.append(decision("insufficient_data", *problem, evidence=evidence))
-            continue
-        if baseline_only:
-            code = (
-                "changed_set_count" if len(latest["sets"]) != planned.set_count else "manual_start"
+            goals = _repeat_evidence(
+                latest, planned, problem, actual_id in data.manual_load_exercise_ids
             )
             output.append(
                 decision(
-                    "insufficient_data",
+                    "maintain" if goals else "insufficient_data",
+                    *problem,
+                    goals=goals,
+                    evidence=evidence,
+                )
+            )
+            continue
+        if baseline_only:
+            code = (
+                "changed_set_count"
+                if len(latest["sets"]) != planned.set_count
+                else "prescription_changed"
+            )
+            output.append(
+                decision(
+                    "maintain",
                     code,
-                    changed_context_reason(latest, context, upcoming.slot.name),
+                    "Reuse compatible recorded results with the current set count, range and reserve.",
+                    repeat_goals(
+                        planned,
+                        latest["sets"],
+                        manual_load=actual_id in data.manual_load_exercise_ids,
+                    ),
                     evidence=evidence,
                 )
             )
@@ -296,6 +341,7 @@ def recommend_workout(
     substitutions=None,
     replacement_weight_steps=None,
     settings_by_version=None,
+    exercise_history=None,
 ):
     phase = training_block_phase(upcoming.slot.scheduled_date, settings)
     configured = (
@@ -311,16 +357,7 @@ def recommend_workout(
         workouts=tuple(
             w
             for w in data.workouts
-            if (settings is None or configured.get(w.slot.version_id) == settings)
-            and (
-                settings is None
-                or (
-                    w.slot.scheduled_date >= settings.block_start
-                    and w.slot.performed_on is not None
-                    and w.slot.performed_on >= settings.block_start
-                )
-            )
-            and not is_deload_workout(w.slot, configured.get(w.slot.version_id))
+            if not is_deload_workout(w.slot, configured.get(w.slot.version_id))
         ),
     )
     current = replace(
@@ -344,6 +381,16 @@ def recommend_workout(
         policy=policy,
         substitutions=substitutions,
         replacement_weight_steps=replacement_weight_steps,
+        exercise_history=(
+            {
+                key: tuple(
+                    r for r in rows if phase.cycle_start is None or r["date"] >= phase.cycle_start
+                )
+                for key, rows in exercise_history.items()
+            }
+            if exercise_history is not None
+            else None
+        ),
     )
     if phase.phase in ("unconfigured", "not_started") or upcoming.slot.session_id is not None:
         return WorkoutRecommendation(phase, results)
@@ -355,9 +402,15 @@ def recommend_workout(
             continue
         planned = target.exercise
         context = comparison_context(upcoming.slot, position, planned, result.actual_exercise_id)
-        observed = with_recorded_baselines(
-            ordinary, performances, planned, result.actual_exercise_id, as_of=as_of
-        )
+        observed = performances
+        if exercise_history is not None:
+            observed = exercise_history_observations(
+                exercise_history, observed, planned, result.actual_exercise_id, context
+            )
+        else:
+            observed = with_recorded_baselines(
+                ordinary, performances, planned, result.actual_exercise_id, as_of=as_of
+            )
         if phase.phase == "deload":
             candidates = [
                 r
@@ -368,13 +421,12 @@ def recommend_workout(
                 and r["performed_on"] <= as_of
             ]
         else:
-            previous_start = phase.cycle_start - timedelta(weeks=settings.block_weeks)
             candidates = [
                 r
                 for r in observed
                 if r["performed_on"] is not None
-                and previous_start <= r["scheduled_date"] < phase.cycle_start
-                and previous_start <= r["performed_on"] < phase.cycle_start
+                and r["scheduled_date"] < phase.cycle_start
+                and r["performed_on"] < phase.cycle_start
                 and r["performed_on"] <= as_of
             ]
         history, baseline_only = recommendation_history(
@@ -400,13 +452,41 @@ def recommend_workout(
         )
         problem = _evidence_problem(latest, planned, upcoming.slot.scheduled_date, policy)
         if problem:
+            goals = (
+                _repeat_evidence(
+                    latest,
+                    planned,
+                    problem,
+                    result.actual_exercise_id in data.manual_load_exercise_ids,
+                )
+                if phase.phase == "normal"
+                else ()
+            )
             output.append(
                 replace(
                     result,
-                    action="insufficient_data",
-                    goals=(),
+                    action="maintain" if goals else "insufficient_data",
+                    goals=goals,
                     reason_code=problem[0],
                     reason=problem[1],
+                )
+            )
+            continue
+        if phase.phase == "normal":
+            goals = repeat_goals(
+                planned,
+                latest["sets"],
+                manual_load=result.actual_exercise_id in data.manual_load_exercise_ids,
+            )
+            output.append(
+                replace(
+                    result,
+                    action="maintain",
+                    goals=goals,
+                    reason_code="resume_after_deload"
+                    if phase.cycle > 1
+                    else "reuse_exercise_baseline",
+                    reason="Repeat the last ordinary loads and repetitions with the planned reserve before increasing difficulty.",
                 )
             )
             continue
@@ -418,21 +498,6 @@ def recommend_workout(
                     goals=(),
                     reason_code="manual_start",
                     reason=changed_context_reason(latest, context, upcoming.slot.name),
-                )
-            )
-            continue
-        if phase.phase == "normal":
-            goals = tuple(
-                set_goal(s, planned.target_min, planned.target_max, unit=planned.target_unit)
-                for s in latest["sets"]
-            )
-            output.append(
-                replace(
-                    result,
-                    action="maintain",
-                    goals=goals,
-                    reason_code="resume_after_deload",
-                    reason="Resume the last ordinary loads and range. The first exposure after deload verifies the baseline without an immediate increase.",
                 )
             )
             continue

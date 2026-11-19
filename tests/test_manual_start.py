@@ -22,7 +22,7 @@ def snapshot(engine):
         return tuple(connection.execute(select(table)).all() for table in (actual_sets, links))
 
 
-def test_unlinked_history_before_plan_supplies_starting_loads_without_progression(schedule_data):
+def test_ambiguous_unlinked_entries_require_a_choice_without_changing_history(schedule_data):
     engine, _, source, sessions = schedule_data
     with engine.begin() as connection:
         connection.execute(
@@ -53,22 +53,21 @@ def test_unlinked_history_before_plan_supplies_starting_loads_without_progressio
     assert len(references[1]) == 2
     assert {r["session_id"] for r in references[1]} == {2}
     assert all(r["date"] == date(2026, 4, 27) and r["workout"] is None for r in references[1])
-    # Old unlinked entries supply loads without confirming a weight increase.
+    # Separate entries of the same exercise must not silently become one baseline.
     plan = seed_without_records(engine, source)
     app = start_app(engine, plan)
     html = exercise_html(app)
-    assert "90 kg" in html
+    assert "90 kg" not in html
     assert "Based on:" not in html and "27 Apr 2026" not in html
-    assert "Starting loads" in html
-    assert "3 × 6–10 reps · 90 kg" in html
+    assert "Choose starting load" in html
     assert "RIR ≥ 2" in html
     assert "Target not available yet" not in html
-    assert not [n for n in app.number_input if n.key.startswith("manual_start_")]
+    assert len([n for n in app.number_input if n.key.startswith("manual_start_")]) == 3
     assert snapshot(engine) == before
     slot = load_scheduled_workouts(engine, plan.plan_id, NEXT, NEXT)[0]
     result = load_workout_recommendations(engine, plan.plan_id, slot.day_id, NEXT, as_of=AS_OF)
-    assert result.exercises[0].reason_code == "reuse_exercise_baseline"
-    assert [g.weight for g in result.exercises[0].goals] == [90.0] * 3
+    assert result.exercises[0].reason_code == "history_gap"
+    assert not result.exercises[0].goals
 
 
 def seed_without_records(engine, source):
