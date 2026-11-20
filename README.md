@@ -20,7 +20,7 @@ Demo browsing never connects to the personal database. Under the same URL,
 the owner can choose **Personal** and unlock the saved plan with a password.
 The application is designed for one owner, without registration or user accounts.
 
-![Training overview and next workout](screenshots/Overview.png)
+![Recorded progress and recent observations](screenshots/Overview.png)
 
 ## Problem and approach
 
@@ -62,6 +62,19 @@ The [user guide](docs/user-guide.md) contains walkthroughs, import examples and
 the [full screenshot gallery](docs/user-guide.md#screenshots).
 [Calculation rules](docs/calculation-rules.md) and
 [recommendation rules](docs/progression-rules.md) explain how results are derived.
+
+## Interface
+
+Current desktop views, captured from the fictional demo on 20 November 2026.
+Session actions and exercise settings open in dialogs beside the workout history.
+
+| Training plan | Recorded session |
+| --- | --- |
+| ![Weekly plan and exercise targets](screenshots/Plan.png) | ![Single-line sets with plan linking and session tools](screenshots/History_Session.png) |
+| **Session tools** | **Exercise load settings** |
+| ![Set corrections in the session tools dialog](screenshots/Session_Tools.png) | ![Exercise-wide load settings](screenshots/Data_Settings.png) |
+
+See the [full gallery, including mobile layouts](docs/user-guide.md#screenshots).
 
 ## My role and engineering decisions
 

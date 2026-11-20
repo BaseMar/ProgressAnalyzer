@@ -116,7 +116,7 @@ without a view switch or a separate Timed sets disclosure. **Body measurements**
 summary and trend without a separate Measurement records table. Entry and
 correction remain available in History.
 
-**Plan** uses visible **Create a new plan** and **Edit plan** actions. Its editor
+**Plan** uses visible **Create a new plan**, **Edit plan** and **Delete plan** actions. Its editor
 keeps plan details, workouts/exercises and saving on one page. Training blocks
 are optional; an existing block is preserved when editing a version.
 
@@ -124,10 +124,12 @@ are optional; an existing block is preserved when editing a version.
 **Body measurements** actions. One entry panel opens at a time. Recorded sessions
 occupy the main column below the full-width calendar. **Calendar settings**,
 including the active plan and planned-workout toggle, stay visible above the
-calendar grid. Each set shows its reserve; missing RIR stays unknown.
-Corrections and deletion are under **Session tools** below the recorded sets;
-exercise conventions remain under **Data settings**. Open **Plan assignments** below the logs to link
-planned workouts.
+calendar grid. Each exercise keeps its set tiles on one horizontal row; scroll
+the list sideways on smaller screens. Every set shows its reserve; missing RIR
+stays unknown. **Link to plan** and **Tools** sit in each session's header.
+Tools opens a dialog with **Set labels**, **Set load**, **Replacements** and
+**Delete session** tabs. **Data settings**, beside the History title, opens
+exercise-wide conventions and unresolved historical loads.
 
 ## Your first plan and workout
 
@@ -135,8 +137,8 @@ planned workouts.
    exercises, for example `3 sets × 6–10 reps`.
 2. **Import a workout in History → Import workout TXT.** Enter an exercise manually or
    import a TXT note. Record RIR when you know it.
-3. **Link the session to its planned workout in the History calendar.**
-   This tells the app which prescription the log belongs to.
+3. **Choose Link to plan in the recorded session's header.** Select its plan,
+   planned week and workout. This tells the app which prescription the log belongs to.
 4. **Read Analysis, then Overview.** Analysis explains recorded results;
    Overview shows the upcoming target when enough comparable evidence exists.
 
@@ -223,12 +225,13 @@ automatically from its saved profile, confirmed history or catalog rules.
 External-load exercises have no type selector; bodyweight exercises show only
 the relevant body-mass/assistance fields.
 
-History shows the saved load components.
-**Body mass and load details** corrects an individual set.
-**Exercise load settings → Edit exercise conventions** is an optional correction
-tool for the exact catalog exercise. It remembers how kilograms are written in
-TXT notes and how unspecified old entries should be interpreted. An unresolved
-history list identifies exercises that need a one-time decision.
+History shows the saved load components. **Tools → Set load** corrects an
+individual set. **Data settings → Exercise settings** remembers how kilograms
+are written in TXT notes and how unspecified old entries should be interpreted
+for the exact catalog exercise. **Unresolved sets** lists exercises and their
+affected set counts; **Edit** opens that exercise's settings. **Save changes**
+applies the convention to that exercise across sessions and resolves its
+unspecified historical loads where possible.
 Normalized sets retain an archived original. **Restore original entry** restores
 that snapshot unless the set was subsequently edited.
 
@@ -316,13 +319,15 @@ The exercise profile and earlier body-mass measurement supply the other load det
 
 ### Link a workout or confirm a replacement
 
-In **History**, select a planned calendar day and link its recorded session.
-The actual workout may be on another date. A session belongs to one planned slot;
-removing a link preserves its log.
+In **History**, select the recorded day and choose **Link to plan** beside the
+session title. Choose a plan, planned week and workout in the dialog. The actual
+workout may be on another date. A linked session shows its planned workout's
+name; select it to change or remove the link. A session belongs to one planned
+slot; removing a link preserves its log.
 
-If you used another exercise, open **Confirm exercise replacements** on the
-linked workout. For example, Machine Chest Press can cover a Barbell Bench Press
-position for that session. Their performance histories stay separate.
+If you used another exercise, open **Tools → Replacements** in that session's
+header. For example, Machine Chest Press can cover a Barbell Bench Press position
+for that session. Their performance histories stay separate.
 
 <details>
 <summary>Calendar and matching rules</summary>
@@ -336,7 +341,7 @@ position for that session. Their performance histories stay separate.
   not confirm a replacement. Replacements must use the same unit: reps or seconds.
 - Confirmed replacements reserve the recorded exercise for one plan position.
   Remaining exact-ID sets are allocated in plan order without double counting.
-- Unlinking/deleting a session removes its replacement approvals.
+- Changing/removing a link or deleting a session removes its replacement approvals.
   Deleting the session also removes the link; unlinking alone keeps the workout.
 - Analysis uses scheduled dates for plan periods and loads moved linked sessions
   in full. A moved workout counts as recorded, but not on the planned day.
@@ -350,10 +355,19 @@ fictional data without a password. Personal asks for the owner's password before
 loading saved records. **Log out**, or switching back to Demo, closes personal
 access and clears the current editor state. See [hosted access setup](public-demo.md).
 
-Captured 10 November 2026 with Streamlit 1.66.1 and entirely fictional data
-generated by the public sandbox. Desktop captures use 1440 px; mobile captures
-use 390 px. Images show the interface at capture time; see the
+Captured 20 November 2026 with Streamlit 1.66.1 and entirely fictional data
+generated by the public sandbox. Desktop browser width is 1440 px; mobile width
+is 390 px. Session detail images focus on the recorded-session panel. Images
+show the interface at capture time; see the
 [v1.0.0 release notes](releases/v1.0.0.md) for release scope.
+
+<details>
+<summary>Recorded progress and next workout</summary>
+
+![Recorded progress and recent observations](../screenshots/Overview.png)
+![Next workout and per-set targets](../screenshots/Next_Workout.png)
+
+</details>
 
 <details>
 <summary>Hosted workspace and owner login</summary>
@@ -366,6 +380,7 @@ use 390 px. Images show the interface at capture time; see the
 <details>
 <summary>Analysis: exercise, plan, muscles and body measurements</summary>
 
+![Exercise trend ranking](../screenshots/Analysis_Progress.png)
 ![Exercise progress](../screenshots/Analysis_Exercise.png)
 ![Plan consistency](../screenshots/Analysis_Consistency.png)
 ![Muscle set allocation](../screenshots/Analysis_Muscles.png)
@@ -378,8 +393,18 @@ use 390 px. Images show the interface at capture time; see the
 
 ![Weekly plan summary](../screenshots/Plan.png)
 ![One exercise edited at a time](../screenshots/Plan_Editor.png)
-![Calendar, assignments and recorded sessions](../screenshots/History.png)
+![Workout calendar and visible data settings action](../screenshots/History.png)
+![Single-line sets and session header actions](../screenshots/History_Session.png)
 ![On-demand TXT import](../screenshots/History_Import.png)
+
+</details>
+
+<details>
+<summary>Session actions and exercise-wide settings</summary>
+
+![Link or change a session's planned workout](../screenshots/Session_Link.png)
+![Correct loads in the session tools dialog](../screenshots/Session_Tools.png)
+![Exercise-wide load conventions](../screenshots/Data_Settings.png)
 
 </details>
 
@@ -387,8 +412,10 @@ use 390 px. Images show the interface at capture time; see the
 <summary>Mobile layouts</summary>
 
 ![Stacked training overview](../screenshots/Overview_Mobile.png)
+![Upcoming workout targets on mobile](../screenshots/Next_Workout_Mobile.png)
 ![Compact exercise editor](../screenshots/Plan_Editor_Mobile.png)
-![Workout calendar and session logs](../screenshots/History_Mobile.png)
+![Recorded session and header actions on mobile](../screenshots/History_Mobile.png)
+![Exercise load settings on mobile](../screenshots/Data_Settings_Mobile.png)
 
 </details>
 
