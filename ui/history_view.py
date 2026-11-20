@@ -15,9 +15,10 @@ from data_manager import DataManager
 from mapper import map_workout_set
 from ui.body_metrics_view import BodyMetricsView
 from ui.exercise_replacements_view import ExerciseReplacementsView
-from ui.load_profiles_view import render_load_profile_settings
+from ui.load_profiles_view import DATA_SETTINGS_KEY, data_settings_dialog
 from ui.plan_schedule_view import PlanScheduleView
-from ui.set_load_view import render_set_load_correction
+from ui.session_plan_link_view import SESSION_LINK_KEY, session_plan_link_dialog
+from ui.session_tools_view import SESSION_TOOLS_KEY, session_tools_dialog
 from ui.sidebar_upload import SidebarUpload
 from ui.utils.active_plan import select_active_plan
 from ui.utils.set_load_inputs import format_load
@@ -27,16 +28,19 @@ from ui.workout_entry_view import render_workout_entry
 logger = logging.getLogger(__name__)
 
 
-def _set_pills(ex_df: pd.DataFrame) -> str:
-    """Render set card badges for display in session history.
+def _shared_load_description(ex_df: pd.DataFrame) -> str | None:
+    """Show a shared body-weight convention once, beside the exercise name."""
+    descriptions = []
+    for row in ex_df.to_dict("records"):
+        if row.get("load_type") not in ("bodyweight", "assisted_bodyweight"):
+            return None
+        descriptions.append(format_load(map_workout_set(row).load))
+    return descriptions[0] if descriptions and len(set(descriptions)) == 1 else None
 
-    Args:
-        ex_df: DataFrame of sets for an exercise
 
-    Returns:
-        HTML string with set pill badges (reps × weight)
-    """
-    pills = []
+def _set_results(ex_df: pd.DataFrame, *, shared_load: str | None = None) -> str:
+    """Render each recorded set as a separate, single-line result tile."""
+    results = []
     for _, row in ex_df.sort_values("set_number").iterrows():
         duration_seconds = row.get("duration_seconds")
         if pd.notna(duration_seconds) and int(duration_seconds) > 0:
@@ -47,20 +51,27 @@ def _set_pills(ex_df: pd.DataFrame) -> str:
             value = f"{row['repetitions']} × {row['weight']:g} kg"
         if not pd.isna(row.get("load_type")):
             load_text = format_load(map_workout_set(row.to_dict()).load)
-            value = (
-                f"{_format_seconds(duration_seconds)} · "
-                if pd.notna(duration_seconds) and duration_seconds > 0
-                else f"{row['repetitions']} × "
-            ) + load_text
+            if shared_load == load_text:
+                value = (
+                    _format_seconds(duration_seconds)
+                    if pd.notna(duration_seconds) and duration_seconds > 0
+                    else f"{row['repetitions']} reps"
+                )
+            else:
+                value = (
+                    f"{_format_seconds(duration_seconds)} · "
+                    if pd.notna(duration_seconds) and duration_seconds > 0
+                    else f"{row['repetitions']} × "
+                ) + load_text
         if pd.notna(row.get("is_warmup")) and bool(row.get("is_warmup")):
             value = f"WU · {value}"
         rir = row.get("rir")
         reserve = f"RIR {rir:g}" if pd.notna(rir) else "RIR —"
-        pills.append(
-            f'<span class="set-pill"><span>{escape(value)}</span>'
+        results.append(
+            f'<span class="plan-reference-target history-set-result"><span>{escape(value)}</span>'
             f"<small>Set {int(row['set_number'])} · {reserve}</small></span>"
         )
-    return "".join(pills)
+    return "".join(results)
 
 
 class HistoryView:
@@ -90,7 +101,18 @@ class HistoryView:
         self.scheduled_workouts = []
 
     def render(self) -> None:
-        page_title("History", "Your training history")
+        with st.container(key="history_page_header", horizontal=True, vertical_alignment="center"):
+            page_title("History", "Your training history")
+            if st.button(
+                "Data settings",
+                key="history_data_settings_button",
+                icon=":material/settings:",
+                type="tertiary",
+                help="Manage exercise load conventions across all sessions.",
+            ):
+                st.session_state.pop(SESSION_LINK_KEY, None)
+                st.session_state.pop(SESSION_TOOLS_KEY, None)
+                st.session_state[DATA_SETTINGS_KEY] = True
         if "history_workout_notice" in st.session_state:
             st.success(st.session_state.pop("history_workout_notice"))
         with st.container(key="history_actions"):
@@ -150,8 +172,8 @@ class HistoryView:
                     self.metrics.get("body", {}), manager=self.dm
                 )._add_measurement_form()
         self._render_history()
-        section_header("Data settings")
-        render_load_profile_settings(self.dm)
+        if st.session_state.get(DATA_SETTINGS_KEY):
+            data_settings_dialog(self.dm)
 
     def _select_plan(self):
         try:
@@ -221,9 +243,8 @@ class HistoryView:
                     st.info("No sessions recorded for this day.")
                 else:
                     self._render_day_sessions(day_df)
-                if self.schedule.plan_id is not None:
-                    with st.expander("Plan assignments", key="history_plan_assignments"):
-                        self._render_day_plan(selected_day)
+                if day_df.empty and self.schedule.plan_id is not None:
+                    self._render_day_plan(selected_day)
 
     def _render_day_plan(self, selected_day):
         self.schedule.render_day(selected_day, self.scheduled_workouts)
@@ -364,8 +385,18 @@ class HistoryView:
         return st.session_state[selection_key]
 
     def _render_day_sessions(self, df: pd.DataFrame) -> None:
-        """Render the existing session cards for the chosen day."""
-        from ui.set_classification_view import render_set_classification
+        """Display recorded exercises using the same reference list as the plan."""
+        assignments = {}
+        link_ready = False
+        try:
+            link_ready = self.dm.plan_schedule_storage_ready()
+            if link_ready:
+                assignments = self.dm.load_session_plan_assignments(
+                    tuple(int(value) for value in df["session_id"].unique())
+                )
+        except SQLAlchemyError:
+            logger.exception("Unable to load session plan links")
+            link_ready = False
 
         grouped = df.groupby(["session_id", "session_date"], sort=False)
 
@@ -375,45 +406,93 @@ class HistoryView:
                 "workout_exercise_id" if "workout_exercise_id" in session_df else "exercise_name"
             )
             exercises_count = session_df[group_key].nunique()
+            current = assignments.get(int(session_id))
             with st.container(key=f"history_session_{session_id}"):
-                st.markdown(
-                    '<div class="history-session-heading">'
-                    f"<strong>Session #{int(session_id)}</strong>"
-                    f"<span>{exercises_count} exercises · {total_sets} sets</span></div>",
-                    unsafe_allow_html=True,
-                )
+                with st.container(
+                    key=f"history_session_header_{session_id}",
+                    horizontal=True,
+                    vertical_alignment="center",
+                    gap="small",
+                ):
+                    st.markdown(
+                        '<div class="history-session-heading">'
+                        f"<strong>Session #{int(session_id)}</strong>"
+                        f"<span>{exercises_count} exercises · {total_sets} sets</span></div>",
+                        unsafe_allow_html=True,
+                    )
+                    with st.container(
+                        key=f"history_session_actions_{session_id}",
+                        horizontal=True,
+                        width="content",
+                        wrap=False,
+                        gap="xsmall",
+                    ):
+                        if st.button(
+                            current["day_name"] if current else "Link to plan",
+                            key=f"history_session_link_{session_id}",
+                            icon=":material/check_circle:" if current else ":material/link:",
+                            type="tertiary",
+                            disabled=not link_ready,
+                            help=(
+                                f"{current['plan_name']} · {current['scheduled_date']:%d %b %Y}. "
+                                "Change or remove this link."
+                                if current
+                                else "Assign this session to a planned workout."
+                            )
+                            if link_ready
+                            else "Plan links are currently unavailable.",
+                        ):
+                            st.session_state.pop(DATA_SETTINGS_KEY, None)
+                            st.session_state.pop(SESSION_TOOLS_KEY, None)
+                            st.session_state[SESSION_LINK_KEY] = (
+                                int(session_id),
+                                session_date.date(),
+                            )
+                        if st.button(
+                            "Tools",
+                            key=f"history_session_tools_{session_id}",
+                            icon=":material/tune:",
+                            type="tertiary",
+                            help="Edit sets, load details and replacements, or delete this session.",
+                        ):
+                            st.session_state.pop(DATA_SETTINGS_KEY, None)
+                            st.session_state.pop(SESSION_LINK_KEY, None)
+                            st.session_state[SESSION_TOOLS_KEY] = (
+                                int(session_id),
+                                session_date.date(),
+                            )
+                rows = []
                 for position, (_, ex_df) in enumerate(
                     session_df.groupby(group_key, sort=False), start=1
                 ):
                     exercise = ex_df["exercise_name"].iloc[0]
-                    st.markdown(
-                        '<div class="history-exercise">'
-                        '<div class="history-exercise-heading">'
-                        f"<span>{position:02d}</span><strong>{escape(str(exercise))}</strong></div>"
-                        f'<div class="set-pills">{_set_pills(ex_df)}</div></div>',
-                        unsafe_allow_html=True,
+                    shared_load = _shared_load_description(ex_df)
+                    load_detail = f"<span>{escape(shared_load)}</span>" if shared_load else ""
+                    rows.append(
+                        '<div class="plan-reference-row history-exercise">'
+                        f'<span class="plan-exercise-number">{position:02d}</span>'
+                        '<div class="plan-reference-name">'
+                        f"<strong>{escape(str(exercise))}</strong>"
+                        f"<span>{len(ex_df)} sets</span>{load_detail}</div>"
+                        '<div class="history-exercise-results">'
+                        f"{_set_results(ex_df, shared_load=shared_load)}</div></div>"
                     )
-                with st.expander(
-                    "Session tools", key=f"history_tools_{session_id}", icon=":material/tune:"
-                ):
-                    render_set_classification(self.dm, session_id=int(session_id), embedded=True)
-                    render_set_load_correction(
-                        self.dm,
-                        session_id=int(session_id),
-                        workout_date=session_date.date(),
-                        embedded=True,
-                    )
-                    with st.container(key=f"history_delete_{session_id}"):
-                        if st.button(
-                            "Delete Session",
-                            key=f"del_{session_id}",
-                            type="secondary",
-                            use_container_width=True,
-                            icon=":material/delete:",
-                        ):
-                            if self.dm.delete_session(session_id):
-                                st.toast("Session deleted successfully!")
-                                st.rerun()
+                st.markdown(
+                    '<div class="plan-exercise-list history-exercise-list" tabindex="0" '
+                    'role="region" aria-label="Recorded exercises and sets. Scroll horizontally to see all results.">'
+                    '<div class="history-exercise-list-content">' + "".join(rows) + "</div></div>",
+                    unsafe_allow_html=True,
+                )
+        pending = st.session_state.get(SESSION_LINK_KEY)
+        tools = st.session_state.get(SESSION_TOOLS_KEY)
+        if pending and pending[0] in set(df["session_id"]):
+            session_plan_link_dialog(self.dm, *pending)
+        elif pending:
+            st.session_state.pop(SESSION_LINK_KEY, None)
+        if tools and tools[0] in set(df["session_id"]):
+            session_tools_dialog(self.dm, *tools, self.exercise_names)
+        elif tools:
+            st.session_state.pop(SESSION_TOOLS_KEY, None)
 
 
 def _format_seconds(value: int | float) -> str:

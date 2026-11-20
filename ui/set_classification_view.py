@@ -14,10 +14,10 @@ from metrics.set_interpretation import interpret_sets
 logger = logging.getLogger(__name__)
 
 
-def render_set_classification(manager=None, *, session_id=None, embedded=False):
+def render_set_classification(manager=None, *, session_id=None, embedded=False, show_toggle=True):
     dm = manager if manager is not None else DataManager()
     with nullcontext() if embedded else st.expander("Set interpretation · optional correction"):
-        if not st.toggle(
+        if show_toggle and not st.toggle(
             "Correct a set",
             key=f"set_exception_{session_id if session_id is not None else 'picker'}",
         ):

@@ -14,7 +14,7 @@ from db.workout_sessions import save_workout_session
 from mapper import map_workout_set
 from models.set_load import SetLoad
 from test_plan_schedule import schedule_data as schedule_data
-from ui.history_view import _set_pills
+from ui.history_view import _set_results
 
 
 @pytest.fixture
@@ -288,12 +288,12 @@ from datetime import date
 import streamlit as st
 from data_manager import DataManager
 from ui.set_load_view import render_set_load_correction
-from ui.history_view import _set_pills
+from ui.history_view import _set_results
 manager = object.__new__(DataManager)
 manager.engine = st.session_state["engine"]
 frame = manager.load_sets_ui()
 sid = int(frame.iloc[0].session_id)
-st.markdown(_set_pills(frame), unsafe_allow_html=True)
+st.markdown(_set_results(frame), unsafe_allow_html=True)
 render_set_load_correction(manager, session_id=sid, workout_date=date(2026, 2, 15))
 """
 
@@ -376,13 +376,13 @@ def test_history_badges_show_time_body_added_weight_and_support():
             }
         ]
     )
-    html = _set_pills(frame)
+    html = _set_results(frame)
     assert "40s" in html and "body 80 kg + 5 kg" in html and "85 kg total" in html
     frame.loc[0, ["load_type", "weight", "assistance_kg"]] = ["assisted_bodyweight", 0, 20]
-    html = _set_pills(frame)
+    html = _set_results(frame)
     assert "20 kg assistance" in html and "60 kg total" in html
     frame.loc[0, "assistance_kg"] = None
-    assert "total unknown" in _set_pills(frame)
+    assert "total unknown" in _set_results(frame)
 
 
 def test_manual_entry_is_reachable_and_returns_to_saved_day_in_history(

@@ -17,9 +17,11 @@ from ui.utils.set_load_inputs import (
 logger = logging.getLogger(__name__)
 
 
-def render_set_load_correction(manager, *, session_id, workout_date, embedded=False):
+def render_set_load_correction(
+    manager, *, session_id, workout_date, embedded=False, show_toggle=True
+):
     with nullcontext() if embedded else st.expander("Body mass and load details"):
-        if not st.toggle("Edit set load", key=f"edit_load_{session_id}"):
+        if show_toggle and not st.toggle("Edit set load", key=f"edit_load_{session_id}"):
             return
         try:
             if not manager.set_load_storage_ready():

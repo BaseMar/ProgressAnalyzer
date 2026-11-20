@@ -20,7 +20,8 @@ df = pd.DataFrame(rows)
 month = st.session_state.get("filter_month", "All time")
 if month != "All time":
     df = df.loc[df.session_date.str.startswith(month)]
-with patch("ui.history_view.DataManager"):
+with patch("ui.history_view.DataManager") as manager:
+    manager.return_value.load_session_plan_assignments.return_value = {}
     view = HistoryView({}, df, month)
 view.render()
 """
@@ -35,7 +36,7 @@ def start_app(month="All time"):
 
 
 def session_count(app):
-    return sum(button.label == "Delete Session" for button in app.button)
+    return sum(button.key.startswith("history_session_tools_") for button in app.button)
 
 
 def test_calendar_selects_day_and_shows_all_sessions_on_leap_day():
@@ -48,9 +49,11 @@ def test_calendar_selects_day_and_shows_all_sessions_on_leap_day():
     assert app.button(key="history_date_2024-02-29").label == "29"
     assert "2 session(s)" in app.button(key="history_date_2024-02-29").help
     assert session_count(app) == 2
-    assert {button.key for button in app.button if button.label == "Delete Session"} == {
-        "del_1",
-        "del_2",
+    assert {
+        button.key for button in app.button if button.key.startswith("history_session_tools_")
+    } == {
+        "history_session_tools_1",
+        "history_session_tools_2",
     }
     assert any("1:30" in item.value for item in app.markdown)
 
@@ -136,14 +139,17 @@ rows = [dict(session_id=1, session_date=pd.Timestamp("2026-11-13"),
              workout_exercise_id=wid, exercise_name="Bench Press", set_number=1,
              repetitions=10, weight=60.0, rir=rir)
         for wid, rir in [(20, 0), (10, None)]]
-HistoryView({}, pd.DataFrame(rows), data_manager=Mock())._render_day_sessions(pd.DataFrame(rows))
+manager = Mock()
+manager.load_session_plan_assignments.return_value = {}
+HistoryView({}, pd.DataFrame(rows), data_manager=manager)._render_day_sessions(pd.DataFrame(rows))
 """,
         default_timeout=30,
     ).run()
     assert not app.exception
-    cards = [item.value for item in app.markdown if 'class="history-exercise"' in item.value]
-    assert len(cards) == 2
-    assert "RIR 0" in cards[0]
-    assert "RIR —" in cards[1]
+    markup = "".join(item.value for item in app.markdown)
+    rows = markup.split('class="plan-reference-row history-exercise"')[1:]
+    assert len(rows) == 2
+    assert "RIR 0" in rows[0]
+    assert "RIR —" in rows[1]
     assert "2 exercises · 2 sets" in "".join(item.value for item in app.markdown)
-    assert len(app.expander) == 1
+    assert not app.expander

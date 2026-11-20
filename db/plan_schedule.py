@@ -131,7 +131,31 @@ def load_plan_session_links(engine) -> dict[int, tuple[int, date]]:
         }
 
 
-def assign_scheduled_session(engine, day_id: int, scheduled_date: date, session_id: int):
+@read_cached
+def load_session_plan_assignments(engine, session_ids):
+    """Resolve header labels across plans, including workouts moved to another date."""
+    if not session_ids:
+        return {}
+    with engine.connect() as connection:
+        rows = connection.execute(
+            select(
+                links.c.session_id,
+                links.c.day_id,
+                links.c.scheduled_date,
+                days.c.name.label("day_name"),
+                versions.c.plan_id,
+                versions.c.name.label("plan_name"),
+            )
+            .select_from(links.join(days, links.c.day_id == days.c.day_id).join(versions))
+            .where(links.c.session_id.in_(session_ids))
+        ).mappings()
+        return {row["session_id"]: dict(row) for row in rows}
+
+
+def assign_scheduled_session(
+    engine, day_id: int, scheduled_date: date, session_id: int, *, replace_existing=False
+):
+    """Assign a session; an explicit replacement keeps the old link on any failure."""
     if type(scheduled_date) is not date:
         raise ValueError("A scheduled date is required")
     try:
@@ -166,7 +190,9 @@ def assign_scheduled_session(engine, day_id: int, scheduled_date: date, session_
                 raise ValueError("This workout is not scheduled on the selected date")
             if (
                 connection.execute(
-                    select(sessions.c.session_id).where(sessions.c.session_id == session_id)
+                    select(sessions.c.session_id)
+                    .where(sessions.c.session_id == session_id)
+                    .with_for_update()
                 ).scalar_one_or_none()
                 is None
             ):
@@ -182,6 +208,8 @@ def assign_scheduled_session(engine, day_id: int, scheduled_date: date, session_
                 and existing["scheduled_date"] == scheduled_date
             ):
                 return
+            if existing and replace_existing:
+                connection.execute(links.delete().where(links.c.session_id == session_id))
             connection.execute(
                 links.insert().values(
                     session_id=session_id, day_id=day_id, scheduled_date=scheduled_date

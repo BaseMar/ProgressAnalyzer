@@ -18,18 +18,22 @@ class ExerciseReplacementsView:
     def _name(self, exercise_id):
         return self.names.get(exercise_id, f"Exercise #{exercise_id}")
 
-    def render(self, data):
+    def render(self, data, *, workout_key="match_workout"):
         linked = [item for item in data.workouts if item.slot.session_id is not None]
         if not linked:
             st.caption("Link a session in the calendar before confirming a replacement.")
             return
-        index = st.selectbox(
-            "Linked workout",
-            range(len(linked)),
-            key="match_workout",
-            format_func=lambda value: (
-                f"{linked[value].slot.scheduled_date:%d %b %Y} · {linked[value].slot.name}"
-            ),
+        index = (
+            st.selectbox(
+                "Linked workout",
+                range(len(linked)),
+                key=workout_key,
+                format_func=lambda value: (
+                    f"{linked[value].slot.scheduled_date:%d %b %Y} · {linked[value].slot.name}"
+                ),
+            )
+            if len(linked) > 1
+            else 0
         )
         workout, slot = linked[index], linked[index].slot
         index = st.selectbox(

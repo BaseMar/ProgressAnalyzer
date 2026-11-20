@@ -27,6 +27,7 @@ from db.plan_schedule import (
     load_plan_session_links,
     load_scheduled_workout_targets,
     load_scheduled_workouts,
+    load_session_plan_assignments,
     plan_schedule_storage_ready,
     unassign_scheduled_session,
 )
@@ -213,9 +214,16 @@ class DataManager:
     def load_plan_session_links(self):
         return load_plan_session_links(self.engine)
 
+    def load_session_plan_assignments(self, session_ids):
+        return load_session_plan_assignments(self.engine, session_ids)
+
     @_refresh_after_write
-    def assign_scheduled_session(self, day_id, scheduled_date, session_id):
-        return assign_scheduled_session(self.engine, day_id, scheduled_date, session_id)
+    def assign_scheduled_session(
+        self, day_id, scheduled_date, session_id, *, replace_existing=False
+    ):
+        return assign_scheduled_session(
+            self.engine, day_id, scheduled_date, session_id, replace_existing=replace_existing
+        )
 
     @_refresh_after_write
     def unassign_scheduled_session(self, day_id, scheduled_date, session_id):
