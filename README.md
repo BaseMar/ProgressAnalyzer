@@ -20,7 +20,7 @@ Demo browsing never connects to the personal database. Under the same URL,
 the owner can choose **Personal** and unlock the saved plan with a password.
 The application is designed for one owner, without registration or user accounts.
 
-![Recorded progress and recent observations](screenshots/Overview.png)
+![Recorded progress with signed changes in the highlighted results](screenshots/Overview.png)
 
 ## Problem and approach
 
@@ -39,9 +39,9 @@ Recommendations show their source sessions and explain missing evidence.
 
 | Page | Main workflow |
 | --- | --- |
-| **Overview** | Read recent observations and explained targets for the next workout. |
-| **Analysis** | Explore exercise performance, plan consistency, muscle allocation and body measurements. |
-| **Plan** | Build a weekly routine, save dated revisions, configure training blocks and delete plans. |
+| **Overview** | See highlighted changes in reps or seconds and explained targets for the next workout. |
+| **Analysis** | Explore exercise performance, plan consistency, weekly muscle allocation and recent or full measurement trends. |
+| **Plan** | Validate weekly routines, save dated revisions, configure training blocks and delete plans. |
 | **History** | Enter or import workouts, link sessions, confirm replacements and correct set/load details. |
 
 - **Versioned plans:** historical sessions retain their original prescription;
@@ -65,12 +65,16 @@ the [full screenshot gallery](docs/user-guide.md#screenshots).
 
 ## Interface
 
-Current desktop views, captured from the fictional demo on 20 November 2026.
-Session actions and exercise settings open in dialogs beside the workout history.
+Desktop views captured from the fictional demo on 25 November 2026.
+The plan editor marks fields that need attention. Muscle analysis offers an
+optional direct and indirect set breakdown, and measurement charts scale to the
+readings shown. Session actions and exercise settings open in dialogs from History.
 
-| Training plan | Recorded session |
+| Plan editor | Recorded session |
 | --- | --- |
-| ![Weekly plan and exercise targets](screenshots/Plan.png) | ![Single-line sets with plan linking and session tools](screenshots/History_Session.png) |
+| ![Plan editor with inline workout name validation](screenshots/Plan_Editor.png) | ![Recorded sets with plan linking and session tools](screenshots/History_Session.png) |
+| **Muscle allocation** | **Body measurements** |
+| ![Weekly muscle allocation with optional set breakdown and a muscle map](screenshots/Analysis_Muscles.png) | ![Recent waist measurements with an adaptive scale and exact readings](screenshots/Analysis_Body.png) |
 | **Session tools** | **Exercise load settings** |
 | ![Set corrections in the session tools dialog](screenshots/Session_Tools.png) | ![Exercise-wide load settings](screenshots/Data_Settings.png) |
 
@@ -106,7 +110,7 @@ boundaries, recommendation APIs and the data model.
 | --- | --- |
 | Application | Python 3.11 / 3.12, Streamlit |
 | Calculations | pandas, NumPy |
-| Charts and muscle map | Plotly, Pillow |
+| Charts and muscle map | Plotly, Vega-Lite, Pillow |
 | Storage | PostgreSQL / Supabase, SQLite local demo, SQLAlchemy, psycopg2 |
 | Quality and hosting | pytest, Ruff, GitHub Actions, Streamlit Community Cloud |
 
