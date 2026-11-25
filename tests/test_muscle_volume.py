@@ -102,7 +102,8 @@ def test_new_plan_is_activated_and_recalculates_targets_across_navigation(
     app.text_input(key="plan_editor_new_name").set_value("Full Body")
     app.text_input(key="plan_editor_new_day_0_name").set_value("Full Body A")
     app.selectbox(key="plan_editor_new_day_0_ex_0_exercise_id").select(1)
-    app.number_input(key="plan_editor_new_day_0_ex_0_sets").set_value(7)
+    app.number_input(key="plan_editor_new_day_0_ex_0_sets").set_value(7).run()
+    assert not app.button(key="plan_editor_new_save").disabled
     app.button(key="plan_editor_new_save").click().run()
     assert not app.exception and not app.error
     # AppTest needs a clean render after the save's internal st.rerun.

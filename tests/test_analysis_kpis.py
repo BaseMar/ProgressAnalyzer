@@ -52,7 +52,7 @@ BodyMetricsView({'timeline': [
     assert not app.exception
     assert [item.value for item in app.metric] == ["81 kg", "+1 kg", "08 May 2026"]
     chart = json.loads(app.get("vega_lite_chart")[0].proto.spec)
-    assert chart["encoding"]["y"]["scale"]["domain"] == [79.75, 81.25]
+    assert chart["encoding"]["y"]["scale"]["domain"] == [79.9, 81.1]
     assert chart["encoding"]["y"]["axis"]["title"] == "Weight (kg)"
     app.selectbox(key="analysis_body_metric").select("Waist").run()
     assert not app.exception
@@ -63,6 +63,30 @@ BodyMetricsView({'timeline': [
         "2026-04-30T00:00:00",
         "2026-05-02T00:00:00",
     ]
+
+
+def test_body_chart_scales_to_recent_readings_and_can_restore_full_history():
+    app = AppTest.from_string("""
+from datetime import date
+from ui.body_metrics_view import BodyMetricsView
+BodyMetricsView({'timeline': [
+    {'date': date(2026, 5, day), 'waist': value}
+    for day, value in enumerate((100., 95., 80., 80.1, 80.2, 80.1), start=1)
+]}, manager=object()).render()
+""").run()
+    assert not app.exception
+    assert app.selectbox(key="analysis_body_range").value == "Last 4 readings"
+    chart = json.loads(app.get("vega_lite_chart")[0].proto.spec)
+    assert chart["encoding"]["y"]["scale"]["domain"] == pytest.approx([79.98, 80.22])
+    assert chart["encoding"]["x"]["scale"]["domain"][0] == "2026-05-03T00:00:00"
+    assert app.metric[1].value == "+0.1 cm"
+
+    app.selectbox(key="analysis_body_range").select("All readings").run()
+    assert not app.exception
+    chart = json.loads(app.get("vega_lite_chart")[0].proto.spec)
+    assert chart["encoding"]["y"]["scale"]["domain"] == [78, 102]
+    assert chart["encoding"]["x"]["scale"]["domain"][0] == "2026-05-01T00:00:00"
+    assert app.metric[1].value == "-19.9 cm"
 
 
 @pytest.mark.parametrize(

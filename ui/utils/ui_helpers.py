@@ -141,7 +141,7 @@ def line_chart(
             "type": "line",
             "color": ACCENT,
             "strokeWidth": 2,
-            "point": {"filled": True, "color": ACCENT, "size": 40},
+            "point": {"filled": True, "color": ACCENT, "size": 64},
             "tooltip": {"content": "encoding"},
         },
         "encoding": {"x": x, "y": y},

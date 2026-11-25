@@ -28,6 +28,7 @@ METRIC_CONFIG = {
         "Biceps": {"col": "biceps", "unit": "cm"},
     },
 }
+RECENT_READING_COUNT = 4
 
 
 class BodyMetricsView:
@@ -61,16 +62,27 @@ class BodyMetricsView:
             return
         if st.session_state.get("analysis_body_metric") not in available:
             st.session_state["analysis_body_metric"] = next(iter(available))
-        selected = st.selectbox("Measurement", list(available), key="analysis_body_metric")
-        cfg = available[selected]
-        points = df[["date", cfg["col"]]].dropna().rename(columns={cfg["col"]: selected})
+        with st.container(horizontal=True):
+            selected = st.selectbox(
+                "Measurement", list(available), key="analysis_body_metric", width=240
+            )
+            cfg = available[selected]
+            points = df[["date", cfg["col"]]].dropna().rename(columns={cfg["col"]: selected})
+            if len(points) > RECENT_READING_COUNT:
+                newest = f"Last {RECENT_READING_COUNT} readings"
+                reading_range = st.selectbox(
+                    "Reading range", (newest, "All readings"), key="analysis_body_range", width=240
+                )
+                if reading_range == newest:
+                    points = points.tail(RECENT_READING_COUNT)
+
         current = points.iloc[-1]
         delta = current[selected] - points.iloc[0][selected]
         change_unit = "pp" if cfg["unit"] == "%" else cfg["unit"]
         latest, change, recorded = st.columns(3)
         latest.metric(f"Latest {selected.lower()}", f"{current[selected]:g} {cfg['unit']}")
         change.metric(
-            "Change in selected period",
+            "Change across shown readings",
             f"{delta:+g} {change_unit}" if len(points) > 1 else "—",
             help=f"Compared with the first available measurement on {points.iloc[0]['date']:%d %b %Y}. Direction alone does not establish improvement.",
         )
@@ -78,7 +90,10 @@ class BodyMetricsView:
         if len(points) == 1:
             st.caption("One observation; no trend yet.")
         minimum, maximum = points[selected].min(), points[selected].max()
-        padding = max((maximum - minimum) * 0.1, 0.25)
+        span = maximum - minimum
+        if len(points) > 1 and span == 0:
+            st.caption("All shown readings have the same recorded value.")
+        padding = span * 0.1 if span else 0.25
         first, last = points["date"].iloc[[0, -1]]
         if first == last:
             first -= pd.Timedelta(days=1)
