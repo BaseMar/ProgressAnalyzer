@@ -1073,8 +1073,12 @@ div[data-testid="column"] { padding: 6px; }
     text-transform: uppercase;
 }
 
+:is(.analysis-insight, [class*="st-key-overview_highlight_"], .st-key-overview_progress_kpis [data-testid="stMetric"]) {
+    --overview-card-padding: 14px;
+}
+
 .analysis-insight {
-    padding: 14px 18px;
+    padding: var(--overview-card-padding) 18px;
     margin: 4px 0 16px;
     background: var(--accent-dim);
     border-left: 3px solid var(--accent);
@@ -1311,7 +1315,17 @@ div[data-testid="column"] { padding: 6px; }
 .st-key-route_Plan [data-testid="stNumberInput"] input,
 .st-key-route_Plan [data-baseweb="select"] > div { background: var(--bg-base); color: var(--text-primary); }
 .st-key-route_Plan [data-testid="stWidgetLabel"] p { font-size: 11px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; }
-.plan-panel-heading { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1.3px; line-height: 1.6; }
+.st-key-route_Plan [class*="st-key-plan_field_"]:has(.plan-field-error)
+:is([data-testid="stTextInputRootElement"], [data-testid="stNumberInputContainer"], [data-testid="stSelectbox"] div:has(> input[role="combobox"])) {
+    border-color: #ff9d9d !important;
+}
+.st-key-route_Plan .plan-field-error {
+    margin: 0;
+    color: #ffb0ad;
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+}
+.plan-panel-heading { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1.3px; line-height: 1.6; overflow-wrap: anywhere; }
 .st-key-plan_exercise_navigation [role="radiogroup"] { gap: 8px; }
 .st-key-plan_exercise_navigation [role="radiogroup"] > div { width: 100%; min-width: 0; }
 .st-key-plan_exercise_navigation [data-testid="stRadioOption"] { width: 100%; margin: 0; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); min-height: 44px; box-sizing: border-box; }
@@ -1330,10 +1344,6 @@ div[data-testid="column"] { padding: 6px; }
 .plan-empty-state { min-height: 240px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
 .plan-empty-state > strong { font-size: 22px; }
 .plan-empty-state > p { color: var(--text-muted); font-size: 13px; }
-.st-key-plan_editor_workspace [class*="_controls"] [data-testid="stHorizontalBlock"] { flex-direction: row; flex-wrap: nowrap; gap: 8px; }
-.st-key-plan_editor_workspace [class*="_controls"] [data-testid="stColumn"] { width: 44px; min-width: 0; flex: 0 0 44px; }
-.st-key-plan_editor_workspace [class*="_controls"] [data-testid="stColumn"]:first-child { width: auto; flex: 1 1 0; }
-.st-key-plan_editor_workspace [class*="_controls"] button { width: 44px; min-width: 44px; min-height: 44px; padding-inline: 0; }
 @container (max-width: 900px) {
     .st-key-plan_editor_workspace [data-testid="stHorizontalBlock"]:has(.st-key-training_workout_editor) { flex-direction: column; }
     .st-key-plan_editor_workspace [data-testid="stHorizontalBlock"]:has(.st-key-training_workout_editor) > [data-testid="stColumn"] { width: 100%; min-width: 100%; flex: 1 1 100%; }
@@ -1358,7 +1368,7 @@ div[data-testid="column"] { padding: 6px; }
 }
 
 /* Three exercise-result counters stay compact, with fully readable labels. */
-.st-key-overview_progress_kpis [data-testid="stMetric"] { padding: 16px 8px; }
+.st-key-overview_progress_kpis [data-testid="stMetric"] { padding: var(--overview-card-padding) 8px 16px; }
 .st-key-overview_progress_kpis [data-testid="stMetricLabel"] p {
     white-space: normal;
     overflow-wrap: normal;
@@ -1373,52 +1383,68 @@ div[data-testid="column"] { padding: 6px; }
     }
 }
 
-/* Highlights remain part of the observations list, with explicit history links. */
+/* Comparable changes are signed and use the unit from the recorded sets. */
 [class*="st-key-overview_highlight_"] {
-    padding: 16px 20px;
+    --highlight-accent: #ffd184;
+    padding: var(--overview-card-padding) 20px;
     margin-block: 4px 16px;
-    border-left: 3px solid var(--accent);
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    background: var(--accent-dim);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--highlight-accent) 6%, #2c333d);
+}
+[class*="st-key-overview_highlight_more_output_"] {
+    --highlight-accent: #75e7df;
 }
 [class*="st-key-overview_highlight_"] .analysis-insight {
-    padding: 0; margin: 0; border: 0; background: transparent;
+    padding: 0; margin: 0; border: 0; background: transparent; overflow-wrap: anywhere;
 }
-.insight-highlight-label { color: var(--text-primary); font-size: 18px; font-weight: 700; line-height: 1.4; }
-[class*="st-key-overview_highlight_"] [data-testid="stButton"] button {
-    min-height: 44px; font-weight: 600; text-align: left; justify-content: flex-start;
+.insight-highlight-delta {
+    color: var(--highlight-accent);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+.insight-highlight-delta > strong { font-size: clamp(22px, 3vw, 26px); }
+[class*="st-key-insight_heading_"] > :first-child { min-width: 0; }
+[class*="st-key-insight_exercise_"] [data-testid="stMarkdown"] p {
+    margin: 0;
+    color: var(--highlight-accent);
+    font-size: 13px;
+    font-weight: 600;
 }
 
-/* A shared headline with an explicit, keyboard-accessible exercise-history link. */
-[class*="st-key-insight_heading_"] { align-items: center; }
 [class*="st-key-insight_heading_"] [data-testid="stButton"] button {
     min-height: 44px;
-    color: var(--accent);
-    padding: 6px 4px;
+    justify-content: flex-start;
+    text-align: left;
+    color: var(--highlight-accent);
+    padding: 6px 0;
     border-radius: 4px;
 }
 [class*="st-key-insight_heading_"] [data-testid="stButton"] button p {
-    color: var(--accent);
+    color: var(--text-primary);
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.4;
     white-space: normal;
     overflow-wrap: anywhere;
     text-decoration: underline;
-    text-decoration-thickness: 2px;
+    text-decoration-thickness: 1px;
     text-underline-offset: 4px;
 }
 [class*="st-key-insight_heading_"] [data-testid="stButton"] button:hover p {
-    color: var(--text-primary);
-    text-decoration-thickness: 3px;
+    color: var(--highlight-accent);
+    text-decoration-thickness: 2px;
 }
 [class*="st-key-insight_heading_"] [data-testid="stButton"] button:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--highlight-accent);
     outline-offset: 3px;
 }
 
-/* Native Markdown reserves a negative paragraph margin; reset it for the inline label. */
-[class*="st-key-insight_heading_"] [data-testid="stMarkdownContainer"]:has(.insight-highlight-label) {
+/* Measure the card padding from the content rather than a negative Markdown margin. */
+[class*="st-key-overview_highlight_"] [data-testid="stMarkdown"] [data-testid="stMarkdownContainer"] {
     margin-bottom: 0;
 }
 
@@ -1549,10 +1575,6 @@ div[data-testid="column"] { padding: 6px; }
     cursor: not-allowed;
 }
 
-.st-key-plan_editor_workspace [class*="_controls"] [data-testid="stButton"] button[kind] {
-    padding-inline: 0;
-}
-
 :where([data-testid="stMain"], [data-testid="stDialog"]) [class*="st-key-history_delete_"] [data-testid="stButton"] button[kind="secondary"] {
     color: #ffb8b4;
     border-color: rgba(255, 135, 128, .22);
@@ -1585,8 +1607,13 @@ div[data-testid="column"] { padding: 6px; }
 }
 
 /* Session actions stay beside the title; their editors open in dialogs. */
-[class*="st-key-history_session_header_"] { gap: 8px; justify-content: space-between; }
-:where([data-testid="stMain"], [data-testid="stDialog"]) :is([class*="st-key-history_session_link_"], [class*="st-key-history_session_tools_"], .st-key-history_data_settings_button, [class*="st-key-data_settings_edit_"]) [data-testid="stButton"] button[kind="tertiary"] {
+[class*="st-key-history_session_header_"] { gap: 12px; justify-content: space-between; }
+[class*="st-key-history_session_actions_"] { max-width: 100%; }
+:is(.st-key-history_data_settings_button, [class*="st-key-history_session_link_"]) [data-testid="stButton"] button[kind="secondary"]:not(:disabled) {
+    border-color: #899ea9;
+    background: #324854;
+}
+:where([data-testid="stMain"], [data-testid="stDialog"]) [class*="st-key-data_settings_edit_"] [data-testid="stButton"] button[kind="tertiary"] {
     min-height: 36px;
     padding: 4px 8px;
     border: 0;
@@ -1596,15 +1623,15 @@ div[data-testid="column"] { padding: 6px; }
     font-size: 13px;
     font-weight: 500;
 }
-:where([data-testid="stMain"], [data-testid="stDialog"]) :is([class*="st-key-history_session_link_"], [class*="st-key-history_session_tools_"], .st-key-history_data_settings_button, [class*="st-key-data_settings_edit_"]) [data-testid="stButton"] button[kind="tertiary"]:not(:disabled):hover {
+:where([data-testid="stMain"], [data-testid="stDialog"]) [class*="st-key-data_settings_edit_"] [data-testid="stButton"] button[kind="tertiary"]:not(:disabled):hover {
     background: var(--accent-dim);
     box-shadow: none;
     transform: none;
 }
-:where([data-testid="stMain"], [data-testid="stDialog"]) :is([class*="st-key-history_session_link_"], [class*="st-key-history_session_tools_"], .st-key-history_data_settings_button, [class*="st-key-data_settings_edit_"]) [data-testid="stButton"] button[kind="tertiary"]::after { display: none; }
+:where([data-testid="stMain"], [data-testid="stDialog"]) [class*="st-key-data_settings_edit_"] [data-testid="stButton"] button[kind="tertiary"]::after { display: none; }
 
 /* Exercise-wide settings use the same dialog and small actions as session tools. */
-.st-key-history_page_header { justify-content: space-between; flex-wrap: nowrap; gap: 16px; }
+.st-key-history_page_header { justify-content: space-between; flex-wrap: wrap; gap: 16px; }
 .st-key-history_data_settings_button { flex: 0 0 auto; }
 .data-settings-summary {
     display: flex;

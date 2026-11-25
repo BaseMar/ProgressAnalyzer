@@ -196,13 +196,23 @@ def test_unlinked_elapsed_dates_are_one_linkage_note_not_skipped_workouts():
 
 def test_timed_work_needs_no_rir_and_does_not_propose_automatic_timed_increases():
     planned = PlannedExercise(1, 2, 30, 60, "seconds")
-    insight = only(
+    result = report(
         execution(1, FIRST, (30, 30), weight=0, rir=None, planned=planned),
         execution(2, SECOND, (35, 40), weight=0, rir=None, planned=planned),
     )
+    (insight,) = result.annotations
     assert insight.code == "more_output"
     assert insight.observation == "15 more seconds at the same load"
     assert insight.next_target is None
+    app = AppTest.from_string("""
+import streamlit as st
+from ui.training_insights_view import render_training_insights
+render_training_insights(st.session_state['report'])
+""")
+    app.session_state["report"] = result
+    app.run()
+    assert not app.exception
+    assert any("<strong>+15</strong> <span>seconds</span>" in item.value for item in app.markdown)
 
 
 def test_deload_is_grouped_and_never_labelled_lower_output():
@@ -296,7 +306,8 @@ render_training_insights(st.session_state['report'], {1: '<script>alert(1)</scri
     html = next(item.value for item in app.markdown if "analysis-insight" in item.value)
     assert "<script>" not in html
     assert app.button(key="insight_history_more_output_1").label == "<script>alert(1)</script>"
-    assert "2 more reps" in html and "Next workout target" in html
+    assert "Same load and RIR" in html and "Next workout target" in html
+    assert any("<strong>+2</strong> <span>reps</span>" in item.value for item in app.markdown)
     assert not app.expander
     assert not app.json
 
@@ -433,6 +444,15 @@ def test_highlights_use_relative_change_and_select_both_directions():
         ("more_output", 2),
         ("less_output", 4),
     ]
+    app = AppTest.from_string("""
+import streamlit as st
+from ui.training_insights_view import render_training_insights
+render_training_insights(st.session_state['report'])
+""")
+    app.session_state["report"] = result
+    app.run()
+    assert not app.exception
+    assert any("<strong>−6</strong> <span>reps</span>" in item.value for item in app.markdown)
 
 
 def test_highlight_can_come_from_outside_top_five_without_duplicate_display():

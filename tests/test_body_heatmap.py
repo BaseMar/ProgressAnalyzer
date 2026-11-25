@@ -67,6 +67,14 @@ def test_heatmap_seeds_cover_front_thigh_and_upper_oblique_panels():
     assert all(obliques_mask[y, x] for x, y in upper_oblique_points)
 
 
+def test_both_front_knee_panels_use_the_same_overlay():
+    fill_mask = _body_fill_mask(BODY_IMAGE_PATH.stat().st_mtime_ns)
+    calves_mask = _mask_from_seeds(fill_mask, MUSCLE_GROUP_SEEDS["Calves"])
+
+    assert calves_mask[742, 384]
+    assert calves_mask[742, 512]
+
+
 def test_map_compares_plan_independently_of_reference():
     assert status_from_plan(8.0, 12.0) == "under"
     assert status_from_plan(12.5, 12.0) == "on_target"

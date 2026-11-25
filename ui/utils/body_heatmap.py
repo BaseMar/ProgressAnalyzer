@@ -94,7 +94,7 @@ MUSCLE_GROUP_SEEDS = {
     ],
     "Calves": [
         (384, 769),
-        (512, 769),
+        (512, 742),
         (363, 832),
         (400, 815),
         (496, 815),
@@ -153,7 +153,7 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
         --bg-base: #222831;
         --bg-surface: {SURFACE};
         --text-primary: {TEXT};
-        --text-muted: {MUTED};
+        --text-muted: #aab2be;
         --border: rgba(255,255,255,0.07);
         --accent: {ACCENT};
         container-type: inline-size;
@@ -255,7 +255,7 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
       }}
       .muscle-map-root .status-row {{
         display: grid;
-        grid-template-columns: 14px minmax(72px, 1fr) auto;
+        grid-template-columns: 14px minmax(0, 1fr) auto;
         gap: 8px;
         align-items: center;
         padding: 9px 10px;
@@ -271,6 +271,13 @@ def _render_heatmap_html(heatmap_df: pd.DataFrame, period_weeks: float) -> None:
       .muscle-map-root .part {{
         font-size: 13px;
         font-weight: 700;
+      }}
+      .muscle-map-root .part small {{
+        display: block;
+        margin-top: 3px;
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 400;
       }}
       .muscle-map-root .dose {{
         color: var(--text-muted);
@@ -411,7 +418,7 @@ def _status_row(row: pd.Series) -> str:
     return f"""
     <div class="status-row">
       <span class="dot" style="background:{meta["color"]}"></span>
-      <span class="part">{escape(str(row["Body Part"]))}</span>
+      <span class="part">{escape(str(row["Body Part"]))}<small>{meta["label"]}</small></span>
       <span class="dose">{row["Sets / Week"]:.1f}/wk | {target_text}</span>
     </div>
     """

@@ -321,8 +321,8 @@ def compute_training_insights(
 
     def relative_change(insight):
         previous, current = insight.sources
-        baseline = sum(item.quantity for item in previous.sets)
-        change = sum(item.quantity for item in current.sets) - baseline
+        baseline = previous.total_quantity
+        change = current.total_quantity - baseline
         return (
             abs(change / baseline) if baseline > 0 else 0,
             current.performed_on,

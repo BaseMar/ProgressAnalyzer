@@ -149,9 +149,7 @@ def _comparison(previous, current):
     changed_rir = current.unit == "reps" and any(
         now.rir != old.rir for now, old in zip(current.source.sets, previous.source.sets)
     )
-    delta = sum(item.quantity for item in current.source.sets) - sum(
-        item.quantity for item in previous.source.sets
-    )
+    delta = current.source.total_quantity - previous.source.total_quantity
     suffix = " and RIR" if current.unit == "reps" else ""
     if changed_load:
         code, priority = "load_changed", 40
@@ -270,8 +268,8 @@ def compute_recorded_progress(data, *, as_of, start=None, end=None):
 
     def relative_change(insight):
         previous, current = insight.sources
-        baseline = sum(item.quantity for item in previous.sets)
-        delta = sum(item.quantity for item in current.sets) - baseline
+        baseline = previous.total_quantity
+        delta = current.total_quantity - baseline
         return abs(delta / baseline), current.performed_on, -insight.exercise_id
 
     highlights = tuple(

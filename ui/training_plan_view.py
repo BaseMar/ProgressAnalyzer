@@ -2,8 +2,10 @@
 
 import logging
 from collections import Counter
+from contextlib import contextmanager
 from datetime import date, timedelta
 from html import escape
+from math import isfinite
 
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
@@ -26,6 +28,18 @@ def _set_plan_mode(create, version_id=None):
     capture_plan_drafts()
     st.session_state["plan_create_mode"] = create
     st.session_state["plan_editing_version"] = version_id
+
+
+@contextmanager
+def _plan_field(key, errors):
+    with st.container(key=f"plan_field_{key}", gap="xsmall"):
+        yield
+        if error := errors.get(key):
+            _field_error(error)
+
+
+def _field_error(message):
+    st.html(f'<p class="plan-field-error" role="alert">{escape(message)}</p>')
 
 
 class TrainingPlanView:
@@ -240,7 +254,7 @@ class TrainingPlanView:
             history_key=item.history_key if item else None,
         )
 
-    def _day(self, day=None, uid=0):
+    def _day(self, day=None, uid=0, weekday=0):
         exercises = (
             [self._exercise(item, index) for index, item in enumerate(day.exercises)]
             if day
@@ -249,14 +263,121 @@ class TrainingPlanView:
         return dict(
             uid=uid,
             name=day.name if day else "",
-            weekday=day.weekday if day else 0,
+            weekday=day.weekday if day else weekday,
             exercises=exercises,
             next_exercise=len(exercises),
         )
 
     @staticmethod
-    def _capture(scope, store):
+    def _workout_errors(scope, days):
+        counts = Counter(day["weekday"] for day in days)
+        errors = {}
+        for day in days:
+            prefix = f"{scope}_day_{day['uid']}"
+            weekday = WEEKDAYS[day["weekday"]]
+            if not day["name"].strip():
+                errors[f"{prefix}_name"] = f"Enter a workout name for {weekday}."
+            if counts[day["weekday"]] > 1:
+                errors[f"{prefix}_weekday"] = (
+                    f"More than one workout is planned for {weekday}. Choose an available weekday."
+                )
+        return errors
+
+    def _plan_errors(self, scope, name, days, workout_errors):
+        errors = {}
+        if not name.strip():
+            errors[f"{scope}_name"] = "Enter a plan name."
+        if not days:
+            errors["workouts"] = "Add at least one workout."
+        errors.update(workout_errors)
+        for day in days:
+            workout = day["name"].strip() or f"{WEEKDAYS[day['weekday']]} workout"
+            prefix = f"{scope}_day_{day['uid']}"
+            if not day["exercises"]:
+                errors[f"{prefix}_exercises"] = f"Add at least one exercise to {workout}."
+            for index, item in enumerate(day["exercises"], start=1):
+                key = f"{prefix}_ex_{item['uid']}"
+                context = f"{workout} · Exercise {index}"
+                if item["exercise_id"] not in self.labels:
+                    errors[f"{key}_exercise_id"] = f"Choose an exercise for {context}."
+                for field in ("sets", "minimum", "maximum"):
+                    if type(item[field]) is not int or item[field] < 1:
+                        errors[f"{key}_{field}"] = f"Enter a positive {field} value for {context}."
+                if (
+                    f"{key}_minimum" not in errors
+                    and f"{key}_maximum" not in errors
+                    and item["minimum"] > item["maximum"]
+                ):
+                    errors[f"{key}_maximum"] = (
+                        f"The minimum cannot exceed the maximum in {context}."
+                    )
+                rir = item["rir"]
+                if rir is not None and (type(rir) is not int or rir < 0):
+                    errors[f"{key}_rir"] = f"Enter a non-negative RIR for {context}."
+                step = item["increment"]
+                if step is not None and (not isfinite(step) or step <= 0):
+                    errors[f"{key}_increment"] = f"Enter a positive weight step for {context}."
+        return errors
+
+    def _add_workout(self, scope, store):
         capture_draft(scope, store)
+        days = store["days"]
+        occupied = {day["weekday"] for day in days}
+        weekday = next((day for day in range(len(WEEKDAYS)) if day not in occupied), None)
+        if weekday is None or self._workout_errors(scope, days):
+            return
+        uid = store["next_day"]
+        days.append(self._day(uid=uid, weekday=weekday))
+        store["next_day"] += 1
+        store["select_next"] = uid
+        store["notice"] = f"Workout draft added for {WEEKDAYS[weekday]}."
+
+    def _edit_workout(self, scope, store, action, day, exercise_index=None, offset=0):
+        capture_draft(scope, store)
+        days = store["days"]
+        workout = day["name"].strip() or f"{WEEKDAYS[day['weekday']]} workout"
+        exercises = day["exercises"]
+        if action == "remove_workout":
+            index = days.index(day)
+            days.remove(day)
+            if days:
+                store["select_next"] = days[min(index, len(days) - 1)]["uid"]
+            notice = f"Removed {workout} from the draft."
+        elif action == "add_exercise":
+            uid = day["next_exercise"]
+            exercises.append(self._exercise(uid=uid))
+            day["select_exercise_next"] = uid
+            day["next_exercise"] += 1
+            notice = f"Exercise slot added to {workout}."
+        else:
+            item = exercises[exercise_index]
+            exercise = self.labels.get(item["exercise_id"], "Exercise slot")
+            if action == "remove_exercise":
+                exercises.pop(exercise_index)
+                if exercises:
+                    day["select_exercise_next"] = exercises[
+                        min(exercise_index, len(exercises) - 1)
+                    ]["uid"]
+                notice = f"Removed {exercise} from {workout}."
+            else:
+                target = exercise_index + offset
+                exercises[exercise_index], exercises[target] = exercises[target], item
+                notice = f"Moved {exercise} to position {target + 1} in {workout}."
+        store["notice"] = notice
+
+    def _assign_exercise(self, scope, store, day, item):
+        capture_draft(scope, store)
+        workout = day["name"].strip() or f"{WEEKDAYS[day['weekday']]} workout"
+        exercise = self.labels.get(item["exercise_id"])
+        notice = (
+            f"Assigned {exercise} to {workout}." if exercise else f"Cleared exercise in {workout}."
+        )
+        item["assignment_notice"] = notice
+
+    @staticmethod
+    def _show_editor_notice(store):
+        if notice := store.pop("notice", None):
+            st.success(notice)
 
     def _render_editor(self, source):
         scope = f"plan_editor_{source.version_id if source else 'new'}"
@@ -269,20 +390,25 @@ class TrainingPlanView:
             )
             st.session_state[store_key] = dict(days=days, next_day=len(days))
         store = st.session_state[store_key]
-        self._capture(scope, store)
+        capture_draft(scope, store)
+        name = store.get("name", source.draft.name if source else "")
+        workout_errors = self._workout_errors(scope, store["days"])
+        errors = self._plan_errors(scope, name, store["days"], workout_errors)
         section_header("Plan details", first=True)
         minimum = (
             max(date.today(), source.draft.effective_from + timedelta(days=1)) if source else None
         )
         with st.container(key="training_plan_details"):
             left, right = st.columns([2, 1])
-            name = left.text_input(
-                "Plan name",
-                value=store.get("name", source.draft.name if source else ""),
-                max_chars=120,
-                placeholder="e.g. Upper / Lower",
-                key=f"{scope}_name",
-            )
+            with left, _plan_field(f"{scope}_name", errors):
+                name = st.text_input(
+                    "Plan name",
+                    value=name,
+                    max_chars=120,
+                    placeholder="e.g. Upper / Lower",
+                    key=f"{scope}_name",
+                    live=True,
+                )
             start = right.date_input(
                 "Applies from",
                 value=store.get("start", minimum or date.today()),
@@ -293,32 +419,8 @@ class TrainingPlanView:
                 st.caption("Saving creates a new version; previous targets remain in history.")
         store["name"], store["start"] = name, start
         section_header("Weekly routine")
-        action = self._render_workout_editor(scope, store)
-        self._capture(scope, store)
-        if action:
-            day = next(item for item in store["days"] if item["uid"] == action[1])
-            if action[0] == "move":
-                a, b = action[2], action[2] + action[3]
-                day["exercises"][a], day["exercises"][b] = day["exercises"][b], day["exercises"][a]
-            elif action[0] == "remove_exercise":
-                day["exercises"] = [item for item in day["exercises"] if item["uid"] != action[2]]
-                if day["exercises"]:
-                    day["select_exercise_next"] = day["exercises"][0]["uid"]
-            elif action[0] == "add_exercise":
-                day["exercises"].append(self._exercise(uid=day["next_exercise"]))
-                day["select_exercise_next"] = day["next_exercise"]
-                day["next_exercise"] += 1
-            else:
-                store["days"].remove(day)
-                if store["days"]:
-                    store["select_next"] = store["days"][0]["uid"]
-            st.rerun()
-        if st.button("Add workout", key=f"{scope}_add", icon=":material/add:"):
-            uid = store["next_day"]
-            store["days"].append(self._day(uid=uid))
-            store["next_day"] += 1
-            store["select_next"] = uid
-            st.rerun()
+        self._render_workout_editor(scope, store, workout_errors, errors)
+        capture_draft(scope, store)
         section_header("Training block")
         saved_settings = source.draft.progression if source else None
         with st.expander("Deload schedule"):
@@ -374,16 +476,18 @@ class TrainingPlanView:
                 type="primary",
                 icon=":material/check:",
                 width="stretch",
+                disabled=bool(errors),
             )
-            st.caption("Saves all workouts. Your draft stays available until then.")
-        if save_requested:
+            if errors:
+                st.caption(next(iter(errors.values())))
+            else:
+                st.caption("Saves all workouts. Your draft stays available until then.")
+        if save_requested and not errors:
             try:
                 days = []
                 for day in store["days"]:
                     exercises = []
                     for item in day["exercises"]:
-                        if item["exercise_id"] not in self.labels:
-                            raise ValueError(f"{day['name'] or 'Workout'}: choose an exercise")
                         exercises.append(
                             PlannedExercise(
                                 item["exercise_id"],
@@ -416,13 +520,16 @@ class TrainingPlanView:
             st.session_state["plan_saved_notice"] = (
                 f"Saved {saved.draft.name} · version {saved.version_number}."
             )
+            del st.session_state[store_key]
             st.session_state["plan_next_selection"] = saved.plan_id
             st.rerun()
 
-    def _render_workout_editor(self, scope, store):
+    def _render_workout_editor(self, scope, store, workout_errors, errors):
         if not store["days"]:
             st.info("Add a workout to start building your week.")
-            return None
+            self._render_add_workout(scope, store, workout_errors)
+            self._show_editor_notice(store)
+            return
         ids = [day["uid"] for day in store["days"]]
         day_key = f"{scope}_active_day"
         selected_day = store.pop(
@@ -436,7 +543,6 @@ class TrainingPlanView:
             ]: f"{index + 1:02d} · {WEEKDAYS[day['weekday']]} · {day['name'] or 'Untitled workout'}"
             for index, day in enumerate(store["days"])
         }
-        action = None
         with st.container(key="plan_editor_workspace"):
             navigation, details = st.columns([1, 1.7], gap="large")
             with navigation, st.container(key="training_workout_editor"):
@@ -448,20 +554,30 @@ class TrainingPlanView:
                 )
                 day = next(item for item in store["days"] if item["uid"] == day_id)
                 prefix = f"{scope}_day_{day_id}"
-                st.text_input(
-                    "Workout name",
-                    value=day["name"],
-                    placeholder="e.g. Upper A",
-                    max_chars=120,
-                    key=f"{prefix}_name",
-                )
-                st.selectbox(
-                    "Planned weekday",
-                    range(7),
-                    index=day["weekday"],
-                    format_func=lambda value: WEEKDAYS[value],
-                    key=f"{prefix}_weekday",
-                )
+                with _plan_field(f"{prefix}_name", errors):
+                    st.text_input(
+                        "Workout name (required)",
+                        value=day["name"],
+                        placeholder="e.g. Upper A",
+                        max_chars=120,
+                        key=f"{prefix}_name",
+                        live=True,
+                    )
+                occupied = {item["weekday"] for item in store["days"] if item is not day}
+                weekdays = [
+                    index
+                    for index in range(len(WEEKDAYS))
+                    if index == day["weekday"] or index not in occupied
+                ]
+                with _plan_field(f"{prefix}_weekday", errors):
+                    st.selectbox(
+                        "Planned weekday",
+                        weekdays,
+                        index=weekdays.index(day["weekday"]),
+                        format_func=WEEKDAYS.__getitem__,
+                        key=f"{prefix}_weekday",
+                        help="Each weekday can have one workout. The list shows available days.",
+                    )
                 st.markdown(
                     '<div class="plan-panel-heading" role="heading" aria-level="3">Exercises</div>',
                     unsafe_allow_html=True,
@@ -493,21 +609,25 @@ class TrainingPlanView:
                             format_func=exercise_labels.__getitem__,
                         )
                 else:
-                    st.caption("No exercises yet.")
-                if st.button(
+                    _field_error(errors[f"{prefix}_exercises"])
+                st.button(
                     "Add exercise",
                     key=f"{prefix}_add_exercise",
                     icon=":material/add:",
                     width="stretch",
-                ):
-                    action = ("add_exercise", day_id)
-                if st.button(
+                    on_click=self._edit_workout,
+                    args=(scope, store, "add_exercise", day),
+                )
+                self._render_add_workout(scope, store, workout_errors, day_id)
+                st.button(
                     "Remove workout",
                     key=f"{prefix}_remove",
                     icon=":material/delete:",
                     width="stretch",
-                ):
-                    action = ("remove_day", day_id)
+                    on_click=self._edit_workout,
+                    args=(scope, store, "remove_workout", day),
+                )
+                self._show_editor_notice(store)
             with details:
                 if selected_exercise is None:
                     with st.container(key="plan_empty_exercise"):
@@ -523,52 +643,83 @@ class TrainingPlanView:
                         for index, item in enumerate(day["exercises"])
                         if item["uid"] == selected_exercise
                     )
-                    exercise_action = self._render_exercise_editor(scope, store, day, index, item)
-                    action = exercise_action or action
-        return action
+                    self._render_exercise_editor(scope, store, day, index, item, errors)
 
-    def _render_exercise_editor(self, scope, store, day, index, item):
+    def _render_add_workout(self, scope, store, workout_errors, day_id=None):
+        limit_reached = len(store["days"]) == len(WEEKDAYS)
+        st.button(
+            "Add workout",
+            key=f"{scope}_add",
+            icon=":material/add:",
+            width="stretch",
+            disabled=bool(workout_errors) or limit_reached,
+            on_click=self._add_workout,
+            args=(scope, store),
+        )
+        if workout_errors:
+            key, message = next(iter(workout_errors.items()))
+            if not key.startswith(f"{scope}_day_{day_id}_"):
+                st.caption(message)
+        elif limit_reached:
+            st.caption("All seven weekdays already have a workout.")
+
+    def _render_exercise_editor(self, scope, store, day, index, item, errors):
         day_id = day["uid"]
         prefix = f"{scope}_day_{day_id}_ex_{item['uid']}"
-        action = None
+        workout = day["name"].strip() or f"{WEEKDAYS[day['weekday']]} workout"
         with st.container(key="training_exercise_editor"):
-            with st.container(key=f"{prefix}_controls"):
-                title, up, down, remove = st.columns([5, 1, 1, 1], vertical_alignment="center")
-                title.markdown(
-                    f'<div class="plan-panel-heading" role="heading" aria-level="3">Exercise {index + 1:02d}</div>',
-                    unsafe_allow_html=True,
-                )
-                if up.button(
-                    "↑",
-                    key=f"{prefix}_up",
-                    help="Move exercise up",
-                    disabled=index == 0,
-                ):
-                    action = ("move", day_id, index, -1)
-                if down.button(
-                    "↓",
-                    key=f"{prefix}_down",
-                    help="Move exercise down",
-                    disabled=index == len(day["exercises"]) - 1,
-                ):
-                    action = ("move", day_id, index, 1)
-                if remove.button("×", key=f"{prefix}_remove", help="Remove exercise"):
-                    action = ("remove_exercise", day_id, item["uid"])
-            options = [None, *self.labels]
-            st.selectbox(
-                "Exercise",
-                options,
-                index=options.index(item["exercise_id"]),
-                format_func=lambda value: (
-                    "Choose an exercise" if value is None else self.labels[value]
-                ),
-                key=f"{prefix}_exercise_id",
+            st.markdown(
+                '<div class="plan-panel-heading" role="heading" aria-level="3">'
+                f"{escape(workout)} · Exercise {index + 1}</div>",
+                unsafe_allow_html=True,
             )
+            with st.container(horizontal=True, gap="small"):
+                st.button(
+                    "Move up",
+                    key=f"{prefix}_up",
+                    icon=":material/arrow_upward:",
+                    disabled=index == 0,
+                    on_click=self._edit_workout,
+                    args=(scope, store, "move", day, index, -1),
+                )
+                st.button(
+                    "Move down",
+                    key=f"{prefix}_down",
+                    icon=":material/arrow_downward:",
+                    disabled=index == len(day["exercises"]) - 1,
+                    on_click=self._edit_workout,
+                    args=(scope, store, "move", day, index, 1),
+                )
+                st.button(
+                    "Remove exercise",
+                    key=f"{prefix}_remove",
+                    icon=":material/close:",
+                    on_click=self._edit_workout,
+                    args=(scope, store, "remove_exercise", day, index),
+                )
+            options = [None, *self.labels]
+            with _plan_field(f"{prefix}_exercise_id", errors):
+                st.selectbox(
+                    "Exercise",
+                    options,
+                    index=options.index(item["exercise_id"])
+                    if item["exercise_id"] in self.labels
+                    else 0,
+                    format_func=lambda value: (
+                        "Choose an exercise" if value is None else self.labels[value]
+                    ),
+                    key=f"{prefix}_exercise_id",
+                    on_change=self._assign_exercise,
+                    args=(scope, store, day, item),
+                )
+            if notice := item.pop("assignment_notice", None):
+                st.success(notice)
             with st.container(key="plan_target_fields"):
                 sets, unit = st.columns(2)
-                sets.number_input(
-                    "Sets", min_value=1, value=item["sets"], step=1, key=f"{prefix}_sets"
-                )
+                with sets, _plan_field(f"{prefix}_sets", errors):
+                    st.number_input(
+                        "Sets", min_value=1, value=item["sets"], step=1, key=f"{prefix}_sets"
+                    )
                 unit.selectbox(
                     "Measure",
                     ["reps", "seconds"],
@@ -576,31 +727,45 @@ class TrainingPlanView:
                     key=f"{prefix}_unit",
                 )
                 lower, upper = st.columns(2)
-                lower.number_input(
-                    "Minimum", min_value=1, value=item["minimum"], step=1, key=f"{prefix}_minimum"
-                )
-                upper.number_input(
-                    "Maximum", min_value=1, value=item["maximum"], step=1, key=f"{prefix}_maximum"
-                )
+                with lower, _plan_field(f"{prefix}_minimum", errors):
+                    st.number_input(
+                        "Minimum",
+                        min_value=1,
+                        value=item["minimum"],
+                        step=1,
+                        key=f"{prefix}_minimum",
+                    )
+                with upper, _plan_field(f"{prefix}_maximum", errors):
+                    st.number_input(
+                        "Maximum",
+                        min_value=1,
+                        value=item["maximum"],
+                        step=1,
+                        key=f"{prefix}_maximum",
+                    )
                 rir, step = st.columns(2)
-                rir.number_input(
-                    "Target RIR",
-                    min_value=0,
-                    value=item["rir"],
-                    step=1,
-                    key=f"{prefix}_rir",
-                    help="Repetitions in reserve after a set. Leave blank if unknown.",
-                )
-                step.number_input(
-                    "Weight step (kg)",
-                    min_value=0.01,
-                    value=float(item["increment"]) if item["increment"] is not None else None,
-                    step=0.25,
-                    format="%.2f",
-                    key=f"{prefix}_increment",
-                    help="Smallest available increase, using the same weight convention as your log. Leave blank if unknown.",
-                )
-            self._capture(scope, store)
+                with rir, _plan_field(f"{prefix}_rir", errors):
+                    st.number_input(
+                        "Target RIR",
+                        min_value=0,
+                        value=item["rir"],
+                        step=1,
+                        key=f"{prefix}_rir",
+                        help="Repetitions in reserve after a set. Leave blank if unknown.",
+                    )
+                with step, _plan_field(f"{prefix}_increment", errors):
+                    st.number_input(
+                        "Weight step (kg)",
+                        min_value=0.01,
+                        value=float(item["increment"]) if item["increment"] is not None else None,
+                        step=0.25,
+                        format="%.2f",
+                        key=f"{prefix}_increment",
+                        help="Smallest available increase, using the same weight convention as your log. Leave blank if unknown.",
+                    )
+            capture_draft(scope, store)
+            if any(f"{prefix}_{field}" in errors for field in ("sets", "minimum", "maximum")):
+                return
             extra = " · ".join(
                 filter(
                     None,
@@ -616,7 +781,6 @@ class TrainingPlanView:
                 f"<small>{escape(extra)}</small></div>",
                 unsafe_allow_html=True,
             )
-        return action
 
     def _render_history(self, plan_id):
         section_header("Version history")

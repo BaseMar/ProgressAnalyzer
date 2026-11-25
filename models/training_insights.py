@@ -56,6 +56,10 @@ class InsightSource:
     sets: tuple[InsightSet, ...]
     excluded_kinds: tuple[str, ...]
 
+    @property
+    def total_quantity(self) -> float:
+        return sum(item.quantity for item in self.sets)
+
 
 @dataclass(frozen=True)
 class TrainingInsight:

@@ -1,5 +1,6 @@
 """Analysis snapshots preserve missing data and comparison boundaries."""
 
+import json
 from datetime import date
 
 import pytest
@@ -50,9 +51,18 @@ BodyMetricsView({'timeline': [
 """).run()
     assert not app.exception
     assert [item.value for item in app.metric] == ["81 kg", "+1 kg", "08 May 2026"]
+    chart = json.loads(app.get("vega_lite_chart")[0].proto.spec)
+    assert chart["encoding"]["y"]["scale"]["domain"] == [79.75, 81.25]
+    assert chart["encoding"]["y"]["axis"]["title"] == "Weight (kg)"
     app.selectbox(key="analysis_body_metric").select("Waist").run()
     assert not app.exception
     assert [item.value for item in app.metric] == ["82 cm", "—", "01 May 2026"]
+    chart = json.loads(app.get("vega_lite_chart")[0].proto.spec)
+    assert chart["encoding"]["y"]["scale"]["domain"] == [81.75, 82.25]
+    assert chart["encoding"]["x"]["scale"]["domain"] == [
+        "2026-04-30T00:00:00",
+        "2026-05-02T00:00:00",
+    ]
 
 
 @pytest.mark.parametrize(

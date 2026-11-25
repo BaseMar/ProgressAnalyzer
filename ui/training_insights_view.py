@@ -28,35 +28,52 @@ def render_training_insights(report, exercise_names=None, *, show_target_actions
         if not show_target_actions and insight.next_target:
             action = "Use the prescribed target in Next workout."
         if insight in highlights:
-            label = "Largest improvement" if insight.code == "more_output" else "Result to review"
-            with st.container(key=f"overview_highlight_{insight.code}_{insight.exercise_id}"):
-                with st.container(
-                    horizontal=True,
-                    vertical_alignment="center",
-                    gap="small",
-                    wrap=True,
-                    key=f"insight_heading_{insight.code}_{insight.exercise_id}",
-                ):
-                    st.markdown(
-                        f'<div class="insight-highlight-label">{label}</div>',
-                        unsafe_allow_html=True,
-                        width="content",
-                    )
-                    st.button(
-                        name,
-                        key=f"insight_history_{insight.code}_{insight.exercise_id}",
-                        type="tertiary",
-                        icon=":material/arrow_forward:",
-                        icon_position="right",
-                        wrap=True,
-                        help="Open the full recorded history of this exercise in Analysis.",
-                        on_click=_open_exercise_history,
-                        args=(insight.exercise_id,),
-                    )
-                _observation(insight.observation, insight.evidence, action)
+            _highlight(insight, name, action)
         else:
             title = f"{name}: {insight.observation}" if name else insight.observation
             _observation(title, insight.evidence, action)
+
+
+def _highlight(insight, name, action):
+    previous, current = insight.sources
+    unit = current.sets[0].unit
+    delta = current.total_quantity - previous.total_quantity
+    sign = "+" if delta > 0 else "−"
+    icon, label = (
+        ("trending_up", "Largest improvement")
+        if insight.code == "more_output"
+        else ("search", "Result to review")
+    )
+    suffix = f"{insight.code}_{insight.exercise_id}"
+    with st.container(key=f"overview_highlight_{suffix}", gap="xsmall"):
+        with st.container(
+            horizontal=True,
+            vertical_alignment="center",
+            gap="small",
+            wrap=False,
+            key=f"insight_heading_{suffix}",
+        ):
+            with st.container(key=f"insight_exercise_{suffix}", gap=None):
+                st.markdown(f":material/{icon}: {label}", width="content")
+                st.button(
+                    name,
+                    key=f"insight_history_{suffix}",
+                    type="tertiary",
+                    icon=":material/arrow_forward:",
+                    icon_position="right",
+                    wrap=True,
+                    help="Open the full recorded history of this exercise in Analysis.",
+                    on_click=_open_exercise_history,
+                    args=(insight.exercise_id,),
+                )
+            st.markdown(
+                f'<div class="insight-highlight-delta"><strong>{sign}{abs(delta):g}</strong> '
+                f"<span>{escape(unit)}</span></div>",
+                unsafe_allow_html=True,
+                width="content",
+            )
+        comparison = "Same load and RIR" if unit == "reps" else "Same load"
+        _observation(comparison, insight.evidence, action)
 
 
 def _observation(title, evidence, action):

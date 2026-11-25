@@ -30,6 +30,7 @@ def start_app(data):
     app = AppTest.from_string(APP, default_timeout=30)
     app.session_state["test_engine"] = engine
     app.session_state["test_month"] = f"{recorded_date:%Y-%m}"
+    app.session_state[f"history_day_{recorded_date:%Y-%m}"] = recorded_date
     app.run()
     assert not app.exception and not app.error
     return app
@@ -47,10 +48,11 @@ def test_header_dialog_links_changes_and_removes_a_moved_session(schedule_data):
     assert not app.exception and not app.error
     slot = load_scheduled_workouts(engine, plan.plan_id, start, start)[0]
     assert load_plan_session_links(engine) == {1: (slot.day_id, start)}
-    assert app.button(key="history_session_link_1").label == "Upper A"
+    assert app.button(key="history_session_link_1").label == "Edit plan link"
+    assert any("sets · Upper A" in item.value for item in app.markdown)
     assert app.success[0].value == "Session linked to Upper A."
     app.toggle(key="calendar_plan_overlay").set_value(False).run()
-    assert app.button(key="history_session_link_1").label == "Upper A"
+    assert app.button(key="history_session_link_1").label == "Edit plan link"
     app.button(key="history_session_link_1").click().run()
     app.date_input(key="history_link_1_week").set_value(start + timedelta(days=7)).run()
     app.button(key="history_link_1_save").click().run()
@@ -70,7 +72,7 @@ def test_header_resolves_linked_plan_even_when_another_plan_is_selected(schedule
     assign_scheduled_session(engine, slot.day_id, start, 1)
     app = start_app(schedule_data)
     app.selectbox(key="adherence_plan").select(other.plan_id).run()
-    assert app.button(key="history_session_link_1").label == "Upper A"
+    assert app.button(key="history_session_link_1").label == "Edit plan link"
     app.button(key="history_session_link_1").click().run()
     assert not app.exception and not app.error
     assert app.selectbox(key="history_link_1_plan").value == plan.plan_id
@@ -174,8 +176,8 @@ def test_multiple_linked_sessions_keep_separate_header_actions_and_replacement_c
         slot = load_scheduled_workouts(engine, selected_plan.plan_id, start, start)[0]
         assign_scheduled_session(engine, slot.day_id, start, session_id)
     app = start_app(schedule_data)
-    assert app.button(key="history_session_link_1").label == "Upper A"
-    assert app.button(key="history_session_link_2").label == "Upper A"
+    assert app.button(key="history_session_link_1").label == "Edit plan link"
+    assert app.button(key="history_session_link_2").label == "Edit plan link"
     assert app.button(key="history_session_tools_1")
     assert app.button(key="history_session_tools_2")
     assert not any(box.key.startswith("match_target_") for box in app.selectbox)

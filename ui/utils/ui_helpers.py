@@ -102,6 +102,9 @@ def line_chart(
     x_type: str = "temporal",
     x_format: str = "%b %d",
     key: str | None = None,
+    *,
+    x_domain: list[str] | None = None,
+    y_domain: list[float] | None = None,
 ) -> None:
     """
     Render a themed Vega-Lite line chart.
@@ -123,6 +126,12 @@ def line_chart(
         x_axis["format"] = x_format
 
     y_axis = {"tickCount": 5, "title": y_axis_title}
+    x = {"field": x_col, "type": x_type, "axis": x_axis}
+    y = {"field": y_col, "type": "quantitative", "axis": y_axis}
+    if x_domain is not None:
+        x["scale"] = {"domain": x_domain, "nice": False}
+    if y_domain is not None:
+        y["scale"] = {"domain": y_domain, "nice": False, "zero": False}
 
     spec = {
         "config": VEGA_CONFIG,
@@ -133,11 +142,9 @@ def line_chart(
             "color": ACCENT,
             "strokeWidth": 2,
             "point": {"filled": True, "color": ACCENT, "size": 40},
+            "tooltip": {"content": "encoding"},
         },
-        "encoding": {
-            "x": {"field": x_col, "type": x_type, "axis": x_axis},
-            "y": {"field": y_col, "type": "quantitative", "axis": y_axis},
-        },
+        "encoding": {"x": x, "y": y},
     }
 
     if key is None:

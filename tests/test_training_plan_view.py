@@ -91,6 +91,7 @@ def create_plan(app):
     app.text_input(key="plan_editor_new_name").set_value("Upper / Core")
     app.text_input(key="plan_editor_new_day_0_name").set_value("Upper A")
     edit_rows(app, "plan_editor_new_day_0_exercises", {"Exercise": "Bench Press · #1"})
+    app.run()
     app.button(key="plan_editor_new_save").click().run()
     assert not app.exception
     assert not app.error
@@ -197,9 +198,25 @@ def test_failed_delete_keeps_plan_and_allows_retry(plan_engine, monkeypatch):
 
 def test_add_and_remove_workouts_keeps_remaining_inputs_and_time_targets(plan_engine):
     app = start_app(plan_engine)
+    add_key = "plan_editor_new_add"
+    name_key = "plan_editor_new_day_0_name"
+    assert app.button(key=add_key).disabled
     app.text_input(key="plan_editor_new_name").set_value("Core")
-    app.button(key="plan_editor_new_add").click().run()
+    app.text_input(key=name_key).set_value("Strength").run()
+    assert not app.button(key=add_key).disabled
+    app.text_input(key=name_key).set_value("   ").run()
+    assert app.button(key=add_key).disabled
+    assert any("Enter a workout name for Monday" in field.proto.body for field in app.get("html"))
+    assert len(app.session_state["plan_editor_new_draft"]["days"]) == 1
+
+    app.text_input(key=name_key).set_value("Strength").run()
+    app.button(key=add_key).click().run()
     assert app.text_input(key="plan_editor_new_name").value == "Core"
+    weekdays = app.selectbox(key="plan_editor_new_day_1_weekday")
+    assert weekdays.value == 1
+    assert "Monday" not in weekdays.options
+    assert any("Workout draft added for Tuesday" in item.value for item in app.success)
+    assert app.button(key=add_key).disabled
     app.text_input(key="plan_editor_new_day_1_name").set_value("Core A")
     app.selectbox(key="plan_editor_new_day_1_weekday").select(2)
     edit_rows(
@@ -216,6 +233,8 @@ def test_add_and_remove_workouts_keeps_remaining_inputs_and_time_targets(plan_en
     app.selectbox(key="plan_editor_new_active_day").select(0).run()
     app.button(key="plan_editor_new_day_0_remove").click().run()
     assert not app.exception
+    assert any("Removed Strength" in item.value for item in app.success)
+    assert "Monday" in app.selectbox(key="plan_editor_new_day_1_weekday").options
     app.button(key="plan_editor_new_save").click().run()
     assert not app.error, [error.value for error in app.error]
     day = load_training_plans(plan_engine)[0].draft.days[0]
@@ -224,6 +243,38 @@ def test_add_and_remove_workouts_keeps_remaining_inputs_and_time_targets(plan_en
     assert day.exercises[0].target_unit == "seconds"
     assert day.exercises[0].target_min == 30
     assert day.exercises[0].target_rir == 2
+
+
+def test_legacy_duplicate_workouts_can_be_edited_but_cannot_be_saved_with_same_day(plan_engine):
+    from db.training_plans import save_training_plan
+    from models.training_plan import PlannedExercise, TrainingDay, TrainingPlanDraft
+
+    migrate(plan_engine, apply=True)
+    exercise = (PlannedExercise(1, 3, 6, 10),)
+    old = save_training_plan(
+        plan_engine,
+        TrainingPlanDraft(
+            "Two Monday workouts",
+            date.today(),
+            (TrainingDay("Upper A", 0, exercise), TrainingDay("Upper B", 0, exercise)),
+        ),
+    )
+    app = start_app(plan_engine, ready=False)
+    app.button(key=f"plan_edit_{old.version_id}").click().run()
+    scope = f"plan_editor_{old.version_id}"
+    assert app.button(key=f"{scope}_add").disabled
+    assert any(
+        "More than one workout is planned for Monday" in field.proto.body
+        for field in app.get("html")
+    )
+    assert len(app.session_state[f"{scope}_draft"]["days"]) == 2
+    assert app.button(key=f"{scope}_save").disabled
+    assert load_training_plan_versions(plan_engine, old.plan_id) == [old]
+
+    app.selectbox(key=f"{scope}_day_0_weekday").select(1).run()
+    app.button(key=f"{scope}_save").click().run()
+    assert not app.exception and not app.error
+    assert [day.weekday for day in load_training_plans(plan_engine)[0].draft.days] == [1, 0]
 
 
 def test_invalid_range_stays_in_editor_and_does_not_save(plan_engine):
@@ -239,11 +290,14 @@ def test_invalid_range_stays_in_editor_and_does_not_save(plan_engine):
             "To": 6,
         },
     )
-    app.button(key="plan_editor_new_save").click().run()
+    app.run()
     assert not app.exception
-    assert "minimum cannot exceed" in app.error[0].value
+    assert app.button(key="plan_editor_new_save").disabled
+    assert any("minimum cannot exceed" in field.proto.body for field in app.get("html"))
     assert load_training_plans(plan_engine) == []
     assert app.text_input(key="plan_editor_new_name").value == "Upper"
+    app.number_input(key="plan_editor_new_day_0_ex_0_maximum").set_value(12).run()
+    assert not app.button(key="plan_editor_new_save").disabled
 
 
 def test_missing_migration_shows_setup_state_without_crashing(plan_engine):
@@ -279,7 +333,7 @@ def test_switching_workouts_preserves_unsaved_fields_and_uses_no_spreadsheet(pla
     app.text_input(key="plan_editor_new_day_0_name").set_value("Upper A")
     app.selectbox(key="plan_editor_new_day_0_ex_0_exercise_id").select(1)
     app.number_input(key="plan_editor_new_day_0_ex_0_minimum").set_value(8)
-    app.number_input(key="plan_editor_new_day_0_ex_0_rir").set_value(0)
+    app.number_input(key="plan_editor_new_day_0_ex_0_rir").set_value(0).run()
     app.button(key="plan_editor_new_add").click().run()
     app.text_input(key="plan_editor_new_day_1_name").set_value("Core")
     app.selectbox(key="plan_editor_new_day_1_ex_0_exercise_id").select(2)
@@ -307,7 +361,7 @@ def test_empty_workout_can_be_rebuilt_without_losing_plan_details(plan_engine):
     app.selectbox(key="plan_editor_new_day_0_ex_1_exercise_id").select(2)
     app.selectbox(key="plan_editor_new_day_0_ex_1_unit").select("seconds")
     app.number_input(key="plan_editor_new_day_0_ex_1_minimum").set_value(45)
-    app.number_input(key="plan_editor_new_day_0_ex_1_maximum").set_value(45)
+    app.number_input(key="plan_editor_new_day_0_ex_1_maximum").set_value(45).run()
     app.button(key="plan_editor_new_save").click().run()
     assert not app.exception and not app.error
     saved = load_training_plans(plan_engine)[0]

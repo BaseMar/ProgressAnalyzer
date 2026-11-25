@@ -107,7 +107,6 @@ class HistoryView:
                 "Data settings",
                 key="history_data_settings_button",
                 icon=":material/settings:",
-                type="tertiary",
                 help="Manage exercise load conventions across all sessions.",
             ):
                 st.session_state.pop(SESSION_LINK_KEY, None)
@@ -407,6 +406,7 @@ class HistoryView:
             )
             exercises_count = session_df[group_key].nunique()
             current = assignments.get(int(session_id))
+            linked_workout = f" · {escape(current['day_name'])}" if current else ""
             with st.container(key=f"history_session_{session_id}"):
                 with st.container(
                     key=f"history_session_header_{session_id}",
@@ -417,21 +417,20 @@ class HistoryView:
                     st.markdown(
                         '<div class="history-session-heading">'
                         f"<strong>Session #{int(session_id)}</strong>"
-                        f"<span>{exercises_count} exercises · {total_sets} sets</span></div>",
+                        f"<span>{exercises_count} exercises · {total_sets} sets{linked_workout}</span></div>",
                         unsafe_allow_html=True,
                     )
                     with st.container(
                         key=f"history_session_actions_{session_id}",
                         horizontal=True,
                         width="content",
-                        wrap=False,
-                        gap="xsmall",
+                        wrap=True,
+                        gap="small",
                     ):
                         if st.button(
-                            current["day_name"] if current else "Link to plan",
+                            "Edit plan link" if current else "Link to plan",
                             key=f"history_session_link_{session_id}",
                             icon=":material/check_circle:" if current else ":material/link:",
-                            type="tertiary",
                             disabled=not link_ready,
                             help=(
                                 f"{current['plan_name']} · {current['scheduled_date']:%d %b %Y}. "
@@ -449,10 +448,10 @@ class HistoryView:
                                 session_date.date(),
                             )
                         if st.button(
-                            "Tools",
+                            "Session tools",
                             key=f"history_session_tools_{session_id}",
                             icon=":material/tune:",
-                            type="tertiary",
+                            type="primary",
                             help="Edit sets, load details and replacements, or delete this session.",
                         ):
                             st.session_state.pop(DATA_SETTINGS_KEY, None)

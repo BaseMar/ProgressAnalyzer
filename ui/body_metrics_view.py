@@ -77,7 +77,29 @@ class BodyMetricsView:
         recorded.metric("Last measured", f"{current['date']:%d %b %Y}")
         if len(points) == 1:
             st.caption("One observation; no trend yet.")
-        line_chart(points.set_index("date"), selected)
+        minimum, maximum = points[selected].min(), points[selected].max()
+        padding = max((maximum - minimum) * 0.1, 0.25)
+        first, last = points["date"].iloc[[0, -1]]
+        if first == last:
+            first -= pd.Timedelta(days=1)
+            last += pd.Timedelta(days=1)
+        line_chart(
+            points.set_index("date"),
+            selected,
+            y_title=f"{selected} ({cfg['unit']})",
+            x_domain=[first.isoformat(), last.isoformat()],
+            y_domain=[minimum - padding, maximum + padding],
+        )
+        with st.expander(
+            "Measurement values", key="analysis_measurement_values", on_change="rerun"
+        ) as values:
+            if values.open:
+                st.table(
+                    points.assign(date=points["date"].dt.strftime("%d %b %Y")).rename(
+                        columns={"date": "Date", selected: f"{selected} ({cfg['unit']})"}
+                    ),
+                    hide_index=True,
+                )
 
     def _add_measurement_form(self) -> None:
         """Provide forms for adding new body composition and measurement data."""
