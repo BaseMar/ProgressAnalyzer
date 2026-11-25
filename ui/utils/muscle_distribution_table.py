@@ -33,9 +33,15 @@ def render_weekly_distribution(body_df, period_weeks, period_label, *, weekly_ta
         f"{row['Target %']:.0f}%" if row["Target"] is not None and row["Target"] > 0 else "—",
         help="Recorded weekly set equivalents divided by the plan target. Higher is not automatically better; a zero target has no percentage.",
     )
-    display = summary[
-        ["Body Part", "Direct / week", "Indirect / week", "Sets / Week", "Target", "Target %"]
-    ].rename(columns={"Sets / Week": "Recorded / week"})
+    columns = ["Body Part"]
+    if st.toggle(
+        "Show set breakdown",
+        key="analysis_muscle_set_breakdown",
+        help="Show the direct and indirect sets per week before applying muscle factors.",
+    ):
+        columns.extend(["Direct / week", "Indirect / week"])
+    columns.extend(["Sets / Week", "Target", "Target %"])
+    display = summary[columns].rename(columns={"Sets / Week": "Recorded / week"})
     st.dataframe(
         display,
         hide_index=True,

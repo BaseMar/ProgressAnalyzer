@@ -133,10 +133,15 @@ def test_untrained_muscle_in_plan_gets_target_and_zero_actual():
     assert row["Status"] == "under"
 
 
-def test_table_shows_raw_roles_alongside_weighted_plan_comparison(
+def test_table_can_show_raw_roles_alongside_weighted_plan_comparison(
     schedule_data, sample_input, sets_dataframe
 ):
     app = open_muscle_distribution(schedule_data, sample_input, sets_dataframe)
+    compact = app.dataframe[0].value
+    assert list(compact.columns) == ["Body Part", "Recorded / week", "Target", "Target %"]
+    key = "analysis_muscle_set_breakdown"
+    assert not app.toggle(key=key).value
+    app.toggle(key=key).set_value(True).run()
     table = app.dataframe[0].value
     assert list(table.columns) == [
         "Body Part",
@@ -161,8 +166,10 @@ def test_table_shows_raw_roles_alongside_weighted_plan_comparison(
     assert not any(item.key == "analysis_muscle_view" for item in app.radio)
     assert not app.exception and not app.error
     assert len(app.get("plotly_chart")) == 1
-    assert list(app.dataframe[0].value.columns) == list(table.columns)
+    pd.testing.assert_frame_equal(table[compact.columns], compact)
     assert ranges_table(app).loc["Chest", "Target"] == 3
+    app.toggle(key=key).set_value(False).run()
+    pd.testing.assert_frame_equal(app.dataframe[0].value, compact)
 
 
 def test_missing_roles_do_not_add_technical_columns_or_change_weighted_total():
@@ -174,6 +181,7 @@ BodyPartsView({"per_exercise": {1: {"body_part": "Chest", "total_sets": 4, "tota
 """,
         default_timeout=30,
     ).run()
+    app.toggle(key="analysis_muscle_set_breakdown").set_value(True).run()
     assert not app.exception and not app.error
     table = app.dataframe[0].value.set_index("Body Part")
     assert table.loc["Chest", "Recorded / week"] == 2
