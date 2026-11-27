@@ -172,7 +172,7 @@ def recommend_normal_workout(
         observed = performances
         if exercise_history is not None:
             observed = exercise_history_observations(
-                exercise_history, observed, planned, actual_id, context
+                exercise_history, observed, planned, actual_id, context, workouts=data.workouts
             )
         else:
             observed = with_recorded_baselines(data, performances, planned, actual_id, as_of=as_of)
@@ -405,7 +405,12 @@ def recommend_workout(
         observed = performances
         if exercise_history is not None:
             observed = exercise_history_observations(
-                exercise_history, observed, planned, result.actual_exercise_id, context
+                exercise_history,
+                observed,
+                planned,
+                result.actual_exercise_id,
+                context,
+                workouts=ordinary.workouts,
             )
         else:
             observed = with_recorded_baselines(

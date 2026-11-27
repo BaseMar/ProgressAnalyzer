@@ -268,9 +268,15 @@ the RIR values follow the same order.
 | Exercise numbering | `1.`, `1)`, `1 -` |
 | Inline exercise | `Bench Press: 10x100/8x110 RIR 2/1` |
 | Time range | `Time: 10:30 - 12:45`, `Time: 15.35 to 16.50` |
-| Missing RIR | Leave it out; the value stays unknown. |
+| Missing RIR | `RIR: 2 / / 0` records 2, unknown, and 0 in that order. `?` and `_` also mark an unknown value. |
 
-Unknown exercise names can be matched to the catalog or added as a new exercise.
+Import first looks for an exact catalog name. It ignores case and punctuation
+for automatic matching only when normalization leaves one candidate. If multiple
+names match, select the intended catalog exercise before saving. Unknown names
+can be matched to an existing exercise or added to the catalog. **Import preview**
+shows the resulting exercise names, set values, RIR, and purpose before saving.
+An omitted RIR line or missing trailing entries stay unknown. Invalid RIR fields
+are flagged and kept as unknown in place. Excess fields are flagged and ignored.
 Load types are resolved automatically; there is no per-exercise load-type review.
 Existing explicit set details have priority. An import saves all exercises and
 their body-mass snapshots together or rolls back. A profile that remembers old
@@ -304,9 +310,12 @@ Working: 8x60 / 8x60
 RIR: 4 / 3 / 2 / 1
 ```
 
-`Rozgrzewka:` and `Robocze:` work too. Unmarked sets keep an empty stored
-label and are interpreted during analysis. Explicit exceptions are stored
-separately from the original set values.
+Purpose labels also work inside `Result:` or `Wynik:`. For example,
+`Result: warm-up: 10x20 / 8x40 / working: 8x60 / 8x60` marks the first two sets
+as warm-up and the last two as working. A label carries through the slash-separated
+sets on that line until another label starts. `Rozgrzewka:` and `Robocze:` work too.
+Unmarked sets are interpreted during analysis. Explicit labels are stored separately
+from the original set values.
 
 For dead hang, record each hold as its own duration:
 
@@ -335,6 +344,11 @@ slot; removing a link preserves its log.
 If you used another exercise, open **Tools → Replacements** in that session's
 header. For example, Machine Chest Press can cover a Barbell Bench Press position
 for that session. Their performance histories stay separate.
+
+If a linked workout in the selected plan omits a prescribed exercise, the omission
+remains part of recommendation evidence. An older successful workout cannot authorize
+an increase across that omission. Workouts that never prescribed the exercise do
+not create an omission.
 
 <details>
 <summary>Calendar and matching rules</summary>

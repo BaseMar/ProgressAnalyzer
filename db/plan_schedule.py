@@ -56,7 +56,7 @@ def _schedule_rows(engine, plan_id):
         )
         assigned = (
             connection.execute(
-                select(links, sessions.c.session_date)
+                select(links, sessions.c.session_date, sessions.c.start_time)
                 .join(sessions)
                 .join(days, links.c.day_id == days.c.day_id)
                 .join(versions, days.c.version_id == versions.c.version_id)
@@ -103,6 +103,7 @@ def load_scheduled_workouts(engine, plan_id: int, start: date, end: date) -> lis
                         if assignment
                         else None,
                         position=day["position"],
+                        performed_start_time=assignment["start_time"] if assignment else None,
                     )
                 )
                 current += timedelta(days=7)

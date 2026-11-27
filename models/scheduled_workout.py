@@ -1,7 +1,7 @@
 """A dated occurrence of a versioned workout template."""
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, time
 
 
 @dataclass(frozen=True)
@@ -13,3 +13,4 @@ class ScheduledWorkout:
     session_id: int | None = None
     performed_on: date | None = None
     position: int = 1
+    performed_start_time: time | None = None

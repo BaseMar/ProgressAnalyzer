@@ -127,6 +127,14 @@ def with_history_starting_loads(
         planned = prescriptions[item.plan_exercise_id]
         source, sets = None, ()
         records = [r for r in history.get(item.actual_exercise_id, ()) if r["date"] <= as_of]
+        if (
+            item.reason_code in ("incomplete_sets", "history_gap")
+            and item.evidence_session_ids
+            and not any(r["session_id"] in item.evidence_session_ids for r in records)
+        ):
+            # A linked omission has coverage evidence but no exact-exercise entry to reuse.
+            output.append(item)
+            continue
         if records and sum(r["session_id"] == records[0]["session_id"] for r in records) > 1:
             output.append(item)
             continue

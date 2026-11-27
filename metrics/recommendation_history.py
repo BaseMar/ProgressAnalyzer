@@ -2,7 +2,7 @@
 
 from collections import Counter
 from dataclasses import replace
-from datetime import date
+from datetime import date, time
 
 from metrics.plan_adherence import compatible_set
 from metrics.plan_performance import _target_result, comparison_context, compute_plan_performance
@@ -146,8 +146,8 @@ def recommendation_history(performances, context, *, as_of, block_start):
     return list(reversed(history)), latest["context"][7:] != context[7:]
 
 
-def exercise_history_observations(history, performances, planned, actual_id, context):
-    """Interpret cross-plan/unlinked records without adding plan assignments."""
+def exercise_history_observations(history, performances, planned, actual_id, context, *, workouts):
+    """Combine exact-exercise records with omissions observed in linked plan coverage."""
     linked = {}
     for row in performances:
         if row["actual_exercise_id"] == actual_id:
@@ -193,6 +193,7 @@ def exercise_history_observations(history, performances, planned, actual_id, con
                 "day_id": source["day_id"] if source else -record["workout_exercise_id"],
                 "session_id": record["session_id"],
                 "performed_on": record["date"],
+                "start_time": record.get("start_time"),
                 "scheduled_date": source["scheduled_date"] if source else record["date"],
                 "workout": record["workout"] or "Recorded workout (not linked to a plan)",
                 "actual_exercise_id": actual_id,
@@ -202,4 +203,23 @@ def exercise_history_observations(history, performances, planned, actual_id, con
                 **_target_result(sets, expected, interpretations),
             }
         )
-    return output
+    omissions = [
+        row
+        for session_id, rows in linked.items()
+        if session_id is not None and session_id not in occurrences
+        for row in rows
+        if row["performed_on"] is not None
+        and row["unit"] == planned.target_unit
+        and not row["sets"]
+    ]
+    if not omissions:
+        return output
+    linked_start_times = {
+        workout.slot.session_id: workout.slot.performed_start_time for workout in workouts
+    }
+
+    def performed_order(row):
+        start = row.get("start_time", linked_start_times.get(row["session_id"]))
+        return row["performed_on"], start is not None, start or time.min, row["session_id"]
+
+    return sorted([*output, *omissions], key=performed_order)

@@ -10,6 +10,9 @@ from db.exercise_muscle_resolver import resolve_exercise
 from ui.utils.exercise_matcher import normalize
 from ui.utils.ui_helpers import section_header
 
+PURPOSE_LABEL = re.compile(r"\b(warm[-–— ]?up|rozgrzewka|working|robocze)\s*:", re.IGNORECASE)
+RIR_LABEL = re.compile(r"\bRIR\b\s*[:=]?\s*", re.IGNORECASE)
+
 
 class SidebarUpload:
     """Sidebar module for importing workouts from TXT files."""
@@ -81,59 +84,83 @@ class SidebarUpload:
         except SQLAlchemyError:
             self.ui.error("Load details could not be loaded. Please try again.")
             return
+        self._show_preview(parsed)
         if self.ui.button("Import workout", icon=":material/upload:"):
             self._process(parsed, workout_date, start_time, end_time)
 
     def _review_loads(self, parsed, workout_date, scope):
+        resolved = self._resolve_exercises(parsed)
         if not self.dm.set_load_storage_ready():
             self.ui.caption(
                 "Load details need database setup. Import will preserve the original kg values."
             )
-            return parsed
-        mapped = [
-            {
-                **exercise,
-                "name": st.session_state.get("exercise_mapping", {}).get(
-                    exercise["name"], exercise["name"]
-                ),
-            }
-            for exercise in parsed
+            return resolved
+        prepared = iter(
+            self.dm.prepare_load_entries(
+                [exercise for exercise in resolved if "exercise_id" in exercise], workout_date
+            )
+        )
+        return [next(prepared) if "exercise_id" in exercise else exercise for exercise in resolved]
+
+    @staticmethod
+    def _catalog_candidates(name, catalog):
+        exact = [row for row in catalog if row.exercise_name == name]
+        if exact:
+            return exact
+        normalized = " ".join(normalize(name).split())
+        if not normalized:
+            return []
+        return [
+            row for row in catalog if " ".join(normalize(row.exercise_name).split()) == normalized
         ]
-        return self.dm.prepare_load_entries(mapped, workout_date)
+
+    def _resolve_exercises(self, parsed):
+        catalog = tuple(self.dm.load_exercises().itertuples())
+        by_id = {int(row.exercise_id): row for row in catalog}
+        mapping = st.session_state.get("exercise_mapping", {})
+        resolved = []
+        for exercise in parsed:
+            name = exercise["name"]
+            chosen_id = exercise.get("exercise_id", mapping.get(name))
+            row = by_id.get(chosen_id)
+            if chosen_id is None:
+                candidates = self._catalog_candidates(name, catalog)
+                row = candidates[0] if len(candidates) == 1 else None
+            if row is None:
+                resolved.append({"name": name, "sets": exercise["sets"]})
+            else:
+                resolved.append(
+                    {**exercise, "name": row.exercise_name, "exercise_id": int(row.exercise_id)}
+                )
+        return resolved
+
+    def _show_preview(self, exercises):
+        rows = [
+            {
+                "Exercise": exercise["name"],
+                "Set": index,
+                "Reps": "—" if item.get("duration_seconds") else str(item["reps"]),
+                "Seconds": str(item["duration_seconds"]) if item.get("duration_seconds") else "—",
+                "kg": item["weight"],
+                "RIR": "—" if item["rir"] is None else str(item["rir"]),
+                "Purpose": {True: "Warm-up", False: "Working"}.get(item.get("is_warmup"), "Auto"),
+            }
+            for exercise in exercises
+            for index, item in enumerate(exercise["sets"], start=1)
+        ]
+        self.ui.expander("Import preview").table(rows)
 
     def _process(self, parsed, workout_date, start_time, end_time):
         """Process and validate parsed exercises before importing."""
-        exercises_db = self.dm.load_exercises()
-
-        if exercises_db.empty:
-            self.ui.error("No exercises in database. Add exercises first.")
-            return
-
-        normalized_map = {}
-        original_map = {}
-        for row in exercises_db.itertuples():
-            norm_name = normalize(row.exercise_name)
-            normalized_map[norm_name] = row.exercise_id
-            original_map[norm_name] = row.exercise_name
-
-        for original_name, selected_name in st.session_state.exercise_mapping.items():
-            parsed_exercise = next((ex for ex in parsed if ex["name"] == original_name), None)
-            if parsed_exercise:
-                parsed_exercise["name"] = selected_name
-
-        missing_exercises = []
-        for ex in parsed:
-            norm_name = normalize(ex["name"])
-            if norm_name not in normalized_map:
-                missing_exercises.append(ex["name"])
-
-        if missing_exercises:
+        resolved = self._resolve_exercises(parsed)
+        unresolved = next((ex for ex in resolved if "exercise_id" not in ex), None)
+        if unresolved is not None:
             st.session_state.adding_exercise = True
-            st.session_state.pending_exercise = missing_exercises[0]
+            st.session_state.pending_exercise = unresolved["name"]
             st.rerun()
             return
 
-        if not all(ex["sets"] for ex in parsed):
+        if not all(ex["sets"] for ex in resolved):
             self.ui.error("Some exercises have no valid sets.")
             return
 
@@ -144,14 +171,7 @@ class SidebarUpload:
             self.dm.add_workout_session(
                 workout_date,
                 "Imported",
-                [
-                    {
-                        "name": original_map[normalize(ex["name"])],
-                        "exercise_id": normalized_map[normalize(ex["name"])],
-                        "sets": ex["sets"],
-                    }
-                    for ex in parsed
-                ],
+                resolved,
                 start_time,
                 end_time,
             )
@@ -172,47 +192,30 @@ class SidebarUpload:
             self.ui.error(f"Import failed: {str(e)}")
 
     def _new_exercise_form(self, suggested_name):
-        """Form to handle exercise that doesn't exist in database.
-
-        First shows similar exercises, then all exercises from database, then allows creating new one.
-        """
-        self.ui.warning(f"Exercise '{suggested_name}' not found in database")
-
+        """Resolve an ambiguous or unknown name before importing its sets."""
         exercises_db = self.dm.load_exercises()
+        catalog = tuple(exercises_db.itertuples())
+        candidates = self._catalog_candidates(suggested_name, catalog)
+
+        if len(candidates) > 1:
+            self.ui.warning(f"Exercise '{suggested_name}' matches multiple catalog entries.")
+            self._choose_exercise(suggested_name, candidates, "ambiguous", "Use selected exercise")
+            self._cancel_exercise_choice()
+            return
+
+        self.ui.warning(f"Exercise '{suggested_name}' not found in database")
 
         similar = self._find_similar_exercises(suggested_name, exercises_db)
 
         if similar:
             self.ui.info("Did you mean? (showing similar exercises)")
-            suggested_names = [row.exercise_name for row in similar]
-            selected_exercise = self.ui.selectbox(
-                "Select existing exercise:", options=suggested_names, key="similar_exercise_select"
-            )
-
-            if self.ui.button("Use selected exercise", icon=":material/check:"):
-                st.session_state.exercise_mapping[suggested_name] = selected_exercise
-                st.session_state.adding_exercise = False
-                st.session_state.pending_exercise = None
-                st.rerun()
-                return
-
+            self._choose_exercise(suggested_name, similar, "similar", "Use selected exercise")
             self.ui.divider()
 
-        self.ui.subheader("Or choose from all exercises")
-        all_exercise_names = sorted([row.exercise_name for row in exercises_db.itertuples()])
-        selected_exercise_all = self.ui.selectbox(
-            "Select exercise from database:", options=all_exercise_names, key="all_exercises_select"
-        )
-
-        if self.ui.button("Use this exercise", icon=":material/check:"):
-            st.session_state.exercise_mapping[suggested_name] = selected_exercise_all
-            st.session_state.adding_exercise = False
-            st.session_state.pending_exercise = None
-            st.rerun()
-            return
-
-        self.ui.divider()
-        self.ui.caption("Or add new exercise below")
+        if catalog:
+            self.ui.subheader("Or choose from all exercises")
+            self._choose_exercise(suggested_name, catalog, "all", "Use this exercise")
+            self.ui.divider()
 
         self.ui.subheader("Add new exercise")
         name = self.ui.text_input("Exercise name", value=suggested_name, key="new_exercise_name")
@@ -240,14 +243,37 @@ class SidebarUpload:
                     self.ui.error("Failed to add exercise or detect muscle targets.")
                     return
 
-                self.ui.success("Exercise added!")
-
-                st.session_state.adding_exercise = False
-                st.session_state.pending_exercise = None
-                st.rerun()
+                saved = self._catalog_candidates(
+                    name.strip(), tuple(self.dm.load_exercises().itertuples())
+                )
+                if len(saved) == 1:
+                    self._remember_exercise(suggested_name, int(saved[0].exercise_id))
             except Exception as e:
                 self.ui.error(f"Failed to add exercise: {str(e)}")
 
+        self._cancel_exercise_choice()
+
+    def _choose_exercise(self, name, candidates, kind, button_label):
+        labels = {int(row.exercise_id): row.exercise_name for row in candidates}
+        if len(set(labels.values())) < len(labels):
+            labels = {key: f"{label} (#{key})" for key, label in labels.items()}
+        selected = self.ui.selectbox(
+            "Select exercise from database",
+            sorted(labels, key=labels.get),
+            format_func=labels.__getitem__,
+            index=None,
+            key=f"import_exercise_{kind}_{name}",
+        )
+        if self.ui.button(button_label, icon=":material/check:", disabled=selected is None):
+            self._remember_exercise(name, selected)
+
+    def _remember_exercise(self, name, exercise_id):
+        st.session_state.exercise_mapping[name] = exercise_id
+        st.session_state.adding_exercise = False
+        st.session_state.pending_exercise = None
+        st.rerun()
+
+    def _cancel_exercise_choice(self):
         if self.ui.button("Cancel", icon=":material/close:", width="stretch"):
             st.session_state.adding_exercise = False
             st.session_state.pending_exercise = None
@@ -293,7 +319,6 @@ class SidebarUpload:
         Sets: 10 x 100 kg, 8x110, 6x115
         RIR 2/1/0
         """
-        text = self._normalize_txt(text)
         blocks = self._extract_exercise_blocks(text)
         exercises = []
 
@@ -318,7 +343,7 @@ class SidebarUpload:
     def _extract_exercise_blocks(self, text: str) -> list[tuple[str, list[str]]]:
         """Split normalized text into exercise blocks."""
         lines = [line.strip() for line in text.splitlines()]
-        header_pattern = re.compile(r"^\s*\d+\s*[\.\)\-]\s*(?P<name>.+?)\s*$")
+        header_pattern = re.compile(r"^\s*\d+\s*[.)\-–—]\s*(?P<name>.+?)\s*$")
         blocks = []
         current_name = None
         current_lines = []
@@ -406,13 +431,14 @@ class SidebarUpload:
             return self._clean_exercise_name(line), ""
 
         first_match = matches[0]
-        marker = re.search(
-            r"\b(warm[- ]?up|rozgrzewka|working|robocze)\s*:\s*$",
-            line[: first_match.start()],
-            re.IGNORECASE,
-        )
+        prefix = line[: first_match.start()]
+        labels = list(PURPOSE_LABEL.finditer(prefix))
+        marker = labels[-1] if labels and not prefix[labels[-1].end() :].strip() else None
         data_start = marker.start() if marker else first_match.start()
-        name = self._clean_exercise_name(line[:data_start])
+        result = re.search(r"\b(?:results?|wynik)\s*:\s*$", line[:data_start], re.IGNORECASE)
+        if result:
+            data_start = result.start()
+        name = self._clean_exercise_name(line[:data_start]).removesuffix(":").rstrip()
         if not name:
             return "", line
 
@@ -422,6 +448,7 @@ class SidebarUpload:
         """Parse one exercise block into set dictionaries."""
         set_tokens = []
         rir_values = []
+        inline_rir = {}
         metadata = self._load_metadata(lines)
 
         for line in lines:
@@ -429,25 +456,29 @@ class SidebarUpload:
                 continue
             if re.match(r"^(?:cel|target|plan)\s*:", line, re.IGNORECASE):
                 continue
-            # Accept English exports and previously saved Polish notes.
-            if re.match(r"^(?:results?|wynik)\s*:", line, re.IGNORECASE):
-                for part in line.split(":", 1)[1].split("/"):
-                    tokens = self._parse_work_tokens(part)
-                    if tokens:
-                        set_tokens.extend(tokens)
-                    elif re.search(r"_+\s*(?:x|s\b)|\d+\s*x\s*_+", part, re.IGNORECASE):
-                        # Keep the RIR position of an unfilled template set.
-                        set_tokens.append(None)
-            else:
-                set_tokens.extend(self._parse_work_tokens(line))
-            if self._is_rir_line(line):
-                rir_values.extend(self._parse_rir_values(line))
+            result = re.match(r"^(?:results?|wynik)\s*:\s*", line, re.IGNORECASE)
+            if result:
+                line = line[result.end() :]
+            prefix, *suffix = RIR_LABEL.split(line, maxsplit=1)
+            inline = bool(suffix)
+            if suffix and self._is_rir_list(prefix, suffix[0]):
+                rir_values.extend(self._parse_rir_values(suffix[0], name))
+                line, inline = prefix, False
+            tokens, annotations = self._parse_set_line(
+                line, name, result=bool(result), inline=inline
+            )
+            inline_rir.update(
+                {len(set_tokens) + index: value for index, value in annotations.items()}
+            )
+            set_tokens.extend(tokens)
 
         if not any(token is not None for token in set_tokens):
             self.ui.warning(f"Exercise '{name}': no valid sets found.")
             return []
 
-        if rir_values and len(rir_values) != len(set_tokens):
+        if len(rir_values) > len(set_tokens):
+            self.ui.warning(f"Exercise '{name}': excess RIR fields were ignored.")
+        elif rir_values and len(rir_values) < len(set_tokens):
             self.ui.warning(
                 f"Exercise '{name}': set count != RIR count. Missing RIR values will be imported as empty."
             )
@@ -458,10 +489,10 @@ class SidebarUpload:
                 continue
             reps = token["reps"]
             weight = token["weight"]
-            rir = rir_values[idx] if idx < len(rir_values) else None
+            rir = inline_rir.get(idx, rir_values[idx] if idx < len(rir_values) else None)
             duration_seconds = token.get("duration_seconds")
 
-            if reps <= 0 or weight < 0 or (rir is not None and rir < 0):
+            if reps <= 0 or weight < 0:
                 self.ui.warning(f"Exercise '{name}': negative values not allowed. Set skipped.")
                 continue
 
@@ -478,6 +509,57 @@ class SidebarUpload:
             )
 
         return sets_data
+
+    def _is_rir_list(self, prefix, values):
+        if not prefix.strip():
+            return True
+        if RIR_LABEL.search(values):
+            return False
+        first, *later = values.split("/")
+        if any(self._contains_set_token(part) or self._empty_result(part) for part in later):
+            return False
+        return bool(later or re.fullmatch(r"(?:\d+|_+|\?)(?:[\s,;]+(?:\d+|_+|\?))+", first.strip()))
+
+    @staticmethod
+    def _empty_result(part):
+        return bool(re.search(r"_+\s*(?:[x×✕]|s\b)|\d+\s*[x×✕]\s*_+", part, re.IGNORECASE))
+
+    def _parse_set_line(self, line, name, *, result, inline):
+        parts = line.split("/") if result or inline else [line]
+        tokens, annotations = [], {}
+        purpose = None
+        for part in parts:
+            work, *entries = RIR_LABEL.split(part) if inline else (part,)
+            for entry in entries:
+                # A second annotated set can follow on the same line without a slash.
+                next_set = next(
+                    (m for m in self._work_token_matches(entry) if entry[: m.start()].strip(" ,;")),
+                    None,
+                )
+                label = PURPOSE_LABEL.search(entry)
+                end = min(
+                    next_set.start() if next_set else len(entry),
+                    label.start() if label else len(entry),
+                )
+                values = self._parse_rir_values(entry[:end].strip(" ,;"), name)
+                count = len(self._work_token_matches(work)) or int(
+                    result and self._empty_result(work)
+                )
+                index = len(tokens) + count - 1
+                if not count or index in annotations or len(values) > 1:
+                    self.ui.warning(f"Exercise '{name}': excess inline RIR fields were ignored.")
+                if count and index not in annotations:
+                    annotations[index] = values[0] if values else None
+                work += " " + entry[end:]
+            parsed = self._parse_work_tokens(work)
+            for token in parsed:
+                if purpose is not None:
+                    token.setdefault("is_warmup", purpose)
+            labels = list(PURPOSE_LABEL.finditer(work))
+            if labels:
+                purpose = labels[-1].group(1).lower() not in ("working", "robocze")
+            tokens.extend(parsed or ([None] if result and self._empty_result(work) else []))
+        return tokens, annotations
 
     def _load_metadata(self, lines):
         result = {}
@@ -539,13 +621,7 @@ class SidebarUpload:
                             "weight": float(match.group("weight").replace(",", ".")),
                         }
                     )
-                labels = list(
-                    re.finditer(
-                        r"\b(warm[- ]?up|rozgrzewka|working|robocze)\s*:",
-                        line[: match.start()],
-                        re.IGNORECASE,
-                    )
-                )
+                labels = list(PURPOSE_LABEL.finditer(line[: match.start()]))
                 if match.groupdict().get("additional"):
                     tokens[-1]["additional"] = True
                 if labels:
@@ -561,7 +637,7 @@ class SidebarUpload:
     def _set_token_matches(self, line: str):
         """Find reps/weight token regex matches in source order."""
         pattern = re.compile(
-            r"(?<![\dA-Za-z])(?P<reps>\d{1,3})\s*(?:x|\*)\s*(?P<additional>\+)?(?P<weight>\d+(?:[\.,]\d+)?)\s*(?:kg)?",
+            r"(?<![\dA-Za-z])(?P<reps>\d{1,3})\s*[x*×✕]\s*(?P<additional>\+)?(?P<weight>\d+(?:[\.,]\d+)?)\s*(?:kg)?",
             re.IGNORECASE,
         )
         at_pattern = re.compile(
@@ -598,28 +674,29 @@ class SidebarUpload:
             re.IGNORECASE,
         )
 
-    def _parse_rir_values(self, line: str) -> list[int | None]:
-        """Parse RIR values from a line that contains the RIR label."""
-        inline_values = re.findall(
-            r"\bRIR\b\s*[:=]?\s*(-?\d+)\b",
-            line,
-            flags=re.IGNORECASE,
-        )
-        if len(inline_values) > 1:
-            return [int(value) for value in inline_values]
-
-        parts = re.split(r"\bRIR\b", line, maxsplit=1, flags=re.IGNORECASE)
-        values = parts[1] if len(parts) > 1 else ""
-        return [
-            None if value.startswith("_") or value == "?" else int(value)
-            for value in re.findall(r"-?\d+|_+|\?", values)
-        ]
+    def _parse_rir_values(self, text: str, name: str) -> list[int | None]:
+        """Preserve missing and invalid slots so later effort stays with its set."""
+        if "/" in text:
+            fields = text.split("/")
+        elif "," in text or ";" in text:
+            fields = re.split(r"[,;]", text)
+        else:
+            fields = text.split()
+        values = []
+        for field in fields:
+            field = field.strip()
+            if field.isdecimal() and len(field) <= 10 and int(field) <= 2_147_483_647:
+                values.append(int(field))
+            else:
+                values.append(None)
+                if field and not re.fullmatch(r"_+|\?", field):
+                    self.ui.warning(
+                        f"Exercise '{name}': invalid RIR '{field}' was kept as unknown."
+                    )
+        return values
 
     def _contains_set_token(self, line: str) -> bool:
         return bool(self._parse_work_tokens(line))
-
-    def _is_rir_line(self, line: str) -> bool:
-        return bool(re.search(r"\bRIR\b", line, re.IGNORECASE))
 
     def _is_metadata_line(self, line: str) -> bool:
         if re.match(
@@ -633,7 +710,7 @@ class SidebarUpload:
         )
 
     def _clean_exercise_name(self, name: str) -> str:
-        return re.sub(r"\s+", " ", name).strip(" :-")
+        return name.strip()
 
     def _parse_time_range(self, text: str):
         """Parse workout time range from text.

@@ -85,6 +85,13 @@ raise the starting load above the first working load.
 
 Exclude warm-ups, known deloads, invalid values and future dates. An incomplete,
 empty or unknown-effort latest entry is never skipped for an older success.
+Coverage in the selected plan also contributes evidence when a linked session
+omits a prescribed exercise. The omission keeps its actual date, planned
+position and prescription, and contains no recorded sets. An older success
+cannot authorize an increase across a newer relevant omission. A workout with
+no prescription for that exercise contributes no omission, and a confirmed
+replacement contributes evidence for its own exercise identity. A subsequent
+complete execution can establish eligibility again.
 Repeat known compatible targets when only RIR, set count or recency is missing;
 do not increase them. Several separate entries in the same session require an
 unambiguous position match or a manual choice.

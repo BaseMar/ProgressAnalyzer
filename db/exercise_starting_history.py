@@ -20,7 +20,12 @@ def load_exercise_starting_history(engine, exercise_ids, *, as_of):
     if not exercise_ids:
         return {}
     query = (
-        select(actual_exercises, sessions.c.session_date, days.c.name.label("workout"))
+        select(
+            actual_exercises,
+            sessions.c.session_date,
+            sessions.c.start_time,
+            days.c.name.label("workout"),
+        )
         .join(sessions, sessions.c.session_id == actual_exercises.c.session_id)
         .outerjoin(links, links.c.session_id == sessions.c.session_id)
         .outerjoin(days, days.c.day_id == links.c.day_id)
@@ -93,6 +98,7 @@ def load_exercise_starting_history(engine, exercise_ids, *, as_of):
             {
                 "session_id": row["session_id"],
                 "date": performed,
+                "start_time": row["start_time"],
                 "workout": row["workout"],
                 "workout_exercise_id": row["workout_exercise_id"],
                 "sets": recorded[row["workout_exercise_id"]].sets,
