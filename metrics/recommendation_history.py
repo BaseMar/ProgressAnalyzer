@@ -132,9 +132,21 @@ def recommendation_history(performances, context, *, as_of, block_start):
     latest = candidates[-1]
     same_session = [r for r in candidates if r["session_id"] == latest["session_id"]]
     if len(same_session) > 1:
-        exact = [r for r in same_session if r["context"] == context]
+        exact = [
+            r
+            for r in same_session
+            if r.get("position_attributed", True)
+            and (
+                r["context"] == context
+                or (
+                    r.get("position_attributed")
+                    and workout_exercise_identity(r["context"])
+                    == workout_exercise_identity(context)
+                )
+            )
+        ]
         latest = exact[0] if len(exact) == 1 else {**latest, "ambiguous_recorded_exercises": True}
-        return [latest], False
+        return [latest], len(exact) == 1 and latest["context"][7:] != context[7:]
     # Confirmations cannot cross a prescription change, but moving an exercise
     # between workouts or plans does not reset an otherwise compatible result.
     history = []
@@ -153,7 +165,12 @@ def exercise_history_observations(history, performances, planned, actual_id, con
         if row["actual_exercise_id"] == actual_id:
             linked.setdefault(row["session_id"], []).append(row)
     output = []
-    records = history.get(actual_id, ())
+    records = [
+        record
+        for record in history.get(actual_id, ())
+        if not record.get("retained_omission")
+        or record["prescription"]["target_unit"] == planned.target_unit
+    ]
     occurrences = Counter(r["session_id"] for r in records)
     for record in reversed(records):
         previous = linked.get(record["session_id"], ())
@@ -177,29 +194,68 @@ def exercise_history_observations(history, performances, planned, actual_id, con
         source_context = source["context"] if source else context
         prescription = record.get("prescription")
         if source is None and prescription and prescription["target_unit"] == planned.target_unit:
+            key = prescription.get("history_key")
+            identity = (
+                (key, None, None)
+                if key
+                else (
+                    record["workout"],
+                    record["source_scheduled_date"].weekday(),
+                    record["source_workout_position"],
+                )
+            )
             source_context = (
-                *context[:7],
+                *identity,
+                prescription["position"],
+                prescription["exercise_id"],
+                actual_id,
+                planned.target_unit,
                 prescription["set_count"],
                 prescription["target_min"],
                 prescription["target_max"],
                 prescription["target_rir"],
             )
         expected = replace(planned, set_count=source_context[7])
+        compatible_count = len(selected)
         selected = selected[: expected.set_count]
         sets, interpretations = zip(*selected) if selected else ((), ())
+        explicitly_matched = (
+            prescription is not None
+            and record.get("source_plan_matches")
+            and record["workout_exercise_id"] is not None
+            and prescription["workout_exercise_id"] == record["workout_exercise_id"]
+        )
         output.append(
             {
                 "context": source_context,
-                "day_id": source["day_id"] if source else -record["workout_exercise_id"],
+                "day_id": source["day_id"]
+                if source
+                else record.get("source_day_id") or -record["workout_exercise_id"],
                 "session_id": record["session_id"],
                 "performed_on": record["date"],
                 "start_time": record.get("start_time"),
-                "scheduled_date": source["scheduled_date"] if source else record["date"],
+                "scheduled_date": source["scheduled_date"]
+                if source
+                else record.get("source_scheduled_date") or record["date"],
                 "workout": record["workout"] or "Recorded workout (not linked to a plan)",
                 "actual_exercise_id": actual_id,
                 "unit": planned.target_unit,
+                "prescription_known": bool(source or prescription),
+                "position_attributed": bool(
+                    source or explicitly_matched or record.get("retained_omission")
+                ),
+                "incompatible_prescription_unit": bool(
+                    prescription and prescription["target_unit"] != planned.target_unit
+                ),
+                "training_phase": record.get("training_phase", "unknown"),
+                "compatible_set_count": compatible_count,
                 "excluded_set_kinds": tuple(m.kind for m in meanings if not m.counts_for_plan),
-                "ambiguous_recorded_exercises": occurrences[record["session_id"]] > 1,
+                "ambiguous_recorded_exercises": occurrences[record["session_id"]] > 1
+                and not (
+                    explicitly_matched
+                    and workout_exercise_identity(source_context)
+                    == workout_exercise_identity(context)
+                ),
                 **_target_result(sets, expected, interpretations),
             }
         )

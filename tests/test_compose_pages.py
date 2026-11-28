@@ -35,7 +35,7 @@ def test_compose_snapshot_tracks_current_schema_and_survives_reconnection(tmp_pa
     try:
         with patch("db.connection.get_engine", return_value=engine):
             initial = execute(SNAPSHOT)
-        assert len(initial["counts"]) == 22
+        assert len(initial["counts"]) == 23 and initial["counts"]["workout_session_provenance"] > 0
         assert "exercise_load_profiles" in initial["counts"]
         assert "workout_set_load_originals" in initial["counts"]
         with (

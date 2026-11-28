@@ -135,9 +135,15 @@ before starting Streamlit; direct installations use the explicit commands below.
 | 009 | User-confirmed meanings of legacy bodyweight history, scoped to the exact exercise. |
 | 010 | RLS and Data API privilege restrictions for application tables, sequences and future table defaults. |
 | 011 | Exercise load profiles and archived originals for reversible history normalization. |
+| 012 | Session prescription and phase provenance retained after unlinking or plan deletion. |
 
 `python -m db.migrate` previews pending revisions without writing.
 `python -m db.migrate --apply` applies them and records successful revisions.
+
+Migration 012 backfills existing links only. Previously unlinked sessions with
+no established source remain unknown. Links and recorded workout values are
+preserved. Apply it before starting Phase 2B against a persistent database. For
+the hosted rollout, use the [migration 012 deployment runbook](migration-012-deployment.md).
 
 After migration 011, unify known historical conventions separately:
 

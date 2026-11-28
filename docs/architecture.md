@@ -128,15 +128,19 @@ operations:
 1. `prepare_plan_context` loads version snapshots and complete linked history
    for a requested plan and date window. Earlier history and early recordings
    of future planned slots remain available through the existing performance
-   reader. Supplied version snapshots must belong to the selected plan.
+   reader. The authoritative version list comes from storage. Supplied version
+   snapshots must belong to the selected plan.
 2. `PlanReadContext.prepare_workout` selects an actual scheduled workout from
-   that context. It returns a `PreparedWorkout` with the same history, versions
-   and explicit evidence cutoff. The immutable types live in
+   that context. It returns a `PreparedWorkout` with the same history, versions,
+   preview window and explicit evidence cutoff. The immutable types live in
    [`models/plan_context.py`](../models/plan_context.py).
-3. `recommend_prepared_workout` applies the existing pure progression engine,
-   then the separate exact-exercise starting-history fallback where applicable.
-   A confirmed alternative reuses the prepared input and supplies its own
-   exercise ID and equipment step.
+3. `recommend_prepared_workout` re-resolves the selected plan occurrence in the
+   current read scope. It identifies the selected version by its ID and creation
+   timestamp, so a reused SQLite row ID cannot revive a deleted selection. It rejects a removed or superseded occurrence with a
+   recoverable error and returns the recorded state for a newly linked occurrence.
+   The pure engine receives the refreshed snapshot, including exact-exercise
+   evidence across plans. A confirmed alternative shares that render's plan read
+   and supplies its own exercise ID and equipment step.
 
 Overview's **Next workout** prepares one context covering its history and four-week
 preview window. Workout selection, ordinary targets and alternative previews
@@ -162,10 +166,11 @@ The target RIR appears once per exercise, including zero and deload ranges.
 Load conventions, missing values and assistance remain explicit. Copied workouts
 and other callers retain their existing `goal_summary` formatting.
 
-Contexts are local variables rebuilt for each render. They are not written to
-the database or retained in session state. Existing write invalidation and
-new-render refresh remain unchanged. Callers should prepare a new context
-after changing source data instead of keeping an old snapshot across writes.
+Contexts are immutable. The pure calculation functions accept snapshots for
+deterministic comparisons. The public service treats a prepared workout as a
+selection and keeps its explicit `as_of` cutoff. A new standalone service call
+re-reads storage. Repeated calls in one unchanged render share cached plan and
+history data, including calls made for an alternative exercise.
 
 ## Recorded history and mapping
 
@@ -197,7 +202,7 @@ share that reader with distinct selection policies:
 | Consumer | Selection policy |
 | --- | --- |
 | Plan adherence/performance | Linked sessions and explicit exercise confirmations |
-| Starting-load history | Exact exercise across plans; ordinary usable records up to the cutoff |
+| Recommendation evidence and starting-load history | Exact exercise across plans and relevant omissions from the selected plan, with known deloads excluded |
 | Manual-start references | Entries in the latest raw session, including unlinked records |
 
 `mapper.map_recorded_exercises` groups the returned rows and delegates each set
@@ -251,8 +256,8 @@ reserves attempts before hashing, including concurrent submissions and new tabs.
 It retains only short-lived, keyed peer digests, with five attempts per peer
 and thirty overall in sixty seconds. Restarting the process clears these limits.
 
-Read scopes use a `ContextVar`, with engine identity and service arguments in
-their keys. Nested services reuse the scope; exit, early return and exceptions
+Read scopes use a `ContextVar`, with engine identity, the committed application
+write generation and service arguments in their keys. Nested services reuse the scope; exit, early return and exceptions
 discard it. Results are never retained between reruns or shared between concurrent
 render contexts. Callers treat the returned collections as read-only.
 
@@ -277,10 +282,13 @@ engine is published, and consult the current context rather than retaining a
 user's cache. They are not attached/detached on every render while other threads
 may be executing queries. Caller-owned transaction adapters remain supported.
 
-Direct database changes made outside `DataManager` require clearing `load_data`
-or waiting for its five-minute expiry. Plan/recommendation readers still start
-fresh on the next render. A read scope is reuse within a render, not a database
-transaction-isolation guarantee for concurrent external edits.
+Completed writes through `DataManager` invalidate active scopes using the same
+engine on their next read. Raw SQL executed through that engine in the same
+scope uses transaction invalidation. Changes made through another engine,
+process, or external database client are picked up on a new read scope. An
+in-flight render is a reuse boundary, not a serializable database transaction.
+Outside `DataManager`, the separate `load_data` cache also needs explicit
+clearing or its five-minute expiry.
 
 ## Data model
 
@@ -319,6 +327,7 @@ erDiagram
 | `training_plan_days`, `training_plan_exercises` | Named weekdays, order, sets, ranges, unit, RIR and weight step. |
 | `training_plan_progression` | Versioned block start and length. No row means unconfigured. |
 | `training_plan_session_links`, `training_plan_exercise_matches` | Planned-slot assignments and session-specific replacements. |
+| `workout_session_provenance` | Historical workout, planned positions and prescriptions, explicit recorded-exercise matches, and training phase kept independently of the calendar link. |
 | `training_plan_exercise_lineage` | Stable history keys for plan positions across compatible revisions. |
 | `recommendation_starting_loads` | Remembered manual fallback values, separate from performed sets. |
 | `exercise_history_load_settings` | Exercise-specific confirmations of legacy body-mass conventions. |
@@ -337,6 +346,17 @@ Developer entry points:
 Draft types live in `models/training_plan.py`.
 
 </details>
+
+Migration 012 adds one provenance row per established session assignment. It
+backfills existing links and copies source identifiers, the plan's creation
+timestamp, and target metadata. The timestamp distinguishes plans if SQLite
+reuses a numeric ID. The snapshot survives plan deletion
+because it has no foreign keys to removable plan versions or positions. Live links supply
+their current explicit matches. Unlinking and plan deletion retain the latest
+source snapshot in the same transaction. Relinking replaces the snapshot, and
+clearing incorrect retained context makes an unlinked session's source unknown.
+Deleting the recorded session cascades to its provenance. Native backups preserve
+the table. No workout data or historical links are rewritten by the migration.
 
 ## Public recommendation API and compatibility
 

@@ -6,6 +6,7 @@ from datetime import date, timedelta
 import pytest
 from sqlalchemy import (
     Column,
+    Date,
     Integer,
     MetaData,
     String,
@@ -61,7 +62,12 @@ def engine():
         Column("exercise_id", Integer, primary_key=True),
         Column("exercise_name", String(120)),
     )
-    history = Table("workout_sessions", metadata, Column("session_id", Integer, primary_key=True))
+    history = Table(
+        "workout_sessions",
+        metadata,
+        Column("session_id", Integer, primary_key=True),
+        Column("session_date", Date),
+    )
     Table("workout_exercises", metadata, Column("workout_exercise_id", Integer, primary_key=True))
     Table("workout_sets", metadata, Column("set_id", Integer, primary_key=True))
     with engine.begin() as connection:
@@ -110,6 +116,7 @@ def test_migration_preview_is_read_only_and_apply_is_repeatable(engine):
         "009_exercise_history_load_settings",
         "010_application_access_security",
         "011_exercise_load_profiles",
+        "012_session_provenance",
     ]
     assert "schema_migrations" not in inspect(engine).get_table_names()
     assert migrate(engine, apply=True) == [
@@ -124,6 +131,7 @@ def test_migration_preview_is_read_only_and_apply_is_repeatable(engine):
         "009_exercise_history_load_settings",
         "010_application_access_security",
         "011_exercise_load_profiles",
+        "012_session_provenance",
     ]
     assert migrate(engine, apply=True) == []
     assert migrate(engine) == []
@@ -384,5 +392,6 @@ def test_conflicting_schema_does_not_mark_migration_applied(engine):
         "009_exercise_history_load_settings",
         "010_application_access_security",
         "011_exercise_load_profiles",
+        "012_session_provenance",
     ]
     assert "training_plans" not in inspect(engine).get_table_names()

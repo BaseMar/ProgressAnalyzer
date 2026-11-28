@@ -23,6 +23,20 @@ from models.progression import (
 )
 
 
+def _provenance_notices(row):
+    if row.get("prescription_known") is False and row.get("training_phase") == "unknown":
+        return (
+            "Historical prescription and training phase are unknown. Use the recorded performance with the current plan.",
+        )
+    if row.get("prescription_known") is False:
+        return (
+            "Historical prescription is unknown. Use the recorded performance with the current plan.",
+        )
+    if row.get("training_phase") == "unknown":
+        return ("Historical training phase is unknown.",)
+    return ()
+
+
 def _evidence_problem(latest, planned, scheduled_date, policy):
     sets = latest["sets"]
     if (scheduled_date - latest["performed_on"]).days > policy.max_history_gap_days:
@@ -194,7 +208,7 @@ def recommend_normal_workout(
                 tuple(row["session_id"] for row in evidence),
                 tuple(row["performed_on"] for row in evidence),
                 tuple(row["workout"] for row in evidence),
-                tuple(notices),
+                (*_provenance_notices(evidence[-1]), *notices) if evidence else tuple(notices),
             )
 
         if upcoming.slot.session_id is not None:
@@ -239,7 +253,7 @@ def recommend_normal_workout(
                 )
             )
             continue
-        if baseline_only:
+        if baseline_only or latest.get("incompatible_prescription_unit"):
             code = (
                 "changed_set_count"
                 if len(latest["sets"]) != planned.set_count
@@ -268,6 +282,22 @@ def recommend_normal_workout(
         action, code, reason, goals = session_decision(
             planned, latest["sets"], step, policy, manual_load=manual_load
         )
+        if latest.get("prescription_known") is False and action in (
+            "increase_reps",
+            "increase_time",
+            "increase_weight",
+            "equalize_weight",
+        ):
+            quantity = "seconds" if planned.target_unit == "seconds" else "reps"
+            if latest["compatible_set_count"] != planned.set_count or any(
+                s[quantity] > planned.target_max for s in latest["sets"]
+            ):
+                action, code, reason = (
+                    "maintain",
+                    "unknown_prescription",
+                    "The recorded set count or output differs from the current prescription. Establish a comparable execution before increasing.",
+                )
+                goals = repeat_goals(planned, latest["sets"], manual_load=manual_load)
         # The shipped policy uses one execution. Explicit custom policies remain auditable.
         if action in ("increase_weight", "equalize_weight") and policy.confirmations_required > 1:
             confirmed = history[-policy.confirmations_required :]
@@ -454,6 +484,7 @@ def recommend_workout(
             evidence_session_ids=(latest["session_id"],),
             evidence_dates=(latest["performed_on"],),
             evidence_workouts=(latest["workout"],),
+            notices=(*result.notices, *_provenance_notices(latest)),
         )
         problem = _evidence_problem(latest, planned, upcoming.slot.scheduled_date, policy)
         if problem:
@@ -495,7 +526,11 @@ def recommend_workout(
                 )
             )
             continue
-        if baseline_only or len(latest["sets"]) != planned.set_count:
+        if (
+            baseline_only
+            or latest.get("incompatible_prescription_unit")
+            or len(latest["sets"]) != planned.set_count
+        ):
             output.append(
                 replace(
                     result,

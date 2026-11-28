@@ -13,6 +13,8 @@ class PreparedWorkout:
     upcoming: PlannedWorkout
     versions: tuple[TrainingPlanVersion, ...]
     as_of: date
+    plan_id: int
+    window: tuple[date, date]
 
     @property
     def settings_by_version(self):
@@ -25,6 +27,7 @@ class PlanReadContext:
     as_of: date
     versions: tuple[TrainingPlanVersion, ...]
     history: PlanAdherenceInput
+    window: tuple[date, date]
 
     def prepare_workout(self, day_id: int, scheduled_date: date) -> PreparedWorkout:
         upcoming = next(
@@ -37,4 +40,6 @@ class PlanReadContext:
         )
         if upcoming is None:
             raise ValueError("This workout is not scheduled for the selected plan and date")
-        return PreparedWorkout(self.history, upcoming, self.versions, self.as_of)
+        return PreparedWorkout(
+            self.history, upcoming, self.versions, self.as_of, self.plan_id, self.window
+        )

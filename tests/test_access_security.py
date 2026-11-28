@@ -163,7 +163,7 @@ def test_sqlite_bootstrap_records_security_revision_without_postgres_ddl(tmp_pat
     try:
         result = bootstrap_database(engine, demo=True)
         assert v010_application_access_security.REVISION in result["migrations"]
-        assert len(inspect(engine).get_table_names()) == 22
+        assert set(inspect(engine).get_table_names()) == APPLICATION_TABLES
         assert migrate(engine, apply=True) == []
         assert (
             len(DataManager(engine=engine).load_sets_ui()) == result["counts"]["workout_sets"] > 0

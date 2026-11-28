@@ -44,8 +44,32 @@ def _render_link_dialog(manager, session_id, recorded_date):
             _close_link_dialog()
             st.rerun()
         st.caption(
-            "Changing or removing the link clears this session's confirmed exercise replacements."
+            "Removing the link preserves the historical prescription and training phase. "
+            "Relinking replaces that context and clears live replacement matches."
         )
+    else:
+        retained = manager.load_retained_session_context(session_id)
+        if retained:
+            phase = {"normal": "ordinary", "deload": "deload", "unknown": "unknown"}[
+                retained["phase"]
+            ]
+            st.info(f"Retained training context · {retained['workout']} · phase: {phase}")
+            with st.popover("Correct retained context"):
+                st.caption(
+                    "Relink to the correct workout if known. Clear the retained context when the old assignment was wrong and the correct context is unknown."
+                )
+                confirmed = st.checkbox(
+                    "The retained context is incorrect", key=f"{prefix}_confirm_clear"
+                )
+                if st.button(
+                    "Clear retained context", key=f"{prefix}_clear", disabled=not confirmed
+                ):
+                    manager.clear_retained_session_context(session_id)
+                    st.session_state["history_workout_notice"] = (
+                        "Retained training context cleared."
+                    )
+                    _close_link_dialog()
+                    st.rerun()
     if not plans:
         st.info("Create a training plan in Plan before linking this session.")
         return

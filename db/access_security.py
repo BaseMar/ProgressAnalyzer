@@ -21,6 +21,7 @@ APPLICATION_TABLES = frozenset(
         "training_plan_versions",
         "training_plans",
         "workout_exercises",
+        "workout_session_provenance",
         "workout_sessions",
         "workout_set_classifications",
         "workout_set_loads",

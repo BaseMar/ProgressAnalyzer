@@ -11,18 +11,18 @@ from models.plan_context import PlanReadContext, PreparedWorkout
 from models.progression import DeloadPolicy, ProgressionPolicy
 
 
-@read_cached
 def prepare_plan_context(engine, plan_id, start, end, *, as_of, versions=None) -> PlanReadContext:
-    """Load full linked history and explicit preview dates, not a filtered chart.
-
-    Supplied versions must belong to this plan. They let a caller share its
-    already loaded snapshots within the same render; no context is persisted.
-    """
-    versions = tuple(load_training_plan_versions(engine, plan_id) if versions is None else versions)
-    if any(version.plan_id != plan_id for version in versions):
+    """Load current plan snapshots, linked history and the requested preview window."""
+    if versions is not None and any(version.plan_id != plan_id for version in versions):
         raise ValueError("Plan versions must belong to the selected plan")
+    return _current_plan_context(engine, plan_id, start, end, as_of=as_of)
+
+
+@read_cached
+def _current_plan_context(engine, plan_id, start, end, *, as_of):
+    versions = tuple(load_training_plan_versions(engine, plan_id))
     history = load_plan_performance(engine, plan_id, start, end)
-    return PlanReadContext(plan_id, as_of, versions, history)
+    return PlanReadContext(plan_id, as_of, versions, history, (start, end))
 
 
 @read_scope()
@@ -35,14 +35,43 @@ def recommend_prepared_workout(
     substitutions=None,
     replacement_weight_steps=None,
 ):
-    """Apply one decision engine to linked and unlinked exact-exercise history."""
+    """Use the prepared occurrence as a selection, then read its current inputs."""
+    selected = prepared.upcoming.slot
+    context = _current_plan_context(
+        engine, prepared.plan_id, *prepared.window, as_of=prepared.as_of
+    )
+    try:
+        current = context.prepare_workout(selected.day_id, selected.scheduled_date)
+        previous_version = next(v for v in prepared.versions if v.version_id == selected.version_id)
+        current_version = next(
+            v for v in current.versions if v.version_id == current.upcoming.slot.version_id
+        )
+        if previous_version.created_at != current_version.created_at:
+            raise ValueError("The selected plan version has changed")
+    except (ValueError, StopIteration) as exc:
+        raise ValueError("The selected workout changed. Prepare the workout again.") from exc
+    return _recommend_snapshot(
+        engine,
+        current,
+        policy=policy,
+        deload_policy=deload_policy,
+        substitutions=substitutions,
+        replacement_weight_steps=replacement_weight_steps,
+    )
+
+
+def _recommend_snapshot(
+    engine, prepared, *, policy, deload_policy, substitutions, replacement_weight_steps
+):
     data, upcoming, as_of = prepared.history, prepared.upcoming, prepared.as_of
     settings = prepared.settings_by_version
     exercise_ids = {
         (substitutions or {}).get(target.plan_exercise_id, target.exercise.exercise_id)
         for target in upcoming.targets
     }
-    history = load_exercise_starting_history(engine, exercise_ids, as_of=as_of)
+    history = load_exercise_starting_history(
+        engine, exercise_ids, as_of=as_of, plan_id=prepared.plan_id
+    )
     result = recommend_workout(
         data,
         upcoming,
@@ -83,7 +112,7 @@ def load_workout_recommendations(
     replacement_weight_steps=None,
 ):
     context = prepare_plan_context(engine, plan_id, scheduled_date, scheduled_date, as_of=as_of)
-    return recommend_prepared_workout(
+    return _recommend_snapshot(
         engine,
         context.prepare_workout(day_id, scheduled_date),
         policy=policy,

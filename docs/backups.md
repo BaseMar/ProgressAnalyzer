@@ -68,6 +68,9 @@ this command accepts native custom archives, not those older plain SQL files.
 After restoring an older snapshot, select the recovered database as the app's
 `DATABASE_URL` and apply pending migrations before exposing it. In particular,
 migration 010 closes the public Data API access that older backups may retain.
+Migration 012 backfills training context from links present in the restored
+database. Backups taken after 012 also retain the historical context of
+unlinked sessions. A pre-012 backup cannot recover context from an already removed link.
 
 ## Recovery check and routine
 

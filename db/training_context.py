@@ -1,17 +1,18 @@
 """Read planned deload context without persisting inferred set labels."""
 
-from datetime import date, datetime
+from datetime import date, timedelta
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from db.read_cache import read_cached, table_names
-from metrics.training_block import is_deload_workout
-from models.scheduled_workout import ScheduledWorkout
-from models.training_plan import ProgressionSettings
+from db.session_provenance import provenance, recorded_date, source_phase
 
 
 @read_cached
 def load_deload_exercise_ids(engine, *, as_of=None):
+    from db.plan_schedule import links, sessions
+    from db.recorded_workouts import actual_exercises
+
     as_of = as_of or date.today()
     with engine.connect() as connection:
         names = table_names(connection)
@@ -37,23 +38,32 @@ def load_deload_exercise_ids(engine, *, as_of=None):
             .mappings()
             .all()
         )
-    output = set()
+        retained = (
+            connection.execute(
+                select(actual_exercises.c.workout_exercise_id)
+                .join(provenance, provenance.c.session_id == actual_exercises.c.session_id)
+                .join(sessions, sessions.c.session_id == actual_exercises.c.session_id)
+                .where(
+                    provenance.c.phase == "deload",
+                    sessions.c.session_date < as_of + timedelta(days=1),
+                    ~select(links.c.session_id)
+                    .where(links.c.session_id == provenance.c.session_id)
+                    .exists(),
+                )
+            )
+            .scalars()
+            .all()
+            if provenance.name in names
+            else ()
+        )
+    output = set(retained)
     for row in rows:
-        performed = row["session_date"]
-        if isinstance(performed, datetime):
-            performed = performed.date()
-        elif isinstance(performed, str):
-            performed = date.fromisoformat(performed[:10])
-        scheduled, start = row["scheduled_date"], row["block_start"]
-        if isinstance(scheduled, str):
-            scheduled = date.fromisoformat(scheduled)
-        if isinstance(start, str):
-            start = date.fromisoformat(start)
+        performed = recorded_date(row["session_date"])
         if performed is None or performed > as_of:
             continue
-        slot = ScheduledWorkout(
-            row["day_id"], row["version_id"], scheduled, row["name"], row["session_id"], performed
-        )
-        if is_deload_workout(slot, ProgressionSettings(start, row["block_weeks"]), as_of=as_of):
+        if (
+            source_phase(row["scheduled_date"], performed, row["block_start"], row["block_weeks"])
+            == "deload"
+        ):
             output.add(row["workout_exercise_id"])
     return frozenset(output)

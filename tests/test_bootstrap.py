@@ -66,7 +66,8 @@ def fresh_engine(request, tmp_path):
 def test_fresh_schema_supports_real_catalog_and_workout_writes(fresh_engine):
     result = bootstrap_database(fresh_engine)
     assert result["migrations"] == [migration.REVISION for migration in MIGRATIONS]
-    assert len(inspect(fresh_engine).get_table_names()) == 22
+    tables = inspect(fresh_engine).get_table_names()
+    assert len(tables) == 23 and "workout_session_provenance" in tables
     assert not any(result["counts"].values())
     assert insert_exercise(fresh_engine, "Barbell Bench Press")
     with fresh_engine.begin() as connection:

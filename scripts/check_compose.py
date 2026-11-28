@@ -67,7 +67,7 @@ from sqlalchemy import inspect
 from db.connection import get_engine
 engine = get_engine()
 tables = sorted(inspect(engine).get_table_names())
-assert len(tables) == 22, f'Unexpected application tables: {tables}'
+assert len(tables) == 23 and 'workout_session_provenance' in tables, f'Unexpected application tables: {tables}'
 assert {'exercise_load_profiles', 'workout_set_load_originals'}.issubset(tables)
 counts, fingerprints = {}, {}
 with engine.connect() as connection:
