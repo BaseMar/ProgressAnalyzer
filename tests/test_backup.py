@@ -15,6 +15,7 @@ from sqlalchemy import create_engine, inspect, text
 from data_manager import DataManager
 from db.backup import BackupError, create_backup, restore_backup
 from db.bootstrap import bootstrap_database
+from db.session_provenance import provenance
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -32,11 +33,27 @@ def snapshot(engine):
         }
 
 
+def detach_demo_deload(engine):
+    with engine.connect() as connection:
+        saved = (
+            connection.execute(provenance.select().where(provenance.c.phase == "deload"))
+            .mappings()
+            .first()
+        )
+    assert saved is not None
+    manager = DataManager(engine=engine)
+    manager.unassign_scheduled_session(
+        saved["day_id"], saved["scheduled_date"], saved["session_id"]
+    )
+    return saved["session_id"], dict(manager.load_retained_session_context(saved["session_id"]))
+
+
 def test_sqlite_backup_roundtrip_and_protected_targets(tmp_path):
     source = create_engine(f"sqlite:///{tmp_path / 'source.sqlite3'}")
     restored = create_engine(f"sqlite:///{tmp_path / 'restored.sqlite3'}")
     try:
         bootstrap_database(source, demo=True)
+        retained_id, retained = detach_demo_deload(source)
         before = snapshot(source)
         backup = create_backup(str(source.url), tmp_path / "snapshot.sqlite3")
         assert snapshot(source) == before
@@ -46,6 +63,10 @@ def test_sqlite_backup_roundtrip_and_protected_targets(tmp_path):
             restore_backup(str(source.url), backup)
         restore_backup(str(restored.url), backup)
         assert snapshot(restored) == before
+        assert (
+            dict(DataManager(engine=restored).load_retained_session_context(retained_id))
+            == retained
+        )
         with restored.connect() as connection:
             assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
         assert DataManager(engine=restored).add_exercise("Chest Dip")
@@ -148,6 +169,7 @@ def test_postgres_native_backup_restores_records_constraints_and_sequences(
 ):
     source, restored = postgres_databases
     bootstrap_database(source, demo=True)
+    retained_id, retained = detach_demo_deload(source)
     before = snapshot(source)
     backup = create_backup(source.url, tmp_path / "snapshot.dump")
     assert snapshot(source) == before
@@ -156,6 +178,7 @@ def test_postgres_native_backup_restores_records_constraints_and_sequences(
     restore_backup(restored.url, backup)
     assert snapshot(restored) == before
     manager = DataManager(engine=restored)
+    assert dict(manager.load_retained_session_context(retained_id)) == retained
     assert manager.add_exercise("Chest Dip")
     with restored.connect() as connection:
         assert connection.execute(text("SELECT max(exercise_id) FROM exercises")).scalar_one() == 10

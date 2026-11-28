@@ -8,6 +8,7 @@ import pytest
 
 from data_manager import DataManager
 from db.progression import load_workout_recommendations
+from db.read_cache import read_scope
 from scripts.baseline_fixture import AS_OF, create_fixture
 from services.recommendations import prepare_plan_context, recommend_prepared_workout
 
@@ -48,13 +49,16 @@ def test_substitution_reuses_prepared_history_without_reloading_the_plan(preview
     expected = load_workout_recommendations(
         engine, plan.plan_id, workout.slot.day_id, AS_OF, as_of=AS_OF, **options
     )
-    with patch(
-        "services.recommendations.load_plan_performance",
-        side_effect=AssertionError("History reloaded"),
-    ):
-        ordinary = recommend_prepared_workout(engine, prepared)
-        replacement = recommend_prepared_workout(engine, prepared, **options)
-        assert recommend_prepared_workout(engine, prepared) == ordinary
+    with read_scope():
+        context = prepare_plan_context(engine, plan.plan_id, *prepared.window, as_of=AS_OF)
+        prepared = context.prepare_workout(workout.slot.day_id, AS_OF)
+        with patch(
+            "services.recommendations.load_plan_performance",
+            side_effect=AssertionError("History reloaded inside an unchanged render"),
+        ):
+            ordinary = recommend_prepared_workout(engine, prepared)
+            replacement = recommend_prepared_workout(engine, prepared, **options)
+            assert recommend_prepared_workout(engine, prepared) == ordinary
     assert replacement == expected
     assert ordinary.exercises[0].actual_exercise_id == 1
     assert replacement.exercises[0].actual_exercise_id == 9

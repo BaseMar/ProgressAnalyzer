@@ -45,7 +45,9 @@ from db.queries import (
     insert_body_measurements,
     insert_exercise,
 )
+from db.read_cache import refresh_committed_reads
 from db.recommendation_references import load_recommendation_references
+from db.session_provenance import clear_retained_session_context, load_retained_session_context
 from db.set_classifications import (
     classification_storage_ready,
     load_session_sets,
@@ -85,6 +87,7 @@ def _refresh_after_write(method):
             # Delayed import avoids the loader/manager dependency cycle.
             from data_loader import load_data
 
+            refresh_committed_reads(args[0].engine)
             load_data.clear()
         return result
 
@@ -216,6 +219,13 @@ class DataManager:
 
     def load_session_plan_assignments(self, session_ids):
         return load_session_plan_assignments(self.engine, session_ids)
+
+    def load_retained_session_context(self, session_id):
+        return load_retained_session_context(self.engine, session_id)
+
+    @_refresh_after_write
+    def clear_retained_session_context(self, session_id):
+        return clear_retained_session_context(self.engine, session_id)
 
     @_refresh_after_write
     def assign_scheduled_session(

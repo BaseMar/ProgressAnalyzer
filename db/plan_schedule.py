@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from db.migrations.v002_plan_session_links import define_table
 from db.read_cache import has_table, read_cached
+from db.session_provenance import preserve_session_provenance
 from db.training_plans import _load_version, days, plans, versions
 from models.scheduled_workout import ScheduledWorkout
 
@@ -199,7 +200,9 @@ def assign_scheduled_session(
             ):
                 raise ValueError("Recorded session not found")
             existing = (
-                connection.execute(select(links).where(links.c.session_id == session_id))
+                connection.execute(
+                    select(links).where(links.c.session_id == session_id).with_for_update()
+                )
                 .mappings()
                 .one_or_none()
             )
@@ -216,6 +219,7 @@ def assign_scheduled_session(
                     session_id=session_id, day_id=day_id, scheduled_date=scheduled_date
                 )
             )
+            preserve_session_provenance(connection, (session_id,))
     except IntegrityError as exc:
         raise ValueError(
             "This session or planned workout is already linked. Remove its existing link first."
@@ -225,9 +229,17 @@ def assign_scheduled_session(
 def unassign_scheduled_session(engine, day_id: int, scheduled_date: date, session_id: int):
     with engine.begin() as connection:
         connection.execute(
-            links.delete().where(
-                links.c.day_id == day_id,
-                links.c.scheduled_date == scheduled_date,
-                links.c.session_id == session_id,
-            )
+            select(sessions.c.session_id)
+            .where(sessions.c.session_id == session_id)
+            .with_for_update()
         )
+        selected = (
+            links.c.day_id == day_id,
+            links.c.scheduled_date == scheduled_date,
+            links.c.session_id == session_id,
+        )
+        if connection.execute(
+            select(links.c.session_id).where(*selected).with_for_update()
+        ).first():
+            preserve_session_provenance(connection, (session_id,), required=True)
+            connection.execute(links.delete().where(*selected))

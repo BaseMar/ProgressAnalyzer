@@ -126,7 +126,15 @@ def with_history_starting_loads(
             continue
         planned = prescriptions[item.plan_exercise_id]
         source, sets = None, ()
-        records = [r for r in history.get(item.actual_exercise_id, ()) if r["date"] <= as_of]
+        records = [
+            r
+            for r in history.get(item.actual_exercise_id, ())
+            if r["date"] <= as_of
+            and (
+                not r.get("retained_omission")
+                or r["prescription"]["target_unit"] == planned.target_unit
+            )
+        ]
         if (
             item.reason_code in ("incomplete_sets", "history_gap")
             and item.evidence_session_ids

@@ -16,6 +16,7 @@ from db.migrations import (
     v009_exercise_history_load_settings,
     v010_application_access_security,
     v011_exercise_load_profiles,
+    v012_session_provenance,
 )
 
 MIGRATIONS = (
@@ -30,6 +31,7 @@ MIGRATIONS = (
     v009_exercise_history_load_settings,
     v010_application_access_security,
     v011_exercise_load_profiles,
+    v012_session_provenance,
 )
 metadata = MetaData()
 ledger = Table(
@@ -62,6 +64,12 @@ def migrate(engine, *, apply: bool = False) -> list[str]:
         if connection.dialect.name == "postgresql":
             # Serializes migration runners within this transaction.
             connection.execute(text("SELECT pg_advisory_xact_lock(917420001)"))
+        elif (
+            connection.dialect.name == "sqlite"
+            and not connection.connection.driver_connection.in_transaction
+        ):
+            # SQLite legacy transaction mode otherwise runs migration DDL outside rollback.
+            connection.exec_driver_sql("BEGIN IMMEDIATE")
         ledger.create(connection, checkfirst=True)
         pending = pending_migrations(connection)
         for migration in pending:

@@ -3,7 +3,7 @@
 from datetime import date
 
 import pytest
-from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, event
+from sqlalchemy import Column, Date, Integer, MetaData, String, Table, create_engine, event
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import StaticPool
 from streamlit.testing.v1 import AppTest
@@ -43,7 +43,12 @@ def plan_engine():
         Column("exercise_id", Integer, primary_key=True),
         Column("exercise_name", String),
     )
-    Table("workout_sessions", metadata, Column("session_id", Integer, primary_key=True))
+    Table(
+        "workout_sessions",
+        metadata,
+        Column("session_id", Integer, primary_key=True),
+        Column("session_date", Date),
+    )
     Table("workout_exercises", metadata, Column("workout_exercise_id", Integer, primary_key=True))
     Table("workout_sets", metadata, Column("set_id", Integer, primary_key=True))
     with engine.begin() as connection:

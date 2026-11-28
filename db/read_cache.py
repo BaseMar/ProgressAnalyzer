@@ -4,7 +4,7 @@ from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from functools import wraps
 from threading import Lock
-from weakref import WeakSet
+from weakref import WeakKeyDictionary, WeakSet
 
 from sqlalchemy import event, inspect
 from sqlalchemy.engine import Connection, Engine
@@ -12,6 +12,7 @@ from sqlalchemy.engine import Connection, Engine
 _current = ContextVar("render_reads", default=None)
 _installed = WeakSet()
 _install_lock = Lock()
+_committed_generations = WeakKeyDictionary()
 
 
 class _ConnectionReader:
@@ -94,6 +95,14 @@ def install_read_invalidation(engine):
         _installed.add(engine)
 
 
+def refresh_committed_reads(source):
+    """Make a completed application write visible to other scopes on this engine."""
+    engine = _key(source)
+    if isinstance(engine, Engine):
+        with _install_lock:
+            _committed_generations[engine] = _committed_generations.get(engine, 0) + 1
+
+
 @contextmanager
 def read_scope():
     """Keep one render's reads together and discard them on every exit path.
@@ -128,10 +137,11 @@ def read_cached(function):
         # Transaction adapters retain their caller-owned connection semantics.
         if cache is None or not isinstance(cache_source, (Engine, Connection)):
             return function(source, *args, **kwargs)
-        install_read_invalidation(
-            cache_source.engine if isinstance(cache_source, Connection) else cache_source
-        )
-        key = (function, _key(cache_source), _key(args), _key(kwargs))
+        engine = _key(cache_source)
+        install_read_invalidation(engine)
+        with _install_lock:
+            generation = _committed_generations.get(engine, 0)
+        key = (function, engine, generation, _key(args), _key(kwargs))
         if key not in cache.values:
             cache.values[key] = function(source, *args, **kwargs)
         return cache.values[key]

@@ -339,16 +339,23 @@ In **History**, select the recorded day and choose **Link to plan** beside the
 session title. Choose a plan, planned week and workout in the dialog. The actual
 workout may be on another date. A linked session shows its planned workout's
 name; select it to change or remove the link. A session belongs to one planned
-slot; removing a link preserves its log.
+slot. Removing the link keeps the log and the historical prescription and phase.
+Deleting the source plan also keeps that context with the record.
+
+For an incorrect assignment, link the session to the correct occurrence. This
+replaces the historical source. If the correct context is unknown, remove the
+link, reopen **Link to plan**, and use **Correct retained context** to clear it.
+The dialog shows the retained workout and whether its phase is ordinary, deload,
+or unknown. Recommendations flag evidence with an unknown prescription or phase.
 
 If you used another exercise, open **Tools → Replacements** in that session's
 header. For example, Machine Chest Press can cover a Barbell Bench Press position
 for that session. Their performance histories stay separate.
 
 If a linked workout in the selected plan omits a prescribed exercise, the omission
-remains part of recommendation evidence. An older successful workout cannot authorize
-an increase across that omission. Workouts that never prescribed the exercise do
-not create an omission.
+remains part of recommendation evidence after unlinking. An older successful
+workout cannot authorize an increase across that omission. Workouts that never
+prescribed the exercise do not create an omission.
 
 <details>
 <summary>Calendar and matching rules</summary>
@@ -362,8 +369,10 @@ not create an omission.
   not confirm a replacement. Replacements must use the same unit: reps or seconds.
 - Confirmed replacements reserve the recorded exercise for one plan position.
   Remaining exact-ID sets are allocated in plan order without double counting.
-- Changing/removing a link or deleting a session removes its replacement approvals.
-  Deleting the session also removes the link; unlinking alone keeps the workout.
+- Changing or removing a link clears its live replacement matches. Unlinking
+  retains the old attribution as evidence. Relinking uses the new occurrence's
+  context and lets you confirm its replacements separately. Deleting the recorded
+  session removes the link and its retained provenance.
 - Analysis uses scheduled dates for plan periods and loads moved linked sessions
   in full. A moved workout counts as recorded, but not on the planned day.
 

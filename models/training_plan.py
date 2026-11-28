@@ -1,7 +1,7 @@
 """Immutable plan snapshots, independent of the UI and database."""
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from math import isfinite
 
 
@@ -99,3 +99,4 @@ class TrainingPlanVersion:
     version_id: int
     version_number: int
     draft: TrainingPlanDraft
+    created_at: datetime | None = None

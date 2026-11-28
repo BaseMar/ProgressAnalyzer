@@ -88,8 +88,9 @@ empty or unknown-effort latest entry is never skipped for an older success.
 Coverage in the selected plan also contributes evidence when a linked session
 omits a prescribed exercise. The omission keeps its actual date, planned
 position and prescription, and contains no recorded sets. An older success
-cannot authorize an increase across a newer relevant omission. A workout with
-no prescription for that exercise contributes no omission, and a confirmed
+cannot authorize an increase across a newer relevant omission. Removing the link
+retains the omission as evidence for the source plan without filling its calendar
+slot. A workout with no prescription for that exercise contributes no omission, and a confirmed
 replacement contributes evidence for its own exercise identity. A subsequent
 complete execution can establish eligibility again.
 Repeat known compatible targets when only RIR, set count or recency is missing;
@@ -99,6 +100,21 @@ unambiguous position match or a manual choice.
 Reading history does not create plan assignments or change recorded results.
 Without a usable baseline, complete manual choices are remembered and the form
 disappears once filled. Actual history takes priority over saved manual choices.
+
+Calendar assignment and historical provenance serve different purposes. Unlinking
+or deleting a source plan preserves an established prescription, training phase,
+and historical position attribution for the recorded session. An explicit relink
+replaces the source. Clearing an incorrect retained context leaves it unknown.
+An unrelated workout does not create an omission. A historical match can identify
+an occurrence for the same position where attribution is unambiguous. Another
+plan can use an unambiguous exact-exercise result without pooling repeated entries
+or borrowing performance from a different exercise.
+
+An unlinked record with unknown provenance can support a conservative repeat.
+Comparable observed work can also support the existing progression rules when
+its set count matches and the proposed increase does not rely on output above
+the current ceiling. This measures the observed work against today's target and
+does not establish what prescription or phase applied at the time.
 
 Ordinary progression from an established baseline can still change targets
 automatically. A block calendar is not required for ordinary recommendations.
@@ -172,7 +188,9 @@ resetting to the lower bound.
 Deload is neither ordinary success nor regression. Do not compound reductions
 from successive lighter sessions. A moved deload session remains a deload;
 an ordinary workout performed during the deload period does not confirm normal
-progression either. After deload, resume the last ordinary baseline from the
+progression either. A known deload remains excluded after unlinking or source
+plan deletion. Unknown context does not become a deload based on weight,
+repetitions or recorded RIR. After deload, resume the last ordinary baseline from the
 previous cycle, including its exact repetitions, without an immediate increase. The first ordinary execution
 checks that baseline. Completeness, comparability and history-age limits still
 apply. A plan revision retains the calendar unless the user explicitly changes it.

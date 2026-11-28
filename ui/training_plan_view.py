@@ -141,7 +141,7 @@ class TrainingPlanView:
             st.warning(
                 f'Delete "{source.draft.name}" and all its versions? '
                 "This permanently removes the plan and its workout assignments. "
-                "Recorded workouts and sets will remain in History."
+                "Recorded workouts, sets, and their historical training context will remain."
             )
             confirmed = st.checkbox(
                 "I want to permanently delete this plan",
@@ -157,6 +157,9 @@ class TrainingPlanView:
             try:
                 history = self.dm.load_training_plan_versions(source.plan_id)
                 deleted = self.dm.delete_training_plan(source.plan_id)
+            except ValueError as exc:
+                st.error(str(exc))
+                return
             except SQLAlchemyError:
                 logger.exception("Unable to delete training plan")
                 st.error("The plan could not be deleted. Please try again.")

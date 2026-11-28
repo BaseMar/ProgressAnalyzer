@@ -1,7 +1,7 @@
 """Transactional plan snapshots with explicit deletion of an entire plan."""
 
 from collections import Counter
-from datetime import date
+from datetime import UTC, date, datetime
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer, MetaData, Table, func, literal, select
@@ -39,7 +39,8 @@ def training_plan_storage_ready(engine) -> bool:
 def delete_training_plan(engine, plan_id: int) -> bool:
     """Delete all plan versions and assignments atomically, preserving workouts."""
     from db.plan_adherence import matches
-    from db.plan_schedule import links
+    from db.plan_schedule import links, sessions
+    from db.session_provenance import preserve_session_provenance
 
     with engine.begin() as connection:
         locked = connection.execute(
@@ -51,6 +52,21 @@ def delete_training_plan(engine, plan_id: int) -> bool:
         version_ids = select(versions.c.version_id).where(versions.c.plan_id == plan_id)
         day_ids = select(days.c.day_id).where(days.c.version_id.in_(version_ids))
         target_ids = select(exercises.c.plan_exercise_id).where(exercises.c.day_id.in_(day_ids))
+        if has_table(connection, links.name):
+            linked = links.c.day_id.in_(day_ids)
+            connection.execute(
+                select(sessions.c.session_id)
+                .where(sessions.c.session_id.in_(select(links.c.session_id).where(linked)))
+                .order_by(sessions.c.session_id)
+                .with_for_update()
+            ).all()
+            assigned = tuple(
+                connection.execute(
+                    select(links.c.session_id).where(linked).with_for_update()
+                ).scalars()
+            )
+            if assigned:
+                preserve_session_provenance(connection, assigned, required=True)
         if has_table(connection, matches.name):
             connection.execute(matches.delete().where(matches.c.plan_exercise_id.in_(target_ids)))
         if has_table(connection, links.name):
@@ -102,7 +118,9 @@ def save_training_plan(
         version_number = 1
         settings = draft.progression
         if plan_id is None:
-            plan_id = connection.execute(plans.insert().values()).inserted_primary_key[0]
+            plan_id = connection.execute(
+                plans.insert().values(created_at=datetime.now(UTC))
+            ).inserted_primary_key[0]
         else:
             locked = connection.execute(
                 select(plans.c.plan_id).where(plans.c.plan_id == plan_id).with_for_update()
@@ -152,6 +170,7 @@ def save_training_plan(
                 version_number=version_number,
                 name=draft.name.strip(),
                 effective_from=draft.effective_from,
+                created_at=datetime.now(UTC),
             )
         ).inserted_primary_key[0]
         if settings is not None:
@@ -290,6 +309,7 @@ def _load_versions(connection, version_rows):
             plan_id=version["plan_id"],
             version_id=version["version_id"],
             version_number=version["version_number"],
+            created_at=version["created_at"],
             draft=TrainingPlanDraft(
                 version["name"],
                 version["effective_from"],

@@ -337,4 +337,7 @@ def test_plan_revision_and_links_refresh_cached_deload_context(workload):
         assert len(linked.deload_exercise_ids) == len(before.deload_exercise_ids) + 1
         manager.unassign_scheduled_session(slot.day_id, slot.scheduled_date, sid)
         unlinked_again, _ = load_data()
-        assert unlinked_again.deload_exercise_ids == before.deload_exercise_ids
+        assert unlinked_again.deload_exercise_ids == linked.deload_exercise_ids
+        assert manager.clear_retained_session_context(sid)
+        corrected, _ = load_data()
+        assert corrected.deload_exercise_ids == before.deload_exercise_ids
